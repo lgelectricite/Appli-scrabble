@@ -729,3 +729,72 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
   box-shadow: 0 10px 18px rgba(0,0,0,.45);
   opacity: .95;
 }
+
+/* ===== choix de niveau (jeux de réflexion) ===== */
+.lvl-btns { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+.lvl-btns .btn small { display: block; font-size: 12px; opacity: .75; font-weight: 400; }
+
+/* ===== Sudoku ===== */
+.sdk-grid {
+  display: grid; grid-template-columns: repeat(9, 1fr);
+  max-width: min(94vw, 62vh); margin: 4px auto 10px;
+  border: 2px solid var(--paper); border-radius: 6px; overflow: hidden;
+  background: #ffffff10;
+}
+.sdk-cell {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-size: clamp(14px, 4.6vw, 24px); font-weight: 600;
+  border-right: 1px solid #ffffff2a; border-bottom: 1px solid #ffffff2a;
+  cursor: pointer; color: var(--tile-new);
+}
+.sdk-cell.given { color: var(--paper); font-weight: 800; background: #ffffff14; cursor: default; }
+.sdk-cell.sel { background: var(--accent); color: #fff; }
+.sdk-cell.br { border-right: 2px solid var(--paper); }
+.sdk-cell.bb { border-bottom: 2px solid var(--paper); }
+.sdk-pad { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+.sdk-key {
+  width: 9%; min-width: 34px; padding: 10px 0; font-size: 18px; font-weight: 700;
+  border: none; border-radius: 8px; background: var(--tile); color: var(--tile-text);
+  cursor: pointer;
+}
+
+/* ===== Mots mêlés ===== */
+.mel-grid {
+  display: grid; gap: 2px;
+  max-width: min(94vw, 56vh); margin: 4px auto 8px;
+  user-select: none;
+}
+.mel-cell {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  background: #ffffff14; border-radius: 4px; cursor: pointer;
+  font-size: clamp(11px, 3.4vw, 18px); font-weight: 700;
+}
+.mel-cell.sel { background: var(--accent); color: #fff; }
+.mel-words { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.mel-word {
+  background: #ffffff1c; border-radius: 8px; padding: 3px 10px;
+  font-size: 13px; font-weight: 700; letter-spacing: 1px;
+}
+.mel-word.found { text-decoration: line-through; }
+
+/* ===== Mot Mystère ===== */
+.mot-board { display: flex; flex-direction: column; gap: 5px; align-items: center; margin: 8px 0; }
+.mot-row { display: flex; gap: 5px; }
+.mot-cell {
+  width: clamp(34px, 11vw, 48px); height: clamp(34px, 11vw, 48px);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 7px; font-size: clamp(18px, 6vw, 26px); font-weight: 800;
+  background: #ffffff14; border: 2px solid #ffffff28;
+}
+.mot-cell.m2 { background: #1c7a45; border-color: #1c7a45; }
+.mot-cell.m1 { background: #d8a02f; border-color: #d8a02f; color: #241a04; }
+.mot-cell.m0 { background: #333a44; border-color: #333a44; opacity: .8; }
+.mot-cell.cur { border-color: var(--tile-new); }
+.mot-kb { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 8px; }
+.mot-key {
+  min-width: 8.4%; padding: 11px 2px; font-size: 15px; font-weight: 700;
+  border: none; border-radius: 7px; background: var(--tile); color: var(--tile-text);
+  cursor: pointer;
+}
+.mot-key.wide { min-width: 18%; }
+.mot-key.go { background: var(--accent); color: #fff; }

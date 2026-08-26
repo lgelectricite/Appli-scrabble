@@ -19,6 +19,9 @@ nécessaire pendant les parties.
 | 🐷 **Cochon** | 2–4 | Le dé qui fait tout perdre sur un 1. Premier à 100. |
 | 🧠 **Memory** | 1–4 | Une paire = un point et on rejoue. |
 | 🃏 **Poker** | 2–4 | Texas Hold'em, **cash game** (blinds fixes, recave) ou **tournoi** (blinds montantes, élimination) : tapis et pots secondaires, **mains évaluées par le jeu**, cartes adverses jamais transmises avant l'abattage. |
+| 🔢 **Sudoku** | 1–4 | Grilles générées à volonté (**solution unique garantie**), 3 niveaux, erreurs comptées, chrono. En réseau : même grille, le plus rapide gagne — sans voir la grille des autres. Record personnel par niveau. |
+| 🔎 **Mots mêlés** | 1–4 | Mots du dictionnaire cachés, 3 niveaux (taille, diagonales, mots à l'envers). En réseau, grille **partagée** : chaque mot trouvé prend la couleur de son découvreur. |
+| 🟩 **Mot Mystère** | 1–4 | Type Motus/Wordle : 6 essais, mots du dictionnaire uniquement, 3 niveaux (5/6/7 lettres). En duel : même mot secret, les lettres adverses restent cachées (couleurs seulement). |
 | 🕵️ **Le Manoir** | 1–12 | **Enquête collaborative** façon Cluedo/escape game : coupable, arme et lieu tirés au sort, six pistes verrouillées par des énigmes, carnet de déduction automatique, deux accusations. La solution et les réponses **ne quittent jamais le téléphone-serveur**. |
 
 ## Impossible de tricher

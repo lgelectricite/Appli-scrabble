@@ -676,7 +676,9 @@
     var box = $('mini-count');
     box.innerHTML = '';
     miniCount = mod.min;
-    var hotMax = Math.min(mod.max, 4); // sur un seul téléphone : 4 noms maximum
+    // sur un seul téléphone : 4 noms maximum, ou moins si le jeu l'impose
+    var hotMax = Math.min(mod.hotseatMax || mod.max, 4);
+    if (miniCount > hotMax) miniCount = hotMax;
     for (var n = mod.min; n <= hotMax; n++) {
       var b = document.createElement('button');
       b.className = 'count-btn' + (n === miniCount ? ' active' : '');
@@ -701,7 +703,7 @@
     for (var i = 1; i <= miniCount; i++) {
       names.push(($('mini-name-' + i).value.trim() || 'Joueur ' + i).slice(0, 14));
     }
-    var needDict = pendingGame === 'pendu';
+    var needDict = ['pendu', 'meles', 'motus'].indexOf(pendingGame) !== -1;
     (needDict ? loadDict().catch(function () {}) : Promise.resolve()).then(function () {
       currentGame = pendingGame;
       miniMod = mod;
@@ -1166,7 +1168,7 @@
       return;
     }
     // Mini-jeu en réseau : l'hôte crée l'état et fait autorité
-    var needDict = pendingGame === 'pendu';
+    var needDict = ['pendu', 'meles', 'motus'].indexOf(pendingGame) !== -1;
     (needDict ? loadDict().catch(function () {}) : Promise.resolve()).then(function () {
       currentGame = pendingGame;
       miniMod = window.GG.byId[currentGame];
