@@ -49,7 +49,7 @@
 
     create: function (names) {
       return {
-        players: names.map(function (n) { return { name: n, ready: false }; }),
+        players: names.map(function (n) { return { name: n, ready: false, wins: 0 }; }),
         boards: [randomFleet(), randomFleet()],
         shots: [new Array(N * N).fill(null), new Array(N * N).fill(null)], // reçus par i
         phase: 'place',
@@ -76,8 +76,9 @@
       }
       return state.current < 0 ? state.winner : state.current;
     },
-    over: function (state) { return state.finished; },
+    over: function () { return false; }, // série de manches : revanche possible
     scoreOf: function (state, i) {
+      if (state.finished) return state.players[i].wins + ' 🏆';
       return state.phase === 'place' ? '…' : shipsLeft(state.boards[i]) + ' 🚢';
     },
 
@@ -101,7 +102,20 @@
     },
 
     apply: function (state, player, action) {
-      if (state.finished) return { ok: false, error: 'Partie terminée.' };
+      if (action.t === 'again') {
+        if (!state.finished) return { ok: false, error: 'La manche n’est pas finie.' };
+        state.boards = [randomFleet(), randomFleet()];
+        state.shots = [new Array(N * N).fill(null), new Array(N * N).fill(null)];
+        state.players.forEach(function (p) { p.ready = false; });
+        state.phase = 'place';
+        state.current = 1 - state.winner; // le perdant commence la revanche
+        state.finished = false;
+        state.winner = -1;
+        state.lastMsg = '';
+        state.lastShot = null;
+        return { ok: true };
+      }
+      if (state.finished) return { ok: false, error: 'Manche terminée.' };
       if (action.t === 'shuffle') {
         if (state.phase !== 'place') return { ok: false, error: 'Placement terminé.' };
         if (state.players[player].ready) return { ok: false, error: 'Vous êtes déjà prêt.' };
@@ -140,6 +154,7 @@
           if (board.ships.every(function (s) { return s.sunk; })) {
             state.finished = true;
             state.winner = player;
+            state.players[player].wins++;
           }
           // touché : on rejoue
         } else {
@@ -186,6 +201,20 @@
       }
 
       var html = '';
+      if (s.finished) {
+        html += '<p class="mini-msg big-msg">🏆 ' + GG.esc(s.players[s.winner].name) +
+          ' gagne la manche !</p>' +
+          '<p class="mini-msg">Score de la série : ' +
+          GG.esc(s.players[0].name) + ' ' + s.players[0].wins + ' — ' +
+          s.players[1].wins + ' ' + GG.esc(s.players[1].name) + '</p>' +
+          '<p class="bn-label">La flotte de ' + GG.esc(s.players[1 - me].name) + ' :</p>' +
+          grid(1 - me, true, false, false) +
+          '<button class="btn big primary" data-a="again">🔁 Revanche</button>';
+        el.innerHTML = html;
+        var ag = el.querySelector('[data-a="again"]');
+        if (ag) ag.addEventListener('click', function () { ctx.act({ t: 'again' }); });
+        return;
+      }
       if (s.phase === 'place') {
         var ready = s.players[me].ready;
         html += '<p class="mini-msg">Votre flotte (placée au hasard) :</p>' +

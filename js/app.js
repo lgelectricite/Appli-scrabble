@@ -156,20 +156,21 @@
     return used;
   }
 
+  /* Position du chevalet AVANT laquelle insérer (-1 = à la fin), d'après le doigt. */
+  function rackDropTarget(rects, fromPos, clientX) {
+    for (var k = 0; k < rects.length; k++) {
+      if (rects[k].pos === fromPos) continue;
+      if (clientX < rects[k].left + rects[k].width / 2) return rects[k].pos;
+    }
+    return -1;
+  }
+
   /*
-   * Déplace la lettre `fromPos` du chevalet à l'endroit du relâcher (clientX).
+   * Déplace la lettre `fromPos` du chevalet avant la position `target`.
    * Les positions des lettres déjà posées (pending) et la sélection suivent.
    */
-  function moveRackTileTo(fromPos, clientX) {
+  function moveRackTileTo(fromPos, target) {
     var rack = myRack();
-    var tiles = Array.prototype.slice.call($('rack').querySelectorAll('.rack-tile'));
-    var target = -1; // position du chevalet AVANT laquelle insérer (-1 = à la fin)
-    for (var k = 0; k < tiles.length; k++) {
-      var pos = parseInt(tiles[k].dataset.pos, 10);
-      if (pos === fromPos) continue; // la tuile en cours de glissement suit le doigt
-      var r = tiles[k].getBoundingClientRect();
-      if (clientX < r.left + r.width / 2) { target = pos; break; }
-    }
     if (target === fromPos) { render(); return; }
     var order = [];
     for (var i = 0; i < rack.length; i++) order.push(i);
@@ -208,7 +209,13 @@
       // Un appui = sélection ; un glissement horizontal = réorganisation.
       b.addEventListener('pointerdown', function (e) {
         if (passHidden) return;
-        drag = { pos: pos, el: b, x: e.clientX, moved: false };
+        // photographie des positions au départ du glissement (repère stable)
+        var rects = Array.prototype.slice.call(rackEl.querySelectorAll('.rack-tile'))
+          .map(function (t) {
+            var r = t.getBoundingClientRect();
+            return { pos: parseInt(t.dataset.pos, 10), left: r.left, width: r.width, el: t };
+          });
+        drag = { pos: pos, el: b, x: e.clientX, moved: false, rects: rects, target: pos };
         try { b.setPointerCapture(e.pointerId); } catch (err) {}
       });
       b.addEventListener('pointermove', function (e) {
@@ -218,21 +225,40 @@
           drag.moved = true;
           b.classList.add('dragging');
         }
-        if (drag.moved) b.style.transform = 'translateX(' + dx + 'px) translateY(-6px)';
+        if (!drag.moved) return;
+        b.style.transform = 'translateX(' + dx + 'px) translateY(-6px)';
+        // les autres lettres s'écartent pour montrer où celle-ci va se poser
+        drag.target = rackDropTarget(drag.rects, drag.pos, e.clientX);
+        var slot = drag.rects.length > 1
+          ? drag.rects[1].left - drag.rects[0].left
+          : drag.rects[0].width + 6;
+        var fromIdx = -1, targetIdx = drag.rects.length;
+        drag.rects.forEach(function (rc, di) {
+          if (rc.pos === drag.pos) fromIdx = di;
+          if (rc.pos === drag.target) targetIdx = di;
+        });
+        drag.rects.forEach(function (rc, di) {
+          if (rc.pos === drag.pos) return;
+          var shift = 0;
+          if (di > fromIdx && di < targetIdx) shift = -slot;
+          else if (di >= targetIdx && di < fromIdx) shift = slot;
+          rc.el.style.transform = shift ? 'translateX(' + shift + 'px)' : '';
+        });
       });
       b.addEventListener('pointerup', function (e) {
         if (!drag || drag.el !== b) return;
         var wasDrag = drag.moved;
+        var target = drag.target;
+        drag.rects.forEach(function (rc) { rc.el.style.transform = ''; });
         b.classList.remove('dragging');
-        b.style.transform = '';
         drag = null;
-        if (wasDrag) moveRackTileTo(pos, e.clientX);
+        if (wasDrag) moveRackTileTo(pos, target);
         else onRackTap(pos);
       });
       b.addEventListener('pointercancel', function () {
         if (drag && drag.el === b) {
+          drag.rects.forEach(function (rc) { rc.el.style.transform = ''; });
           b.classList.remove('dragging');
-          b.style.transform = '';
           drag = null;
         }
       });

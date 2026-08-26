@@ -59,10 +59,24 @@
     summary: function (state) {
       var rows = state.players.map(function (p) { return { n: p.name, s: p.score }; })
         .sort(function (a, b) { return b.s - a.s; });
-      return rows.map(function (r) {
+      var html = rows.map(function (r) {
         return '<div class="final-line"><span>' + GG.esc(r.n) + '</span><strong>' +
           r.s + ' pts</strong></div>';
       }).join('') + '<h1>🏆 ' + GG.esc(rows[0].n) + '</h1>';
+      if (state.players.length === 1) {
+        try {
+          if (typeof localStorage !== 'undefined') {
+            var best = parseInt(localStorage.getItem('gg-pendu-best') || '0', 10);
+            if (rows[0].s > best) {
+              localStorage.setItem('gg-pendu-best', String(rows[0].s));
+              html += '<p>🏆 Nouveau record personnel !</p>';
+            } else if (best) {
+              html += '<p>🏅 Votre record : ' + best + ' pts.</p>';
+            }
+          }
+        } catch (e) {}
+      }
+      return html;
     },
 
     /* le mot secret ne circule jamais vers les autres téléphones */

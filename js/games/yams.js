@@ -86,6 +86,7 @@
           return { name: n, sheet: sheet };
         }),
         current: 0,
+        gameTs: Math.floor(Math.random() * 1e9), // identifiant de partie (records)
         finished: false
       };
       startTurn(state);
@@ -99,10 +100,28 @@
     summary: function (state) {
       var rows = state.players.map(function (p) { return { n: p.name, s: totalOf(p) }; })
         .sort(function (a, b) { return b.s - a.s; });
-      return rows.map(function (r) {
+      var html = rows.map(function (r) {
         return '<div class="final-line"><span>' + GG.esc(r.n) + '</span><strong>' +
           r.s + ' pts</strong></div>';
       }).join('') + '<h1>🏆 ' + GG.esc(rows[0].n) + '</h1>';
+      if (state.players.length === 1) {
+        try {
+          if (typeof localStorage !== 'undefined') {
+            var best = JSON.parse(localStorage.getItem('gg-yams-best') || 'null');
+            var cur = { score: rows[0].s, ts: state.gameTs || 0 };
+            if (!best || cur.score > best.score) {
+              localStorage.setItem('gg-yams-best', JSON.stringify(cur));
+            }
+            var stored = JSON.parse(localStorage.getItem('gg-yams-best') || 'null');
+            if (stored && stored.ts === cur.ts && stored.score === cur.score) {
+              html += '<p>🏆 Nouveau record personnel !</p>';
+            } else if (stored) {
+              html += '<p>🏅 Votre record : ' + stored.score + ' pts.</p>';
+            }
+          }
+        } catch (e) {}
+      }
+      return html;
     },
 
     apply: function (state, player, action) {

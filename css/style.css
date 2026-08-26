@@ -723,11 +723,12 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
 .mem-stat.turn { background: #ffffff2b; outline: 2px solid var(--tile-new); }
 
 /* ===== chevalet : réorganisation par glissement ===== */
-.rack-tile { touch-action: none; }
+.rack-tile { touch-action: none; transition: transform .16s ease; }
 .rack-tile.dragging {
   z-index: 5;
   box-shadow: 0 10px 18px rgba(0,0,0,.45);
   opacity: .95;
+  transition: none; /* la tuile tenue suit le doigt sans retard */
 }
 
 /* ===== choix de niveau (jeux de réflexion) ===== */
@@ -798,3 +799,41 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
 }
 .mot-key.wide { min-width: 18%; }
 .mot-key.go { background: var(--accent); color: #fff; }
+
+/* ===== Mots croisés ===== */
+.cr-grid {
+  display: grid; gap: 2px;
+  max-width: min(94vw, 52vh); margin: 4px auto 8px;
+  user-select: none;
+}
+.cr-cell {
+  position: relative; aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  background: #f6f1e2; color: #221c10; border-radius: 3px; cursor: pointer;
+  font-size: clamp(11px, 3.2vw, 17px); font-weight: 800;
+}
+.cr-cell.off { background: transparent; cursor: default; }
+.cr-cell.sel { outline: 2px solid var(--accent); background: #fff8dd; }
+.cr-num {
+  position: absolute; top: 1px; left: 2px;
+  font-size: clamp(7px, 1.8vw, 9px); font-weight: 700; opacity: .65;
+}
+.cr-h3 { margin: 10px 0 4px; font-size: 15px; }
+.cr-defs { display: flex; flex-direction: column; gap: 5px; }
+.cr-def {
+  text-align: left; background: #ffffff12; border: 1px solid #ffffff1f;
+  border-radius: 8px; padding: 7px 10px; font-size: 13px; line-height: 1.35;
+  color: var(--paper); cursor: pointer; font-family: inherit;
+}
+.cr-def.sel { border-color: var(--accent); background: #ffffff22; }
+.cr-def.found { text-decoration: none; font-weight: 600; }
+.cr-ask {
+  background: #ffffff10; border-radius: 10px; padding: 8px 10px; margin: 8px 0;
+}
+.cr-answer-row { display: flex; gap: 8px; margin: 6px 0 2px; }
+.cr-answer-row input {
+  flex: 1; min-width: 0; background: var(--felt-dark); color: var(--paper);
+  border: 1px solid #ffffff2e; border-radius: 10px; padding: 11px; font-size: 16px;
+  text-transform: uppercase;
+}
+.cr-wrong { color: #ff9d8f; font-size: 13px; margin: 4px 0; animation: mn-shake .35s; }

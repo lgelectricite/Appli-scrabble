@@ -22,20 +22,79 @@
     { id: 'cordon', nom: 'Le cordon de soie', icone: '🪢' },
     { id: 'statuette', nom: 'La statuette de bronze', icone: '🗿' }
   ];
-  var LIEUX = [
-    { id: 'bibliotheque', nom: 'La bibliothèque', dans: 'dans la bibliothèque', icone: '📚' },
-    { id: 'serre', nom: 'La serre tropicale', dans: 'dans la serre', icone: '🌿' },
-    { id: 'cave', nom: 'La cave à vin', dans: 'dans la cave à vin', icone: '🍷' },
-    { id: 'bal', nom: 'La salle de bal', dans: 'dans la salle de bal', icone: '💃' },
-    { id: 'bureau', nom: 'Le bureau de Lord Edmond', dans: 'dans le bureau', icone: '🖋️' }
-  ];
-  var PISTES = [
-    { id: 'coffre', nom: 'Le coffre-fort', icone: '🗝️', desc: 'Un coffre verrouillé, dissimulé derrière un tableau.' },
-    { id: 'lettre', nom: 'La lettre déchirée', icone: '✉️', desc: 'Des fragments de papier retrouvés dans la cheminée.' },
-    { id: 'journal', nom: 'Le journal intime', icone: '📔', desc: 'Le journal de Lord Edmond, fermé par un code.' },
-    { id: 'majordome', nom: 'Le majordome', icone: '🎩', desc: 'Il parlera… si vous prouvez votre esprit.' },
-    { id: 'gardien', nom: 'Le carnet du gardien', icone: '🏮', desc: 'Ses notes de ronde, écrites à sa manière.' },
-    { id: 'malle', nom: 'La malle de l’observatoire', icone: '🧳', desc: 'Une malle sanglée, montée du grenier.' }
+  /* Trois décors d'affaires, tirés au sort à chaque partie. */
+  var SCENARIOS = [
+    {
+      id: 'manoir',
+      titre: 'LE MANOIR',
+      lieuTexte: 'Manoir Voltaire, minuit passé.',
+      victime: 'Lord Edmond',
+      intro: 'L’orage a coupé les routes. <strong>Lord Edmond</strong> vient d’être retrouvé ' +
+        'sans vie dans sa demeure, et le coupable est <strong>encore parmi nous</strong>.',
+      lieux: [
+        { id: 'bibliotheque', nom: 'La bibliothèque', dans: 'dans la bibliothèque', icone: '📚' },
+        { id: 'serre', nom: 'La serre tropicale', dans: 'dans la serre', icone: '🌿' },
+        { id: 'cave', nom: 'La cave à vin', dans: 'dans la cave à vin', icone: '🍷' },
+        { id: 'bal', nom: 'La salle de bal', dans: 'dans la salle de bal', icone: '💃' },
+        { id: 'bureau', nom: 'Le bureau du maître', dans: 'dans le bureau', icone: '🖋️' }
+      ],
+      pistes: [
+        { id: 'coffre', nom: 'Le coffre-fort', icone: '🗝️', desc: 'Un coffre verrouillé, dissimulé derrière un tableau.' },
+        { id: 'lettre', nom: 'La lettre déchirée', icone: '✉️', desc: 'Des fragments de papier retrouvés dans la cheminée.' },
+        { id: 'journal', nom: 'Le journal intime', icone: '📔', desc: 'Le journal de Lord Edmond, fermé par un code.' },
+        { id: 'majordome', nom: 'Le majordome', icone: '🎩', desc: 'Il parlera… si vous prouvez votre esprit.' },
+        { id: 'gardien', nom: 'Le carnet du gardien', icone: '🏮', desc: 'Ses notes de ronde, écrites à sa manière.' },
+        { id: 'malle', nom: 'La malle de l’observatoire', icone: '🧳', desc: 'Une malle sanglée, montée du grenier.' }
+      ]
+    },
+    {
+      id: 'opera',
+      titre: 'L’OPÉRA',
+      lieuTexte: 'Opéra Berlioz, le soir de la première.',
+      victime: 'la diva Elvira Marsan',
+      intro: 'Le rideau ne se relèvera pas : <strong>la diva Elvira Marsan</strong> a été ' +
+        'retrouvée sans vie pendant l’entracte. Les portes sont closes — le coupable est ' +
+        '<strong>toujours dans le théâtre</strong>.',
+      lieux: [
+        { id: 'loge', nom: 'La loge de la diva', dans: 'dans la loge', icone: '💄' },
+        { id: 'coulisses', nom: 'Les coulisses', dans: 'dans les coulisses', icone: '🎭' },
+        { id: 'fosse', nom: 'La fosse d’orchestre', dans: 'dans la fosse', icone: '🎻' },
+        { id: 'foyer', nom: 'Le foyer des artistes', dans: 'dans le foyer', icone: '🥂' },
+        { id: 'cintres', nom: 'Les cintres (machinerie)', dans: 'dans les cintres', icone: '⚙️' }
+      ],
+      pistes: [
+        { id: 'partition', nom: 'La partition annotée', icone: '🎼', desc: 'Des notes griffonnées d’une main pressée.' },
+        { id: 'trousseau', nom: 'Le trousseau du régisseur', icone: '🗝️', desc: 'Toutes les clés du théâtre… ou presque.' },
+        { id: 'admirateur', nom: 'La lettre d’admirateur', icone: '✉️', desc: 'Parfumée, signée d’une simple initiale.' },
+        { id: 'habilleuse', nom: 'L’habilleuse', icone: '🪡', desc: 'Elle a tout vu, mais parle par énigmes.' },
+        { id: 'souffleur', nom: 'Le carnet du souffleur', icone: '📔', desc: 'Il note tout ce qui se dit… en coulisses aussi.' },
+        { id: 'costumes', nom: 'La malle à costumes', icone: '🧳', desc: 'Quelqu’un y a caché quelque chose à la hâte.' }
+      ]
+    },
+    {
+      id: 'train',
+      titre: 'LE TRAIN DE NUIT',
+      lieuTexte: 'À bord de l’Étoile du Nord, bloqué par la neige.',
+      victime: 'le financier Auguste Ferrand',
+      intro: 'La tempête a immobilisé le train en rase campagne. Au matin, ' +
+        '<strong>le financier Auguste Ferrand</strong> ne s’est pas réveillé — et personne ' +
+        'n’a pu monter ni descendre : le coupable voyage <strong>avec nous</strong>.',
+      lieux: [
+        { id: 'restaurant', nom: 'Le wagon-restaurant', dans: 'dans le wagon-restaurant', icone: '🍽️' },
+        { id: 'salon', nom: 'La voiture-salon', dans: 'dans la voiture-salon', icone: '🛋️' },
+        { id: 'compartiment', nom: 'Le compartiment n°7', dans: 'dans le compartiment n°7', icone: '🚪' },
+        { id: 'fourgon', nom: 'Le fourgon à bagages', dans: 'dans le fourgon', icone: '📦' },
+        { id: 'plateforme', nom: 'La plateforme arrière', dans: 'sur la plateforme arrière', icone: '🌨️' }
+      ],
+      pistes: [
+        { id: 'valise', nom: 'La valise verrouillée', icone: '🧳', desc: 'Un cadenas à secret protège son contenu.' },
+        { id: 'telegramme', nom: 'Le télégramme froissé', icone: '📨', desc: 'Reçu la veille au soir, à moitié brûlé.' },
+        { id: 'controleur', nom: 'Le carnet du contrôleur', icone: '📔', desc: 'Les allées et venues de la nuit, tout y est.' },
+        { id: 'serveur', nom: 'Le serveur du wagon-bar', icone: '🤵', desc: 'Il a servi un dernier verre… à qui ?' },
+        { id: 'montre', nom: 'La montre brisée', icone: '⌚', desc: 'Arrêtée net. Mais à quelle heure exactement ?' },
+        { id: 'registre', nom: 'Le registre des passagers', icone: '🗂️', desc: 'Un nom y a été soigneusement gratté.' }
+      ]
+    }
   ];
   var ALIBIS = [
     'faisait une réussite aux cartes sous les yeux de deux invités',
@@ -88,6 +147,10 @@
   }
 
   function buildCase(state) {
+    // décor tiré au sort : manoir, opéra ou train de nuit
+    state.scenario = GG.clone(SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)]);
+    var LIEUX = state.scenario.lieux;
+    var PISTES = state.scenario.pistes;
     state.solution = {
       suspect: SUSPECTS[Math.floor(Math.random() * SUSPECTS.length)].id,
       arme: ARMES[Math.floor(Math.random() * ARMES.length)].id,
@@ -146,7 +209,7 @@
     id: 'manoir',
     nom: 'Le Manoir',
     icone: '🕵️',
-    desc: 'Enquête collaborative : résolvez les énigmes, remplissez le carnet, démasquez le coupable. Jusqu’à 12 joueurs !',
+    desc: 'Enquête collaborative : 3 décors d’affaires tirés au sort, des énigmes, un carnet, un coupable. Jusqu’à 12 joueurs !',
     min: 1, max: 12,
     hotseat: true, hidden: false, netOnly: false,
     noBadges: true,
@@ -264,15 +327,13 @@
       /* ---------- lettre d'introduction ---------- */
       if (s.phase === 'brief') {
         html += '<div class="mn-candle"></div>' +
-          '<h2 class="mn-title">LE MANOIR</h2>' +
+          '<h2 class="mn-title">' + s.scenario.titre + '</h2>' +
           '<div class="mn-letter">' +
-          '<p><em>Manoir Voltaire, minuit passé.</em></p>' +
-          '<p>L’orage a coupé les routes. Lord Edmond vient d’être retrouvé sans vie, ' +
-          'et le coupable est <strong>encore parmi nous</strong>.</p>' +
-          '<p>Cinq suspects. Cinq armes possibles. Cinq pièces où le drame a pu se jouer. ' +
+          '<p><em>' + s.scenario.lieuTexte + '</em></p>' +
+          '<p>' + s.scenario.intro + '</p>' +
+          '<p>Cinq suspects. Cinq armes possibles. Cinq lieux où le drame a pu se jouer. ' +
           'Six pistes verrouillées par des énigmes vous attendent : élucidez-les ' +
-          '<strong>ensemble</strong>, remplissez votre carnet, et démasquez l’assassin ' +
-          'avant l’aube.</p>' +
+          '<strong>ensemble</strong>, remplissez votre carnet, et démasquez l’assassin.</p>' +
           '<p class="mn-warn">⚠️ Vous n’aurez droit qu’à deux accusations.</p>' +
           '</div>' +
           '<div class="mn-cast">' + SUSPECTS.map(function (x) {
@@ -294,7 +355,7 @@
       if (s.phase === 'end') {
         var sus = byId(SUSPECTS, s.solution.suspect);
         var arm = byId(ARMES, s.solution.arme);
-        var lie = byId(LIEUX, s.solution.lieu);
+        var lie = byId(s.scenario.lieux, s.solution.lieu);
         html += '<div class="mn-candle"></div>' +
           '<h2 class="mn-title">' + (s.won ? 'AFFAIRE RÉSOLUE' : 'L’ASSASSIN S’ÉCHAPPE…') + '</h2>' +
           '<div class="mn-reveal ' + (s.won ? 'won' : 'lost') + '">' +
@@ -310,8 +371,27 @@
           '<div class="mn-stats">' +
           (s.won ? '<div class="mn-stars">' + stars() + '</div>' : '') +
           '<div>⏱️ ' + Math.floor(s.durationSec / 60) + ' min ' + (s.durationSec % 60) + ' s' +
-          ' · 🧩 ' + solvedCount + '/6 pistes · ❌ ' + s.wrongAnswers + ' erreurs · 💡 ' +
-          s.hintsUsed + ' indices</div></div>';
+          ' · 🧩 ' + solvedCount + '/' + s.pistes.length + ' pistes · ❌ ' + s.wrongAnswers +
+          ' erreurs · 💡 ' + s.hintsUsed + ' indices</div></div>';
+        // record d'équipe : meilleur temps d'une affaire résolue (sur ce téléphone)
+        if (s.won && s.durationSec > 0) {
+          try {
+            if (typeof localStorage !== 'undefined') {
+              var best = JSON.parse(localStorage.getItem('gg-manoir-best') || 'null');
+              var cur = { sec: s.durationSec, ts: s.caseId || 0 };
+              if (!best || cur.sec < best.sec) {
+                localStorage.setItem('gg-manoir-best', JSON.stringify(cur));
+              }
+              var stored = JSON.parse(localStorage.getItem('gg-manoir-best') || 'null');
+              if (stored && stored.ts === cur.ts && stored.sec === cur.sec) {
+                html += '<p class="mn-gold-text mn-center">🏆 Meilleur temps sur ce téléphone !</p>';
+              } else if (stored) {
+                html += '<p class="mn-dim mn-center">🏅 Record : ' + Math.floor(stored.sec / 60) +
+                  ' min ' + (stored.sec % 60) + ' s.</p>';
+              }
+            }
+          } catch (e) {}
+        }
         if (ctx.me === 0) {
           html += '<button class="btn big mn-gold" data-a="again">🔁 Nouvelle affaire</button>';
         } else {
@@ -324,6 +404,7 @@
       }
 
       /* ---------- enquête en cours ---------- */
+      var LIEUX = s.scenario.lieux;
       var remaining = {
         suspect: SUSPECTS.length, arme: ARMES.length, lieu: LIEUX.length
       };
@@ -336,8 +417,8 @@
       });
 
       html += '<div class="mn-top"><div class="mn-candle small"></div>' +
-        '<div class="mn-top-mid"><div class="mn-title-s">LE MANOIR</div>' +
-        '<div class="mn-progress">🧩 ' + solvedCount + '/6 · ' +
+        '<div class="mn-top-mid"><div class="mn-title-s">' + s.scenario.titre + '</div>' +
+        '<div class="mn-progress">🧩 ' + solvedCount + '/' + s.pistes.length + ' · ' +
         '🫵 ' + '❤️'.repeat(s.tries) + '🖤'.repeat(2 - s.tries) + '</div></div>' +
         '<div class="mn-team">👥 ' + s.players.length + '</div></div>';
 
@@ -492,7 +573,7 @@
       }
     },
 
-    _ENIGMES: ENIGMES, _SUSPECTS: SUSPECTS, _ARMES: ARMES, _LIEUX: LIEUX, _norm: norm
+    _ENIGMES: ENIGMES, _SUSPECTS: SUSPECTS, _ARMES: ARMES, _SCENARIOS: SCENARIOS, _norm: norm
   };
 
   GG.register(mod);

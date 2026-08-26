@@ -14,7 +14,7 @@ nécessaire pendant les parties.
 | ⭕ **Morpion** | 2 | Tic-tac-toe en série, victoires comptées automatiquement. |
 | 🪢 **Pendu** | 1–4 | Les mots sont **tirés du dictionnaire par le jeu** : personne ne les choisit ni ne les connaît. +1 pt par lettre, +3 pour qui termine le mot, 5 manches. |
 | 📝 **Petit Bac** | 2–4 | Lettre au sort, 6 catégories, 60 s. Première lettre **contrôlée automatiquement**, réponses validées par le **vote des autres joueurs**, doublons à demi-points. |
-| 🚢 **Bataille navale** | 2 | Flottes placées par le jeu, **grilles adverses jamais transmises** à l'autre téléphone. Touché = on rejoue. |
+| 🚢 **Bataille navale** | 2 | Flottes placées par le jeu, **grilles adverses jamais transmises** à l'autre téléphone. Touché = on rejoue. Série de manches avec revanche, victoires comptées. |
 | 🎲 **Yams** | 1–4 | 5 dés, 3 lancers, feuille de score **calculée automatiquement** (bonus 35 compris). |
 | 🐷 **Cochon** | 2–4 | Le dé qui fait tout perdre sur un 1. Premier à 100. |
 | 🧠 **Memory** | 1–4 | Une paire = un point et on rejoue. |
@@ -22,7 +22,8 @@ nécessaire pendant les parties.
 | 🔢 **Sudoku** | 1–4 | Grilles générées à volonté (**solution unique garantie**), 3 niveaux, erreurs comptées, chrono. En réseau : même grille, le plus rapide gagne — sans voir la grille des autres. Record personnel par niveau. |
 | 🔎 **Mots mêlés** | 1–4 | Mots du dictionnaire cachés, 3 niveaux (taille, diagonales, mots à l'envers). En réseau, grille **partagée** : chaque mot trouvé prend la couleur de son découvreur. |
 | 🟩 **Mot Mystère** | 1–4 | Type Motus/Wordle : 6 essais, mots du dictionnaire uniquement, 3 niveaux (5/6/7 lettres). En duel : même mot secret, les lettres adverses restent cachées (couleurs seulement). |
-| 🕵️ **Le Manoir** | 1–12 | **Enquête collaborative** façon Cluedo/escape game : coupable, arme et lieu tirés au sort, six pistes verrouillées par des énigmes, carnet de déduction automatique, deux accusations. La solution et les réponses **ne quittent jamais le téléphone-serveur**. |
+| ✏️ **Mots croisés** | 1–4 | Base de **près de 800 définitions écrites à la main** en 3 niveaux de vocabulaire ; le générateur croise les mots au hasard : des milliers de grilles possibles. Points à la longueur du mot, erreurs comptées, chrono et records. Les solutions **ne circulent jamais** sur le réseau. |
+| 🕵️ **Le Manoir** | 1–12 | **Enquête collaborative** façon Cluedo/escape game : **3 décors d'affaires tirés au sort** (le manoir, l'opéra, le train de nuit), coupable, arme et lieu au hasard, six pistes verrouillées par des énigmes, carnet de déduction automatique, deux accusations. La solution et les réponses **ne quittent jamais le téléphone-serveur**. |
 
 ## Impossible de tricher
 
