@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Scrabble Duo</title>
+  <meta name="description" content="Scrabble hors ligne à deux joueurs, sur un ou deux téléphones.">
+  <meta name="theme-color" content="#0b5e4a">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/favicon.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ============ ACCUEIL ============ -->
+  <section id="screen-home" class="screen active">
+    <div class="home-inner">
+      <div class="logo-tile">S<span class="logo-val">1</span></div>
+      <h1>Scrabble Duo</h1>
+      <p class="subtitle">Jouez au Scrabble à deux, entièrement hors&nbsp;ligne.</p>
+      <div class="home-buttons">
+        <button class="btn big" id="btn-mode-local">📱 Jouer sur ce téléphone</button>
+        <button class="btn big" id="btn-mode-host">📶 Créer une partie (2 téléphones)</button>
+        <button class="btn big" id="btn-mode-join">🔗 Rejoindre une partie</button>
+      </div>
+      <p class="hint">Mode 2 téléphones : connectez les deux téléphones au même Wi-Fi
+        ou au partage de connexion de l’un d’eux (Internet inutile), puis échangez les QR codes.</p>
+    </div>
+  </section>
+
+  <!-- ============ CONFIG LOCALE (1 téléphone) ============ -->
+  <section id="screen-local-setup" class="screen">
+    <h2>Partie sur ce téléphone</h2>
+    <p class="hint">Chacun joue à son tour en se passant le téléphone.</p>
+    <label>Joueur 1
+      <input type="text" id="local-name-1" maxlength="14" placeholder="Prénom" value="Joueur 1">
+    </label>
+    <label>Joueur 2
+      <input type="text" id="local-name-2" maxlength="14" placeholder="Prénom" value="Joueur 2">
+    </label>
+    <button class="btn big primary" id="btn-local-start">Commencer la partie</button>
+    <button class="btn link" data-back>← Retour</button>
+  </section>
+
+  <!-- ============ HÔTE (créer une partie) ============ -->
+  <section id="screen-host" class="screen">
+    <h2>Créer une partie</h2>
+    <div class="net-step" id="host-step-name">
+      <label>Votre prénom
+        <input type="text" id="host-name" maxlength="14" placeholder="Prénom" value="Joueur 1">
+      </label>
+      <button class="btn big primary" id="btn-host-create">Créer l’invitation</button>
+      <p class="hint">Les deux téléphones doivent être sur le même Wi-Fi, ou l’autre téléphone
+        connecté à votre partage de connexion (pas besoin d’Internet).</p>
+    </div>
+    <div class="net-step hidden" id="host-step-offer">
+      <p><strong>Étape 1&nbsp;/&nbsp;2</strong> — Faites scanner ce QR code par l’autre téléphone
+        (« Rejoindre une partie ») :</p>
+      <div class="qr-box" id="host-qr"></div>
+      <details class="code-details">
+        <summary>Le scan ne marche pas ? Code texte</summary>
+        <textarea id="host-code" readonly rows="4"></textarea>
+        <button class="btn small" id="btn-host-copy">Copier le code</button>
+      </details>
+      <button class="btn big primary" id="btn-host-scan-answer">Étape 2 : scanner la réponse →</button>
+    </div>
+    <div class="net-step hidden" id="host-step-scan">
+      <p><strong>Étape 2&nbsp;/&nbsp;2</strong> — Scannez le QR code affiché sur l’autre téléphone :</p>
+      <div class="video-box"><video id="host-video" muted playsinline></video></div>
+      <details class="code-details">
+        <summary>Le scan ne marche pas ? Coller le code</summary>
+        <textarea id="host-paste" rows="4" placeholder="Collez le code de réponse ici"></textarea>
+        <button class="btn small" id="btn-host-paste-ok">Valider le code</button>
+      </details>
+    </div>
+    <div class="net-step hidden" id="host-step-wait">
+      <p class="waiting">⏳ Connexion en cours…</p>
+    </div>
+    <p class="error hidden" id="host-error"></p>
+    <button class="btn link" data-back>← Annuler</button>
+  </section>
+
+  <!-- ============ INVITÉ (rejoindre) ============ -->
+  <section id="screen-join" class="screen">
+    <h2>Rejoindre une partie</h2>
+    <div class="net-step" id="join-step-name">
+      <label>Votre prénom
+        <input type="text" id="join-name" maxlength="14" placeholder="Prénom" value="Joueur 2">
+      </label>
+      <button class="btn big primary" id="btn-join-scan">Scanner l’invitation</button>
+    </div>
+    <div class="net-step hidden" id="join-step-scan">
+      <p>Scannez le QR code affiché sur le téléphone qui a créé la partie :</p>
+      <div class="video-box"><video id="join-video" muted playsinline></video></div>
+      <details class="code-details">
+        <summary>Le scan ne marche pas ? Coller le code</summary>
+        <textarea id="join-paste" rows="4" placeholder="Collez le code d’invitation ici"></textarea>
+        <button class="btn small" id="btn-join-paste-ok">Valider le code</button>
+      </details>
+    </div>
+    <div class="net-step hidden" id="join-step-answer">
+      <p>Faites maintenant scanner ce QR code de réponse par l’autre téléphone :</p>
+      <div class="qr-box" id="join-qr"></div>
+      <details class="code-details">
+        <summary>Le scan ne marche pas ? Code texte</summary>
+        <textarea id="join-code" readonly rows="4"></textarea>
+        <button class="btn small" id="btn-join-copy">Copier le code</button>
+      </details>
+      <p class="waiting">⏳ En attente de la connexion…</p>
+    </div>
+    <p class="error hidden" id="join-error"></p>
+    <button class="btn link" data-back>← Annuler</button>
+  </section>
+
+  <!-- ============ JEU ============ -->
+  <section id="screen-game" class="screen">
+    <header id="game-header">
+      <div class="player-badge" id="badge-0">
+        <span class="p-name"></span><span class="p-score">0</span>
+      </div>
+      <div class="mid-info">
+        <span id="bag-count" title="Lettres restantes dans le sac">🎒 86</span>
+        <button class="icon-btn" id="btn-history" title="Historique">📜</button>
+        <button class="icon-btn" id="btn-menu" title="Menu">☰</button>
+      </div>
+      <div class="player-badge" id="badge-1">
+        <span class="p-name"></span><span class="p-score">0</span>
+      </div>
+    </header>
+
+    <div id="turn-banner"></div>
+    <div id="net-banner" class="hidden">⚠️ Connexion perdue. <button class="btn small" id="btn-reconnect">Reconnecter</button></div>
+
+    <div id="board-wrap"><div id="board"></div></div>
+
+    <div id="move-info" class="hidden"></div>
+
+    <div id="rack"></div>
+
+    <div id="actions">
+      <button class="btn action primary" id="btn-play">Valider</button>
+      <button class="btn action" id="btn-exchange">Échanger</button>
+      <button class="btn action" id="btn-pass">Passer</button>
+      <button class="btn action" id="btn-recall">Reprendre</button>
+      <button class="btn action" id="btn-shuffle">Mélanger</button>
+    </div>
+    <div id="exchange-bar" class="hidden">
+      <span>Touchez les lettres à échanger</span>
+      <button class="btn small primary" id="btn-exchange-ok">Échanger (0)</button>
+      <button class="btn small" id="btn-exchange-cancel">Annuler</button>
+    </div>
+  </section>
+
+  <!-- ============ SUPERPOSITIONS ============ -->
+  <div id="overlay-pass" class="overlay hidden">
+    <div class="overlay-card">
+      <h2>Passez le téléphone</h2>
+      <p>Au tour de <strong id="pass-name"></strong></p>
+      <button class="btn big primary" id="btn-pass-ready">Voir mon jeu</button>
+    </div>
+  </div>
+
+  <div id="overlay-joker" class="overlay hidden">
+    <div class="overlay-card">
+      <h2>Joker : choisissez la lettre</h2>
+      <div id="joker-letters"></div>
+      <button class="btn link" id="btn-joker-cancel">Annuler</button>
+    </div>
+  </div>
+
+  <div id="overlay-confirm" class="overlay hidden">
+    <div class="overlay-card">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-text"></p>
+      <button class="btn big primary" id="btn-confirm-yes">Confirmer</button>
+      <button class="btn link" id="btn-confirm-no">Annuler</button>
+    </div>
+  </div>
+
+  <div id="overlay-history" class="overlay hidden">
+    <div class="overlay-card scroll">
+      <h2>Historique</h2>
+      <div id="history-list"></div>
+      <button class="btn link" id="btn-history-close">Fermer</button>
+    </div>
+  </div>
+
+  <div id="overlay-menu" class="overlay hidden">
+    <div class="overlay-card">
+      <h2>Menu</h2>
+      <button class="btn big" id="btn-menu-resume">Reprendre la partie</button>
+      <button class="btn big" id="btn-menu-quit">Quitter la partie</button>
+      <button class="btn link" id="btn-menu-close">Fermer</button>
+    </div>
+  </div>
+
+  <div id="overlay-end" class="overlay hidden">
+    <div class="overlay-card scroll">
+      <h2>🏁 Fin de partie</h2>
+      <div id="end-detail"></div>
+      <h1 id="end-winner"></h1>
+      <button class="btn big primary" id="btn-end-new">Nouvelle partie</button>
+      <button class="btn link" id="btn-end-home">Retour à l’accueil</button>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+
+  <script src="vendor/qrcode.js"></script>
+  <script src="vendor/jsQR.js"></script>
+  <script src="js/scrabble.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
