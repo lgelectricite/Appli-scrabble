@@ -156,12 +156,44 @@
     return used;
   }
 
+  /*
+   * Déplace la lettre `fromPos` du chevalet à l'endroit du relâcher (clientX).
+   * Les positions des lettres déjà posées (pending) et la sélection suivent.
+   */
+  function moveRackTileTo(fromPos, clientX) {
+    var rack = myRack();
+    var tiles = Array.prototype.slice.call($('rack').querySelectorAll('.rack-tile'));
+    var target = -1; // position du chevalet AVANT laquelle insérer (-1 = à la fin)
+    for (var k = 0; k < tiles.length; k++) {
+      var pos = parseInt(tiles[k].dataset.pos, 10);
+      if (pos === fromPos) continue; // la tuile en cours de glissement suit le doigt
+      var r = tiles[k].getBoundingClientRect();
+      if (clientX < r.left + r.width / 2) { target = pos; break; }
+    }
+    if (target === fromPos) { render(); return; }
+    var order = [];
+    for (var i = 0; i < rack.length; i++) order.push(i);
+    order.splice(fromPos, 1);
+    var insertAt = target === -1 ? order.length : order.indexOf(target);
+    if (insertAt === -1) insertAt = order.length;
+    order.splice(insertAt, 0, fromPos);
+    var newRack = order.map(function (o) { return rack[o]; });
+    var newPosOf = {};
+    order.forEach(function (o, idx) { newPosOf[o] = idx; });
+    for (i = 0; i < rack.length; i++) rack[i] = newRack[i];
+    pending.forEach(function (p) { p.rackPos = newPosOf[p.rackPos]; });
+    exchangeSel = exchangeSel.map(function (p) { return newPosOf[p]; });
+    if (selected !== -1) selected = newPosOf[selected];
+    render();
+  }
+
   function renderRack() {
     var rackEl = $('rack');
     rackEl.innerHTML = '';
     if (!state) return;
     var rack = myRack();
     var used = usedRackPositions();
+    var drag = null; // {pos, el, x, moved}
     rack.forEach(function (letter, pos) {
       if (used[pos]) return;
       var b = document.createElement('button');
@@ -173,7 +205,37 @@
       b.innerHTML = (letter === S.JOKER ? '★' : letter) +
         '<span class="val">' + (val || '') + '</span>';
       b.dataset.pos = pos;
-      b.addEventListener('click', function () { onRackTap(pos); });
+      // Un appui = sélection ; un glissement horizontal = réorganisation.
+      b.addEventListener('pointerdown', function (e) {
+        if (passHidden) return;
+        drag = { pos: pos, el: b, x: e.clientX, moved: false };
+        try { b.setPointerCapture(e.pointerId); } catch (err) {}
+      });
+      b.addEventListener('pointermove', function (e) {
+        if (!drag || drag.el !== b) return;
+        var dx = e.clientX - drag.x;
+        if (!drag.moved && Math.abs(dx) > 12) {
+          drag.moved = true;
+          b.classList.add('dragging');
+        }
+        if (drag.moved) b.style.transform = 'translateX(' + dx + 'px) translateY(-6px)';
+      });
+      b.addEventListener('pointerup', function (e) {
+        if (!drag || drag.el !== b) return;
+        var wasDrag = drag.moved;
+        b.classList.remove('dragging');
+        b.style.transform = '';
+        drag = null;
+        if (wasDrag) moveRackTileTo(pos, e.clientX);
+        else onRackTap(pos);
+      });
+      b.addEventListener('pointercancel', function () {
+        if (drag && drag.el === b) {
+          b.classList.remove('dragging');
+          b.style.transform = '';
+          drag = null;
+        }
+      });
       rackEl.appendChild(b);
     });
   }
@@ -568,14 +630,14 @@
    * ================================================================= */
 
   function gameLabel() {
-    if (pendingGame === 'mots') return 'Mots';
+    if (pendingGame === 'mots') return 'Words';
     var mod = window.GG.byId[pendingGame];
     return mod ? mod.nom : '';
   }
 
   function renderCatalog() {
     var cat = $('catalog');
-    var tiles = [{ id: 'mots', nom: 'Mots', icone: '🔤', min: 1, max: 4 }]
+    var tiles = [{ id: 'mots', nom: 'Words', icone: '🔤', min: 1, max: 4 }]
       .concat(window.GG.list);
     cat.innerHTML = tiles.map(function (m) {
       return '<button class="game-tile" data-g="' + m.id + '">' +

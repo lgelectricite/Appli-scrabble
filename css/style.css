@@ -721,3 +721,11 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
 }
 .mem-stat { background: #ffffff14; border-radius: 8px; padding: 4px 10px; }
 .mem-stat.turn { background: #ffffff2b; outline: 2px solid var(--tile-new); }
+
+/* ===== chevalet : réorganisation par glissement ===== */
+.rack-tile { touch-action: none; }
+.rack-tile.dragging {
+  z-index: 5;
+  box-shadow: 0 10px 18px rgba(0,0,0,.45);
+  opacity: .95;
+}

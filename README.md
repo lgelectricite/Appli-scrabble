@@ -9,7 +9,7 @@ nécessaire pendant les parties.
 
 | Jeu | Joueurs | Règles appliquées par le jeu |
 |---|---|---|
-| 🁢 **Mots** | 1–4 | Jeu de lettres façon Scrabble : plateau officiel, 102 jetons, **dictionnaire français de 311 000 mots obligatoire pour tout le monde** (IA comprise). Mode solo contre l'IA (3 niveaux). |
+| 🔤 **Words** | 1–4 | Jeu de lettres façon Scrabble : plateau officiel, 102 jetons, **dictionnaire français de 311 000 mots obligatoire pour tout le monde** (IA comprise). Mode solo contre l'IA (3 niveaux). |
 | 🔴 **Puissance 4** | 2 | Alignements vérifiés par le jeu, série de manches. |
 | ⭕ **Morpion** | 2 | Tic-tac-toe en série, victoires comptées automatiquement. |
 | 🪢 **Pendu** | 1–4 | Les mots sont **tirés du dictionnaire par le jeu** : personne ne les choisit ni ne les connaît. +1 pt par lettre, +3 pour qui termine le mot, 5 manches. |
