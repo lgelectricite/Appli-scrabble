@@ -23,9 +23,9 @@
       <p class="subtitle">Des jeux à plusieurs, entièrement hors&nbsp;ligne.</p>
       <div id="catalog"></div>
       <button class="btn big" id="btn-home-join">🔗 Rejoindre une partie</button>
-      <p class="hint">Mode plusieurs téléphones : le téléphone qui crée la partie sert de serveur.
-        Même Wi-Fi ou partage de connexion (Internet inutile), l’invité scanne simplement
-        le QR code avec son appareil photo.</p>
+      <p class="hint">Mode plusieurs téléphones : celui qui crée la partie sert de serveur
+        (Internet inutile). L’invité scanne 2 QR codes avec son appareil photo :
+        le 1ᵉʳ le connecte au réseau de l’hôte, le 2ᵉ à la partie.</p>
     </div>
   </section>
 
@@ -129,10 +129,31 @@
     <div class="net-step hidden" id="host-step-lobby">
       <h3>Joueurs</h3>
       <div id="lobby-list"></div>
+      <button class="btn big" id="btn-host-wifi">📶 QR Wi-Fi : connecter un téléphone à mon réseau</button>
       <button class="btn big" id="btn-host-invite">➕ Inviter un joueur</button>
       <button class="btn big primary" id="btn-host-start" disabled>Commencer la partie</button>
       <button class="btn big hidden" id="btn-host-back-game">← Retour au jeu</button>
       <p class="hint">Invitez chaque joueur l’un après l’autre.</p>
+    </div>
+
+    <div class="net-step hidden" id="host-step-wifi">
+      <h3>📶 Connecter un téléphone à votre réseau</h3>
+      <p class="hint">1. Activez votre partage de connexion : <strong>Réglages →
+        Partage de connexion → « Autoriser d’autres utilisateurs »</strong>
+        (le nom du réseau et le mot de passe sont affichés sur cet écran).<br>
+        2. Recopiez-les ici — c’est à faire une seule fois, l’application s’en souvient :</p>
+      <label>Nom du réseau (celui affiché dans les réglages)
+        <input type="text" id="wifi-ssid" maxlength="40" placeholder="iPhone de …" autocomplete="off">
+      </label>
+      <label>Mot de passe du réseau
+        <input type="text" id="wifi-pass" maxlength="63" placeholder="Mot de passe Wi-Fi" autocomplete="off">
+      </label>
+      <button class="btn big primary" id="btn-wifi-make">Générer le QR Wi-Fi</button>
+      <div class="qr-box hidden" id="wifi-qr"></div>
+      <p class="hint hidden" id="wifi-done">✅ L’autre joueur scanne ce QR avec
+        <strong>l’appareil photo</strong> de son téléphone : il rejoint votre réseau
+        automatiquement. Ensuite, revenez au salon et touchez « Inviter un joueur ».</p>
+      <button class="btn big" id="btn-wifi-back">← Retour au salon</button>
     </div>
 
     <div class="net-step hidden" id="host-step-offer">

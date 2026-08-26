@@ -983,8 +983,45 @@
     $('host-step-offer').classList.add('hidden');
     $('host-step-scan').classList.add('hidden');
     $('host-step-wait').classList.add('hidden');
+    $('host-step-wifi').classList.add('hidden');
     $('host-error').classList.add('hidden');
     renderLobby();
+  }
+
+  /* ---------- QR Wi-Fi : connecter l'autre téléphone au réseau ---------- */
+  /* Format standard reconnu par l'appareil photo des téléphones :
+     WIFI:T:WPA;S:<nom>;P:<mot de passe>;;  (caractères spéciaux échappés) */
+  function wifiEscape(s) {
+    return String(s).replace(/([\\;,:"])/g, '\\$1');
+  }
+
+  function hostShowWifi() {
+    showScreen('screen-host');
+    ['host-step-name', 'host-step-lobby', 'host-step-offer', 'host-step-scan', 'host-step-wait']
+      .forEach(function (id) { $(id).classList.add('hidden'); });
+    $('host-step-wifi').classList.remove('hidden');
+    try {
+      $('wifi-ssid').value = localStorage.getItem('gg-wifi-ssid') || $('wifi-ssid').value;
+      $('wifi-pass').value = localStorage.getItem('gg-wifi-pass') || $('wifi-pass').value;
+    } catch (e) {}
+  }
+
+  function makeWifiQr() {
+    var ssid = $('wifi-ssid').value.trim();
+    var pass = $('wifi-pass').value;
+    if (!ssid) { toast('Indiquez le nom du réseau.'); return; }
+    var code = pass
+      ? 'WIFI:T:WPA;S:' + wifiEscape(ssid) + ';P:' + wifiEscape(pass) + ';;'
+      : 'WIFI:T:nopass;S:' + wifiEscape(ssid) + ';;';
+    var box = $('wifi-qr');
+    window.QRTool.render(box, code);
+    box.dataset.value = code;
+    box.classList.remove('hidden');
+    $('wifi-done').classList.remove('hidden');
+    try {
+      localStorage.setItem('gg-wifi-ssid', ssid);
+      localStorage.setItem('gg-wifi-pass', pass);
+    } catch (e) {}
   }
 
   function hostBackToGame() {
@@ -1331,7 +1368,7 @@
       showScreen('screen-host');
       $('host-title').textContent = 'Créer une partie — ' + gameLabel();
       $('host-step-name').classList.remove('hidden');
-      ['host-step-lobby', 'host-step-offer', 'host-step-scan', 'host-step-wait']
+      ['host-step-lobby', 'host-step-offer', 'host-step-scan', 'host-step-wait', 'host-step-wifi']
         .forEach(function (id) { $(id).classList.add('hidden'); });
       $('host-error').classList.add('hidden');
     }
@@ -1438,6 +1475,9 @@
       hostShowLobby();
     });
     $('btn-host-invite').addEventListener('click', hostInvite);
+    $('btn-host-wifi').addEventListener('click', hostShowWifi);
+    $('btn-wifi-make').addEventListener('click', makeWifiQr);
+    $('btn-wifi-back').addEventListener('click', hostShowLobby);
     $('btn-host-start').addEventListener('click', hostStartGame);
     $('btn-host-back-game').addEventListener('click', hostBackToGame);
     $('btn-host-scan-answer').addEventListener('click', hostScanAnswer);
