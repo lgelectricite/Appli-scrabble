@@ -106,31 +106,56 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 
 /* ===== en-tête du jeu ===== */
 #screen-game { padding: 6px 6px 12px; max-width: 640px; }
-#game-header {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 6px; padding: 4px 2px;
+#players-bar {
+  display: flex; gap: 5px; padding: 4px 2px 2px;
 }
 .player-badge {
   background: #ffffff1c; border-radius: 10px;
-  padding: 6px 10px; min-width: 96px;
+  padding: 4px 6px; flex: 1; min-width: 0;
   display: flex; flex-direction: column; align-items: center;
   border: 2px solid transparent;
 }
 .player-badge.turn { border-color: var(--tile-new); background: #ffffff2e; }
-.player-badge.me .p-name::after { content: " (moi)"; font-size: 10px; opacity: .8; }
-.p-name { font-size: 13px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.p-score { font-size: 20px; font-weight: 700; }
-.mid-info { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.player-badge.me .p-name::after { content: " ✦"; opacity: .9; }
+.player-badge.offline { opacity: .45; }
+.p-name {
+  font-size: 11px; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.p-score { font-size: 17px; font-weight: 700; }
 .icon-btn {
   background: #ffffff1c; border: none; border-radius: 8px;
-  font-size: 17px; padding: 6px 9px; cursor: pointer; color: var(--paper);
+  font-size: 16px; padding: 5px 8px; cursor: pointer; color: var(--paper);
 }
 
-#turn-banner { text-align: center; font-size: 14px; padding: 3px 0 6px; opacity: .95; }
+.info-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; padding: 3px 2px 6px;
+}
+#turn-banner { flex: 1; text-align: center; font-size: 14px; opacity: .95; min-width: 0; }
 #net-banner {
   text-align: center; font-size: 14px; padding: 6px;
   background: #7e2a20; border-radius: 8px; margin-bottom: 6px;
 }
+
+/* ===== choix du nombre de joueurs ===== */
+#player-count { display: flex; gap: 10px; margin: 8px 0 4px; }
+.count-btn {
+  flex: 1; padding: 12px 0; font-size: 18px; font-weight: 700;
+  border: 2px solid transparent; border-radius: 10px;
+  background: #ffffff22; color: var(--paper); cursor: pointer;
+}
+.count-btn.active { border-color: var(--tile-new); background: #ffffff33; }
+
+/* ===== salon (mode plusieurs téléphones) ===== */
+#lobby-list, #join-lobby-list { margin: 10px 0 14px; }
+.lobby-row {
+  background: #ffffff1c; border-radius: 8px;
+  padding: 9px 12px; margin-bottom: 6px; font-size: 15px;
+}
+.lobby-row.you { background: #ffffff2e; }
+.lobby-row.off { opacity: .6; }
+#host-step-lobby .btn.big { margin-bottom: 10px; }
 
 /* ===== plateau ===== */
 #board-wrap { width: 100%; }

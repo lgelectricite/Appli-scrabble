@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Scrabble Duo</title>
-  <meta name="description" content="Scrabble hors ligne à deux joueurs, sur un ou deux téléphones.">
+  <title>GGWORDS</title>
+  <meta name="description" content="GGWORDS : jeu de lettres hors ligne, de 2 à 4 joueurs, sur un ou plusieurs téléphones.">
   <meta name="theme-color" content="#0b5e4a">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/favicon.png">
@@ -16,16 +16,17 @@
   <!-- ============ ACCUEIL ============ -->
   <section id="screen-home" class="screen active">
     <div class="home-inner">
-      <div class="logo-tile">S<span class="logo-val">1</span></div>
-      <h1>Scrabble Duo</h1>
-      <p class="subtitle">Jouez au Scrabble à deux, entièrement hors&nbsp;ligne.</p>
+      <div class="logo-tile">G<span class="logo-val">2</span></div>
+      <h1>GGWORDS</h1>
+      <p class="subtitle">Jeu de lettres de 2 à 4 joueurs, entièrement hors&nbsp;ligne.</p>
       <div class="home-buttons">
         <button class="btn big" id="btn-mode-local">📱 Jouer sur ce téléphone</button>
-        <button class="btn big" id="btn-mode-host">📶 Créer une partie (2 téléphones)</button>
+        <button class="btn big" id="btn-mode-host">📶 Créer une partie (plusieurs téléphones)</button>
         <button class="btn big" id="btn-mode-join">🔗 Rejoindre une partie</button>
       </div>
-      <p class="hint">Mode 2 téléphones : connectez les deux téléphones au même Wi-Fi
-        ou au partage de connexion de l’un d’eux (Internet inutile), puis échangez les QR codes.</p>
+      <p class="hint">Mode plusieurs téléphones : le téléphone qui crée la partie sert de serveur.
+        Connectez tous les téléphones au même Wi-Fi ou au partage de connexion de l’un d’eux
+        (Internet inutile), puis échangez les QR codes.</p>
     </div>
   </section>
 
@@ -33,11 +34,23 @@
   <section id="screen-local-setup" class="screen">
     <h2>Partie sur ce téléphone</h2>
     <p class="hint">Chacun joue à son tour en se passant le téléphone.</p>
+    <label>Nombre de joueurs</label>
+    <div id="player-count">
+      <button class="count-btn active" data-n="2">2</button>
+      <button class="count-btn" data-n="3">3</button>
+      <button class="count-btn" data-n="4">4</button>
+    </div>
     <label>Joueur 1
       <input type="text" id="local-name-1" maxlength="14" placeholder="Prénom" value="Joueur 1">
     </label>
     <label>Joueur 2
       <input type="text" id="local-name-2" maxlength="14" placeholder="Prénom" value="Joueur 2">
+    </label>
+    <label class="hidden" id="local-label-3">Joueur 3
+      <input type="text" id="local-name-3" maxlength="14" placeholder="Prénom" value="Joueur 3">
+    </label>
+    <label class="hidden" id="local-label-4">Joueur 4
+      <input type="text" id="local-name-4" maxlength="14" placeholder="Prénom" value="Joueur 4">
     </label>
     <button class="btn big primary" id="btn-local-start">Commencer la partie</button>
     <button class="btn link" data-back>← Retour</button>
@@ -46,17 +59,28 @@
   <!-- ============ HÔTE (créer une partie) ============ -->
   <section id="screen-host" class="screen">
     <h2>Créer une partie</h2>
+
     <div class="net-step" id="host-step-name">
       <label>Votre prénom
         <input type="text" id="host-name" maxlength="14" placeholder="Prénom" value="Joueur 1">
       </label>
-      <button class="btn big primary" id="btn-host-create">Créer l’invitation</button>
-      <p class="hint">Les deux téléphones doivent être sur le même Wi-Fi, ou l’autre téléphone
-        connecté à votre partage de connexion (pas besoin d’Internet).</p>
+      <button class="btn big primary" id="btn-host-create">Créer la partie</button>
+      <p class="hint">Votre téléphone servira de serveur. Tous les téléphones doivent être sur
+        le même Wi-Fi, ou connectés à votre partage de connexion (pas besoin d’Internet).</p>
     </div>
+
+    <div class="net-step hidden" id="host-step-lobby">
+      <h3>Joueurs</h3>
+      <div id="lobby-list"></div>
+      <button class="btn big" id="btn-host-invite">➕ Inviter un joueur</button>
+      <button class="btn big primary" id="btn-host-start" disabled>Commencer la partie</button>
+      <button class="btn big hidden" id="btn-host-back-game">← Retour au jeu</button>
+      <p class="hint">Invitez chaque joueur l’un après l’autre (jusqu’à 3 invités).</p>
+    </div>
+
     <div class="net-step hidden" id="host-step-offer">
-      <p><strong>Étape 1&nbsp;/&nbsp;2</strong> — Faites scanner ce QR code par l’autre téléphone
-        (« Rejoindre une partie ») :</p>
+      <p><strong>Étape 1&nbsp;/&nbsp;2</strong> — Faites scanner ce QR code par le téléphone
+        qui rejoint (« Rejoindre une partie ») :</p>
       <div class="qr-box" id="host-qr"></div>
       <details class="code-details">
         <summary>Le scan ne marche pas ? Code texte</summary>
@@ -65,6 +89,7 @@
       </details>
       <button class="btn big primary" id="btn-host-scan-answer">Étape 2 : scanner la réponse →</button>
     </div>
+
     <div class="net-step hidden" id="host-step-scan">
       <p><strong>Étape 2&nbsp;/&nbsp;2</strong> — Scannez le QR code affiché sur l’autre téléphone :</p>
       <div class="video-box"><video id="host-video" muted playsinline></video></div>
@@ -74,9 +99,11 @@
         <button class="btn small" id="btn-host-paste-ok">Valider le code</button>
       </details>
     </div>
+
     <div class="net-step hidden" id="host-step-wait">
       <p class="waiting">⏳ Connexion en cours…</p>
     </div>
+
     <p class="error hidden" id="host-error"></p>
     <button class="btn link" data-back>← Annuler</button>
   </section>
@@ -100,14 +127,18 @@
       </details>
     </div>
     <div class="net-step hidden" id="join-step-answer">
-      <p>Faites maintenant scanner ce QR code de réponse par l’autre téléphone :</p>
+      <p>Faites maintenant scanner ce QR code de réponse par le téléphone qui a créé la partie :</p>
       <div class="qr-box" id="join-qr"></div>
       <details class="code-details">
         <summary>Le scan ne marche pas ? Code texte</summary>
         <textarea id="join-code" readonly rows="4"></textarea>
         <button class="btn small" id="btn-join-copy">Copier le code</button>
       </details>
-      <p class="waiting">⏳ En attente de la connexion…</p>
+      <div id="join-lobby" class="hidden">
+        <h3>Joueurs connectés</h3>
+        <div id="join-lobby-list"></div>
+      </div>
+      <p class="waiting" id="join-waiting">⏳ En attente de la connexion…</p>
     </div>
     <p class="error hidden" id="join-error"></p>
     <button class="btn link" data-back>← Annuler</button>
@@ -116,21 +147,17 @@
   <!-- ============ JEU ============ -->
   <section id="screen-game" class="screen">
     <header id="game-header">
-      <div class="player-badge" id="badge-0">
-        <span class="p-name"></span><span class="p-score">0</span>
-      </div>
-      <div class="mid-info">
+      <div id="players-bar"></div>
+      <div class="info-row">
         <span id="bag-count" title="Lettres restantes dans le sac">🎒 86</span>
+        <div id="turn-banner"></div>
         <button class="icon-btn" id="btn-history" title="Historique">📜</button>
         <button class="icon-btn" id="btn-menu" title="Menu">☰</button>
       </div>
-      <div class="player-badge" id="badge-1">
-        <span class="p-name"></span><span class="p-score">0</span>
-      </div>
     </header>
 
-    <div id="turn-banner"></div>
-    <div id="net-banner" class="hidden">⚠️ Connexion perdue. <button class="btn small" id="btn-reconnect">Reconnecter</button></div>
+    <div id="net-banner" class="hidden">⚠️ <span id="net-banner-text">Connexion perdue.</span>
+      <button class="btn small" id="btn-reconnect">Reconnecter</button></div>
 
     <div id="board-wrap"><div id="board"></div></div>
 
@@ -190,6 +217,7 @@
     <div class="overlay-card">
       <h2>Menu</h2>
       <button class="btn big" id="btn-menu-resume">Reprendre la partie</button>
+      <button class="btn big hidden" id="btn-menu-invite">Inviter / reconnecter un joueur</button>
       <button class="btn big" id="btn-menu-quit">Quitter la partie</button>
       <button class="btn link" id="btn-menu-close">Fermer</button>
     </div>

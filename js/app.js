@@ -1,14 +1,15 @@
-/* Scrabble Duo — contrôleur de l'interface. */
+/* GGWORDS — contrôleur de l'interface. */
 (function () {
   'use strict';
 
   var S = window.Scrabble;
+  var MAX_GUESTS = 3; // hôte + 3 invités = 4 joueurs
 
   /* ---------- état de l'interface ---------- */
   var state = null;          // état de la partie (moteur)
   var mode = null;           // 'local' | 'host' | 'guest'
   var myFixedIndex = 0;      // index du joueur sur ce téléphone (modes réseau)
-  var net = null;
+  var localCount = 2;        // nombre de joueurs en mode local
   var scanner = null;
   var pending = [];          // [{index, letter, blank, rackPos}]
   var selected = -1;         // position sélectionnée dans le chevalet
@@ -19,6 +20,12 @@
   var waitingHost = false;   // invité : action envoyée, réponse attendue
   var waitingTimer = null;
   var toastTimer = null;
+
+  /* Réseau — hôte : un pair par invité ; invité : une seule connexion. */
+  var hostName = '';
+  var hostPeers = [];        // [{net, name, playerIndex, connected}]
+  var invitePeer = null;     // pair en cours d'invitation
+  var guestNet = null;       // connexion de l'invité vers l'hôte
 
   function $(id) { return document.getElementById(id); }
 
@@ -46,15 +53,23 @@
     if (scanner) { scanner.stop(); scanner = null; }
   }
 
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
   function myIndex() {
     if (mode === 'local') return state ? state.current : 0;
     return myFixedIndex;
   }
 
   function canAct() {
-    return state && !state.over && !passHidden && !waitingHost &&
-      (mode === 'local' || state.current === myFixedIndex) &&
-      (mode === 'local' || (net && net.isOpen()));
+    if (!state || state.over || passHidden || waitingHost) return false;
+    if (mode === 'local') return true;
+    if (state.current !== myFixedIndex) return false;
+    if (mode === 'guest') return !!(guestNet && guestNet.isOpen());
+    return true; // hôte : autoritaire, peut toujours jouer son tour
   }
 
   /* ---------- plateau ---------- */
@@ -137,15 +152,39 @@
   }
 
   /* ---------- rendu global ---------- */
-  function render() {
-    if (!state) return;
+  function renderBadges() {
+    var bar = $('players-bar');
+    if (bar.childElementCount !== state.players.length) {
+      bar.innerHTML = '';
+      state.players.forEach(function (_, i) {
+        var badge = document.createElement('div');
+        badge.className = 'player-badge';
+        badge.id = 'badge-' + i;
+        badge.innerHTML = '<span class="p-name"></span><span class="p-score">0</span>';
+        bar.appendChild(badge);
+      });
+    }
     state.players.forEach(function (p, i) {
       var badge = $('badge-' + i);
       badge.querySelector('.p-name').textContent = p.name;
       badge.querySelector('.p-score').textContent = p.score;
       badge.classList.toggle('turn', !state.over && state.current === i);
       badge.classList.toggle('me', mode !== 'local' && i === myFixedIndex);
+      badge.classList.toggle('offline', mode === 'host' && isPeerOffline(i));
     });
+  }
+
+  function isPeerOffline(playerIdx) {
+    if (playerIdx === 0) return false;
+    for (var i = 0; i < hostPeers.length; i++) {
+      if (hostPeers[i].playerIndex === playerIdx) return !hostPeers[i].connected;
+    }
+    return false;
+  }
+
+  function render() {
+    if (!state) return;
+    renderBadges();
     $('bag-count').textContent = '🎒 ' + state.bag.length;
     var waiting = mode !== 'local' && state.current !== myFixedIndex;
     $('turn-banner').innerHTML = state.over
@@ -168,12 +207,6 @@
     $('btn-exchange-ok').textContent = 'Échanger (' + exchangeSel.length + ')';
   }
 
-  function esc(s) {
-    var d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-  }
-
   function renderMoveInfo() {
     var el = $('move-info');
     if (!pending.length || !canAct()) {
@@ -186,7 +219,7 @@
     el.classList.toggle('bad', !res.ok);
     if (res.ok) {
       var words = res.words.map(function (w) { return w.word + ' (' + w.score + ')'; }).join(' + ');
-      el.textContent = words + (res.bingo ? ' + Scrabble ! 50' : '') + ' = ' + res.total + ' pts';
+      el.textContent = words + (res.bingo ? ' + Bonus ! 50' : '') + ' = ' + res.total + ' pts';
     } else {
       el.textContent = res.error;
     }
@@ -370,7 +403,7 @@
       var txt;
       if (h.type === 'move') {
         txt = h.words.map(function (w) { return esc(w.word); }).join(' + ') +
-          (h.bingo ? ' <em>(Scrabble !)</em>' : '');
+          (h.bingo ? ' <em>(7 lettres !)</em>' : '');
       } else if (h.type === 'exchange') {
         txt = 'échange ' + h.count + ' lettre' + (h.count > 1 ? 's' : '');
       } else {
@@ -388,7 +421,7 @@
     if (state.finalDetail) {
       if (state.finalDetail.reason === 'playout') {
         lines.push('<p>' + esc(state.players[state.finalDetail.finisher].name) +
-          ' a posé toutes ses lettres : les points des lettres restantes de l’adversaire lui sont transférés.</p>');
+          ' a posé toutes ses lettres : les points des lettres restantes des autres joueurs lui sont transférés.</p>');
       } else {
         lines.push('<p>Six tours sans point : chacun déduit ses lettres restantes.</p>');
       }
@@ -417,7 +450,9 @@
     selected = -1;
     showOverlay('overlay-end', false);
     if (mode === 'host') {
-      net.send({ t: 'init', state: state });
+      hostPeers.forEach(function (peer) {
+        if (peer.connected) peer.net.send({ t: 'init', state: state, you: peer.playerIndex });
+      });
     }
     if (mode === 'local') {
       showPassDevice();
@@ -425,47 +460,152 @@
     render();
   }
 
-  /* ---------- réseau : hôte ---------- */
-  var hostName = '';
+  /* =================================================================
+   *  RÉSEAU — HÔTE (serveur de la partie)
+   * ================================================================= */
 
-  function setupNetHandlers() {
-    net.onClose = function () {
-      if (state && document.querySelector('#screen-game.active')) {
-        $('net-banner').classList.remove('hidden');
-        waitingHost = false;
-        clearTimeout(waitingTimer);
-        render();
-      }
-    };
+  function normName(n) { return (n || '').trim().toLowerCase(); }
+
+  function uniqueName(name) {
+    var base = (name || 'Joueur').slice(0, 14) || 'Joueur';
+    var taken = [normName(hostName)].concat(hostPeers.map(function (p) { return normName(p.name); }));
+    var candidate = base;
+    var n = 2;
+    while (taken.indexOf(normName(candidate)) !== -1) {
+      candidate = base.slice(0, 12) + ' ' + n;
+      n++;
+    }
+    return candidate;
+  }
+
+  function connectedGuests() {
+    return hostPeers.filter(function (p) { return p.connected; });
+  }
+
+  function lobbyNames() {
+    return [hostName].concat(connectedGuests().map(function (p) { return p.name; }));
+  }
+
+  function broadcastLobby() {
+    hostPeers.forEach(function (peer) {
+      if (peer.connected) peer.net.send({ t: 'lobby', names: lobbyNames() });
+    });
   }
 
   function broadcastState() {
-    if (net) net.send({ t: 'state', state: state });
+    hostPeers.forEach(function (peer) {
+      if (peer.connected) peer.net.send({ t: 'state', state: state });
+    });
   }
 
-  function hostHandleMessage(msg) {
+  function renderLobby() {
+    var list = $('lobby-list');
+    var rows = ['<div class="lobby-row you">👑 ' + esc(hostName) + ' (vous)</div>'];
+    hostPeers.forEach(function (p) {
+      rows.push('<div class="lobby-row' + (p.connected ? '' : ' off') + '">' +
+        (p.connected ? '🟢 ' : '🔴 ') + esc(p.name || '…') +
+        (p.connected ? '' : ' — déconnecté') + '</div>');
+    });
+    list.innerHTML = rows.join('');
+    $('btn-host-start').disabled = connectedGuests().length < 1;
+    $('btn-host-start').classList.toggle('hidden', !!state);
+    $('btn-host-back-game').classList.toggle('hidden', !state);
+    $('btn-host-invite').classList.toggle('hidden',
+      state ? false : hostPeers.length >= MAX_GUESTS);
+  }
+
+  function updateNetBanner() {
+    if (mode === 'host') {
+      var off = hostPeers.filter(function (p) { return !p.connected; });
+      var banner = $('net-banner');
+      if (state && off.length) {
+        $('net-banner-text').textContent = off.map(function (p) { return p.name; }).join(', ') +
+          ' — déconnecté' + (off.length > 1 ? 's' : '') + '.';
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+  }
+
+  function attachPeerHandlers(peer) {
+    peer.net.onMessage = function (msg) { hostHandleMessage(peer, msg); };
+    peer.net.onOpen = function () { /* attend le « hello » de l'invité */ };
+    peer.net.onClose = function () {
+      peer.connected = false;
+      updateNetBanner();
+      renderBadgesSafe();
+      if (document.querySelector('#screen-host.active')) renderLobby();
+    };
+  }
+
+  function renderBadgesSafe() {
+    if (state && document.querySelector('#screen-game.active')) render();
+  }
+
+  function hostHandleMessage(peer, msg) {
     if (msg.t === 'hello') {
       if (!state) {
-        state = S.newGame([hostName, (msg.name || 'Joueur 2').slice(0, 14)]);
+        // Salon : nouvel invité
+        if (hostPeers.indexOf(peer) === -1) {
+          if (hostPeers.length >= MAX_GUESTS) {
+            peer.net.send({ t: 'err', msg: 'La partie est complète (4 joueurs).' });
+            peer.net.close();
+            return;
+          }
+          peer.name = uniqueName(msg.name);
+          peer.connected = true;
+          hostPeers.push(peer);
+        } else {
+          peer.connected = true;
+        }
+        if (invitePeer === peer) invitePeer = null;
+        broadcastLobby();
+        hostShowLobby();
+        return;
       }
-      net.send({ t: 'init', state: state });
-      $('net-banner').classList.add('hidden');
-      enterGame();
+      // Partie en cours : reconnexion d'un joueur existant (par prénom)
+      var match = null;
+      for (var i = 0; i < hostPeers.length; i++) {
+        if (!hostPeers[i].connected && normName(hostPeers[i].name) === normName(msg.name)) {
+          match = hostPeers[i];
+          break;
+        }
+      }
+      if (!match) {
+        peer.net.send({
+          t: 'err',
+          msg: 'Partie en cours : indiquez exactement le même prénom qu’au début (' +
+            hostPeers.filter(function (p) { return !p.connected; })
+              .map(function (p) { return p.name; }).join(', ') + ').'
+        });
+        return;
+      }
+      match.net.close();
+      match.net = peer.net;
+      match.connected = true;
+      attachPeerHandlers(match);
+      if (invitePeer === peer) invitePeer = null;
+      match.net.send({ t: 'init', state: state, you: match.playerIndex });
+      updateNetBanner();
+      if (document.querySelector('#screen-host.active')) hostBackToGame();
+      render();
       return;
     }
-    if (msg.t === 'action' && state && !state.over) {
+
+    if (msg.t === 'action' && state && !state.over && peer.playerIndex) {
       var res;
       if (msg.kind === 'move') {
-        res = S.playMove(state, 1, msg.placements || []);
+        res = S.playMove(state, peer.playerIndex, msg.placements || []);
       } else if (msg.kind === 'pass') {
-        res = S.passTurn(state, 1);
+        res = S.passTurn(state, peer.playerIndex);
       } else if (msg.kind === 'exchange') {
-        res = S.exchange(state, 1, msg.letters || []);
+        res = S.exchange(state, peer.playerIndex, msg.letters || []);
       } else {
         res = { ok: false, error: 'Action inconnue.' };
       }
       if (!res.ok) {
-        net.send({ t: 'err', msg: res.error });
+        peer.net.send({ t: 'err', msg: res.error });
         return;
       }
       broadcastState();
@@ -474,28 +614,43 @@
     }
   }
 
-  async function hostStart(reconnecting) {
+  function hostShowLobby() {
+    showScreen('screen-host');
+    $('host-step-name').classList.add('hidden');
+    $('host-step-lobby').classList.remove('hidden');
+    $('host-step-offer').classList.add('hidden');
+    $('host-step-scan').classList.add('hidden');
+    $('host-step-wait').classList.add('hidden');
+    $('host-error').classList.add('hidden');
+    renderLobby();
+  }
+
+  function hostBackToGame() {
+    stopScanner();
+    if (invitePeer) { invitePeer.net.close(); invitePeer = null; }
+    showScreen('screen-game');
+    render();
+  }
+
+  async function hostInvite() {
     try {
-      if (!reconnecting) {
-        hostName = ($('host-name').value.trim() || 'Joueur 1').slice(0, 14);
-      }
-      mode = 'host';
-      myFixedIndex = 0;
-      net = net || new window.Net();
-      setupNetHandlers();
-      net.onMessage = hostHandleMessage;
-      net.onOpen = function () { /* attend le « hello » de l'invité */ };
-      showScreen('screen-host');
-      $('host-step-name').classList.add('hidden');
+      if (invitePeer) { invitePeer.net.close(); invitePeer = null; }
+      var peer = { net: new window.Net(), name: null, playerIndex: null, connected: false };
+      invitePeer = peer;
+      attachPeerHandlers(peer);
+      $('host-step-lobby').classList.add('hidden');
       $('host-step-offer').classList.remove('hidden');
-      $('host-step-scan').classList.add('hidden');
-      $('host-step-wait').classList.add('hidden');
       $('host-error').classList.add('hidden');
-      var code = await net.createOffer();
+      $('host-qr').innerHTML = '';
+      $('host-code').value = '';
+      $('host-paste').value = '';
+      var code = await peer.net.createOffer();
+      if (invitePeer !== peer) return; // invitation annulée entre-temps
       window.QRTool.render($('host-qr'), code);
       $('host-code').value = code;
     } catch (e) {
       showError('host-error', 'Impossible de créer l’invitation : ' + e.message);
+      hostShowLobby();
     }
   }
 
@@ -513,22 +668,53 @@
 
   async function hostAcceptAnswer(code) {
     stopScanner();
+    if (!invitePeer) return;
     try {
-      await net.acceptAnswer(code);
+      await invitePeer.net.acceptAnswer(code);
       $('host-step-scan').classList.add('hidden');
       $('host-step-wait').classList.remove('hidden');
       $('host-error').classList.add('hidden');
+      // Le retour au salon se fait à la réception du « hello »
     } catch (e) {
       showError('host-error', e.message);
       hostScanAnswer();
     }
   }
 
-  /* ---------- réseau : invité ---------- */
+  function hostStartGame() {
+    hostPeers = connectedGuests();
+    if (!hostPeers.length) return;
+    var names = [hostName];
+    hostPeers.forEach(function (peer, i) {
+      peer.playerIndex = i + 1;
+      names.push(peer.name);
+    });
+    state = S.newGame(names);
+    pending = [];
+    selected = -1;
+    hostPeers.forEach(function (peer) {
+      peer.net.send({ t: 'init', state: state, you: peer.playerIndex });
+    });
+    enterGame();
+  }
+
+  /* =================================================================
+   *  RÉSEAU — INVITÉ
+   * ================================================================= */
+
   function guestHandleMessage(msg) {
+    if (msg.t === 'lobby') {
+      var box = $('join-lobby');
+      box.classList.remove('hidden');
+      $('join-lobby-list').innerHTML = (msg.names || []).map(function (n, i) {
+        return '<div class="lobby-row">' + (i === 0 ? '👑 ' : '🟢 ') + esc(n) + '</div>';
+      }).join('');
+      $('join-waiting').textContent = '⏳ Connecté ! En attente du début de la partie…';
+      return;
+    }
     if (msg.t === 'init') {
       state = msg.state;
-      myFixedIndex = 1;
+      myFixedIndex = msg.you || 1;
       pending = [];
       selected = -1;
       waitingHost = false;
@@ -558,13 +744,13 @@
   }
 
   function sendAction(action) {
-    if (!net || !net.isOpen()) { toast('Connexion perdue.'); return; }
+    if (!guestNet || !guestNet.isOpen()) { toast('Connexion perdue.'); return; }
     waitingHost = true;
     render();
     var payload = { t: 'action', kind: action.kind };
     if (action.placements) payload.placements = action.placements;
     if (action.letters) payload.letters = action.letters;
-    net.send(payload);
+    guestNet.send(payload);
     clearTimeout(waitingTimer);
     waitingTimer = setTimeout(function () {
       if (waitingHost) {
@@ -577,17 +763,31 @@
 
   function guestStart() {
     mode = 'guest';
-    net = net || new window.Net();
-    setupNetHandlers();
-    net.onMessage = guestHandleMessage;
-    var name = ($('join-name').value.trim() || 'Joueur 2').slice(0, 14);
-    net.onOpen = function () {
-      net.send({ t: 'hello', name: name });
+    if (guestNet) guestNet.close();
+    guestNet = new window.Net();
+    guestNet.onMessage = guestHandleMessage;
+    guestNet.onClose = function () {
+      if (state && document.querySelector('#screen-game.active')) {
+        $('net-banner-text').textContent = 'Connexion perdue.';
+        $('net-banner').classList.remove('hidden');
+        waitingHost = false;
+        clearTimeout(waitingTimer);
+        render();
+      }
+    };
+    var name = ($('join-name').value.trim() || 'Joueur').slice(0, 14);
+    guestNet.onOpen = function () {
+      guestNet.send({ t: 'hello', name: name });
     };
     $('join-step-name').classList.add('hidden');
     $('join-step-scan').classList.remove('hidden');
     $('join-step-answer').classList.add('hidden');
     $('join-error').classList.add('hidden');
+    $('join-lobby').classList.add('hidden');
+    $('join-waiting').textContent = '⏳ En attente de la connexion…';
+    $('join-qr').innerHTML = '';
+    $('join-code').value = '';
+    $('join-paste').value = '';
     scanner = window.QRTool.scan($('join-video'), function (text) {
       guestGotOffer(text);
     }, function () {
@@ -600,7 +800,7 @@
   async function guestGotOffer(code) {
     stopScanner();
     try {
-      var answer = await net.joinWithOffer(code);
+      var answer = await guestNet.joinWithOffer(code);
       $('join-step-scan').classList.add('hidden');
       $('join-step-answer').classList.remove('hidden');
       $('join-error').classList.add('hidden');
@@ -621,7 +821,7 @@
   /* ---------- reconnexion ---------- */
   function reconnect() {
     if (mode === 'host') {
-      hostStart(true);
+      hostShowLobby();
     } else if (mode === 'guest') {
       showScreen('screen-join');
       guestStart();
@@ -632,12 +832,16 @@
   function enterGame() {
     stopScanner();
     showScreen('screen-game');
+    $('btn-menu-invite').classList.toggle('hidden', mode !== 'host');
     render();
   }
 
   function quitToHome() {
     stopScanner();
-    if (net) { net.close(); net = null; }
+    hostPeers.forEach(function (p) { p.net.close(); });
+    hostPeers = [];
+    if (invitePeer) { invitePeer.net.close(); invitePeer = null; }
+    if (guestNet) { guestNet.close(); guestNet = null; }
     state = null;
     mode = null;
     pending = [];
@@ -657,12 +861,9 @@
     var el = $(textareaId);
     el.select();
     el.setSelectionRange(0, el.value.length);
-    var done = false;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(el.value).then(function () { toast('Code copié.'); });
-      done = true;
-    }
-    if (!done) {
+    } else {
       try { document.execCommand('copy'); toast('Code copié.'); } catch (e) {}
     }
   }
@@ -676,9 +877,8 @@
     $('btn-mode-host').addEventListener('click', function () {
       showScreen('screen-host');
       $('host-step-name').classList.remove('hidden');
-      $('host-step-offer').classList.add('hidden');
-      $('host-step-scan').classList.add('hidden');
-      $('host-step-wait').classList.add('hidden');
+      ['host-step-lobby', 'host-step-offer', 'host-step-scan', 'host-step-wait']
+        .forEach(function (id) { $(id).classList.add('hidden'); });
       $('host-error').classList.add('hidden');
     });
     $('btn-mode-join').addEventListener('click', function () {
@@ -694,12 +894,26 @@
       b.addEventListener('click', function () { quitToHome(); });
     });
 
+    // Choix du nombre de joueurs (mode local)
+    document.querySelectorAll('.count-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        localCount = parseInt(b.dataset.n, 10);
+        document.querySelectorAll('.count-btn').forEach(function (x) {
+          x.classList.toggle('active', x === b);
+        });
+        $('local-label-3').classList.toggle('hidden', localCount < 3);
+        $('local-label-4').classList.toggle('hidden', localCount < 4);
+      });
+    });
+
     // Partie locale
     $('btn-local-start').addEventListener('click', function () {
-      var n1 = ($('local-name-1').value.trim() || 'Joueur 1').slice(0, 14);
-      var n2 = ($('local-name-2').value.trim() || 'Joueur 2').slice(0, 14);
+      var names = [];
+      for (var i = 1; i <= localCount; i++) {
+        names.push(($('local-name-' + i).value.trim() || 'Joueur ' + i).slice(0, 14));
+      }
       mode = 'local';
-      state = S.newGame([n1, n2]);
+      state = S.newGame(names);
       pending = [];
       selected = -1;
       enterGame();
@@ -707,7 +921,16 @@
     });
 
     // Hôte
-    $('btn-host-create').addEventListener('click', function () { hostStart(false); });
+    $('btn-host-create').addEventListener('click', function () {
+      hostName = ($('host-name').value.trim() || 'Joueur 1').slice(0, 14);
+      mode = 'host';
+      myFixedIndex = 0;
+      hostPeers = [];
+      hostShowLobby();
+    });
+    $('btn-host-invite').addEventListener('click', hostInvite);
+    $('btn-host-start').addEventListener('click', hostStartGame);
+    $('btn-host-back-game').addEventListener('click', hostBackToGame);
     $('btn-host-scan-answer').addEventListener('click', hostScanAnswer);
     $('btn-host-copy').addEventListener('click', function () { copyText('host-code'); });
     $('btn-host-paste-ok').addEventListener('click', function () {
@@ -771,6 +994,10 @@
     $('btn-menu').addEventListener('click', function () { showOverlay('overlay-menu', true); });
     $('btn-menu-resume').addEventListener('click', function () { showOverlay('overlay-menu', false); });
     $('btn-menu-close').addEventListener('click', function () { showOverlay('overlay-menu', false); });
+    $('btn-menu-invite').addEventListener('click', function () {
+      showOverlay('overlay-menu', false);
+      hostShowLobby();
+    });
     $('btn-menu-quit').addEventListener('click', function () {
       showOverlay('overlay-menu', false);
       askConfirm('Quitter la partie', 'La partie en cours sera perdue. Continuer ?', quitToHome);

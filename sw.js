@@ -1,5 +1,5 @@
 /* Service worker : rend l'application utilisable entièrement hors ligne. */
-var CACHE = 'scrabble-duo-v1';
+var CACHE = 'ggwords-v2';
 
 var ASSETS = [
   './',

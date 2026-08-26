@@ -1,31 +1,38 @@
-# Scrabble Duo 🁢
+# GGWORDS 🁢
 
-Application de **Scrabble à deux joueurs, entièrement hors ligne**, pensée pour
-les mobiles. Aucun compte, aucun serveur de jeu, aucune connexion Internet
-nécessaire pendant la partie.
+**GGWORDS** est un jeu de lettres façon Scrabble, de **2 à 4 joueurs**,
+**entièrement hors ligne**, pensé pour les mobiles. Aucun compte, aucun serveur
+externe, aucune connexion Internet nécessaire pendant la partie.
 
 ## Deux façons de jouer
 
-### 📱 Sur un seul téléphone
+### 📱 Sur un seul téléphone (2 à 4 joueurs)
 Chacun joue à son tour en se passant le téléphone. Un écran intermédiaire
 cache le chevalet du joueur suivant.
 
-### 📶 Sur deux téléphones (sans Internet)
-Les deux téléphones se connectent **directement l'un à l'autre** (WebRTC en
-réseau local) :
+### 📶 Sur plusieurs téléphones, sans Internet (2 à 4 joueurs)
+**Le téléphone qui crée la partie sert de serveur** : il détient l'état de la
+partie, valide tous les coups et synchronise les autres téléphones. Les autres
+s'y connectent **directement en Wi-Fi local** (WebRTC), sans passer par
+Internet :
 
-1. Connectez les deux téléphones au **même Wi-Fi**, ou activez le **partage de
-   connexion** (point d'accès) sur l'un des deux et connectez-y l'autre —
+1. Connectez tous les téléphones au **même Wi-Fi**, ou activez le **partage de
+   connexion** (point d'accès) sur l'un des deux et connectez-y les autres —
    aucun accès Internet n'est requis, seul le réseau local compte.
-2. Téléphone A : **« Créer une partie »** → un QR code d'invitation s'affiche.
-3. Téléphone B : **« Rejoindre une partie »** → scannez le QR du téléphone A →
+2. Téléphone hôte : **« Créer une partie »** → le salon s'affiche →
+   **« Inviter un joueur »** → un QR code d'invitation apparaît.
+3. Téléphone invité : **« Rejoindre une partie »** → scannez le QR de l'hôte →
    un QR de réponse s'affiche.
-4. Téléphone A : **« Scanner la réponse »** → scannez le QR du téléphone B.
-5. La partie démarre : chacun voit le plateau en direct et ne voit que ses
-   propres lettres.
+4. Téléphone hôte : **« Scanner la réponse »** → scannez le QR de l'invité →
+   le joueur apparaît dans le salon.
+5. Répétez les étapes 2 à 4 pour chaque joueur supplémentaire (jusqu'à
+   3 invités), puis **« Commencer la partie »**.
+6. Chacun voit le plateau en direct et ne voit que ses propres lettres.
 
 Si le scan pose problème (caméra refusée…), chaque écran propose un **code
-texte** à copier/coller par n'importe quel moyen local.
+texte** à copier/coller par n'importe quel moyen local. En cas de coupure, le
+menu de l'hôte (« Inviter / reconnecter un joueur ») permet de reconnecter un
+joueur en cours de partie avec le même prénom.
 
 ## Installation sur le téléphone (PWA)
 
@@ -36,9 +43,9 @@ fois, elle est mise en cache et fonctionne **sans réseau**.
    adresse dans Chrome (Android) ou Safari (iPhone).
 2. Menu du navigateur → **« Ajouter à l'écran d'accueil »** / **« Installer
    l'application »**.
-3. L'icône Scrabble apparaît sur l'écran d'accueil ; l'application s'ouvre
-   ensuite même en mode avion (le mode 2 téléphones nécessite simplement un
-   réseau local commun, par exemple un partage de connexion).
+3. L'icône GGWORDS apparaît sur l'écran d'accueil ; l'application s'ouvre
+   ensuite même en mode avion (le mode plusieurs téléphones nécessite
+   simplement un réseau local commun, par exemple un partage de connexion).
 
 ## Déploiement
 
@@ -71,12 +78,12 @@ python3 -m http.server 8080
 - Mots alignés, sans trou, raccordés aux lettres déjà posées ; tous les mots
   croisés formés sont comptés.
 - Les cases bonus ne comptent que pour les lettres nouvellement posées.
-- **Scrabble** (7 lettres posées d'un coup) : +50 points.
+- **7 lettres posées d'un coup** : +50 points.
 - Joker : choix de la lettre à la pose, vaut 0 point.
 - Échange de lettres (si le sac contient au moins 7 jetons), passe de tour.
 - Fin de partie : un joueur pose sa dernière lettre sac vide (il gagne les
-  points des lettres restantes de l'adversaire, qui les déduit), ou six tours
-  consécutifs sans point (chacun déduit ses lettres restantes).
+  points des lettres restantes des autres joueurs, qui les déduisent), ou six
+  tours consécutifs sans point (chacun déduit ses lettres restantes).
 - Aperçu du score en direct avant de valider, historique des coups, mélange
   du chevalet.
 
@@ -87,11 +94,13 @@ redistribuable).
 ## Technique
 
 - HTML/CSS/JavaScript pur, sans build ni dépendance à installer.
-- `js/scrabble.js` — moteur de jeu (règles, scores, fins de partie).
+- `js/scrabble.js` — moteur de jeu (règles, scores, fins de partie), générique
+  pour 2 à 4 joueurs.
 - `js/net.js` — connexion WebRTC locale (sans serveur STUN/TURN) ; l'offre et
   la réponse SDP sont compressées (`CompressionStream`) puis échangées par QR
-  code ou copier/coller.
-- `js/app.js` — interface (écrans, plateau, chevalet, synchronisation).
+  code ou copier/coller. L'hôte maintient une connexion par invité et fait
+  autorité sur l'état de la partie.
+- `js/app.js` — interface (écrans, salon, plateau, chevalet, synchronisation).
 - `sw.js` — service worker : l'application complète est mise en cache pour un
   usage 100 % hors ligne.
 - Bibliothèques embarquées : [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator)
@@ -100,8 +109,8 @@ redistribuable).
 
 ## Limites connues
 
-- Le mode 2 téléphones exige que les deux appareils soient sur le même réseau
-  local et que celui-ci autorise les connexions entre appareils (le partage de
-  connexion d'un téléphone fonctionne très bien ; certains Wi-Fi publics
-  isolent les clients).
-- Partie à 2 joueurs uniquement (c'est le but de l'application 🙂).
+- Le mode plusieurs téléphones exige que tous les appareils soient sur le même
+  réseau local et que celui-ci autorise les connexions entre appareils (le
+  partage de connexion d'un téléphone fonctionne très bien ; certains Wi-Fi
+  publics isolent les clients).
+- 4 joueurs maximum (hôte + 3 invités).

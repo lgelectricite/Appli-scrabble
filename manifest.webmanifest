@@ -1,7 +1,7 @@
 {
-  "name": "Scrabble Duo",
-  "short_name": "Scrabble",
-  "description": "Scrabble hors ligne à deux joueurs, sur un ou deux téléphones.",
+  "name": "GGWORDS",
+  "short_name": "GGWORDS",
+  "description": "Jeu de lettres hors ligne, de 2 à 4 joueurs, sur un ou plusieurs téléphones.",
   "lang": "fr",
   "start_url": ".",
   "scope": ".",
