@@ -97,10 +97,27 @@
     this.role = null;        // 'host' | 'guest'
   }
 
+  /*
+   * iPhone/Android : le navigateur cache l'adresse locale du téléphone tant
+   * que le site n'a pas reçu une autorisation caméra/micro. Sans elle, deux
+   * téléphones ne se trouvent pas sur certains réseaux (partage de connexion
+   * d'un iPhone notamment). On demande donc la caméra un court instant —
+   * l'application s'en sert de toute façon pour scanner les QR codes.
+   */
+  async function unlockLocalNetwork() {
+    try {
+      var stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      stream.getTracks().forEach(function (t) { t.stop(); });
+    } catch (e) { /* refusée ou indisponible : on tente quand même */ }
+  }
+
   Net.prototype._newPc = function () {
     this.close();
-    // Pas de serveur STUN/TURN : uniquement le réseau local (hors ligne).
-    this.pc = new RTCPeerConnection({ iceServers: [] });
+    // STUN en secours quand Internet est disponible (deux réseaux différents) ;
+    // ignoré sans Internet : la connexion passe alors par le réseau local.
+    this.pc = new RTCPeerConnection({
+      iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }]
+    });
     var self = this;
     this.pc.addEventListener('connectionstatechange', function () {
       var st = self.pc && self.pc.connectionState;
@@ -129,6 +146,7 @@
   /* Hôte : crée l'offre, à afficher en QR. */
   Net.prototype.createOffer = async function () {
     this.role = 'host';
+    await unlockLocalNetwork();
     this._newPc();
     this._bindChannel(this.pc.createDataChannel('scrabble', { ordered: true }));
     var offer = await this.pc.createOffer();
@@ -152,6 +170,7 @@
     if (code.indexOf(MAGIC_OFFER) !== 0) throw new Error('Ce QR code n’est pas une invitation valide.');
     var sdp = await decodePayload(code.slice(MAGIC_OFFER.length));
     this.role = 'guest';
+    await unlockLocalNetwork();
     this._newPc();
     var self = this;
     this.pc.addEventListener('datachannel', function (ev) {

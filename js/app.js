@@ -975,6 +975,7 @@
   }
 
   function hostShowLobby() {
+    clearTimeout(pairingTimer);
     showScreen('screen-host');
     $('host-title').textContent = 'Créer une partie — ' + gameLabel();
     $('host-step-name').classList.add('hidden');
@@ -1038,6 +1039,7 @@
       $('host-step-scan').classList.add('hidden');
       $('host-step-wait').classList.remove('hidden');
       $('host-error').classList.add('hidden');
+      armPairingWatchdog('host');
       // Le retour au salon se fait à la réception du « hello »
     } catch (e) {
       showError('host-error', e.message);
@@ -1095,6 +1097,7 @@
       currentGame = msg.game || 'mots';
       waitingHost = false;
       clearTimeout(waitingTimer);
+      clearTimeout(pairingTimer);
       setNetBanner(false);
       showOverlay('overlay-end', false);
       if (currentGame === 'mots') {
@@ -1208,6 +1211,7 @@
       $('join-error').classList.add('hidden');
       window.QRTool.render($('join-qr'), answer);
       $('join-code').value = answer;
+      armPairingWatchdog('guest');
     } catch (e) {
       showError('join-error', e.message);
       guestStart();
@@ -1236,6 +1240,25 @@
       catch (e) { text = text.slice(at + 3); }
     }
     return text;
+  }
+
+  /* Après 25 s sans connexion, affiche des conseils au lieu d'attendre en silence. */
+  var pairingTimer = null;
+  function armPairingWatchdog(kind) {
+    clearTimeout(pairingTimer);
+    pairingTimer = setTimeout(function () {
+      var advice = 'La connexion tarde… Vérifiez que les deux téléphones sont sur le ' +
+        'MÊME Wi-Fi (ou que l’invité est bien connecté au partage de connexion de ' +
+        'l’hôte), gardez les deux écrans allumés, et autorisez la caméra si elle est ' +
+        'demandée. Ensuite, annulez et recommencez l’invitation.';
+      if (kind === 'host' && document.querySelector('#host-step-wait:not(.hidden)')) {
+        showError('host-error', advice);
+      }
+      if (kind === 'guest' && document.querySelector('#screen-join.active') &&
+          !(guestNet && guestNet.isOpen())) {
+        showError('join-error', advice);
+      }
+    }, 25000);
   }
 
   /* ---------- reconnexion ---------- */
@@ -1277,6 +1300,7 @@
     pendingGame = 'mots';
     miniLastViewer = -1;
     clearTimeout(miniTimer);
+    clearTimeout(pairingTimer);
     ['overlay-pass', 'overlay-joker', 'overlay-confirm', 'overlay-history',
      'overlay-menu', 'overlay-end'].forEach(function (id) { showOverlay(id, false); });
     setNetBanner(false);
