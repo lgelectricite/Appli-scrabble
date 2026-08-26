@@ -140,7 +140,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 }
 
 /* ===== choix du nombre de joueurs / niveau IA ===== */
-#player-count, #ai-level { display: flex; gap: 10px; margin: 8px 0 4px; }
+#player-count, #ai-level, #mini-count { display: flex; gap: 10px; margin: 8px 0 4px; }
 #ai-level .count-btn { font-size: 15px; }
 .count-btn {
   flex: 1; padding: 12px 0; font-size: 18px; font-weight: 700;
@@ -713,3 +713,11 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
 @media (min-width: 480px) {
   .mn-carnet { grid-template-columns: repeat(3, 1fr); gap: 10px; }
 }
+
+/* ===== Memory : essais et chrono ===== */
+.mem-stats {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px;
+  margin-top: 10px; font-size: 13px;
+}
+.mem-stat { background: #ffffff14; border-radius: 8px; padding: 4px 10px; }
+.mem-stat.turn { background: #ffffff2b; outline: 2px solid var(--tile-new); }
