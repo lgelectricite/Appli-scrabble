@@ -138,8 +138,9 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   background: #7e2a20; border-radius: 8px; margin-bottom: 6px;
 }
 
-/* ===== choix du nombre de joueurs ===== */
-#player-count { display: flex; gap: 10px; margin: 8px 0 4px; }
+/* ===== choix du nombre de joueurs / niveau IA ===== */
+#player-count, #ai-level { display: flex; gap: 10px; margin: 8px 0 4px; }
+#ai-level .count-btn { font-size: 15px; }
 .count-btn {
   flex: 1; padding: 12px 0; font-size: 18px; font-weight: 700;
   border: 2px solid transparent; border-radius: 10px;

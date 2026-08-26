@@ -1,5 +1,5 @@
 /* Service worker : rend l'application utilisable entièrement hors ligne. */
-var CACHE = 'ggwords-v2';
+var CACHE = 'ggwords-v3';
 
 var ASSETS = [
   './',
@@ -7,8 +7,10 @@ var ASSETS = [
   'manifest.webmanifest',
   'css/style.css',
   'js/scrabble.js',
+  'js/ai.js',
   'js/net.js',
   'js/app.js',
+  'data/mots.txt',
   'vendor/qrcode.js',
   'vendor/jsQR.js',
   'icons/favicon.png',

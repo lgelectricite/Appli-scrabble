@@ -1,10 +1,21 @@
 # GGWORDS 🁢
 
-**GGWORDS** est un jeu de lettres façon Scrabble, de **2 à 4 joueurs**,
-**entièrement hors ligne**, pensé pour les mobiles. Aucun compte, aucun serveur
-externe, aucune connexion Internet nécessaire pendant la partie.
+**GGWORDS** est un jeu de lettres façon Scrabble, **entièrement hors ligne**,
+pensé pour les mobiles : seul contre l'IA, ou de 2 à 4 joueurs. Aucun compte,
+aucun serveur externe, aucune connexion Internet nécessaire pendant la partie.
 
-## Deux façons de jouer
+## Trois façons de jouer
+
+### 🤖 Seul contre l'IA (3 niveaux)
+L'IA joue de vrais mots français (dictionnaire libre de ~85 000 mots) : elle
+cherche tous les coups légaux — mots croisés valides, jokers, cases bonus —
+puis choisit selon le niveau :
+
+- **😌 Facile** : joue des petits coups, parfait pour apprendre.
+- **🙂 Moyen** : joue correctement sans chercher l'optimal.
+- **😈 Difficile** : joue le meilleur coup qu'elle trouve.
+
+Vos propres mots ne sont pas vérifiés, comme en partie libre.
 
 ### 📱 Sur un seul téléphone (2 à 4 joueurs)
 Chacun joue à son tour en se passant le téléphone. Un écran intermédiaire
@@ -96,6 +107,12 @@ redistribuable).
 - HTML/CSS/JavaScript pur, sans build ni dépendance à installer.
 - `js/scrabble.js` — moteur de jeu (règles, scores, fins de partie), générique
   pour 2 à 4 joueurs.
+- `js/ai.js` — adversaire IA : recherche exhaustive des coups légaux (ancrages,
+  contraintes de mots croisés, jokers) puis sélection selon le niveau.
+- `data/mots.txt` — dictionnaire français utilisé par l'IA (~85 000 mots de 2 à
+  8 lettres, sans accents), dérivé de
+  [an-array-of-french-words](https://www.npmjs.com/package/an-array-of-french-words)
+  (licence MIT).
 - `js/net.js` — connexion WebRTC locale (sans serveur STUN/TURN) ; l'offre et
   la réponse SDP sont compressées (`CompressionStream`) puis échangées par QR
   code ou copier/coller. L'hôte maintient une connexion par invité et fait

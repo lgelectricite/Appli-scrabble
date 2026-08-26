@@ -20,6 +20,7 @@
       <h1>GGWORDS</h1>
       <p class="subtitle">Jeu de lettres de 2 à 4 joueurs, entièrement hors&nbsp;ligne.</p>
       <div class="home-buttons">
+        <button class="btn big" id="btn-mode-solo">🤖 Jouer seul contre l’IA</button>
         <button class="btn big" id="btn-mode-local">📱 Jouer sur ce téléphone</button>
         <button class="btn big" id="btn-mode-host">📶 Créer une partie (plusieurs téléphones)</button>
         <button class="btn big" id="btn-mode-join">🔗 Rejoindre une partie</button>
@@ -28,6 +29,25 @@
         Connectez tous les téléphones au même Wi-Fi ou au partage de connexion de l’un d’eux
         (Internet inutile), puis échangez les QR codes.</p>
     </div>
+  </section>
+
+  <!-- ============ SOLO CONTRE L'IA ============ -->
+  <section id="screen-solo-setup" class="screen">
+    <h2>Jouer contre l’IA</h2>
+    <label>Votre prénom
+      <input type="text" id="solo-name" maxlength="14" placeholder="Prénom" value="Joueur">
+    </label>
+    <label>Niveau de l’IA</label>
+    <div id="ai-level">
+      <button class="count-btn level-btn" data-level="facile">😌 Facile</button>
+      <button class="count-btn level-btn active" data-level="moyen">🙂 Moyen</button>
+      <button class="count-btn level-btn" data-level="difficile">😈 Difficile</button>
+    </div>
+    <button class="btn big primary" id="btn-solo-start">Commencer la partie</button>
+    <p class="hint hidden" id="solo-loading">⏳ Chargement du dictionnaire…</p>
+    <p class="hint">L’IA joue de vrais mots du dictionnaire français (85 000 mots).
+      Vos mots à vous ne sont pas vérifiés, comme en partie libre.</p>
+    <button class="btn link" data-back>← Retour</button>
   </section>
 
   <!-- ============ CONFIG LOCALE (1 téléphone) ============ -->
@@ -238,6 +258,7 @@
   <script src="vendor/qrcode.js"></script>
   <script src="vendor/jsQR.js"></script>
   <script src="js/scrabble.js"></script>
+  <script src="js/ai.js"></script>
   <script src="js/net.js"></script>
   <script src="js/app.js"></script>
 </body>

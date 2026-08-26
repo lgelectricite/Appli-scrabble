@@ -7,9 +7,13 @@
 
   /* ---------- état de l'interface ---------- */
   var state = null;          // état de la partie (moteur)
-  var mode = null;           // 'local' | 'host' | 'guest'
+  var mode = null;           // 'local' | 'solo' | 'host' | 'guest'
   var myFixedIndex = 0;      // index du joueur sur ce téléphone (modes réseau)
   var localCount = 2;        // nombre de joueurs en mode local
+  var aiLevel = 'moyen';     // niveau de l'IA en mode solo
+  var aiThinking = false;    // l'IA calcule son coup
+  var dict = null;           // dictionnaire chargé (mode solo)
+  var dictPromise = null;
   var scanner = null;
   var pending = [];          // [{index, letter, blank, rackPos}]
   var selected = -1;         // position sélectionnée dans le chevalet
@@ -61,11 +65,13 @@
 
   function myIndex() {
     if (mode === 'local') return state ? state.current : 0;
+    if (mode === 'solo') return 0; // l'humain est toujours le joueur 1
     return myFixedIndex;
   }
 
   function canAct() {
     if (!state || state.over || passHidden || waitingHost) return false;
+    if (mode === 'solo') return state.current === 0 && !aiThinking;
     if (mode === 'local') return true;
     if (state.current !== myFixedIndex) return false;
     if (mode === 'guest') return !!(guestNet && guestNet.isOpen());
@@ -169,7 +175,8 @@
       badge.querySelector('.p-name').textContent = p.name;
       badge.querySelector('.p-score').textContent = p.score;
       badge.classList.toggle('turn', !state.over && state.current === i);
-      badge.classList.toggle('me', mode !== 'local' && i === myFixedIndex);
+      badge.classList.toggle('me',
+        (mode === 'host' || mode === 'guest') && i === myFixedIndex);
       badge.classList.toggle('offline', mode === 'host' && isPeerOffline(i));
     });
   }
@@ -186,11 +193,13 @@
     if (!state) return;
     renderBadges();
     $('bag-count').textContent = '🎒 ' + state.bag.length;
-    var waiting = mode !== 'local' && state.current !== myFixedIndex;
+    var waiting = (mode === 'host' || mode === 'guest') && state.current !== myFixedIndex;
     $('turn-banner').innerHTML = state.over
       ? 'Partie terminée'
-      : 'Au tour de <strong>' + esc(state.players[state.current].name) + '</strong>' +
-        (waiting ? '…' : '');
+      : (mode === 'solo' && state.current === 1)
+        ? '🤖 L’IA réfléchit…'
+        : 'Au tour de <strong>' + esc(state.players[state.current].name) + '</strong>' +
+          (waiting ? '…' : '');
 
     renderBoard();
     renderRack();
@@ -377,10 +386,66 @@
       showEnd();
       return;
     }
+    if (mode === 'solo' && state.current === 1) {
+      aiTurn();
+      return;
+    }
     if (mode === 'local') {
       showPassDevice();
     }
     render();
+  }
+
+  /* ---------- mode solo : tour de l'IA ---------- */
+  function loadDict() {
+    if (dict) return Promise.resolve(dict);
+    if (!dictPromise) {
+      dictPromise = fetch('data/mots.txt')
+        .then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        })
+        .then(function (text) {
+          dict = window.AI.buildDict(text);
+          return dict;
+        })
+        .catch(function (e) {
+          dictPromise = null;
+          throw e;
+        });
+    }
+    return dictPromise;
+  }
+
+  function aiTurn() {
+    if (mode !== 'solo' || !state || state.over || state.current !== 1) return;
+    aiThinking = true;
+    render();
+    // setTimeout : laisse l'écran afficher « l'IA réfléchit » avant le calcul
+    setTimeout(function () {
+      var action = window.AI.chooseAction(S, state, 1, dict, aiLevel);
+      var res = null;
+      if (action.kind === 'move') {
+        res = S.playMove(state, 1, action.placements);
+        if (res.ok) {
+          var txt = action.words.map(function (w) { return w.word; }).join(' + ');
+          toast('🤖 L’IA joue ' + txt + ' (' + action.total + ' pts)');
+        }
+      }
+      if (!res || !res.ok) {
+        if (action.kind === 'exchange') {
+          res = S.exchange(state, 1, action.letters);
+          if (res.ok) toast('🤖 L’IA échange ses lettres.');
+        }
+        if (!res || !res.ok) {
+          S.passTurn(state, 1);
+          toast('🤖 L’IA passe son tour.');
+        }
+      }
+      aiThinking = false;
+      render();
+      if (state.over) showEnd();
+    }, 400);
   }
 
   /* ---------- mode local : passage du téléphone ---------- */
@@ -850,6 +915,7 @@
     exchangeSel = [];
     passHidden = false;
     waitingHost = false;
+    aiThinking = false;
     ['overlay-pass', 'overlay-joker', 'overlay-confirm', 'overlay-history',
      'overlay-menu', 'overlay-end'].forEach(function (id) { showOverlay(id, false); });
     $('net-banner').classList.add('hidden');
@@ -873,6 +939,7 @@
     buildBoard();
 
     // Accueil
+    $('btn-mode-solo').addEventListener('click', function () { showScreen('screen-solo-setup'); });
     $('btn-mode-local').addEventListener('click', function () { showScreen('screen-local-setup'); });
     $('btn-mode-host').addEventListener('click', function () {
       showScreen('screen-host');
@@ -903,6 +970,35 @@
         });
         $('local-label-3').classList.toggle('hidden', localCount < 3);
         $('local-label-4').classList.toggle('hidden', localCount < 4);
+      });
+    });
+
+    // Partie solo contre l'IA
+    document.querySelectorAll('.level-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        aiLevel = b.dataset.level;
+        document.querySelectorAll('.level-btn').forEach(function (x) {
+          x.classList.toggle('active', x === b);
+        });
+      });
+    });
+    $('btn-solo-start').addEventListener('click', function () {
+      var name = ($('solo-name').value.trim() || 'Joueur').slice(0, 14);
+      var btn = $('btn-solo-start');
+      btn.disabled = true;
+      $('solo-loading').classList.remove('hidden');
+      loadDict().then(function () {
+        btn.disabled = false;
+        $('solo-loading').classList.add('hidden');
+        mode = 'solo';
+        state = S.newGame([name, 'IA ' + aiLevel]);
+        pending = [];
+        selected = -1;
+        enterGame();
+      }).catch(function () {
+        btn.disabled = false;
+        $('solo-loading').classList.add('hidden');
+        toast('Impossible de charger le dictionnaire. Une connexion Internet est nécessaire la toute première fois.');
       });
     });
 
