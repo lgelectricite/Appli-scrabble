@@ -320,6 +320,13 @@
     p.score += res.total;
     state.moveCount++;
     state.scoreless = 0;
+    // dernier coup joué : mis en évidence sur le plateau de tous les joueurs
+    state.lastMove = {
+      player: playerIdx,
+      cells: placements.map(function (pl) { return pl.index; }),
+      words: res.words.map(function (w) { return w.word; }),
+      points: res.total
+    };
     state.history.push({
       player: playerIdx,
       type: 'move',

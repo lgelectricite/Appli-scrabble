@@ -132,11 +132,17 @@
   }
 
   function renderBoard() {
+    // dernier mot joué par un adversaire : cases mises en évidence
+    var lastCells = {};
+    if (state.lastMove && state.lastMove.player !== myIndex()) {
+      state.lastMove.cells.forEach(function (ci) { lastCells[ci] = true; });
+    }
     for (var i = 0; i < cells.length; i++) {
       var old = cells[i].querySelector('.tile');
       if (old) old.remove();
       var t = state.board[i];
       if (t) cells[i].insertAdjacentHTML('beforeend', tileHtml(t.letter, t.blank, false));
+      cells[i].classList.toggle('last-word', !!lastCells[i]);
     }
     pending.forEach(function (p) {
       var oldTile = cells[p.index].querySelector('.tile');
@@ -303,12 +309,21 @@
     renderBadges();
     $('bag-count').textContent = '🎒 ' + state.bag.length;
     var waiting = (mode === 'host' || mode === 'guest') && state.current !== myFixedIndex;
-    $('turn-banner').innerHTML = state.over
+    var bannerHtml = state.over
       ? 'Partie terminée'
       : (mode === 'solo' && state.current === 1)
         ? '🤖 L’IA réfléchit…'
         : 'Au tour de <strong>' + esc(state.players[state.current].name) + '</strong>' +
           (waiting ? '…' : '');
+    // rappel du dernier coup adverse (surligné en doré sur la grille)
+    if (state.lastMove && state.lastMove.player !== myIndex() && !state.over) {
+      var lmName = mode === 'solo' && state.lastMove.player === 1
+        ? '🤖 L’IA' : esc(state.players[state.lastMove.player].name);
+      bannerHtml += '<span class="last-move-info">' + lmName + ' a joué <strong>' +
+        state.lastMove.words.map(esc).join(' + ') + '</strong> (' +
+        state.lastMove.points + ' pts)</span>';
+    }
+    $('turn-banner').innerHTML = bannerHtml;
 
     renderBoard();
     renderRack();

@@ -198,6 +198,18 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   font-size: clamp(11px, 3.4vw, 20px);
 }
 .cell .tile.new { background: var(--tile-new); box-shadow: 0 0 0 2px var(--accent) inset; }
+/* dernier mot joué par un adversaire : anneau doré pulsant */
+.cell.last-word .tile {
+  animation: last-word-pulse .9s ease-in-out infinite alternate;
+}
+@keyframes last-word-pulse {
+  from { box-shadow: 0 0 0 2px #e8a51f inset; }
+  to { box-shadow: 0 0 0 4px #ffd57a inset; }
+}
+.last-move-info {
+  display: block; font-size: 12px; font-weight: 400;
+  color: #ffd57a; margin-top: 2px;
+}
 .cell .tile.blank { color: #1c6ea4; }
 .cell .tile .val {
   position: absolute; right: 1px; bottom: 0;
