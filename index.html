@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>GGWORDS</title>
-  <meta name="description" content="GGWORDS : jeu de lettres hors ligne, de 2 à 4 joueurs, sur un ou plusieurs téléphones.">
+  <title>GGgames</title>
+  <meta name="description" content="GGgames : des jeux à plusieurs, entièrement hors ligne — mots, Puissance 4, pendu, poker, bataille navale…">
   <meta name="theme-color" content="#0b5e4a">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/favicon.png">
@@ -13,25 +13,35 @@
 </head>
 <body>
 
-  <!-- ============ ACCUEIL ============ -->
+  <!-- ============ ACCUEIL : CATALOGUE ============ -->
   <section id="screen-home" class="screen active">
     <div class="home-inner">
-      <div class="logo-tile">G<span class="logo-val">2</span></div>
-      <h1>GGWORDS</h1>
-      <p class="subtitle">Jeu de lettres de 2 à 4 joueurs, entièrement hors&nbsp;ligne.</p>
-      <div class="home-buttons">
-        <button class="btn big" id="btn-mode-solo">🤖 Jouer seul contre l’IA</button>
-        <button class="btn big" id="btn-mode-local">📱 Jouer sur ce téléphone</button>
-        <button class="btn big" id="btn-mode-host">📶 Créer une partie (plusieurs téléphones)</button>
-        <button class="btn big" id="btn-mode-join">🔗 Rejoindre une partie</button>
+      <div class="logo-row">
+        <div class="logo-tile small">G<span class="logo-val">2</span></div>
+        <h1>GGgames</h1>
       </div>
+      <p class="subtitle">Des jeux à plusieurs, entièrement hors&nbsp;ligne.</p>
+      <div id="catalog"></div>
+      <button class="btn big" id="btn-home-join">🔗 Rejoindre une partie</button>
       <p class="hint">Mode plusieurs téléphones : le téléphone qui crée la partie sert de serveur.
-        Connectez tous les téléphones au même Wi-Fi ou au partage de connexion de l’un d’eux
-        (Internet inutile), puis échangez les QR codes.</p>
+        Même Wi-Fi ou partage de connexion (Internet inutile), l’invité scanne simplement
+        le QR code avec son appareil photo.</p>
     </div>
   </section>
 
-  <!-- ============ SOLO CONTRE L'IA ============ -->
+  <!-- ============ MOTS : SOUS-MENU ============ -->
+  <section id="screen-mots-home" class="screen">
+    <h2>🁢 Mots</h2>
+    <p class="hint">Le jeu de lettres classique : dictionnaire français obligatoire pour tout le monde.</p>
+    <div class="home-buttons">
+      <button class="btn big" id="btn-mode-solo">🤖 Jouer seul contre l’IA</button>
+      <button class="btn big" id="btn-mode-local">📱 Jouer sur ce téléphone (2-4)</button>
+      <button class="btn big" id="btn-mode-host">📶 Créer une partie (plusieurs téléphones)</button>
+    </div>
+    <button class="btn link" data-back>← Retour</button>
+  </section>
+
+  <!-- ============ SOLO CONTRE L'IA (Mots) ============ -->
   <section id="screen-solo-setup" class="screen">
     <h2>Jouer contre l’IA</h2>
     <label>Votre prénom
@@ -45,14 +55,13 @@
     </div>
     <button class="btn big primary" id="btn-solo-start">Commencer la partie</button>
     <p class="hint hidden" id="solo-loading">⏳ Chargement du dictionnaire…</p>
-    <p class="hint">L’IA joue de vrais mots du dictionnaire français (85 000 mots).
-      Vos mots à vous ne sont pas vérifiés, comme en partie libre.</p>
+    <p class="hint">L’IA joue de vrais mots du dictionnaire français, et les vôtres sont vérifiés aussi.</p>
     <button class="btn link" data-back>← Retour</button>
   </section>
 
-  <!-- ============ CONFIG LOCALE (1 téléphone) ============ -->
+  <!-- ============ MOTS : CONFIG LOCALE (1 téléphone) ============ -->
   <section id="screen-local-setup" class="screen">
-    <h2>Partie sur ce téléphone</h2>
+    <h2>Mots — sur ce téléphone</h2>
     <p class="hint">Chacun joue à son tour en se passant le téléphone.</p>
     <label>Nombre de joueurs</label>
     <div id="player-count">
@@ -76,9 +85,37 @@
     <button class="btn link" data-back>← Retour</button>
   </section>
 
+  <!-- ============ MINI-JEUX : CHOIX DU MODE ============ -->
+  <section id="screen-mini-setup" class="screen">
+    <h2 id="mini-setup-title"></h2>
+    <p class="hint" id="mini-setup-desc"></p>
+    <div class="home-buttons" id="mini-setup-modes">
+      <button class="btn big" id="btn-mini-hotseat">📱 Sur ce téléphone</button>
+      <button class="btn big" id="btn-mini-host">📶 Créer une partie (plusieurs téléphones)</button>
+    </div>
+    <div id="mini-hotseat-config" class="hidden">
+      <label>Nombre de joueurs</label>
+      <div id="mini-count"></div>
+      <label>Joueur 1
+        <input type="text" id="mini-name-1" maxlength="14" value="Joueur 1">
+      </label>
+      <label id="mini-label-2">Joueur 2
+        <input type="text" id="mini-name-2" maxlength="14" value="Joueur 2">
+      </label>
+      <label class="hidden" id="mini-label-3">Joueur 3
+        <input type="text" id="mini-name-3" maxlength="14" value="Joueur 3">
+      </label>
+      <label class="hidden" id="mini-label-4">Joueur 4
+        <input type="text" id="mini-name-4" maxlength="14" value="Joueur 4">
+      </label>
+      <button class="btn big primary" id="btn-mini-start">Commencer la partie</button>
+    </div>
+    <button class="btn link" data-back>← Retour</button>
+  </section>
+
   <!-- ============ HÔTE (créer une partie) ============ -->
   <section id="screen-host" class="screen">
-    <h2>Créer une partie</h2>
+    <h2 id="host-title">Créer une partie</h2>
 
     <div class="net-step" id="host-step-name">
       <label>Votre prénom
@@ -95,12 +132,13 @@
       <button class="btn big" id="btn-host-invite">➕ Inviter un joueur</button>
       <button class="btn big primary" id="btn-host-start" disabled>Commencer la partie</button>
       <button class="btn big hidden" id="btn-host-back-game">← Retour au jeu</button>
-      <p class="hint">Invitez chaque joueur l’un après l’autre (jusqu’à 3 invités).</p>
+      <p class="hint">Invitez chaque joueur l’un après l’autre.</p>
     </div>
 
     <div class="net-step hidden" id="host-step-offer">
-      <p><strong>Étape 1&nbsp;/&nbsp;2</strong> — Faites scanner ce QR code par le téléphone
-        qui rejoint (« Rejoindre une partie ») :</p>
+      <p><strong>Étape 1&nbsp;/&nbsp;2</strong> — L’autre joueur scanne ce QR code avec
+        <strong>l’appareil photo</strong> de son téléphone : l’application s’ouvre toute
+        seule, prête à se connecter.</p>
       <div class="qr-box" id="host-qr"></div>
       <details class="code-details">
         <summary>Le scan ne marche pas ? Code texte</summary>
@@ -147,7 +185,8 @@
       </details>
     </div>
     <div class="net-step hidden" id="join-step-answer">
-      <p>Faites maintenant scanner ce QR code de réponse par le téléphone qui a créé la partie :</p>
+      <p>Faites maintenant scanner ce QR code de réponse par le téléphone qui a créé la partie
+        (depuis l’application, bouton « Scanner la réponse ») :</p>
       <div class="qr-box" id="join-qr"></div>
       <details class="code-details">
         <summary>Le scan ne marche pas ? Code texte</summary>
@@ -164,7 +203,7 @@
     <button class="btn link" data-back>← Annuler</button>
   </section>
 
-  <!-- ============ JEU ============ -->
+  <!-- ============ JEU : MOTS ============ -->
   <section id="screen-game" class="screen">
     <header id="game-header">
       <div id="players-bar"></div>
@@ -197,6 +236,21 @@
       <button class="btn small primary" id="btn-exchange-ok">Échanger (0)</button>
       <button class="btn small" id="btn-exchange-cancel">Annuler</button>
     </div>
+  </section>
+
+  <!-- ============ JEU : MINI-JEUX ============ -->
+  <section id="screen-mini" class="screen">
+    <header>
+      <div id="mini-players"></div>
+      <div class="info-row">
+        <span id="mini-icon"></span>
+        <div id="mini-turn"></div>
+        <button class="icon-btn" id="btn-mini-menu" title="Menu">☰</button>
+      </div>
+    </header>
+    <div id="mini-net-banner" class="hidden">⚠️ <span id="mini-net-text">Connexion perdue.</span>
+      <button class="btn small" id="btn-mini-reconnect">Reconnecter</button></div>
+    <div id="mini-area"></div>
   </section>
 
   <!-- ============ SUPERPOSITIONS ============ -->
@@ -260,6 +314,16 @@
   <script src="js/scrabble.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/net.js"></script>
+  <script src="js/games/registry.js"></script>
+  <script src="js/games/p4.js"></script>
+  <script src="js/games/morpion.js"></script>
+  <script src="js/games/pendu.js"></script>
+  <script src="js/games/bac.js"></script>
+  <script src="js/games/bataille.js"></script>
+  <script src="js/games/yams.js"></script>
+  <script src="js/games/cochon.js"></script>
+  <script src="js/games/memory.js"></script>
+  <script src="js/games/poker.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

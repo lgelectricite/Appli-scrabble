@@ -17,7 +17,11 @@
   var MAX_WORD = 8;      // longueur maximale des mots tentés par l'IA
   var ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-  /* Construit les structures de recherche à partir du fichier texte. */
+  /*
+   * Construit les structures de recherche à partir du fichier texte.
+   * `set` contient tous les mots (validation) ; `byLen` seulement les mots
+   * courts que l'IA tente de poser.
+   */
   function buildDict(text) {
     var set = new Set();
     var byLen = {};
@@ -25,9 +29,9 @@
     for (l = 2; l <= MAX_WORD; l++) byLen[l] = [];
     text.split('\n').forEach(function (w) {
       w = w.trim();
-      if (w.length < 2 || w.length > MAX_WORD) return;
+      if (w.length < 2) return;
       set.add(w);
-      byLen[w.length].push(w);
+      if (w.length <= MAX_WORD) byLen[w.length].push(w);
     });
     return { set: set, byLen: byLen };
   }

@@ -1,9 +1,20 @@
-/* GGWORDS — contrôleur de l'interface. */
+/* GGgames — contrôleur de l'interface. */
 (function () {
   'use strict';
 
   var S = window.Scrabble;
-  var MAX_GUESTS = 3; // hôte + 3 invités = 4 joueurs
+
+  /* Nombre maximum d'invités selon le jeu choisi pour le salon. */
+  function maxGuests() {
+    var mod = window.GG && window.GG.byId[pendingGame];
+    return mod ? mod.max - 1 : 3;
+  }
+  function minGuests() {
+    var mod = window.GG && window.GG.byId[pendingGame];
+    return mod ? Math.max(1, mod.min - 1) : 1;
+  }
+  function gameStarted() { return !!(state || miniState); }
+  function gameScreenId() { return currentGame === 'mots' ? 'screen-game' : 'screen-mini'; }
 
   /* ---------- état de l'interface ---------- */
   var state = null;          // état de la partie (moteur)
@@ -12,8 +23,18 @@
   var localCount = 2;        // nombre de joueurs en mode local
   var aiLevel = 'moyen';     // niveau de l'IA en mode solo
   var aiThinking = false;    // l'IA calcule son coup
-  var dict = null;           // dictionnaire chargé (mode solo)
+  var dict = null;           // dictionnaire chargé
   var dictPromise = null;
+
+  /* Plateforme multi-jeux */
+  var currentGame = 'mots';  // jeu en cours ('mots' ou id d'un mini-jeu)
+  var pendingGame = 'mots';  // jeu choisi avant le salon réseau
+  var miniMod = null;        // module du mini-jeu en cours
+  var miniState = null;      // état du mini-jeu
+  var miniMe = 0;            // mon index joueur (modes réseau)
+  var miniTimer = null;      // minuteur d'autorité (petit bac…)
+  var miniLastViewer = -1;   // dernier joueur affiché (écran passe-téléphone)
+  var miniCount = 2;         // nombre de joueurs (mini-jeu sur un téléphone)
   var scanner = null;
   var pending = [];          // [{index, letter, blank, rackPos}]
   var selected = -1;         // position sélectionnée dans le chevalet
@@ -216,6 +237,15 @@
     $('btn-exchange-ok').textContent = 'Échanger (' + exchangeSel.length + ')';
   }
 
+  /* Premier mot hors dictionnaire d'un coup, ou null si tout est valide. */
+  function invalidWord(words) {
+    if (!dict) return null; // dictionnaire pas encore chargé : pas de contrôle
+    for (var i = 0; i < words.length; i++) {
+      if (!dict.set.has(words[i].word)) return words[i].word;
+    }
+    return null;
+  }
+
   function renderMoveInfo() {
     var el = $('move-info');
     if (!pending.length || !canAct()) {
@@ -223,14 +253,17 @@
       return;
     }
     var res = S.checkMove(state, placementsFromPending());
+    var bad = res.ok ? invalidWord(res.words) : null;
     el.classList.remove('hidden');
-    el.classList.toggle('good', !!res.ok);
-    el.classList.toggle('bad', !res.ok);
-    if (res.ok) {
+    el.classList.toggle('good', !!res.ok && !bad);
+    el.classList.toggle('bad', !res.ok || !!bad);
+    if (!res.ok) {
+      el.textContent = res.error;
+    } else if (bad) {
+      el.textContent = '« ' + bad + ' » n’est pas dans le dictionnaire.';
+    } else {
       var words = res.words.map(function (w) { return w.word + ' (' + w.score + ')'; }).join(' + ');
       el.textContent = words + (res.bingo ? ' + Bonus ! 50' : '') + ' = ' + res.total + ' pts';
-    } else {
-      el.textContent = res.error;
     }
   }
 
@@ -320,6 +353,11 @@
     if (mode === 'guest') {
       sendAction({ kind: 'move', placements: placements });
       return;
+    }
+    var pre = S.checkMove(state, placements);
+    if (pre.ok) {
+      var bad = invalidWord(pre.words);
+      if (bad) { toast('« ' + bad + ' » n’est pas dans le dictionnaire.'); return; }
     }
     var res = S.playMove(state, myIndex(), placements);
     if (!res.ok) { toast(res.error); return; }
@@ -526,6 +564,210 @@
   }
 
   /* =================================================================
+   *  MINI-JEUX — contrôleur générique (catalogue, local et réseau)
+   * ================================================================= */
+
+  function gameLabel() {
+    if (pendingGame === 'mots') return 'Mots';
+    var mod = window.GG.byId[pendingGame];
+    return mod ? mod.nom : '';
+  }
+
+  function renderCatalog() {
+    var cat = $('catalog');
+    var tiles = [{ id: 'mots', nom: 'Mots', icone: '🔤', min: 1, max: 4 }]
+      .concat(window.GG.list);
+    cat.innerHTML = tiles.map(function (m) {
+      return '<button class="game-tile" data-g="' + m.id + '">' +
+        '<span class="gt-icon">' + m.icone + '</span>' +
+        '<span class="gt-name">' + m.nom + '</span>' +
+        '<span class="gt-players">' + m.min + (m.max > m.min ? '–' + m.max : '') + ' joueur' +
+        (m.max > 1 ? 's' : '') + '</span></button>';
+    }).join('');
+    cat.querySelectorAll('.game-tile').forEach(function (t) {
+      t.addEventListener('click', function () {
+        var id = t.dataset.g;
+        if (id === 'mots') {
+          pendingGame = 'mots';
+          showScreen('screen-mots-home');
+          return;
+        }
+        openMiniSetup(window.GG.byId[id]);
+      });
+    });
+  }
+
+  function updateMiniNameFields() {
+    for (var i = 2; i <= 4; i++) {
+      var lbl = $('mini-label-' + i);
+      if (lbl) lbl.classList.toggle('hidden', miniCount < i);
+    }
+  }
+
+  function openMiniSetup(mod) {
+    pendingGame = mod.id;
+    $('mini-setup-title').textContent = mod.icone + ' ' + mod.nom;
+    $('mini-setup-desc').textContent = mod.desc;
+    $('btn-mini-hotseat').classList.toggle('hidden', !mod.hotseat || mod.netOnly);
+    $('btn-mini-host').classList.toggle('hidden', mod.max < 2);
+    $('mini-hotseat-config').classList.add('hidden');
+    var box = $('mini-count');
+    box.innerHTML = '';
+    miniCount = mod.min;
+    for (var n = mod.min; n <= mod.max; n++) {
+      var b = document.createElement('button');
+      b.className = 'count-btn' + (n === miniCount ? ' active' : '');
+      b.textContent = n;
+      b.dataset.n = n;
+      b.addEventListener('click', function (ev) {
+        miniCount = parseInt(ev.currentTarget.dataset.n, 10);
+        box.querySelectorAll('.count-btn').forEach(function (x) {
+          x.classList.toggle('active', x === ev.currentTarget);
+        });
+        updateMiniNameFields();
+      });
+      box.appendChild(b);
+    }
+    updateMiniNameFields();
+    showScreen('screen-mini-setup');
+  }
+
+  function miniStartLocal() {
+    var mod = window.GG.byId[pendingGame];
+    var names = [];
+    for (var i = 1; i <= miniCount; i++) {
+      names.push(($('mini-name-' + i).value.trim() || 'Joueur ' + i).slice(0, 14));
+    }
+    var needDict = pendingGame === 'pendu';
+    (needDict ? loadDict().catch(function () {}) : Promise.resolve()).then(function () {
+      currentGame = pendingGame;
+      miniMod = mod;
+      mode = 'local';
+      miniState = mod.create(names, { dict: dict });
+      miniMe = 0;
+      enterMini();
+    });
+  }
+
+  function enterMini() {
+    stopScanner();
+    showScreen('screen-mini');
+    $('btn-menu-invite').classList.toggle('hidden', mode !== 'host');
+    miniLastViewer = -1;
+    miniRender();
+  }
+
+  /* Quel joueur regarde l'écran en ce moment ? */
+  function miniViewer() {
+    if (mode !== 'local') return miniMe;
+    var t = miniMod.turnOf(miniState);
+    if (t >= 0) return t;
+    if (miniMod.viewerOf) return miniMod.viewerOf(miniState);
+    return 0;
+  }
+
+  function miniRender() {
+    if (!miniState || !miniMod) return;
+    var mod = miniMod;
+    var bar = $('mini-players');
+    if (bar.childElementCount !== miniState.players.length) {
+      bar.innerHTML = '';
+      miniState.players.forEach(function () {
+        var b = document.createElement('div');
+        b.className = 'player-badge';
+        b.innerHTML = '<span class="p-name"></span><span class="p-score">0</span>';
+        bar.appendChild(b);
+      });
+    }
+    var t = mod.turnOf(miniState);
+    miniState.players.forEach(function (p, i) {
+      var b = bar.children[i];
+      b.querySelector('.p-name').textContent = p.name;
+      b.querySelector('.p-score').textContent = mod.scoreOf(miniState, i);
+      b.classList.toggle('turn', t === i);
+      b.classList.toggle('me', mode !== 'local' && i === miniMe);
+      b.classList.toggle('offline', mode === 'host' && isPeerOffline(i));
+    });
+    $('mini-icon').textContent = mod.icone;
+    $('mini-turn').innerHTML = mod.over(miniState) ? 'Partie terminée'
+      : t === -1 ? ''
+        : 'Au tour de <strong>' + esc(miniState.players[t].name) + '</strong>';
+
+    var viewer = miniViewer();
+    // jeux à infos cachées sur un seul téléphone : écran de passage
+    if (mode === 'local' && mod.hidden && miniLastViewer !== -1 &&
+        viewer !== miniLastViewer && !mod.over(miniState)) {
+      passHidden = true;
+      $('pass-name').textContent = miniState.players[viewer].name;
+      showOverlay('overlay-pass', true);
+    }
+    miniLastViewer = viewer;
+    if (passHidden && currentGame !== 'mots') {
+      $('mini-area').innerHTML = '<p class="waiting">🙈 Écran masqué…</p>';
+      return;
+    }
+    var viewState = mode === 'guest' ? miniState
+      : (mod.redact ? mod.redact(miniState, viewer) : miniState);
+    mod.render($('mini-area'), {
+      state: viewState,
+      me: viewer,
+      mode: mode,
+      act: miniAct
+    });
+  }
+
+  function miniAct(action) {
+    if (!miniState || !miniMod) return;
+    if (mode === 'guest') {
+      if (!guestNet || !guestNet.isOpen()) { toast('Connexion perdue.'); return; }
+      guestNet.send({ t: 'ga', a: action });
+      return;
+    }
+    var player = mode === 'local' ? miniViewer() : 0;
+    miniApplyAuthority(player, action, null);
+  }
+
+  function miniApplyAuthority(player, action, peer) {
+    var res = miniMod.apply(miniState, player, action, { dict: dict });
+    if (!res.ok) {
+      if (peer) peer.net.send({ t: 'err', msg: res.error });
+      else toast(res.error);
+      return;
+    }
+    if (res.timer) {
+      clearTimeout(miniTimer);
+      miniTimer = setTimeout(function () {
+        if (miniState && miniMod) miniApplyAuthority(-1, res.timer.action, null);
+      }, res.timer.ms);
+    }
+    miniAfterChange();
+  }
+
+  function miniAfterChange() {
+    if (mode === 'host') miniBroadcast();
+    miniRender();
+    if (miniMod.over(miniState)) showMiniEnd();
+  }
+
+  function showMiniEnd() {
+    $('end-detail').innerHTML = miniMod.summary(miniState);
+    $('end-winner').textContent = '';
+    $('btn-end-new').classList.toggle('hidden', mode === 'guest');
+    showOverlay('overlay-end', true);
+  }
+
+  function miniRematch() {
+    var names = miniState.players.map(function (p) { return p.name; });
+    miniState = miniMod.create(names, { dict: dict });
+    miniLastViewer = -1;
+    showOverlay('overlay-end', false);
+    if (mode === 'host') {
+      hostPeers.forEach(function (peer) { if (peer.connected) sendInitTo(peer); });
+    }
+    miniRender();
+  }
+
+  /* =================================================================
    *  RÉSEAU — HÔTE (serveur de la partie)
    * ================================================================= */
 
@@ -563,6 +805,31 @@
     });
   }
 
+  /* État d'un mini-jeu, expurgé des secrets pour un joueur donné. */
+  function miniRedactFor(playerIdx) {
+    return miniMod && miniMod.redact ? miniMod.redact(miniState, playerIdx) : miniState;
+  }
+
+  function miniBroadcast() {
+    hostPeers.forEach(function (peer) {
+      if (peer.connected) {
+        peer.net.send({ t: 'state', state: miniRedactFor(peer.playerIndex) });
+      }
+    });
+  }
+
+  /* Envoie l'état initial (ou de reprise) du jeu en cours à un invité. */
+  function sendInitTo(peer) {
+    if (currentGame !== 'mots' && miniState) {
+      peer.net.send({
+        t: 'init', game: currentGame,
+        state: miniRedactFor(peer.playerIndex), you: peer.playerIndex
+      });
+    } else if (state) {
+      peer.net.send({ t: 'init', game: 'mots', state: state, you: peer.playerIndex });
+    }
+  }
+
   function renderLobby() {
     var list = $('lobby-list');
     var rows = ['<div class="lobby-row you">👑 ' + esc(hostName) + ' (vous)</div>'];
@@ -572,23 +839,32 @@
         (p.connected ? '' : ' — déconnecté') + '</div>');
     });
     list.innerHTML = rows.join('');
-    $('btn-host-start').disabled = connectedGuests().length < 1;
-    $('btn-host-start').classList.toggle('hidden', !!state);
-    $('btn-host-back-game').classList.toggle('hidden', !state);
+    $('btn-host-start').disabled = connectedGuests().length < minGuests();
+    $('btn-host-start').classList.toggle('hidden', gameStarted());
+    $('btn-host-back-game').classList.toggle('hidden', !gameStarted());
     $('btn-host-invite').classList.toggle('hidden',
-      state ? false : hostPeers.length >= MAX_GUESTS);
+      gameStarted() ? false : hostPeers.length >= maxGuests());
+  }
+
+  /* Affiche/masque le bandeau « connexion perdue » sur les deux écrans de jeu. */
+  function setNetBanner(visible, text) {
+    ['net-banner', 'mini-net-banner'].forEach(function (id, k) {
+      $(id).classList.toggle('hidden', !visible);
+    });
+    if (text) {
+      $('net-banner-text').textContent = text;
+      $('mini-net-text').textContent = text;
+    }
   }
 
   function updateNetBanner() {
     if (mode === 'host') {
       var off = hostPeers.filter(function (p) { return !p.connected; });
-      var banner = $('net-banner');
-      if (state && off.length) {
-        $('net-banner-text').textContent = off.map(function (p) { return p.name; }).join(', ') +
-          ' — déconnecté' + (off.length > 1 ? 's' : '') + '.';
-        banner.classList.remove('hidden');
+      if (gameStarted() && off.length) {
+        setNetBanner(true, off.map(function (p) { return p.name; }).join(', ') +
+          ' — déconnecté' + (off.length > 1 ? 's' : '') + '.');
       } else {
-        banner.classList.add('hidden');
+        setNetBanner(false);
       }
     }
   }
@@ -610,11 +886,11 @@
 
   function hostHandleMessage(peer, msg) {
     if (msg.t === 'hello') {
-      if (!state) {
+      if (!gameStarted()) {
         // Salon : nouvel invité
         if (hostPeers.indexOf(peer) === -1) {
-          if (hostPeers.length >= MAX_GUESTS) {
-            peer.net.send({ t: 'err', msg: 'La partie est complète (4 joueurs).' });
+          if (hostPeers.length >= maxGuests()) {
+            peer.net.send({ t: 'err', msg: 'La partie est complète.' });
             peer.net.close();
             return;
           }
@@ -651,16 +927,30 @@
       match.connected = true;
       attachPeerHandlers(match);
       if (invitePeer === peer) invitePeer = null;
-      match.net.send({ t: 'init', state: state, you: match.playerIndex });
+      sendInitTo(match);
       updateNetBanner();
       if (document.querySelector('#screen-host.active')) hostBackToGame();
-      render();
+      if (currentGame === 'mots') render(); else miniRender();
+      return;
+    }
+
+    // Action d'un invité dans un mini-jeu : l'hôte applique et valide
+    if (msg.t === 'ga' && miniState && currentGame !== 'mots' && peer.playerIndex) {
+      miniApplyAuthority(peer.playerIndex, msg.a || {}, peer);
       return;
     }
 
     if (msg.t === 'action' && state && !state.over && peer.playerIndex) {
       var res;
       if (msg.kind === 'move') {
+        var pre = S.checkMove(state, msg.placements || []);
+        if (pre.ok) {
+          var badWord = invalidWord(pre.words);
+          if (badWord) {
+            peer.net.send({ t: 'err', msg: '« ' + badWord + ' » n’est pas dans le dictionnaire.' });
+            return;
+          }
+        }
         res = S.playMove(state, peer.playerIndex, msg.placements || []);
       } else if (msg.kind === 'pass') {
         res = S.passTurn(state, peer.playerIndex);
@@ -681,6 +971,7 @@
 
   function hostShowLobby() {
     showScreen('screen-host');
+    $('host-title').textContent = 'Créer une partie — ' + gameLabel();
     $('host-step-name').classList.add('hidden');
     $('host-step-lobby').classList.remove('hidden');
     $('host-step-offer').classList.add('hidden');
@@ -693,8 +984,8 @@
   function hostBackToGame() {
     stopScanner();
     if (invitePeer) { invitePeer.net.close(); invitePeer = null; }
-    showScreen('screen-game');
-    render();
+    showScreen(gameScreenId());
+    if (currentGame === 'mots') render(); else miniRender();
   }
 
   async function hostInvite() {
@@ -711,8 +1002,11 @@
       $('host-paste').value = '';
       var code = await peer.net.createOffer();
       if (invitePeer !== peer) return; // invitation annulée entre-temps
-      window.QRTool.render($('host-qr'), code);
-      $('host-code').value = code;
+      // QR = adresse de l'application + code : le scan avec l'appareil photo
+      // du téléphone ouvre directement l'app en mode « rejoindre ».
+      var url = appBaseUrl() + '#j=' + code;
+      window.QRTool.render($('host-qr'), url);
+      $('host-code').value = url;
     } catch (e) {
       showError('host-error', 'Impossible de créer l’invitation : ' + e.message);
       hostShowLobby();
@@ -748,19 +1042,34 @@
 
   function hostStartGame() {
     hostPeers = connectedGuests();
-    if (!hostPeers.length) return;
+    if (hostPeers.length < minGuests()) return;
     var names = [hostName];
     hostPeers.forEach(function (peer, i) {
       peer.playerIndex = i + 1;
       names.push(peer.name);
     });
-    state = S.newGame(names);
-    pending = [];
-    selected = -1;
-    hostPeers.forEach(function (peer) {
-      peer.net.send({ t: 'init', state: state, you: peer.playerIndex });
+    if (pendingGame === 'mots') {
+      currentGame = 'mots';
+      state = S.newGame(names);
+      pending = [];
+      selected = -1;
+      hostPeers.forEach(function (peer) {
+        peer.net.send({ t: 'init', game: 'mots', state: state, you: peer.playerIndex });
+      });
+      enterGame();
+      return;
+    }
+    // Mini-jeu en réseau : l'hôte crée l'état et fait autorité
+    var needDict = pendingGame === 'pendu';
+    (needDict ? loadDict().catch(function () {}) : Promise.resolve()).then(function () {
+      currentGame = pendingGame;
+      miniMod = window.GG.byId[currentGame];
+      miniState = miniMod.create(names, { dict: dict });
+      miniMe = 0;
+      miniLastViewer = -1;
+      hostPeers.forEach(function (peer) { sendInitTo(peer); });
+      enterMini();
     });
-    enterGame();
   }
 
   /* =================================================================
@@ -778,26 +1087,42 @@
       return;
     }
     if (msg.t === 'init') {
-      state = msg.state;
-      myFixedIndex = msg.you || 1;
-      pending = [];
-      selected = -1;
+      currentGame = msg.game || 'mots';
       waitingHost = false;
       clearTimeout(waitingTimer);
-      $('net-banner').classList.add('hidden');
-      enterGame();
+      setNetBanner(false);
+      showOverlay('overlay-end', false);
+      if (currentGame === 'mots') {
+        state = msg.state;
+        myFixedIndex = msg.you || 1;
+        pending = [];
+        selected = -1;
+        enterGame();
+      } else {
+        miniMod = window.GG.byId[currentGame];
+        miniState = msg.state;
+        miniMe = msg.you || 1;
+        enterMini();
+      }
       return;
     }
     if (msg.t === 'state') {
-      state = msg.state;
-      pending = [];
-      selected = -1;
-      exchangeMode = false;
-      exchangeSel = [];
-      waitingHost = false;
-      clearTimeout(waitingTimer);
-      render();
-      if (state.over) showEnd();
+      if (currentGame === 'mots') {
+        state = msg.state;
+        pending = [];
+        selected = -1;
+        exchangeMode = false;
+        exchangeSel = [];
+        waitingHost = false;
+        clearTimeout(waitingTimer);
+        render();
+        if (state.over) showEnd();
+      } else if (miniMod) {
+        miniState = msg.state;
+        if (!miniMod.over(miniState)) showOverlay('overlay-end', false);
+        miniRender();
+        if (miniMod.over(miniState)) showMiniEnd();
+      }
       return;
     }
     if (msg.t === 'err') {
@@ -832,12 +1157,11 @@
     guestNet = new window.Net();
     guestNet.onMessage = guestHandleMessage;
     guestNet.onClose = function () {
-      if (state && document.querySelector('#screen-game.active')) {
-        $('net-banner-text').textContent = 'Connexion perdue.';
-        $('net-banner').classList.remove('hidden');
+      if (gameStarted()) {
+        setNetBanner(true, 'Connexion perdue.');
         waitingHost = false;
         clearTimeout(waitingTimer);
-        render();
+        if (currentGame === 'mots') render();
       }
     };
     var name = ($('join-name').value.trim() || 'Joueur').slice(0, 14);
@@ -853,6 +1177,14 @@
     $('join-qr').innerHTML = '';
     $('join-code').value = '';
     $('join-paste').value = '';
+    if (autoOffer) {
+      // Invitation déjà reçue via l'URL scannée : connexion directe
+      var code = autoOffer;
+      autoOffer = null;
+      $('join-step-scan').classList.add('hidden');
+      guestGotOffer(code);
+      return;
+    }
     scanner = window.QRTool.scan($('join-video'), function (text) {
       guestGotOffer(text);
     }, function () {
@@ -865,7 +1197,7 @@
   async function guestGotOffer(code) {
     stopScanner();
     try {
-      var answer = await guestNet.joinWithOffer(code);
+      var answer = await guestNet.joinWithOffer(extractCode(code));
       $('join-step-scan').classList.add('hidden');
       $('join-step-answer').classList.remove('hidden');
       $('join-error').classList.add('hidden');
@@ -881,6 +1213,24 @@
     var el = $(id);
     el.textContent = msg;
     el.classList.remove('hidden');
+  }
+
+  /* ---------- invitations par URL (scan avec l'appareil photo natif) ---------- */
+  var autoOffer = null; // code d'invitation reçu via l'URL (#j=...)
+
+  function appBaseUrl() {
+    return location.origin + location.pathname;
+  }
+
+  /* Accepte un code brut ou une URL d'invitation contenant #j=... */
+  function extractCode(text) {
+    text = (text || '').trim();
+    var at = text.indexOf('#j=');
+    if (at !== -1) {
+      try { text = decodeURIComponent(text.slice(at + 3)); }
+      catch (e) { text = text.slice(at + 3); }
+    }
+    return text;
   }
 
   /* ---------- reconnexion ---------- */
@@ -916,9 +1266,15 @@
     passHidden = false;
     waitingHost = false;
     aiThinking = false;
+    miniState = null;
+    miniMod = null;
+    currentGame = 'mots';
+    pendingGame = 'mots';
+    miniLastViewer = -1;
+    clearTimeout(miniTimer);
     ['overlay-pass', 'overlay-joker', 'overlay-confirm', 'overlay-history',
      'overlay-menu', 'overlay-end'].forEach(function (id) { showOverlay(id, false); });
-    $('net-banner').classList.add('hidden');
+    setNetBanner(false);
     showScreen('screen-home');
   }
 
@@ -938,23 +1294,42 @@
   function init() {
     buildBoard();
 
-    // Accueil
-    $('btn-mode-solo').addEventListener('click', function () { showScreen('screen-solo-setup'); });
-    $('btn-mode-local').addEventListener('click', function () { showScreen('screen-local-setup'); });
-    $('btn-mode-host').addEventListener('click', function () {
+    // Accueil : catalogue des jeux
+    renderCatalog();
+
+    function openHostScreen() {
       showScreen('screen-host');
+      $('host-title').textContent = 'Créer une partie — ' + gameLabel();
       $('host-step-name').classList.remove('hidden');
       ['host-step-lobby', 'host-step-offer', 'host-step-scan', 'host-step-wait']
         .forEach(function (id) { $(id).classList.add('hidden'); });
       $('host-error').classList.add('hidden');
-    });
-    $('btn-mode-join').addEventListener('click', function () {
+    }
+
+    function openJoinScreen() {
       showScreen('screen-join');
       $('join-step-name').classList.remove('hidden');
       $('join-step-scan').classList.add('hidden');
       $('join-step-answer').classList.add('hidden');
       $('join-error').classList.add('hidden');
+    }
+
+    $('btn-mode-solo').addEventListener('click', function () { showScreen('screen-solo-setup'); });
+    $('btn-mode-local').addEventListener('click', function () { showScreen('screen-local-setup'); });
+    $('btn-mode-host').addEventListener('click', function () {
+      pendingGame = 'mots';
+      openHostScreen();
     });
+    $('btn-home-join').addEventListener('click', openJoinScreen);
+
+    // Mini-jeux : configuration
+    $('btn-mini-hotseat').addEventListener('click', function () {
+      $('mini-hotseat-config').classList.remove('hidden');
+    });
+    $('btn-mini-start').addEventListener('click', miniStartLocal);
+    $('btn-mini-host').addEventListener('click', openHostScreen);
+    $('btn-mini-menu').addEventListener('click', function () { showOverlay('overlay-menu', true); });
+    $('btn-mini-reconnect').addEventListener('click', reconnect);
 
     // Retours
     document.querySelectorAll('[data-back]').forEach(function (b) {
@@ -1008,12 +1383,19 @@
       for (var i = 1; i <= localCount; i++) {
         names.push(($('local-name-' + i).value.trim() || 'Joueur ' + i).slice(0, 14));
       }
-      mode = 'local';
-      state = S.newGame(names);
-      pending = [];
-      selected = -1;
-      enterGame();
-      showPassDevice();
+      var btn = $('btn-local-start');
+      btn.disabled = true;
+      loadDict().catch(function () {
+        toast('Dictionnaire indisponible : les mots ne seront pas vérifiés.');
+      }).then(function () {
+        btn.disabled = false;
+        mode = 'local';
+        state = S.newGame(names);
+        pending = [];
+        selected = -1;
+        enterGame();
+        showPassDevice();
+      });
     });
 
     // Hôte
@@ -1022,6 +1404,7 @@
       mode = 'host';
       myFixedIndex = 0;
       hostPeers = [];
+      loadDict().catch(function () {}); // en tâche de fond pendant l'appairage
       hostShowLobby();
     });
     $('btn-host-invite').addEventListener('click', hostInvite);
@@ -1058,7 +1441,7 @@
     $('btn-pass-ready').addEventListener('click', function () {
       passHidden = false;
       showOverlay('overlay-pass', false);
-      render();
+      if (currentGame === 'mots') render(); else miniRender();
     });
 
     // Joker
@@ -1100,8 +1483,28 @@
     });
 
     // Fin de partie
-    $('btn-end-new').addEventListener('click', newGameSamePlayers);
+    $('btn-end-new').addEventListener('click', function () {
+      if (currentGame === 'mots') newGameSamePlayers(); else miniRematch();
+    });
     $('btn-end-home').addEventListener('click', quitToHome);
+
+    // Invitation reçue en scannant le QR avec l'appareil photo du téléphone :
+    // l'URL contient le code (#j=...) → on ouvre directement l'écran « rejoindre ».
+    // (au chargement, mais aussi si l'app était déjà ouverte : hashchange)
+    function handleInviteHash() {
+      if (!(location.hash && location.hash.indexOf('#j=') === 0)) return;
+      autoOffer = extractCode(location.hash);
+      history.replaceState(null, '', location.pathname + location.search);
+      if (gameStarted()) return; // partie en cours : on ne coupe pas le jeu
+      showScreen('screen-join');
+      $('join-step-name').classList.remove('hidden');
+      $('join-step-scan').classList.add('hidden');
+      $('join-step-answer').classList.add('hidden');
+      $('join-error').classList.add('hidden');
+      $('btn-join-scan').textContent = 'Se connecter à la partie';
+    }
+    handleInviteHash();
+    window.addEventListener('hashchange', handleInviteHash);
 
     // Service worker (fonctionnement hors ligne)
     if ('serviceWorker' in navigator) {

@@ -1,5 +1,5 @@
 /* Service worker : rend l'application utilisable entièrement hors ligne. */
-var CACHE = 'ggwords-v3';
+var CACHE = 'gggames-v4';
 
 var ASSETS = [
   './',
@@ -10,6 +10,16 @@ var ASSETS = [
   'js/ai.js',
   'js/net.js',
   'js/app.js',
+  'js/games/registry.js',
+  'js/games/p4.js',
+  'js/games/morpion.js',
+  'js/games/pendu.js',
+  'js/games/bac.js',
+  'js/games/bataille.js',
+  'js/games/yams.js',
+  'js/games/cochon.js',
+  'js/games/memory.js',
+  'js/games/poker.js',
   'data/mots.txt',
   'vendor/qrcode.js',
   'vendor/jsQR.js',

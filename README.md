@@ -1,133 +1,99 @@
-# GGWORDS 🁢
+# GGgames 🎮
 
-**GGWORDS** est un jeu de lettres façon Scrabble, **entièrement hors ligne**,
-pensé pour les mobiles : seul contre l'IA, ou de 2 à 4 joueurs. Aucun compte,
-aucun serveur externe, aucune connexion Internet nécessaire pendant la partie.
+**GGgames** est une collection de jeux à plusieurs, **entièrement hors ligne**,
+pensée pour les mobiles — parfaite pour un avion, un train ou un endroit sans
+réseau. Aucun compte, aucun serveur externe, aucune connexion Internet
+nécessaire pendant les parties.
 
-## Trois façons de jouer
+## Le catalogue
 
-### 🤖 Seul contre l'IA (3 niveaux)
-L'IA joue de vrais mots français (dictionnaire libre de ~85 000 mots) : elle
-cherche tous les coups légaux — mots croisés valides, jokers, cases bonus —
-puis choisit selon le niveau :
+| Jeu | Joueurs | Règles appliquées par le jeu |
+|---|---|---|
+| 🁢 **Mots** | 1–4 | Jeu de lettres façon Scrabble : plateau officiel, 102 jetons, **dictionnaire français de 311 000 mots obligatoire pour tout le monde** (IA comprise). Mode solo contre l'IA (3 niveaux). |
+| 🔴 **Puissance 4** | 2 | Alignements vérifiés par le jeu, série de manches. |
+| ⭕ **Morpion** | 2 | Tic-tac-toe en série, victoires comptées automatiquement. |
+| 🪢 **Pendu** | 1–4 | Les mots sont **tirés du dictionnaire par le jeu** : personne ne les choisit ni ne les connaît. +1 pt par lettre, +3 pour qui termine le mot, 5 manches. |
+| 📝 **Petit Bac** | 2–4 | Lettre au sort, 6 catégories, 60 s. Première lettre **contrôlée automatiquement**, réponses validées par le **vote des autres joueurs**, doublons à demi-points. |
+| 🚢 **Bataille navale** | 2 | Flottes placées par le jeu, **grilles adverses jamais transmises** à l'autre téléphone. Touché = on rejoue. |
+| 🎲 **Yams** | 1–4 | 5 dés, 3 lancers, feuille de score **calculée automatiquement** (bonus 35 compris). |
+| 🐷 **Cochon** | 2–4 | Le dé qui fait tout perdre sur un 1. Premier à 100. |
+| 🧠 **Memory** | 1–4 | Une paire = un point et on rejoue. |
+| 🃏 **Poker** | 2–4 | Texas Hold'em : 1000 jetons, blinds 10/20, tapis et pots secondaires, **mains évaluées par le jeu**, cartes adverses jamais transmises avant l'abattage. |
 
-- **😌 Facile** : joue des petits coups, parfait pour apprendre.
-- **🙂 Moyen** : joue correctement sans chercher l'optimal.
-- **😈 Difficile** : joue le meilleur coup qu'elle trouve.
+## Impossible de tricher
 
-Vos propres mots ne sont pas vérifiés, comme en partie libre.
+- **Le téléphone qui crée la partie fait office de serveur** : c'est lui qui
+  applique les règles, valide chaque coup, lance les dés, distribue les cartes
+  et calcule tous les scores. Un joueur ne peut jamais « marquer n'importe
+  quoi » : jouer hors de son tour, poser un mot inventé, compter un alignement
+  inexistant… tout est refusé.
+- **Les informations secrètes ne quittent jamais le serveur** : cartes de
+  poker, grilles de bataille navale, mot du pendu, réponses du petit bac en
+  cours d'écriture — les autres téléphones reçoivent une version expurgée.
+- **Mots** : chaque mot posé (par un humain comme par l'IA) doit exister dans
+  le dictionnaire intégré, sinon le coup est refusé avec le mot fautif affiché.
+- **Petit Bac** : la seule part de jugement humain (une ville existe-t-elle ?)
+  est tranchée par le vote des autres joueurs, comme dans la vraie vie — mais
+  la lettre initiale, les doublons et le décompte sont automatiques.
 
-### 📱 Sur un seul téléphone (2 à 4 joueurs)
-Chacun joue à son tour en se passant le téléphone. Un écran intermédiaire
-cache le chevalet du joueur suivant.
+## Jouer à plusieurs téléphones (sans Internet)
 
-### 📶 Sur plusieurs téléphones, sans Internet (2 à 4 joueurs)
-**Le téléphone qui crée la partie sert de serveur** : il détient l'état de la
-partie, valide tous les coups et synchronise les autres téléphones. Les autres
-s'y connectent **directement en Wi-Fi local** (WebRTC), sans passer par
-Internet :
+1. Connectez les téléphones au **même Wi-Fi**, ou activez le **partage de
+   connexion** de l'un d'eux (aucun accès Internet requis, seul le réseau
+   local compte).
+2. Sur le téléphone hôte : choisissez un jeu → **« Créer une partie »** →
+   **« Inviter un joueur »** → un QR code s'affiche.
+3. Sur le téléphone invité : **scannez simplement le QR avec l'appareil
+   photo** → l'application s'ouvre toute seule, prête à se connecter →
+   entrez votre prénom → un QR de réponse s'affiche.
+4. L'hôte scanne la réponse (bouton « Scanner la réponse ») : le joueur
+   apparaît dans le salon. Répétez pour chaque joueur, puis « Commencer ».
 
-1. Connectez tous les téléphones au **même Wi-Fi**, ou activez le **partage de
-   connexion** (point d'accès) sur l'un des deux et connectez-y les autres —
-   aucun accès Internet n'est requis, seul le réseau local compte.
-2. Téléphone hôte : **« Créer une partie »** → le salon s'affiche →
-   **« Inviter un joueur »** → un QR code d'invitation apparaît.
-3. Téléphone invité : **« Rejoindre une partie »** → scannez le QR de l'hôte →
-   un QR de réponse s'affiche.
-4. Téléphone hôte : **« Scanner la réponse »** → scannez le QR de l'invité →
-   le joueur apparaît dans le salon.
-5. Répétez les étapes 2 à 4 pour chaque joueur supplémentaire (jusqu'à
-   3 invités), puis **« Commencer la partie »**.
-6. Chacun voit le plateau en direct et ne voit que ses propres lettres.
+En cas de coupure, le menu de l'hôte (« Inviter / reconnecter ») permet de
+reconnecter un joueur en cours de partie avec le même prénom. Un
+copier/coller du code texte remplace le scan si besoin.
 
-Si le scan pose problème (caméra refusée…), chaque écran propose un **code
-texte** à copier/coller par n'importe quel moyen local. En cas de coupure, le
-menu de l'hôte (« Inviter / reconnecter un joueur ») permet de reconnecter un
-joueur en cours de partie avec le même prénom.
+La plupart des jeux se jouent aussi **sur un seul téléphone** (chacun son
+tour, écran masqué entre les tours quand il y a des infos cachées), et Mots,
+Pendu, Yams et Memory se jouent aussi **en solo**.
 
 ## Installation sur le téléphone (PWA)
 
-L'application est une *Progressive Web App* : une fois ouverte une première
-fois, elle est mise en cache et fonctionne **sans réseau**.
-
-1. Publiez l'application (voir « Déploiement » ci-dessous) et ouvrez son
-   adresse dans Chrome (Android) ou Safari (iPhone).
-2. Menu du navigateur → **« Ajouter à l'écran d'accueil »** / **« Installer
-   l'application »**.
-3. L'icône GGWORDS apparaît sur l'écran d'accueil ; l'application s'ouvre
-   ensuite même en mode avion (le mode plusieurs téléphones nécessite
-   simplement un réseau local commun, par exemple un partage de connexion).
+1. Ouvrez l'application dans Chrome (Android) ou Safari (iPhone) :
+   `https://<votre-compte>.github.io/Appli-scrabble/`
+2. Menu du navigateur → **« Ajouter à l'écran d'accueil »**.
+3. L'icône GGgames apparaît comme une vraie application ; après la première
+   ouverture, tout fonctionne **sans réseau** (le dictionnaire est mis en
+   cache automatiquement).
 
 ## Déploiement
 
-Le dépôt contient un workflow GitHub Actions (`.github/workflows/pages.yml`)
-qui publie automatiquement l'application sur **GitHub Pages** à chaque push
-sur `main` :
-
-1. Fusionnez cette branche dans `main` (ou poussez sur `main`).
-2. Si besoin, activez GitHub Pages : *Settings → Pages → Source : GitHub
-   Actions*.
-3. L'application est servie sur `https://<votre-compte>.github.io/Appli-scrabble/`.
-
-> Le HTTPS fourni par GitHub Pages est indispensable : la caméra (scan des QR
-> codes) et l'installation PWA l'exigent.
-
-### Essai en local
-
-```bash
-python3 -m http.server 8080
-# puis ouvrir http://localhost:8080
-```
-
-## Règles implémentées (Scrabble français)
-
-- Plateau officiel 15×15 avec cases **mot compte double/triple** (MD/MT) et
-  **lettre compte double/triple** (LD/LT).
-- Distribution française officielle de **102 jetons** (dont 2 jokers) et
-  valeurs françaises des lettres.
-- Premier mot obligatoirement sur l'étoile centrale (compte double).
-- Mots alignés, sans trou, raccordés aux lettres déjà posées ; tous les mots
-  croisés formés sont comptés.
-- Les cases bonus ne comptent que pour les lettres nouvellement posées.
-- **7 lettres posées d'un coup** : +50 points.
-- Joker : choix de la lettre à la pose, vaut 0 point.
-- Échange de lettres (si le sac contient au moins 7 jetons), passe de tour.
-- Fin de partie : un joueur pose sa dernière lettre sac vide (il gagne les
-  points des lettres restantes des autres joueurs, qui les déduisent), ou six
-  tours consécutifs sans point (chacun déduit ses lettres restantes).
-- Aperçu du score en direct avant de valider, historique des coups, mélange
-  du chevalet.
-
-**Pas de dictionnaire intégré** : comme dans une partie libre, les joueurs
-valident les mots entre eux (l'arbitre officiel, l'ODS, n'est pas librement
-redistribuable).
+Le workflow GitHub Actions (`.github/workflows/pages.yml`) publie le site sur
+GitHub Pages à chaque push sur `main` (Settings → Pages → Source : GitHub
+Actions, dépôt public requis). Essai local : `python3 -m http.server 8080`.
 
 ## Technique
 
-- HTML/CSS/JavaScript pur, sans build ni dépendance à installer.
-- `js/scrabble.js` — moteur de jeu (règles, scores, fins de partie), générique
-  pour 2 à 4 joueurs.
-- `js/ai.js` — adversaire IA : recherche exhaustive des coups légaux (ancrages,
-  contraintes de mots croisés, jokers) puis sélection selon le niveau.
-- `data/mots.txt` — dictionnaire français utilisé par l'IA (~85 000 mots de 2 à
-  8 lettres, sans accents), dérivé de
-  [an-array-of-french-words](https://www.npmjs.com/package/an-array-of-french-words)
-  (licence MIT).
-- `js/net.js` — connexion WebRTC locale (sans serveur STUN/TURN) ; l'offre et
-  la réponse SDP sont compressées (`CompressionStream`) puis échangées par QR
-  code ou copier/coller. L'hôte maintient une connexion par invité et fait
-  autorité sur l'état de la partie.
-- `js/app.js` — interface (écrans, salon, plateau, chevalet, synchronisation).
-- `sw.js` — service worker : l'application complète est mise en cache pour un
-  usage 100 % hors ligne.
-- Bibliothèques embarquées : [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator)
-  (MIT) pour dessiner les QR codes et [jsQR](https://github.com/cozmo/jsQR)
-  (Apache-2.0) pour les lire avec la caméra.
+- HTML/CSS/JavaScript pur, aucune dépendance à installer, aucune étape de build.
+- `js/scrabble.js` — moteur du jeu de Mots (règles françaises officielles).
+- `js/ai.js` — IA du jeu de Mots (recherche exhaustive des coups légaux).
+- `js/games/` — un module par mini-jeu (`create / apply / redact / render`),
+  branché sur un contrôleur générique (local et réseau).
+- `js/net.js` — WebRTC en réseau local sans serveur STUN/TURN ; l'offre SDP
+  est compressée et transportée dans une **URL encodée en QR code**, la
+  réponse par QR ou copier/coller.
+- `sw.js` — service worker : application 100 % hors ligne après la première visite.
+- `data/mots.txt` — dictionnaire français (~311 000 mots, 2 à 15 lettres,
+  sans accents), dérivé de
+  [an-array-of-french-words](https://www.npmjs.com/package/an-array-of-french-words) (MIT).
+- QR codes : [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator)
+  (MIT) et [jsQR](https://github.com/cozmo/jsQR) (Apache-2.0).
 
 ## Limites connues
 
-- Le mode plusieurs téléphones exige que tous les appareils soient sur le même
-  réseau local et que celui-ci autorise les connexions entre appareils (le
-  partage de connexion d'un téléphone fonctionne très bien ; certains Wi-Fi
-  publics isolent les clients).
-- 4 joueurs maximum (hôte + 3 invités).
+- Le mode plusieurs téléphones exige un réseau local commun qui autorise les
+  connexions entre appareils (le partage de connexion d'un téléphone
+  fonctionne très bien ; certains Wi-Fi publics isolent les clients).
+- 4 joueurs maximum (2 pour Puissance 4, Morpion et Bataille navale).
+- Petit Bac et Poker se jouent uniquement en réseau (informations secrètes
+  simultanées).

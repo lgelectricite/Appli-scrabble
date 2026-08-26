@@ -295,3 +295,195 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   font-size: 14px; z-index: 99;
   max-width: 86vw; text-align: center;
 }
+
+/* ================= GGgames : catalogue ================= */
+.logo-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.logo-tile.small { width: 56px; height: 56px; font-size: 36px; line-height: 56px; border-radius: 9px; }
+.logo-tile.small .logo-val { font-size: 12px; right: 5px; }
+#catalog {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 10px; margin: 18px 0 14px; text-align: center;
+}
+.game-tile {
+  background: #ffffff1e; border: none; border-radius: 14px;
+  padding: 14px 6px 10px; color: var(--paper); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  touch-action: manipulation;
+}
+.game-tile:active { transform: scale(.97); }
+.gt-icon { font-size: 34px; }
+.gt-name { font-size: 15px; font-weight: 700; }
+.gt-players { font-size: 11px; opacity: .7; }
+#btn-home-join { margin-top: 4px; }
+
+/* ================= écran mini-jeux ================= */
+#screen-mini { padding: 6px 8px 12px; max-width: 640px; }
+#mini-players { display: flex; gap: 5px; padding: 4px 2px 2px; }
+#mini-icon { font-size: 18px; }
+#mini-turn { flex: 1; text-align: center; font-size: 14px; min-width: 0; }
+#mini-net-banner {
+  text-align: center; font-size: 14px; padding: 6px;
+  background: #7e2a20; border-radius: 8px; margin-bottom: 6px;
+}
+#mini-area { padding-top: 8px; }
+.mini-msg { text-align: center; font-size: 15px; margin: 10px 4px; line-height: 1.45; }
+.big-msg { font-size: 18px; }
+.mini-center { text-align: center; }
+.mini-actions { display: flex; gap: 10px; justify-content: center; margin: 10px 0; flex-wrap: wrap; }
+.mini-actions .btn.big { width: auto; flex: 1; }
+.btn.danger { background: #a33328; color: #fff; }
+
+/* ================= Puissance 4 ================= */
+.p4-board {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+  background: #1d4f9c; border-radius: 12px; padding: 8px;
+  max-width: 430px; margin: 0 auto;
+}
+.p4-cell {
+  aspect-ratio: 1; background: var(--felt-dark); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.p4-cell.win { box-shadow: 0 0 0 3px var(--tile-new); }
+.p4-disc { width: 86%; height: 86%; border-radius: 50%; display: inline-block; }
+.p4-disc.mini { width: 16px; height: 16px; vertical-align: middle; }
+.p4-disc.red { background: radial-gradient(circle at 35% 30%, #ff7b66, #cf2f1c); }
+.p4-disc.yellow { background: radial-gradient(circle at 35% 30%, #ffe98a, #e0a800); }
+
+/* ================= Morpion ================= */
+.ttt-board {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  max-width: 320px; margin: 0 auto;
+}
+.ttt-cell {
+  aspect-ratio: 1; background: #ffffff22; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 52px; font-weight: 800; cursor: pointer;
+}
+.ttt-cell.win { background: #1c7a45; }
+
+/* ================= Cochon ================= */
+.pig-die { text-align: center; font-size: 110px; line-height: 1.1; }
+
+/* ================= Memory ================= */
+.mem-board {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px;
+  max-width: 420px; margin: 0 auto;
+}
+.mem-card {
+  aspect-ratio: 1; border-radius: 10px; cursor: pointer;
+  background: repeating-linear-gradient(45deg, #14735c, #14735c 8px, #0e6350 8px, #0e6350 16px);
+  display: flex; align-items: center; justify-content: center; font-size: 30px;
+  border: 2px solid #ffffff28;
+}
+.mem-card.up { background: var(--paper); }
+.mem-card.done { opacity: .35; }
+
+/* ================= Yams ================= */
+.yams-dice { display: flex; justify-content: center; gap: 8px; margin: 6px 0; }
+.yams-die {
+  font-size: 44px; line-height: 1; padding: 4px 2px 0;
+  background: #fff; color: #222; border: 3px solid transparent;
+  border-radius: 12px; cursor: pointer; min-width: 54px;
+}
+.yams-die.held { border-color: var(--accent); background: var(--tile-new); }
+.yams-sheet { overflow-x: auto; margin-top: 8px; }
+.yams-sheet table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.yams-sheet td, .yams-sheet th { padding: 4px 6px; border-bottom: 1px solid #ffffff20; text-align: center; }
+.yams-sheet td:first-child { text-align: left; }
+.yams-sheet th.turn { color: var(--tile-new); }
+.yams-sheet td.filled { font-weight: 700; }
+.yams-sheet td.empty { opacity: .4; }
+.yams-sheet tr.total td { font-weight: 800; border-top: 2px solid #ffffff50; }
+.yams-pick {
+  background: var(--accent); color: #fff; border: none; border-radius: 6px;
+  padding: 3px 10px; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+
+/* ================= Pendu ================= */
+.pendu-word { text-align: center; margin: 12px 0; }
+.pendu-slot {
+  display: inline-block; min-width: 26px; margin: 2px 3px;
+  border-bottom: 3px solid var(--paper);
+  font-size: 26px; font-weight: 800; text-align: center;
+}
+.pendu-lives { text-align: center; font-size: 18px; letter-spacing: 2px; }
+.pendu-kb {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+  max-width: 420px; margin: 10px auto;
+}
+.pendu-key {
+  padding: 10px 0; font-size: 16px; font-weight: 700;
+  background: var(--tile); color: var(--tile-text);
+  border: none; border-radius: 8px; cursor: pointer;
+}
+.pendu-key.used { opacity: .25; }
+
+/* ================= Petit Bac ================= */
+.bac-letter {
+  text-align: center; font-size: 64px; font-weight: 800;
+  color: var(--tile-new); line-height: 1.1;
+}
+.bac-timer { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.bac-timer.urgent { color: #ff8a7a; }
+.bac-field { margin: 8px 0; font-size: 14px; }
+.bac-owner { margin: 14px 0 6px; font-size: 16px; color: var(--tile-new); }
+.bac-vote-row {
+  display: flex; align-items: center; gap: 8px;
+  background: #ffffff14; border-radius: 8px; padding: 6px 10px; margin-bottom: 5px;
+  font-size: 14px;
+}
+.bac-vote-row.auto-bad { opacity: .55; }
+.bac-cat { opacity: .75; flex: 0 0 38%; }
+.bac-ans { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.bac-flag { font-weight: 700; }
+.bac-toggle {
+  border: none; border-radius: 8px; font-size: 16px; padding: 4px 10px; cursor: pointer;
+}
+.bac-toggle.yes { background: #1c7a45; }
+.bac-toggle.no { background: #a33328; color: #fff; }
+
+/* ================= Bataille navale ================= */
+.bn-grid {
+  display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px;
+  max-width: 380px; margin: 4px auto 10px;
+}
+.bn-cell {
+  aspect-ratio: 1; background: #1d5f9c66; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(9px, 3vw, 15px); color: #cfe6ff;
+}
+.bn-grid.aim .bn-cell { cursor: crosshair; }
+.bn-cell.ship { background: #6f7f8d; }
+.bn-cell.hit { background: #a33328; }
+.bn-cell.miss { background: #16466e; }
+.bn-label { text-align: center; font-size: 13px; opacity: .85; margin: 4px 0 2px; }
+
+/* ================= Poker ================= */
+.pk-table { background: #0a4d3c; border-radius: 16px; padding: 10px 8px; }
+.pk-players { display: flex; gap: 6px; }
+.pk-player {
+  flex: 1; min-width: 0; background: #ffffff14; border-radius: 10px;
+  padding: 6px 4px; text-align: center; border: 2px solid transparent;
+}
+.pk-player.turn { border-color: var(--tile-new); }
+.pk-player.folded { opacity: .45; }
+.pk-player.out { opacity: .25; }
+.pk-pname { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-chips { font-size: 12px; font-weight: 700; }
+.pk-bet { background: var(--accent); border-radius: 8px; padding: 0 6px; font-size: 11px; }
+.pk-cards { font-size: 13px; min-height: 22px; }
+.pk-tag { font-size: 10px; font-weight: 800; color: var(--tile-new); }
+.pk-board { text-align: center; margin: 12px 0 4px; min-height: 46px; }
+.pk-pot { text-align: center; font-weight: 700; font-size: 15px; }
+.pk-street { opacity: .6; font-size: 14px; }
+.pk-card {
+  display: inline-block; background: #fff; color: #1c2833;
+  border-radius: 5px; padding: 2px 4px; margin: 1px 2px;
+  font-weight: 800; font-size: 14px; min-width: 24px; text-align: center;
+}
+.pk-card.big { font-size: 20px; padding: 6px 7px; min-width: 34px; }
+.pk-card.red { color: #c0392b; }
+.pk-card.back { background: #33577c; color: #7fa6cc; }
+.pk-mine { text-align: center; margin: 12px 0; }
+.pk-actions { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 8px; }
+.pk-actions .btn.action { flex: 1 1 28%; max-width: none; }

@@ -1,7 +1,7 @@
 {
-  "name": "GGWORDS",
-  "short_name": "GGWORDS",
-  "description": "Jeu de lettres hors ligne, de 2 à 4 joueurs, sur un ou plusieurs téléphones.",
+  "name": "GGgames",
+  "short_name": "GGgames",
+  "description": "Des jeux à plusieurs, entièrement hors ligne : mots, Puissance 4, pendu, poker, bataille navale…",
   "lang": "fr",
   "start_url": ".",
   "scope": ".",
