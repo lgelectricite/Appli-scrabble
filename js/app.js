@@ -614,7 +614,8 @@
     var box = $('mini-count');
     box.innerHTML = '';
     miniCount = mod.min;
-    for (var n = mod.min; n <= mod.max; n++) {
+    var hotMax = Math.min(mod.max, 4); // sur un seul téléphone : 4 noms maximum
+    for (var n = mod.min; n <= hotMax; n++) {
       var b = document.createElement('button');
       b.className = 'count-btn' + (n === miniCount ? ' active' : '');
       b.textContent = n;
@@ -669,25 +670,29 @@
   function miniRender() {
     if (!miniState || !miniMod) return;
     var mod = miniMod;
+    document.body.classList.toggle('theme-manoir', currentGame === 'manoir');
     var bar = $('mini-players');
-    if (bar.childElementCount !== miniState.players.length) {
-      bar.innerHTML = '';
-      miniState.players.forEach(function () {
-        var b = document.createElement('div');
-        b.className = 'player-badge';
-        b.innerHTML = '<span class="p-name"></span><span class="p-score">0</span>';
-        bar.appendChild(b);
+    bar.classList.toggle('hidden', !!mod.noBadges);
+    var t = mod.turnOf(miniState);
+    if (!mod.noBadges) {
+      if (bar.childElementCount !== miniState.players.length) {
+        bar.innerHTML = '';
+        miniState.players.forEach(function () {
+          var b = document.createElement('div');
+          b.className = 'player-badge';
+          b.innerHTML = '<span class="p-name"></span><span class="p-score">0</span>';
+          bar.appendChild(b);
+        });
+      }
+      miniState.players.forEach(function (p, i) {
+        var b = bar.children[i];
+        b.querySelector('.p-name').textContent = p.name;
+        b.querySelector('.p-score').textContent = mod.scoreOf(miniState, i);
+        b.classList.toggle('turn', t === i);
+        b.classList.toggle('me', mode !== 'local' && i === miniMe);
+        b.classList.toggle('offline', mode === 'host' && isPeerOffline(i));
       });
     }
-    var t = mod.turnOf(miniState);
-    miniState.players.forEach(function (p, i) {
-      var b = bar.children[i];
-      b.querySelector('.p-name').textContent = p.name;
-      b.querySelector('.p-score').textContent = mod.scoreOf(miniState, i);
-      b.classList.toggle('turn', t === i);
-      b.classList.toggle('me', mode !== 'local' && i === miniMe);
-      b.classList.toggle('offline', mode === 'host' && isPeerOffline(i));
-    });
     $('mini-icon').textContent = mod.icone;
     $('mini-turn').innerHTML = mod.over(miniState) ? 'Partie terminée'
       : t === -1 ? ''
@@ -1275,6 +1280,7 @@
     ['overlay-pass', 'overlay-joker', 'overlay-confirm', 'overlay-history',
      'overlay-menu', 'overlay-end'].forEach(function (id) { showOverlay(id, false); });
     setNetBanner(false);
+    document.body.classList.remove('theme-manoir');
     showScreen('screen-home');
   }
 

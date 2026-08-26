@@ -18,7 +18,8 @@ nécessaire pendant les parties.
 | 🎲 **Yams** | 1–4 | 5 dés, 3 lancers, feuille de score **calculée automatiquement** (bonus 35 compris). |
 | 🐷 **Cochon** | 2–4 | Le dé qui fait tout perdre sur un 1. Premier à 100. |
 | 🧠 **Memory** | 1–4 | Une paire = un point et on rejoue. |
-| 🃏 **Poker** | 2–4 | Texas Hold'em : 1000 jetons, blinds 10/20, tapis et pots secondaires, **mains évaluées par le jeu**, cartes adverses jamais transmises avant l'abattage. |
+| 🃏 **Poker** | 2–4 | Texas Hold'em, **cash game** (blinds fixes, recave) ou **tournoi** (blinds montantes, élimination) : tapis et pots secondaires, **mains évaluées par le jeu**, cartes adverses jamais transmises avant l'abattage. |
+| 🕵️ **Le Manoir** | 1–12 | **Enquête collaborative** façon Cluedo/escape game : coupable, arme et lieu tirés au sort, six pistes verrouillées par des énigmes, carnet de déduction automatique, deux accusations. La solution et les réponses **ne quittent jamais le téléphone-serveur**. |
 
 ## Impossible de tricher
 
@@ -94,6 +95,7 @@ Actions, dépôt public requis). Essai local : `python3 -m http.server 8080`.
 - Le mode plusieurs téléphones exige un réseau local commun qui autorise les
   connexions entre appareils (le partage de connexion d'un téléphone
   fonctionne très bien ; certains Wi-Fi publics isolent les clients).
-- 4 joueurs maximum (2 pour Puissance 4, Morpion et Bataille navale).
+- 4 joueurs maximum pour la plupart des jeux (2 pour Puissance 4, Morpion et
+  Bataille navale) — et jusqu'à **12 joueurs** pour Le Manoir.
 - Petit Bac et Poker se jouent uniquement en réseau (informations secrètes
   simultanées).

@@ -93,9 +93,22 @@
     return state.players.reduce(function (s, p) { return s + p.cont; }, 0);
   }
 
+  function hasChips(p) { return p.chips > 0; }
+
   function newHand(state) {
-    var alive = state.players.filter(function (p) { return !p.out; });
-    if (alive.length < 2) { state.finished = true; return; }
+    // Tournoi : blinds qui doublent toutes les 6 mains
+    if (state.mode === 'tournoi') {
+      var level = Math.floor(state.handNum / 6);
+      state.blinds = [10 * Math.pow(2, level), 20 * Math.pow(2, level)];
+    }
+    var alive = state.players.filter(function (p) { return !p.out && p.chips > 0; });
+    if (alive.length < 2) {
+      if (state.mode === 'tournoi') { state.finished = true; return; }
+      state.handOver = true;
+      state.handMsg = 'En attente d’une recave pour continuer…';
+      return;
+    }
+    state.handNum++;
     var deck = [];
     for (var c = 0; c < 52; c++) deck.push(c);
     GG.shuffle(deck);
@@ -105,17 +118,19 @@
     state.handMsg = '';
     state.showdownInfo = null;
     state.players.forEach(function (p) {
-      p.bet = 0; p.cont = 0; p.folded = p.out; p.allin = false; p.show = false;
-      p.hole = p.out ? [] : [state.deck.pop(), state.deck.pop()];
+      // sans jetons (cash game) : on saute la main en attendant une recave
+      p.folded = p.out || p.chips === 0;
+      p.bet = 0; p.cont = 0; p.allin = false; p.show = false;
+      p.hole = p.folded ? [] : [state.deck.pop(), state.deck.pop()];
     });
-    state.dealer = nextIdx(state, state.dealer, function () { return true; });
+    state.dealer = nextIdx(state, state.dealer, hasChips);
     var sb, bb;
     if (alive.length === 2) {
       sb = state.dealer;
-      bb = nextIdx(state, sb, function () { return true; });
+      bb = nextIdx(state, sb, hasChips);
     } else {
-      sb = nextIdx(state, state.dealer, function () { return true; });
-      bb = nextIdx(state, sb, function () { return true; });
+      sb = nextIdx(state, state.dealer, hasChips);
+      bb = nextIdx(state, sb, hasChips);
     }
     post(state, sb, state.blinds[0]);
     post(state, bb, state.blinds[1]);
@@ -189,16 +204,24 @@
   function endHand(state) {
     state.handOver = true;
     state.current = -1;
-    state.players.forEach(function (p) {
-      if (!p.out && p.chips === 0) {
-        p.out = true;
-        state.handMsg += ' 💔 ' + GG.esc(p.name) + ' est éliminé.';
+    if (state.mode === 'tournoi') {
+      state.players.forEach(function (p) {
+        if (!p.out && p.chips === 0) {
+          p.out = true;
+          state.handMsg += ' 💔 ' + GG.esc(p.name) + ' est éliminé.';
+        }
+      });
+      var alive = state.players.filter(function (p) { return !p.out; });
+      if (alive.length < 2) {
+        state.finished = true;
+        state.winner = state.players.findIndex(function (p) { return !p.out; });
       }
-    });
-    var alive = state.players.filter(function (p) { return !p.out; });
-    if (alive.length < 2) {
-      state.finished = true;
-      state.winner = state.players.findIndex(function (p) { return !p.out; });
+    } else {
+      state.players.forEach(function (p) {
+        if (p.chips === 0) {
+          state.handMsg += ' 💸 ' + GG.esc(p.name) + ' n’a plus de jetons (recave possible).';
+        }
+      });
     }
   }
 
@@ -250,23 +273,27 @@
     id: 'poker',
     nom: 'Poker',
     icone: '🃏',
-    desc: 'Texas Hold’em : 1000 jetons chacun, blinds 10/20, dernier en jeu rafle tout.',
+    desc: 'Texas Hold’em, au choix : cash game (recaves) ou tournoi (blinds montantes).',
     min: 2, max: 4,
     hotseat: false, hidden: true, netOnly: true,
 
     create: function (names) {
-      var state = {
+      return {
         players: names.map(function (n) {
           return { name: n, chips: START_CHIPS, hole: [], bet: 0, cont: 0,
                    folded: false, allin: false, out: false, show: false };
         }),
+        mode: null,       // choisi par l'hôte : 'cash' | 'tournoi'
+        handNum: 0,
         blinds: BLINDS.slice(),
         dealer: -1,
+        community: [],
+        handOver: true,
+        handMsg: '',
+        current: -1,
         finished: false,
         winner: -1
       };
-      newHand(state);
-      return state;
     },
 
     turnOf: function (state) { return state.finished || state.handOver ? -1 : state.current; },
@@ -294,6 +321,25 @@
 
     apply: function (state, player, action) {
       if (state.finished) return { ok: false, error: 'Partie terminée.' };
+      if (action.t === 'mode') {
+        if (state.mode) return { ok: false, error: 'Mode déjà choisi.' };
+        if (player !== 0) return { ok: false, error: 'Seul l’hôte choisit le mode.' };
+        if (action.m !== 'cash' && action.m !== 'tournoi') {
+          return { ok: false, error: 'Mode inconnu.' };
+        }
+        state.mode = action.m;
+        newHand(state);
+        return { ok: true };
+      }
+      if (!state.mode) return { ok: false, error: 'Le mode n’est pas encore choisi.' };
+      if (action.t === 'rebuy') {
+        if (state.mode !== 'cash') return { ok: false, error: 'Recave possible en cash game uniquement.' };
+        var rp = state.players[player];
+        if (rp.chips > 0) return { ok: false, error: 'Vous avez encore des jetons.' };
+        rp.chips = START_CHIPS;
+        state.handMsg = GG.esc(rp.name) + ' recave ' + START_CHIPS + ' 🪙.';
+        return { ok: true };
+      }
       if (action.t === 'next') {
         if (!state.handOver) return { ok: false, error: 'La main n’est pas finie.' };
         newHand(state);
@@ -356,6 +402,28 @@
       var me = ctx.me;
       var my = s.players[me];
 
+      // choix du mode par l'hôte
+      if (!s.mode) {
+        var html0 = '<div class="pk-table"><p class="mini-msg big-msg">🃏 Texas Hold’em</p>';
+        if (me === 0) {
+          html0 += '<p class="mini-msg">Choisissez le mode de jeu :</p>' +
+            '<div class="pk-modes">' +
+            '<button class="btn big" data-a=\'{"t":"mode","m":"cash"}\'>💵 Cash game' +
+            '<small>Blinds fixes 10/20 · recave à volonté</small></button>' +
+            '<button class="btn big primary" data-a=\'{"t":"mode","m":"tournoi"}\'>🏆 Tournoi' +
+            '<small>Blinds montantes · dernier survivant</small></button>' +
+            '</div>';
+        } else {
+          html0 += '<p class="waiting">⏳ L’hôte choisit le mode de jeu…</p>';
+        }
+        html0 += '</div>';
+        el.innerHTML = html0;
+        el.querySelectorAll('[data-a]').forEach(function (b) {
+          b.addEventListener('click', function () { ctx.act(JSON.parse(b.dataset.a)); });
+        });
+        return;
+      }
+
       function cardHtml(c, big) {
         if (c === -1 || c === undefined) return '<span class="pk-card back' + (big ? ' big' : '') + '">🂠</span>';
         var r = RANKS[c >> 2], su = SUITS[c & 3];
@@ -365,6 +433,12 @@
       }
 
       var html = '<div class="pk-table">';
+      html += '<div class="pk-mode">' +
+        (s.mode === 'cash'
+          ? '💵 Cash game — blinds ' + s.blinds[0] + '/' + s.blinds[1]
+          : '🏆 Tournoi — blinds ' + s.blinds[0] + '/' + s.blinds[1] +
+            ' <small>(doublent toutes les 6 mains)</small>') +
+        '</div>';
       // adversaires
       html += '<div class="pk-players">';
       s.players.forEach(function (p, i) {
@@ -399,8 +473,12 @@
         html += '<div class="pk-mine">' +
           my.hole.map(function (c) { return cardHtml(c, true); }).join('') + '</div>';
       }
+      if (my.chips === 0 && s.mode === 'cash' && !my.out) {
+        html += '<button class="btn big" data-a=\'{"t":"rebuy"}\'>💵 Recave (' + START_CHIPS + ')</button>';
+      }
       if (s.handOver && !s.finished) {
-        html += '<button class="btn big primary" data-a=\'{"t":"next"}\'>Main suivante</button>';
+        html += '<button class="btn big primary" data-a=\'{"t":"next"}\'>' +
+          (s.handNum === 0 ? 'Distribuer' : 'Main suivante') + '</button>';
       } else if (me === s.current && !s.handOver) {
         var owe = s.maxBet - my.bet;
         html += '<div class="pk-actions">';
