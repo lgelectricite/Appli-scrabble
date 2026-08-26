@@ -56,7 +56,8 @@
         current: 0,
         finished: false,
         winner: -1,
-        lastMsg: ''
+        lastMsg: '',
+        lastShot: null // {target, idx} : dernier tir, mis en évidence des deux côtés
       };
     },
 
@@ -124,6 +125,7 @@
         if (idx < 0 || idx >= N * N) return { ok: false, error: 'Case invalide.' };
         if (state.shots[target][idx]) return { ok: false, error: 'Déjà tiré ici.' };
         var board = state.boards[target];
+        state.lastShot = { target: target, idx: idx };
         var shipId = board.cells[idx];
         if (shipId !== undefined) {
           state.shots[target][idx] = 'H';
@@ -155,10 +157,11 @@
       var me = ctx.me;
       var opp = 1 - me;
 
-      function grid(ownerIdx, showShips, clickable) {
+      function grid(ownerIdx, showShips, clickable, small) {
         var board = s.boards[ownerIdx];
         var shots = s.shots[ownerIdx];
-        var html = '<div class="bn-grid' + (clickable ? ' aim' : '') + '">';
+        var html = '<div class="bn-grid' + (clickable ? ' aim' : '') +
+          (small ? ' small' : '') + '">';
         for (var i = 0; i < N * N; i++) {
           var cls = 'bn-cell';
           var content = '';
@@ -173,6 +176,10 @@
           if (isShip) cls += ' ship';
           if (shot === 'H') { cls += ' hit'; content = '💥'; }
           else if (shot === 'M') { cls += ' miss'; content = '·'; }
+          // dernier tir joué : mis en évidence sur les deux téléphones
+          if (s.lastShot && s.lastShot.target === ownerIdx && s.lastShot.idx === i) {
+            cls += ' last';
+          }
           html += '<div class="' + cls + '" data-i="' + i + '">' + content + '</div>';
         }
         return html + '</div>';
@@ -194,9 +201,11 @@
             : mine ? 'À vous de tirer !' : 'Au tour de ' + GG.esc(s.players[s.current].name) + '…') +
           '</p>' +
           '<p class="bn-label">🎯 Tirs sur ' + GG.esc(s.players[opp].name) + '</p>' +
-          grid(opp, false, mine) +
-          '<p class="bn-label">🚢 Votre flotte</p>' +
-          grid(me, true, false);
+          grid(opp, false, mine, false) +
+          '<p class="bn-label">🚢 Votre flotte' +
+          (s.lastShot && s.lastShot.target === me ? ' — dernier tir adverse encadré' : '') +
+          '</p>' +
+          grid(me, true, false, true);
       }
       el.innerHTML = html;
       var sh = el.querySelector('[data-a="shuffle"]');

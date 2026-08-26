@@ -446,18 +446,31 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 /* ================= Bataille navale ================= */
 .bn-grid {
   display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px;
-  max-width: 380px; margin: 4px auto 10px;
+  /* borné par la hauteur d'écran : les 2 grilles tiennent sans défiler */
+  max-width: min(92vw, 42vh);
+  margin: 2px auto 4px;
 }
+.bn-grid.small { max-width: min(66vw, 30vh); }
 .bn-cell {
   aspect-ratio: 1; background: #1d5f9c66; border-radius: 3px;
   display: flex; align-items: center; justify-content: center;
-  font-size: clamp(9px, 3vw, 15px); color: #cfe6ff;
+  font-size: clamp(8px, 2.6vw, 14px); color: #cfe6ff;
 }
 .bn-grid.aim .bn-cell { cursor: crosshair; }
 .bn-cell.ship { background: #6f7f8d; }
 .bn-cell.hit { background: #a33328; }
 .bn-cell.miss { background: #16466e; }
-.bn-label { text-align: center; font-size: 13px; opacity: .85; margin: 4px 0 2px; }
+.bn-cell.last {
+  box-shadow: inset 0 0 0 2px var(--tile-new);
+  animation: bn-last .9s ease-in-out infinite alternate;
+  z-index: 1;
+}
+@keyframes bn-last {
+  from { box-shadow: inset 0 0 0 2px var(--tile-new); }
+  to { box-shadow: inset 0 0 0 4px #fff0b8; }
+}
+.bn-label { text-align: center; font-size: 12px; opacity: .85; margin: 3px 0 1px; }
+#screen-mini .bn-label + .bn-grid + .bn-label { margin-top: 6px; }
 
 /* ================= Poker ================= */
 .pk-table { background: #0a4d3c; border-radius: 16px; padding: 10px 8px; }
