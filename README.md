@@ -23,7 +23,8 @@ nécessaire pendant les parties.
 | 🔎 **Mots mêlés** | 1–4 | Mots du dictionnaire cachés, 3 niveaux (taille, diagonales, mots à l'envers). En réseau, grille **partagée** : chaque mot trouvé prend la couleur de son découvreur. |
 | 🟩 **Mot Mystère** | 1–4 | Type Motus/Wordle : 6 essais, mots du dictionnaire uniquement, 3 niveaux (5/6/7 lettres). En duel : même mot secret, les lettres adverses restent cachées (couleurs seulement). |
 | ✏️ **Mots croisés** | 1–4 | Base de **près de 800 définitions écrites à la main** en 3 niveaux de vocabulaire ; le générateur croise les mots au hasard : des milliers de grilles possibles. Points à la longueur du mot, erreurs comptées, chrono et records. Les solutions **ne circulent jamais** sur le réseau. |
-| 🕵️ **Le Manoir** | 1–12 | **Enquête collaborative** façon Cluedo/escape game : **3 décors d'affaires tirés au sort** (le manoir, l'opéra, le train de nuit), coupable, arme et lieu au hasard, six pistes verrouillées par des énigmes, carnet de déduction automatique, deux accusations. La solution et les réponses **ne quittent jamais le téléphone-serveur**. |
+| 🕵️ **Le Manoir** | 1–12 | **Enquête collaborative** façon Cluedo/escape game : **3 décors d'affaires tirés au sort** (le manoir, l'opéra, le train de nuit), et **chaque joueur incarne un rôle** (Détective, Voyante, Cryptographe…) avec ses **informations confidentielles** à partager de vive voix et parfois un pouvoir spécial. Six pistes verrouillées par des énigmes, carnet de déduction automatique, deux accusations. La solution et les infos privées **ne quittent jamais le téléphone-serveur**. |
+| 🥸 **L'Imposteur** | 3–12 | Jeu de bluff : tout le monde reçoit le **même mot secret… sauf l'imposteur**, qui reçoit un mot voisin — et **personne ne connaît son propre camp** ! Un indice par joueur, puis un vote pour éliminer un suspect. Plus de 180 paires de mots, 1 à 3 imposteurs selon le nombre de joueurs, scores en série. Les mots **ne circulent jamais** entre téléphones. |
 
 ## Impossible de tricher
 
@@ -100,6 +101,6 @@ Actions, dépôt public requis). Essai local : `python3 -m http.server 8080`.
   connexions entre appareils (le partage de connexion d'un téléphone
   fonctionne très bien ; certains Wi-Fi publics isolent les clients).
 - 4 joueurs maximum pour la plupart des jeux (2 pour Puissance 4, Morpion et
-  Bataille navale) — et jusqu'à **12 joueurs** pour Le Manoir.
+  Bataille navale) — et jusqu'à **12 joueurs** pour Le Manoir et L'Imposteur.
 - Petit Bac et Poker se jouent uniquement en réseau (informations secrètes
   simultanées).

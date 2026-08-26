@@ -103,6 +103,42 @@
     'a joué du piano jusqu’à minuit, tout le manoir l’a entendu'
   ];
 
+  /* Rôles d'enquêteurs : chaque joueur reçoit un personnage, des informations
+     confidentielles à partager de vive voix, et parfois un pouvoir spécial. */
+  var CLUE_POWER = 'Vous démarrez avec une information confidentielle : partagez-la au bon moment !';
+  var ROLES = [
+    { id: 'detective', nom: 'Le Détective', icone: '🔍',
+      flavor: 'Un fin limier à qui rien n’échappe.',
+      pouvoir: 'Votre premier indice d’énigme est gratuit (il ne compte pas dans le total).' },
+    { id: 'cryptographe', nom: 'La Cryptographe', icone: '🔐',
+      flavor: 'Les codes n’ont aucun secret pour vous.',
+      pouvoir: 'Sur chaque énigme, vous voyez la première lettre de la réponse.' },
+    { id: 'inspecteur', nom: 'L’Inspecteur', icone: '🎖️',
+      flavor: 'Trente ans de terrain, un instinct sûr.',
+      pouvoir: 'Après une accusation ratée, vous seul apprenez combien d’éléments étaient exacts.' },
+    { id: 'serrurier', nom: 'Le Serrurier', icone: '🗝️',
+      flavor: 'Aucune serrure, aucun secret ne vous résiste.',
+      pouvoir: 'Vous voyez l’indice de chaque énigme sans avoir à le demander.' },
+    { id: 'archiviste', nom: 'L’Archiviste', icone: '📚',
+      flavor: 'Vous connaissez les lieux mieux que leurs murs.',
+      pouvoir: 'Vous savez ce que chaque piste peut révéler : suspect, arme ou lieu.' },
+    { id: 'voyante', nom: 'La Voyante', icone: '🔮',
+      flavor: 'Les esprits vous soufflent des vérités.',
+      pouvoir: 'Vous démarrez avec DEUX informations confidentielles.' },
+    { id: 'medecin', nom: 'La Médecin légiste', icone: '⚕️',
+      flavor: 'Le corps de la victime vous a déjà parlé.', pouvoir: CLUE_POWER },
+    { id: 'journaliste', nom: 'Le Journaliste', icone: '📰',
+      flavor: 'Vos sources parlent, toujours.', pouvoir: CLUE_POWER },
+    { id: 'garde', nom: 'La Garde du corps', icone: '🛡️',
+      flavor: 'Vous étiez là, dans l’ombre, ce soir-là.', pouvoir: CLUE_POWER },
+    { id: 'majordome', nom: 'Le Majordome', icone: '🎩',
+      flavor: 'Rien ne se passe ici sans que vous le sachiez.', pouvoir: CLUE_POWER },
+    { id: 'romanciere', nom: 'La Romancière', icone: '✒️',
+      flavor: 'Vous avez l’œil pour les intrigues.', pouvoir: CLUE_POWER },
+    { id: 'photographe', nom: 'Le Photographe', icone: '📷',
+      flavor: 'Votre objectif a tout vu, ou presque.', pouvoir: CLUE_POWER }
+  ];
+
   var ENIGMES = [
     { q: 'Je commence la nuit et je termine le matin. On me trouve deux fois dans l’année. Qui suis-je ?', a: ['N'], hint: 'Ce n’est pas une chose… c’est une lettre.' },
     { q: 'Pleine de trous, je retiens pourtant l’eau. Qui suis-je ?', a: ['EPONGE', 'LEPONGE', 'UNEEPONGE'], hint: 'On me trouve près de l’évier.' },
@@ -185,6 +221,32 @@
         deductions: deds.slice(i * 2, i * 2 + 2)
       };
     });
+    // rôles d'enquêteurs + informations confidentielles (une par joueur,
+    // 8 différentes au maximum en circulation pour préserver l'énigme)
+    var roles = GG.shuffle(ROLES.slice());
+    var innocents = [];
+    SUSPECTS.forEach(function (x) {
+      if (x.id !== state.solution.suspect) innocents.push(
+        { kind: 'suspect', id: x.id, text: '👤 ' + x.nom + ' est hors de cause : vous le savez de source sûre.' });
+    });
+    ARMES.forEach(function (a) {
+      if (a.id !== state.solution.arme) innocents.push(
+        { kind: 'arme', id: a.id, text: a.icone + ' ' + a.nom + ' n’est pas l’arme du crime : vous l’avez constaté.' });
+    });
+    LIEUX.forEach(function (l) {
+      if (l.id !== state.solution.lieu) innocents.push(
+        { kind: 'lieu', id: l.id, text: l.icone + ' Le crime n’a pas eu lieu ' + l.dans + ' : vous y étiez.' });
+    });
+    GG.shuffle(innocents);
+    var pool = innocents.slice(0, 8);
+    state.players.forEach(function (p, i) {
+      p.role = roles[i % roles.length];
+      p.clues = [pool[i % pool.length]];
+      if (p.role.id === 'voyante') {
+        p.clues.push(pool[(i + 1) % pool.length]);
+      }
+      p.freeHintUsed = false;
+    });
     state.eliminated = [];      // [{kind, id, text}] révélées
     state.phase = 'brief';
     state.tries = 2;
@@ -209,7 +271,7 @@
     id: 'manoir',
     nom: 'Le Manoir',
     icone: '🕵️',
-    desc: 'Enquête collaborative : 3 décors d’affaires tirés au sort, des énigmes, un carnet, un coupable. Jusqu’à 12 joueurs !',
+    desc: 'Enquête collaborative : 3 décors d’affaires, et chaque joueur incarne un rôle avec ses infos secrètes et son pouvoir. Jusqu’à 12 joueurs !',
     min: 1, max: 12,
     hotseat: true, hidden: false, netOnly: false,
     noBadges: true,
@@ -225,14 +287,31 @@
     scoreOf: function () { return ''; },
     summary: function () { return ''; },
 
-    /* la solution et les réponses des énigmes ne quittent jamais le serveur */
-    redact: function (state) {
+    /* la solution, les réponses des énigmes et les infos privées des autres
+       joueurs ne quittent jamais le serveur */
+    redact: function (state, viewer) {
       var copy = GG.clone(state);
+      var role = (viewer >= 0 && state.players[viewer] && state.players[viewer].role)
+        ? state.players[viewer].role.id : '';
       if (copy.phase !== 'end') delete copy.solution;
       copy.pistes.forEach(function (p) {
+        if (role === 'cryptographe' && p.answers && p.answers[0]) {
+          p.first = p.answers[0][0]; // pouvoir : première lettre de la réponse
+        }
         delete p.answers;
-        if (!p.solved) delete p.deductions;
+        if (!p.solved) {
+          if (role === 'archiviste' && p.deductions) {
+            p.kinds = p.deductions.map(function (d) { return d.kind; }); // pouvoir
+          }
+          delete p.deductions;
+        }
       });
+      copy.players.forEach(function (p, i) {
+        if (i !== viewer) delete p.clues; // infos confidentielles personnelles
+      });
+      if (copy.accuseFailed && role !== 'inspecteur') {
+        delete copy.accuseFailed.right; // pouvoir de l'inspecteur
+      }
       return copy;
     },
 
@@ -274,7 +353,13 @@
         if (!ph || ph.solved) return { ok: false, error: 'Piste indisponible.' };
         if (!ph.hintShown) {
           ph.hintShown = true;
-          state.hintsUsed++;
+          // pouvoir du Détective : son premier indice ne compte pas
+          var pl = state.players[player];
+          if (pl && pl.role && pl.role.id === 'detective' && !pl.freeHintUsed) {
+            pl.freeHintUsed = true;
+          } else {
+            state.hintsUsed++;
+          }
         }
         return { ok: true };
       }
@@ -289,7 +374,10 @@
         } else {
           state.tries--;
           state.accuseFailed = {
-            suspect: action.suspect, arme: action.arme, lieu: action.lieu
+            suspect: action.suspect, arme: action.arme, lieu: action.lieu,
+            // pouvoir de l'inspecteur : nombre d'éléments exacts (masqué aux autres)
+            right: (action.suspect === s.suspect ? 1 : 0) +
+              (action.arme === s.arme ? 1 : 0) + (action.lieu === s.lieu ? 1 : 0)
           };
           if (state.tries <= 0) {
             state.won = false;
@@ -322,6 +410,31 @@
         return '⭐'.repeat(n) + '☆'.repeat(3 - n);
       }
 
+      /* rôle du joueur : masqué sur un téléphone partagé à plusieurs */
+      var myRole = null;
+      if ((ctx.mode !== 'local' || s.players.length === 1) &&
+          s.players[ctx.me] && s.players[ctx.me].role) {
+        myRole = s.players[ctx.me].role;
+      }
+
+      function roleCard() {
+        if (!myRole) return '';
+        var p = s.players[ctx.me];
+        var out = '<div class="mn-role">' +
+          '<div class="mn-role-head"><span class="mn-role-ic">' + myRole.icone + '</span>' +
+          '<div><div class="mn-role-nom">' + GG.esc(myRole.nom) + '</div>' +
+          '<div class="mn-dim">' + GG.esc(myRole.flavor) + '</div></div></div>' +
+          '<p class="mn-role-pow">✨ ' + GG.esc(myRole.pouvoir) + '</p>';
+        if (p.clues && p.clues.length) {
+          out += p.clues.map(function (c) {
+            return '<div class="mn-clue">🤫 ' + c.text + '</div>';
+          }).join('') +
+          '<p class="mn-dim">Ces informations ne sont visibles que sur VOTRE téléphone : ' +
+          'partagez-les à voix haute au bon moment !</p>';
+        }
+        return out + '</div>';
+      }
+
       var html = '<div class="mn">';
 
       /* ---------- lettre d'introduction ---------- */
@@ -340,6 +453,11 @@
             return '<div class="mn-cast-one">' + portrait(x) +
               '<span>' + GG.esc(x.nom) + '</span></div>';
           }).join('') + '</div>';
+        html += roleCard();
+        if (myRole && s.players.length > 1) {
+          html += '<p class="mn-dim mn-center">🎭 Chaque enquêteur a son propre rôle et ' +
+            'ses propres informations : comparez-les !</p>';
+        }
         if (ctx.me === 0) {
           html += '<button class="btn big mn-gold" data-a="start">🔎 Commencer l’enquête</button>';
         } else {
@@ -427,6 +545,20 @@
         html += '<div class="mn-alarm">🚨 Accusation erronée' +
           (fs ? ' contre ' + GG.esc(fs.nom) : '') +
           ' ! Il ne vous reste qu’<strong>une seule tentative</strong>.</div>';
+        if (myRole && myRole.id === 'inspecteur' && s.accuseFailed.right !== undefined) {
+          html += '<div class="mn-clue">🎖️ Votre analyse (pour vous seul) : <strong>' +
+            s.accuseFailed.right + '</strong> élément' + (s.accuseFailed.right > 1 ? 's' : '') +
+            ' de cette accusation ' + (s.accuseFailed.right > 1 ? 'étaient exacts' : 'était exact') +
+            '.</div>';
+        }
+      }
+
+      if (view.mode === 'role' && myRole) {
+        html += '<button class="mn-back" data-a="back">← Retour aux pistes</button>' +
+          roleCard() + '</div>';
+        el.innerHTML = html;
+        bind();
+        return;
       }
 
       if (view.mode === 'enigme' && s.pistes[view.piste]) {
@@ -444,6 +576,12 @@
             '<h3 class="mn-h3">' + p.icone + ' ' + GG.esc(p.nom) + '</h3>' +
             '<p class="mn-dim">' + GG.esc(p.desc) + '</p>' +
             '<div class="mn-parchment">' + GG.esc(p.q) + '</div>' +
+            (myRole && myRole.id === 'cryptographe' && p.first
+              ? '<p class="mn-hint">🔐 Votre don (pour vous seul) : la réponse commence par « ' +
+                GG.esc(p.first) + ' »</p>' : '') +
+            (myRole && myRole.id === 'serrurier' && !p.hintShown && p.hint
+              ? '<p class="mn-hint">🗝️ Votre passe-partout (pour vous seul) : ' +
+                GG.esc(p.hint) + '</p>' : '') +
             (p.hintShown ? '<p class="mn-hint">💡 ' + GG.esc(p.hint) + '</p>' : '') +
             (p.lastWrong ? '<p class="mn-wrong">« ' + GG.esc(p.lastWrong) + ' » n’a rien ouvert…</p>' : '') +
             '<div class="mn-answer-row">' +
@@ -471,12 +609,22 @@
           });
         html += '<button class="btn big mn-danger" data-a="accuse" disabled>⚖️ Porter l’accusation</button>';
       } else {
+        if (myRole) {
+          html += '<button class="mn-role-btn" data-a="gorole">🎭 ' + myRole.icone + ' ' +
+            GG.esc(myRole.nom) + ' — voir mon rôle et mes infos</button>';
+        }
         // grille des pistes
+        var KIND_IC = { suspect: '👤', arme: '🗡️', lieu: '📍' };
         html += '<div class="mn-pistes">' + s.pistes.map(function (p, i) {
+          var etat = p.solved ? '✓ élucidé' : '🔒 énigme';
+          // pouvoir de l'archiviste : ce que la piste peut révéler
+          if (!p.solved && myRole && myRole.id === 'archiviste' && p.kinds) {
+            etat += ' ' + p.kinds.map(function (k) { return KIND_IC[k] || ''; }).join('');
+          }
           return '<button class="mn-piste' + (p.solved ? ' solved' : '') + '" data-piste="' + i + '">' +
             '<span class="mn-piste-ic">' + p.icone + '</span>' +
             '<span class="mn-piste-nom">' + GG.esc(p.nom) + '</span>' +
-            '<span class="mn-piste-etat">' + (p.solved ? '✓ élucidé' : '🔒 énigme') + '</span>' +
+            '<span class="mn-piste-etat">' + etat + '</span>' +
             '</button>';
         }).join('') + '</div>';
 
@@ -531,6 +679,10 @@
         if (b) b.addEventListener('click', function () {
           view.mode = 'accuse'; mod.render(el, ctx);
         });
+        b = el.querySelector('[data-a="gorole"]');
+        if (b) b.addEventListener('click', function () {
+          view.mode = 'role'; mod.render(el, ctx);
+        });
         b = el.querySelector('[data-a="hint"]');
         if (b) b.addEventListener('click', function () {
           ctx.act({ t: 'hint', piste: view.piste });
@@ -573,7 +725,8 @@
       }
     },
 
-    _ENIGMES: ENIGMES, _SUSPECTS: SUSPECTS, _ARMES: ARMES, _SCENARIOS: SCENARIOS, _norm: norm
+    _ENIGMES: ENIGMES, _SUSPECTS: SUSPECTS, _ARMES: ARMES, _SCENARIOS: SCENARIOS,
+    _ROLES: ROLES, _norm: norm
   };
 
   GG.register(mod);

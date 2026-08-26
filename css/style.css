@@ -655,6 +655,21 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
 }
 @keyframes mn-clue-in { from { opacity: 0; transform: translateY(10px) rotate(-.5deg); } }
 
+/* rôle personnel de l'enquêteur */
+.mn-role {
+  background: #ffffff0d; border: 1px solid #c9a84c55; border-radius: 12px;
+  padding: 14px; margin: 12px 0; display: flex; flex-direction: column; gap: 8px;
+}
+.mn-role-head { display: flex; align-items: center; gap: 12px; }
+.mn-role-ic { font-size: 38px; flex: none; }
+.mn-role-nom { font-size: 19px; font-weight: 800; color: #e8c66a; letter-spacing: .5px; }
+.mn-role-pow { color: #ffd98a; font-size: 14px; margin: 0; }
+.mn-role-btn {
+  width: 100%; background: #ffffff12; border: 1px solid #c9a84c55; color: #e8c66a;
+  border-radius: 10px; padding: 10px 12px; font-size: 14px; font-weight: 600;
+  cursor: pointer; margin-bottom: 10px; font-family: inherit; text-align: left;
+}
+
 /* accusation */
 .mn-pick { display: flex; flex-direction: column; gap: 5px; }
 .mn-opt {
@@ -837,3 +852,39 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
   text-transform: uppercase;
 }
 .cr-wrong { color: #ff9d8f; font-size: 13px; margin: 4px 0; animation: mn-shake .35s; }
+
+/* ===== L'Imposteur ===== */
+.imp-head { text-align: center; font-size: 13px; opacity: .85; margin: 2px 0 10px; }
+.imp-dead {
+  background: #00000042; border-radius: 10px; padding: 8px 12px;
+  text-align: center; font-size: 14px;
+}
+.imp-card {
+  background: #ffffff12; border-radius: 14px; padding: 16px;
+  margin: 10px 0; text-align: center;
+}
+.imp-word {
+  font-size: clamp(26px, 9vw, 40px); font-weight: 900; letter-spacing: 2px;
+  background: var(--felt-dark); border: 2px dashed var(--tile-new);
+  border-radius: 12px; padding: 18px 10px; margin: 10px 0;
+}
+.imp-round-label { font-size: 12px; opacity: .7; margin: 8px 0 4px; }
+.imp-clues { display: flex; flex-wrap: wrap; gap: 6px; }
+.imp-clue {
+  background: #ffffff1c; border-radius: 8px; padding: 4px 10px; font-size: 13px;
+}
+.imp-clue strong { opacity: .75; font-weight: 600; margin-right: 4px; }
+.imp-votes { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.imp-target {
+  background: #ffffff14; border: 1px solid #ffffff2a; color: var(--paper);
+  border-radius: 12px; padding: 14px; font-size: 17px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.imp-target:active { background: var(--accent); }
+.imp-reveal { font-size: 19px; font-weight: 800; margin: 8px 0; }
+.imp-tally { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; font-size: 13px; opacity: .85; }
+.imp-roles { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
+.imp-role-tag {
+  background: #ffffff14; border-radius: 8px; padding: 4px 10px; font-size: 13px;
+}
+.imp-role-tag.imp { background: #7c2d3e; }
