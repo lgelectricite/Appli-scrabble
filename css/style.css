@@ -1,21 +1,26 @@
-/* ===== Scrabble Duo — styles ===== */
+/* ===== GGgames — charte graphique ===== */
 
 :root {
-  --felt: #0b5e4a;
-  --felt-dark: #074234;
-  --tile: #f0e0b9;
-  --tile-edge: #c4a874;
-  --tile-text: #3a3020;
-  --tile-new: #ffd57a;
-  --cell: #cfe3d8;
-  --cell-line: #a9c7b8;
-  --md: #f4b8ae;
-  --mt: #e2574b;
-  --ld: #aacde8;
-  --lt: #3f8fd2;
-  --ink: #17332b;
-  --paper: #f6f3ea;
-  --accent: #d8792f;
+  /* fond et surfaces */
+  --felt: #0f1218;           /* fond principal (graphite) */
+  --felt-dark: #181e28;      /* surfaces surélevées / champs sombres */
+  /* tuiles de lettres (Words, claviers) */
+  --tile: #f2ecdf;
+  --tile-edge: #d9d0bb;
+  --tile-text: #23201a;
+  --tile-new: #d8ff4f;       /* signal « volt » : tours, nouveautés */
+  /* plateau Words */
+  --cell: #232a38;
+  --cell-line: #0f1218;
+  --md: #7c3450;
+  --mt: #c44257;
+  --ld: #2c4f78;
+  --lt: #2f83c6;
+  /* texte */
+  --ink: #14171d;            /* texte sur fonds clairs */
+  --paper: #eef1f6;          /* texte sur fond sombre */
+  --accent: #d8ff4f;         /* accent principal (volt) */
+  --accent-ink: #131807;     /* texte posé sur l'accent */
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -23,13 +28,19 @@
 html, body {
   margin: 0;
   padding: 0;
-  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display",
+    "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
   background: var(--felt);
   color: var(--paper);
   overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
 }
 html { height: 100%; }
-body { min-height: 100%; }
+body {
+  min-height: 100%;
+  background-image: radial-gradient(900px 480px at 50% -160px, #1d2534 0%, transparent 70%);
+  background-repeat: no-repeat;
+}
 
 body {
   padding: env(safe-area-inset-top) env(safe-area-inset-right)
@@ -45,37 +56,41 @@ h1, h2 { margin: 0.4em 0; }
 
 /* ===== accueil ===== */
 #screen-home { text-align: center; }
-.home-inner { padding-top: 8vh; }
-.logo-tile {
-  display: inline-block;
-  position: relative;
-  width: 84px; height: 84px;
-  background: var(--tile);
-  color: var(--tile-text);
-  border: 2px solid var(--tile-edge);
-  border-radius: 12px;
-  font-size: 56px; font-weight: 800;
-  line-height: 84px;
-  box-shadow: 0 4px 0 rgba(0,0,0,.25);
+.home-inner { padding-top: 6vh; }
+#screen-home h1 {
+  font-size: 34px; font-weight: 800; letter-spacing: -0.5px; margin: 0;
 }
-.logo-val { position: absolute; right: 7px; bottom: 2px; font-size: 16px; line-height: 1; }
-.subtitle { opacity: .9; }
+/* monogramme GG */
+.logo-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 58px; height: 58px; flex: none;
+  background: linear-gradient(145deg, #1b222e, #12161e);
+  border: 1px solid #ffffff14;
+  border-radius: 17px;
+  color: var(--accent);
+  font-size: 24px; font-weight: 900; letter-spacing: -2.5px;
+  box-shadow: 0 8px 24px #00000055, inset 0 1px 0 #ffffff10;
+}
+.subtitle { opacity: .65; font-size: 14px; margin-top: 6px; }
 .home-buttons { display: flex; flex-direction: column; gap: 12px; margin: 22px 0; }
-.hint { font-size: 13px; opacity: .75; line-height: 1.45; }
+.hint { font-size: 13px; opacity: .6; line-height: 1.45; }
 
 /* ===== boutons / champs ===== */
 .btn {
-  border: none; border-radius: 10px;
-  background: #ffffff22; color: var(--paper);
+  border: 1px solid #ffffff14; border-radius: 13px;
+  background: #ffffff0f; color: var(--paper);
   font-size: 16px; padding: 10px 14px;
-  cursor: pointer;
+  cursor: pointer; font-family: inherit;
   touch-action: manipulation;
 }
 .btn:active { transform: translateY(1px); }
 .btn.big { padding: 14px 18px; font-size: 17px; width: 100%; }
 .btn.small { padding: 7px 12px; font-size: 14px; width: auto; }
-.btn.primary { background: var(--accent); color: #fff; font-weight: 600; }
-.btn.link { background: none; text-decoration: underline; opacity: .85; margin-top: 10px; }
+.btn.primary {
+  background: var(--accent); color: var(--accent-ink);
+  border-color: transparent; font-weight: 800;
+}
+.btn.link { background: none; border: none; text-decoration: underline; opacity: .7; margin-top: 10px; }
 .btn:disabled { opacity: .4; pointer-events: none; }
 
 label { display: block; margin: 14px 0; font-size: 15px; }
@@ -103,7 +118,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 .code-details { margin: 10px 0; font-size: 14px; }
 .code-details summary { cursor: pointer; opacity: .8; margin-bottom: 8px; }
 .waiting { text-align: center; font-size: 15px; opacity: .9; }
-.error { background: #7e2a20; padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+.error { background: #8c2f36; padding: 10px 12px; border-radius: 10px; font-size: 14px; }
 
 /* ===== en-tête du jeu ===== */
 #screen-game { padding: 6px 6px 12px; max-width: 640px; }
@@ -111,12 +126,12 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   display: flex; gap: 5px; padding: 4px 2px 2px;
 }
 .player-badge {
-  background: #ffffff1c; border-radius: 10px;
+  background: #ffffff0d; border-radius: 12px;
   padding: 4px 6px; flex: 1; min-width: 0;
   display: flex; flex-direction: column; align-items: center;
-  border: 2px solid transparent;
+  border: 2px solid #ffffff10;
 }
-.player-badge.turn { border-color: var(--tile-new); background: #ffffff2e; }
+.player-badge.turn { border-color: var(--tile-new); background: #d8ff4f14; }
 .player-badge.me .p-name::after { content: " ✦"; opacity: .9; }
 .player-badge.offline { opacity: .45; }
 .p-name {
@@ -136,7 +151,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 #turn-banner { flex: 1; text-align: center; font-size: 14px; opacity: .95; min-width: 0; }
 #net-banner {
   text-align: center; font-size: 14px; padding: 6px;
-  background: #7e2a20; border-radius: 8px; margin-bottom: 6px;
+  background: #8c2f36; border-radius: 8px; margin-bottom: 6px;
 }
 
 /* ===== choix du nombre de joueurs / niveau IA ===== */
@@ -144,10 +159,10 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 #ai-level .count-btn { font-size: 15px; }
 .count-btn {
   flex: 1; padding: 12px 0; font-size: 18px; font-weight: 700;
-  border: 2px solid transparent; border-radius: 10px;
-  background: #ffffff22; color: var(--paper); cursor: pointer;
+  border: 2px solid #ffffff10; border-radius: 12px;
+  background: #ffffff0d; color: var(--paper); cursor: pointer; font-family: inherit;
 }
-.count-btn.active { border-color: var(--tile-new); background: #ffffff33; }
+.count-btn.active { border-color: var(--tile-new); background: #d8ff4f14; }
 
 /* ===== salon (mode plusieurs téléphones) ===== */
 #lobby-list, #join-lobby-list { margin: 10px 0 14px; }
@@ -166,25 +181,26 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   grid-template-columns: repeat(15, 1fr);
   gap: 1px;
   background: var(--cell-line);
-  border: 3px solid var(--felt-dark);
-  border-radius: 6px;
+  border: 3px solid #262e3d;
+  border-radius: 10px;
   width: 100%;
   aspect-ratio: 1;
   user-select: none;
+  overflow: hidden;
 }
 .cell {
   position: relative;
   background: var(--cell);
   display: flex; align-items: center; justify-content: center;
   font-size: clamp(6px, 1.9vw, 11px);
-  color: #58756a;
+  color: #67748a;
   overflow: hidden;
 }
-.cell.MD { background: var(--md); color: #8c3f35; }
+.cell.MD { background: var(--md); color: #ffc3d2; }
 .cell.MT { background: var(--mt); color: #fff; }
-.cell.LD { background: var(--ld); color: #2a5b83; }
+.cell.LD { background: var(--ld); color: #b4d4f4; }
 .cell.LT { background: var(--lt); color: #fff; }
-.cell.center::before { content: "★"; font-size: clamp(10px, 3vw, 18px); color: #8c3f35; }
+.cell.center::before { content: "★"; font-size: clamp(10px, 3vw, 18px); color: var(--accent); }
 .cell .tag { pointer-events: none; font-weight: 700; letter-spacing: -0.5px; }
 
 .cell .tile {
@@ -197,18 +213,18 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   font-weight: 800;
   font-size: clamp(11px, 3.4vw, 20px);
 }
-.cell .tile.new { background: var(--tile-new); box-shadow: 0 0 0 2px var(--accent) inset; }
-/* dernier mot joué par un adversaire : anneau doré pulsant */
+.cell .tile.new { background: var(--tile-new); box-shadow: 0 0 0 2px #96b526 inset; }
+/* dernier mot joué par un adversaire : anneau volt pulsant */
 .cell.last-word .tile {
   animation: last-word-pulse .9s ease-in-out infinite alternate;
 }
 @keyframes last-word-pulse {
-  from { box-shadow: 0 0 0 2px #e8a51f inset; }
-  to { box-shadow: 0 0 0 4px #ffd57a inset; }
+  from { box-shadow: 0 0 0 2px #a7cc1f inset; }
+  to { box-shadow: 0 0 0 4px var(--accent) inset; }
 }
 .last-move-info {
   display: block; font-size: 12px; font-weight: 400;
-  color: #ffd57a; margin-top: 2px;
+  color: var(--accent); margin-top: 2px;
 }
 .cell .tile.blank { color: #1c6ea4; }
 .cell .tile .val {
@@ -222,8 +238,8 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   margin-top: 6px; padding: 5px 8px;
   background: #ffffff22; border-radius: 8px;
 }
-#move-info.good { background: #1c7a45; }
-#move-info.bad { background: #7e2a20; }
+#move-info.good { background: #1f8a4c; }
+#move-info.bad { background: #8c2f36; }
 
 /* ===== chevalet ===== */
 #rack {
@@ -266,17 +282,18 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 /* ===== superpositions ===== */
 .overlay {
   position: fixed; inset: 0;
-  background: rgba(4, 26, 20, .88);
+  background: rgba(6, 8, 13, .9);
   display: flex; align-items: center; justify-content: center;
   z-index: 50; padding: 18px;
 }
 .overlay-card {
-  background: var(--felt);
-  border: 2px solid #ffffff2b;
-  border-radius: 16px;
+  background: #161c26;
+  border: 1px solid #ffffff17;
+  border-radius: 20px;
   padding: 22px;
   width: min(92vw, 420px);
   text-align: center;
+  box-shadow: 0 24px 60px #00000080;
 }
 .overlay-card.scroll { max-height: 84vh; overflow-y: auto; }
 .overlay-card .btn.big { margin-top: 10px; }
@@ -310,23 +327,23 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 }
 
 /* ================= GGgames : catalogue ================= */
-.logo-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
-.logo-tile.small { width: 56px; height: 56px; font-size: 36px; line-height: 56px; border-radius: 9px; }
-.logo-tile.small .logo-val { font-size: 12px; right: 5px; }
+.logo-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
 #catalog {
   display: grid; grid-template-columns: repeat(2, 1fr);
   gap: 10px; margin: 18px 0 14px; text-align: center;
 }
 .game-tile {
-  background: #ffffff1e; border: none; border-radius: 14px;
-  padding: 14px 6px 10px; color: var(--paper); cursor: pointer;
+  background: linear-gradient(160deg, #1a2130, #141924);
+  border: 1px solid #ffffff10; border-radius: 18px;
+  padding: 15px 6px 11px; color: var(--paper); cursor: pointer;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   touch-action: manipulation;
+  box-shadow: 0 6px 18px #00000038;
 }
-.game-tile:active { transform: scale(.97); }
+.game-tile:active { transform: scale(.97); border-color: #d8ff4f55; }
 .gt-icon { font-size: 34px; }
-.gt-name { font-size: 15px; font-weight: 700; }
-.gt-players { font-size: 11px; opacity: .7; }
+.gt-name { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
+.gt-players { font-size: 11px; opacity: .55; }
 #btn-home-join { margin-top: 4px; }
 
 /* ================= écran mini-jeux ================= */
@@ -336,7 +353,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 #mini-turn { flex: 1; text-align: center; font-size: 14px; min-width: 0; }
 #mini-net-banner {
   text-align: center; font-size: 14px; padding: 6px;
-  background: #7e2a20; border-radius: 8px; margin-bottom: 6px;
+  background: #8c2f36; border-radius: 8px; margin-bottom: 6px;
 }
 #mini-area { padding-top: 8px; }
 .mini-msg { text-align: center; font-size: 15px; margin: 10px 4px; line-height: 1.45; }
@@ -372,7 +389,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   display: flex; align-items: center; justify-content: center;
   font-size: 52px; font-weight: 800; cursor: pointer;
 }
-.ttt-cell.win { background: #1c7a45; }
+.ttt-cell.win { background: #1f8a4c; }
 
 /* ================= Cochon ================= */
 .pig-die { text-align: center; font-size: 110px; line-height: 1.1; }
@@ -384,7 +401,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 }
 .mem-card {
   aspect-ratio: 1; border-radius: 10px; cursor: pointer;
-  background: repeating-linear-gradient(45deg, #14735c, #14735c 8px, #0e6350 8px, #0e6350 16px);
+  background: repeating-linear-gradient(45deg, #1c2331, #1c2331 8px, #161c27 8px, #161c27 16px);
   display: flex; align-items: center; justify-content: center; font-size: 30px;
   border: 2px solid #ffffff28;
 }
@@ -408,7 +425,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 .yams-sheet td.empty { opacity: .4; }
 .yams-sheet tr.total td { font-weight: 800; border-top: 2px solid #ffffff50; }
 .yams-pick {
-  background: var(--accent); color: #fff; border: none; border-radius: 6px;
+  background: var(--accent); color: var(--accent-ink); border: none; border-radius: 6px;
   padding: 3px 10px; font-size: 13px; font-weight: 700; cursor: pointer;
 }
 
@@ -452,7 +469,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 .bac-toggle {
   border: none; border-radius: 8px; font-size: 16px; padding: 4px 10px; cursor: pointer;
 }
-.bac-toggle.yes { background: #1c7a45; }
+.bac-toggle.yes { background: #1f8a4c; }
 .bac-toggle.no { background: #a33328; color: #fff; }
 
 /* ================= Bataille navale ================= */
@@ -485,7 +502,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 #screen-mini .bn-label + .bn-grid + .bn-label { margin-top: 6px; }
 
 /* ================= Poker ================= */
-.pk-table { background: #0a4d3c; border-radius: 16px; padding: 10px 8px; }
+.pk-table { background: linear-gradient(170deg, #1a2130, #131823); border: 1px solid #ffffff10; border-radius: 18px; padding: 10px 8px; }
 .pk-players { display: flex; gap: 6px; }
 .pk-player {
   flex: 1; min-width: 0; background: #ffffff14; border-radius: 10px;
@@ -496,7 +513,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 .pk-player.out { opacity: .25; }
 .pk-pname { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pk-chips { font-size: 12px; font-weight: 700; }
-.pk-bet { background: var(--accent); border-radius: 8px; padding: 0 6px; font-size: 11px; }
+.pk-bet { background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 0 6px; font-size: 11px; }
 .pk-cards { font-size: 13px; min-height: 22px; }
 .pk-tag { font-size: 10px; font-weight: 800; color: var(--tile-new); }
 .pk-board { text-align: center; margin: 12px 0 4px; min-height: 46px; }
@@ -797,7 +814,7 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
   background: #ffffff14; border-radius: 4px; cursor: pointer;
   font-size: clamp(11px, 3.4vw, 18px); font-weight: 700;
 }
-.mel-cell.sel { background: var(--accent); color: #fff; }
+.mel-cell.sel { background: var(--accent); color: var(--accent-ink); }
 .mel-words { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .mel-word {
   background: #ffffff1c; border-radius: 8px; padding: 3px 10px;
@@ -825,7 +842,7 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
   cursor: pointer;
 }
 .mot-key.wide { min-width: 18%; }
-.mot-key.go { background: var(--accent); color: #fff; }
+.mot-key.go { background: var(--accent); color: var(--accent-ink); }
 
 /* ===== Mots croisés ===== */
 .cr-grid {
@@ -840,7 +857,7 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
   font-size: clamp(11px, 3.2vw, 17px); font-weight: 800;
 }
 .cr-cell.off { background: transparent; cursor: default; }
-.cr-cell.sel { outline: 2px solid var(--accent); background: #fff8dd; }
+.cr-cell.sel { outline: 2px solid var(--accent); background: #f6ffd6; }
 .cr-num {
   position: absolute; top: 1px; left: 2px;
   font-size: clamp(7px, 1.8vw, 9px); font-weight: 700; opacity: .65;
@@ -892,7 +909,7 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
   border-radius: 12px; padding: 14px; font-size: 17px; font-weight: 700;
   cursor: pointer; font-family: inherit;
 }
-.imp-target:active { background: var(--accent); }
+.imp-target:active { background: var(--accent); color: var(--accent-ink); }
 .imp-reveal { font-size: 19px; font-weight: 800; margin: 8px 0; }
 .imp-tally { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; font-size: 13px; opacity: .85; }
 .imp-roles { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
