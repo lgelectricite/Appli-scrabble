@@ -1512,9 +1512,22 @@
     handleInviteHash();
     window.addEventListener('hashchange', handleInviteHash);
 
-    // Service worker (fonctionnement hors ligne)
+    // Service worker (fonctionnement hors ligne + mise à jour automatique)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(function () {});
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        if (reg && reg.update) reg.update();
+      }).catch(function () {});
+      // Quand une NOUVELLE version prend la main (pas la toute première
+      // installation), on recharge la page pour l'afficher tout de suite —
+      // sauf en pleine partie, pour ne rien couper.
+      var hadController = !!navigator.serviceWorker.controller;
+      var reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (!hadController) { hadController = true; return; }
+        if (reloaded) return;
+        reloaded = true;
+        if (!gameStarted()) location.reload();
+      });
     }
   }
 
