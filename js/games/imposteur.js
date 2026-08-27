@@ -2,7 +2,7 @@
  * GGgames — L'Imposteur (3 à 12 joueurs).
  * Tout le monde reçoit le même mot secret… sauf le ou les imposteurs, qui
  * reçoivent un mot voisin. Personne ne sait dans quel camp il est !
- * À chaque tour : un indice par joueur (à voix haute et à l'écran), puis un
+ * À chaque tour : chaque joueur écrit un indice dans l'appli, puis un
  * vote pour éliminer un suspect. Les civils gagnent en éliminant tous les
  * imposteurs ; les imposteurs gagnent s'ils égalent le nombre de civils.
  */
@@ -172,7 +172,7 @@
     nom: 'L’Imposteur',
     icone: '🥸',
     desc: 'Tout le monde reçoit le même mot… sauf l’imposteur — et personne ne sait dans quel camp il est ! Un indice chacun, un vote : démasquez-le. 3 à 12 joueurs.',
-    regles: '<p><strong>🎯 Le but :</strong> démasquer celui qui n’a pas le même mot que les autres.</p><p><strong>La mise en place :</strong> tout le monde reçoit secrètement le même mot… sauf l’imposteur, qui reçoit un mot voisin (PLAGE / PISCINE, par exemple). Et personne — pas même lui — ne sait dans quel camp il est !</p><p><strong>Le tour :</strong> chacun donne à voix haute UN seul mot d’indice sur son mot secret : assez juste pour prouver qu’on a le bon mot, assez flou pour ne rien dévoiler à l’imposteur… Puis tout le monde vote : le plus suspect est éliminé et son camp est révélé.</p><p><strong>La victoire :</strong> les civils gagnent (+3 points chacun) en éliminant tous les imposteurs ; l’imposteur gagne (+5) s’il survit jusqu’à égalité avec les civils. À 6 joueurs et plus : 2 imposteurs, à 9 et plus : 3 !</p>',
+    regles: '<p><strong>🎯 Le but :</strong> démasquer celui qui n’a pas le même mot que les autres.</p><p><strong>La mise en place :</strong> tout le monde reçoit secrètement le même mot… sauf l’imposteur, qui reçoit un mot voisin (PLAGE / PISCINE, par exemple). Et personne — pas même lui — ne sait dans quel camp il est !</p><p><strong>Le tour :</strong> chacun, à son tour, écrit UN seul mot d’indice dans l’appli — il s’affiche sur tous les téléphones. Assez juste pour prouver qu’on a le bon mot, assez flou pour ne rien dévoiler à l’imposteur… Puis tout le monde vote : le plus suspect est éliminé et son camp est révélé.</p><p><strong>La victoire :</strong> les civils gagnent (+3 points chacun) en éliminant tous les imposteurs ; l’imposteur gagne (+5) s’il survit jusqu’à égalité avec les civils. À 6 joueurs et plus : 2 imposteurs, à 9 et plus : 3 !</p>',
     min: 3, max: 12,
     hotseat: true, hidden: true, netOnly: false,
     noBadges: true,
@@ -346,19 +346,19 @@
       } else if (s.phase === 'clue') {
         var speaker = s.order[s.orderPos];
         html += cluesHtml();
-        html += '<p class="mini-msg">Ordre de parole : ' + s.order.map(function (i, k) {
+        html += '<p class="mini-msg">Ordre de passage : ' + s.order.map(function (i, k) {
           return (k === s.orderPos ? '<strong>' + name(i) + '</strong>' : name(i));
         }).join(' → ') + '</p>';
         if (me === speaker && my.alive) {
-          html += '<div class="imp-card"><p>À vous ! Donnez <strong>un seul mot</strong> ' +
-            'd’indice sur votre mot secret (dites-le aussi à voix haute) :</p>' +
+          html += '<div class="imp-card"><p>À vous ! Écrivez <strong>un seul mot</strong> ' +
+            'd’indice sur votre mot secret — il s’affichera chez tout le monde :</p>' +
             '<div class="cr-answer-row">' +
             '<input type="text" id="imp-clue" maxlength="20" placeholder="Votre indice…" autocomplete="off">' +
-            '<button class="btn primary" data-a="clue">Donner</button></div>' +
+            '<button class="btn primary" data-a="clue">Envoyer</button></div>' +
             '<p class="hint">Assez précis pour rassurer les civils, assez flou pour ne pas ' +
             'vendre le mot à l’imposteur…</p></div>';
         } else {
-          html += '<p class="waiting">💬 ' + name(speaker) + ' cherche son indice…</p>';
+          html += '<p class="waiting">✍️ ' + name(speaker) + ' écrit son indice…</p>';
         }
       } else if (s.phase === 'vote') {
         html += cluesHtml();

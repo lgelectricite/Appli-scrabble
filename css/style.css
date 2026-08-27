@@ -72,6 +72,11 @@ h1, h2 { margin: 0.4em 0; }
   box-shadow: 0 8px 24px #00000055, inset 0 1px 0 #ffffff10;
 }
 .subtitle { opacity: .65; font-size: 14px; margin-top: 6px; }
+.offline-badge {
+  display: inline-block; font-size: 12px; color: var(--accent);
+  background: #d8ff4f14; border: 1px solid #d8ff4f33;
+  border-radius: 20px; padding: 4px 12px; margin: 4px 0 0;
+}
 .home-buttons { display: flex; flex-direction: column; gap: 12px; margin: 22px 0; }
 .hint { font-size: 13px; opacity: .6; line-height: 1.45; }
 

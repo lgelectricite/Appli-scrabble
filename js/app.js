@@ -1716,6 +1716,15 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(function (reg) {
         if (reg && reg.update) reg.update();
+        // badge « prête pour le mode avion » quand tout est en cache
+        var showReady = function () {
+          var b = document.getElementById('offline-badge');
+          if (b) b.classList.remove('hidden');
+        };
+        if (navigator.serviceWorker.controller) showReady();
+        else navigator.serviceWorker.ready.then(function () {
+          setTimeout(showReady, 1500); // laisse la première installation finir
+        }).catch(function () {});
       }).catch(function () {});
       // Quand une NOUVELLE version prend la main (pas la toute première
       // installation), on recharge la page pour l'afficher tout de suite —
