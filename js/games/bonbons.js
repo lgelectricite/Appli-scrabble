@@ -198,21 +198,54 @@
   }
 
   function stars(score, cible) {
-    if (score >= cible * 2) return '⭐⭐⭐';
-    if (score >= cible * 1.5) return '⭐⭐';
-    if (score >= cible) return '⭐';
-    return '—';
+    if (score >= cible * 1.9) return 3;
+    if (score >= cible * 1.4) return 2;
+    if (score >= cible) return 1;
+    return 0;
+  }
+
+  function starsTxt(n) { return n ? '⭐⭐⭐'.slice(0, n * 2) : '—'; }
+
+  /* ===== mode aventure solo : niveaux infinis ===== */
+  var ZONES = ['Prairie Guimauve', 'Forêt Chocolat', 'Lagon Réglisse',
+    'Montagne Meringue', 'Désert Caramel', 'Volcan Praline',
+    'Banquise Menthe', 'Cité Nougat'];
+  var ZONE_ICONS = ['🌸', '🌲', '🌊', '🏔️', '🏜️', '🌋', '❄️', '🏰'];
+
+  function zoneOf(lvl) { return Math.floor((lvl - 1) / 10) % ZONES.length; }
+
+  /* Réglage du niveau n : déterministe, de plus en plus corsé, sans fin. */
+  function levelCfg(n) {
+    var coups = [24, 22, 20, 18, 16][(n - 1) % 5];
+    if (n % 7 === 0) coups -= 2;               // niveau « boss » plus serré
+    if (coups < 12) coups = 12;
+    var types = n < 5 ? 5 : (n % 3 === 0 ? 6 : 5);
+    var parCoup = 55 + Math.min(105, n * 2);   // exigence par coup, plafonnée
+    return { types: types, coups: coups, cible: Math.round(coups * parCoup / 10) * 10 };
+  }
+
+  /* Progression sur ce téléphone : niveau atteint, étoiles et records. */
+  function loadProg() {
+    try {
+      var d = JSON.parse(localStorage.getItem('gg-bonbons-map') || 'null');
+      if (d && d.lvl >= 1) return d;
+    } catch (e) {}
+    return { lvl: 1, stars: {}, best: {} };
+  }
+
+  function saveProg(d) {
+    try { localStorage.setItem('gg-bonbons-map', JSON.stringify(d)); } catch (e) {}
   }
 
   var mod = {
     id: 'bonbons',
     nom: 'Bonbons',
     icone: '🍬',
-    desc: 'Alignez 3 bonbons pour les croquer : cascades, bonbons rayés et sucre magique !',
-    regles: '<p><strong>🎯 Le but :</strong> marquer un maximum de points avant d’épuiser vos coups.</p>' +
-      '<p><strong>Comment jouer :</strong> touchez un bonbon puis son voisin pour les échanger — l’échange doit former un alignement d’au moins 3 bonbons identiques, qui sont croqués. Les bonbons du dessus tombent, il en pleut de nouveaux : les cascades rapportent de plus en plus (×2, ×3…).</p>' +
+    desc: 'L’aventure sucrée : des niveaux sans fin, des mondes acidulés, cascades et bonbons magiques !',
+    regles: '<p><strong>🎯 Le but :</strong> atteindre l’objectif de points du niveau avant d’épuiser vos coups — chaque niveau réussi (jusqu’à ⭐⭐⭐) débloque le suivant, la carte est sans fin et votre progression est enregistrée.</p>' +
+      '<p><strong>Comment jouer :</strong> glissez un bonbon vers son voisin pour les échanger — l’échange doit former un alignement d’au moins 3 bonbons identiques, qui sont croqués. Les bonbons du dessus tombent, il en pleut de nouveaux : les cascades rapportent de plus en plus (×2, ×3…).</p>' +
       '<p><strong>🍭 Les spéciaux :</strong> 4 alignés = un <strong>bonbon rayé</strong> qui raye toute une ligne quand on le croque · 5 alignés = un <strong>sucre magique</strong> 🌟 : échangez-le avec n’importe quel bonbon pour croquer toute sa couleur !</p>' +
-      '<p><strong>👥 À plusieurs :</strong> même grille de départ pour tout le monde, même nombre de coups — le meilleur score gagne.</p>',
+      '<p><strong>👥 À plusieurs :</strong> course sur la même grille de départ, même nombre de coups — le meilleur score gagne.</p>',
     min: 1, max: 4,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
 
@@ -223,8 +256,11 @@
         }),
         phase: 'setup',
         level: null,
+        solo: false,
+        soloLvl: 0,
         types: 0,
         cible: 0,
+        coups: 0,
         startTs: 0,
         finished: false
       };
@@ -239,7 +275,7 @@
         .sort(function (a, b) { return b.s - a.s; });
       var html = rows.map(function (r) {
         return '<div class="final-line"><span>' + GG.esc(r.n) + '</span><strong>' +
-          r.s + ' pts · ' + stars(r.s, state.cible) + '</strong></div>';
+          r.s + ' pts · ' + starsTxt(stars(r.s, state.cible)) + '</strong></div>';
       }).join('');
       html += '<p>🎯 Objectif : ' + state.cible + ' pts (⭐) · niveau ' +
         (LEVELS[state.level] ? LEVELS[state.level].nom : '') + '</p>';
@@ -290,6 +326,37 @@
         return { ok: true };
       }
 
+      if (action.t === 'start') {
+        // aventure solo : la carte des niveaux, sur ce téléphone uniquement
+        if (state.players.length !== 1) return { ok: false, error: 'Les niveaux se jouent en solo.' };
+        if (state.phase !== 'setup' && state.phase !== 'result') {
+          return { ok: false, error: 'Un niveau est déjà en cours.' };
+        }
+        var lvl = action.lvl | 0;
+        if (lvl < 1) return { ok: false, error: 'Niveau inconnu.' };
+        var lc = levelCfg(lvl);
+        var lb = buildBoard(lc.types);
+        ensurePlayable(lb, lc.types);
+        state.solo = true;
+        state.soloLvl = lvl;
+        state.types = lc.types;
+        state.cible = lc.cible;
+        state.coups = lc.coups;
+        state.level = 'aventure';
+        p.board = lb;
+        p.moves = lc.coups;
+        p.score = 0;
+        p.lastGain = 0;
+        p.lastCombo = 0;
+        state.phase = 'play';
+        state.startTs = Date.now();
+        return { ok: true };
+      }
+      if (action.t === 'backmap') {
+        if (!state.solo || state.phase !== 'result') return { ok: false, error: 'Rien à quitter.' };
+        state.phase = 'setup';
+        return { ok: true };
+      }
       if (state.phase !== 'play') return { ok: false, error: 'La partie n’a pas commencé.' };
       if (action.t === 'swap') {
         if (p.moves <= 0) return { ok: false, error: 'Plus de coups — on attend les autres.' };
@@ -326,7 +393,9 @@
         p.lastCombo = combo;
         p.moves--;
         if (p.moves > 0) ensurePlayable(b, state.types);
-        if (allDone(state)) {
+        if (state.solo) {
+          if (p.moves <= 0) state.phase = 'result';
+        } else if (allDone(state)) {
           state.finished = true;
         }
         return { ok: true };
@@ -335,15 +404,106 @@
       return { ok: false, error: 'Action inconnue.' };
     },
 
+    /* ===== la carte de l'aventure (solo) ===== */
+    _renderMap: function (el, ctx) {
+      var prog = loadProg();
+      var totalStars = 0, k;
+      for (k in prog.stars) totalStars += prog.stars[k];
+      var from = Math.max(1, prog.lvl - 20);
+      var to = prog.lvl + 4;
+      var html = '<div class="bb-map">' +
+        '<p class="mini-msg big-msg">🍬 L’Aventure Sucrée</p>' +
+        '<div class="mem-stats"><span class="mem-stat">Niveau ' + prog.lvl + '</span>' +
+        '<span class="mem-stat">⭐ ' + totalStars + '</span></div>';
+      if (from > 1) {
+        html += '<div class="bb-earlier">✓ Niveaux 1 à ' + (from - 1) + ' terminés</div>';
+      }
+      var lastZone = -1;
+      html += '<div class="bb-path">';
+      for (var lvl = from; lvl <= to; lvl++) {
+        var z = zoneOf(lvl);
+        if (z !== lastZone || (lvl - 1) % 10 === 0 && lvl === from) {
+          if ((lvl - 1) % 10 === 0 || lvl === from) {
+            html += '<div class="bb-zone z' + z + '">' + ZONE_ICONS[z] + ' ' +
+              ZONES[z] + '</div>';
+            lastZone = z;
+          }
+        }
+        var st = prog.stars[lvl] || 0;
+        var cls = lvl < prog.lvl ? 'done' : lvl === prog.lvl ? 'cur' : 'lock';
+        html += '<div class="bb-step s' + (lvl % 4) + '">' +
+          '<button class="bb-node ' + cls + '" data-lvl="' + lvl + '"' +
+          (cls === 'lock' ? ' disabled' : '') + '>' +
+          (cls === 'lock' ? '🔒' : lvl) + '</button>' +
+          (cls === 'done' ? '<span class="bb-node-stars">' + starsTxt(st) + '</span>' : '') +
+          (cls === 'cur' ? '<span class="bb-node-go">Jouer !</span>' : '') +
+          '</div>';
+      }
+      html += '</div><p class="hint mini-center">Réussissez l’objectif du niveau pour ' +
+        'débloquer le suivant. Glissez un bonbon vers son voisin pour l’échanger !</p></div>';
+      el.innerHTML = html;
+      el.querySelectorAll('.bb-node:not(.lock)').forEach(function (b) {
+        b.addEventListener('click', function () {
+          ctx.act({ t: 'start', lvl: parseInt(b.dataset.lvl, 10) });
+        });
+      });
+      var cur = el.querySelector('.bb-node.cur');
+      if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'center' });
+    },
+
+    /* ===== fin de niveau (solo) : résultat sur place, jamais d'écran de fin ===== */
+    _renderResult: function (el, ctx) {
+      var s = ctx.state;
+      var p = s.players[0];
+      var st = stars(p.score, s.cible);
+      var win = st >= 1;
+
+      // progression enregistrée une seule fois par niveau joué
+      if (el._bbSaved !== s.startTs) {
+        el._bbSaved = s.startTs;
+        var prog = loadProg();
+        if ((prog.best[s.soloLvl] || 0) < p.score) prog.best[s.soloLvl] = p.score;
+        if ((prog.stars[s.soloLvl] || 0) < st) prog.stars[s.soloLvl] = st;
+        if (win && s.soloLvl === prog.lvl) prog.lvl = s.soloLvl + 1;
+        saveProg(prog);
+      }
+      var prog2 = loadProg();
+      var best = prog2.best[s.soloLvl] || p.score;
+
+      var html = '<div class="bb-result' + (win ? ' win' : '') + '">' +
+        '<p class="mini-msg big-msg">' + (win ? '🎉 Niveau ' + s.soloLvl + ' réussi !'
+          : '😅 Presque…') + '</p>' +
+        '<div class="bb-stars-big">' + (win ? starsTxt(st) : '☆') + '</div>' +
+        '<p class="mini-msg"><b>' + p.score + '</b> pts · objectif ' + s.cible + '</p>' +
+        (win ? '' : '<p class="hint mini-center">Il manquait ' + (s.cible - p.score) +
+          ' points. Cherchez les bonbons rayés et les sucres magiques !</p>') +
+        '<p class="hint mini-center">🏅 Record du niveau : ' + best + ' pts</p>' +
+        (win
+          ? '<button class="btn big primary" data-a="next">Niveau ' + (s.soloLvl + 1) + ' ▶</button>'
+          : '<button class="btn big primary" data-a="retry">↻ Rejouer le niveau</button>') +
+        '<button class="btn" data-a="map">🗺️ Carte</button></div>';
+      el.innerHTML = html;
+      el.querySelector('[data-a="' + (win ? 'next' : 'retry') + '"]')
+        .addEventListener('click', function () {
+          ctx.act({ t: 'start', lvl: win ? s.soloLvl + 1 : s.soloLvl });
+        });
+      el.querySelector('[data-a="map"]').addEventListener('click', function () {
+        ctx.act({ t: 'backmap' });
+      });
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       var me = ctx.me;
+      var soloLocal = ctx.mode === 'local' && s.players.length === 1;
 
       if (s.phase === 'setup') {
         el._bbSel = -1;
+        el._bbPrev = null;
+        if (soloLocal) { mod._renderMap(el, ctx); return; }
         var html0 = '<p class="mini-msg big-msg">🍬 Bonbons</p>';
         if (me === 0) {
-          html0 += '<p class="mini-msg">Choisissez le niveau :</p><div class="lvl-btns">' +
+          html0 += '<p class="mini-msg">Course à plusieurs — choisissez le niveau :</p><div class="lvl-btns">' +
             Object.keys(LEVELS).map(function (l) {
               var c = LEVELS[l];
               return '<button class="btn big" data-lvl="' + l + '">' +
@@ -362,31 +522,60 @@
         return;
       }
 
+      if (s.phase === 'result' && s.solo) { mod._renderResult(el, ctx); return; }
+
       var p = s.players[me];
       var sel = el._bbSel !== undefined ? el._bbSel : -1;
       if (sel !== -1 && (!p.board || !p.board[sel])) { sel = -1; el._bbSel = -1; }
 
-      var html = '<div class="mem-stats">' +
-        '<span class="mem-stat">🎯 <b>' + p.score + '</b> pts</span>' +
-        '<span class="mem-stat">🍬 ' + p.moves + ' coup' + (p.moves > 1 ? 's' : '') + '</span>' +
-        (p.lastGain > 0 ? '<span class="mem-stat bb-gain">+' + p.lastGain +
-          (p.lastCombo > 1 ? ' · combo ×' + p.lastCombo : '') + '</span>' : '') +
-        '</div>';
+      var html = '';
+      if (s.solo) {
+        var pc = Math.min(100, Math.round(p.score * 100 / s.cible));
+        var z2 = zoneOf(s.soloLvl);
+        html += '<div class="mem-stats">' +
+          '<span class="mem-stat">' + ZONE_ICONS[z2] + ' Niveau ' + s.soloLvl + '</span>' +
+          '<span class="mem-stat">🍬 ' + p.moves + ' coup' + (p.moves > 1 ? 's' : '') + '</span>' +
+          (p.lastGain > 0 ? '<span class="mem-stat bb-gain">+' + p.lastGain +
+            (p.lastCombo > 1 ? ' · ×' + p.lastCombo : '') + '</span>' : '') +
+          '</div>' +
+          '<div class="bb-obj"><div class="bb-obj-fill" style="width:' + pc + '%"></div>' +
+          '<span class="bb-obj-txt">' + p.score + ' / ' + s.cible + '</span></div>';
+      } else {
+        html += '<div class="mem-stats">' +
+          '<span class="mem-stat">🎯 <b>' + p.score + '</b> pts</span>' +
+          '<span class="mem-stat">🍬 ' + p.moves + ' coup' + (p.moves > 1 ? 's' : '') + '</span>' +
+          (p.lastGain > 0 ? '<span class="mem-stat bb-gain">+' + p.lastGain +
+            (p.lastCombo > 1 ? ' · combo ×' + p.lastCombo : '') + '</span>' : '') +
+          '</div>';
+      }
 
-      html += '<div class="bb-grid">';
+      // animation : seuls les bonbons qui ont changé tombent en scène
+      var prev = el._bbPrev;
+      var glyphs = [];
+      html += '<div class="bb-wrap"><div class="bb-grid">';
       for (var i = 0; i < N * N; i++) {
         var c2 = p.board[i];
-        var cls = 'bb-cell t' + (c2.t === ARC ? 'x' : c2.t) +
-          (i === sel ? ' sel' : '') + (c2.s ? ' raye' + c2.s : '');
         var glyph = c2.t === ARC ? '🌟' : EMOJIS[c2.t];
-        html += '<button class="' + cls + '" data-i="' + i + '">' + glyph + '</button>';
+        glyphs.push(glyph + c2.s);
+        var anim = prev && prev[i] !== glyphs[i]
+          ? ' pop-in" style="animation-delay:' + (Math.floor(i / N) * 35) + 'ms"'
+          : '"';
+        html += '<button class="bb-cell t' + (c2.t === ARC ? 'x' : c2.t) +
+          (i === sel ? ' sel' : '') + (c2.s ? ' raye' + c2.s : '') + anim +
+          ' data-i="' + i + '">' + glyph + '</button>';
       }
       html += '</div>';
+      // bulle de score flottante quand un coup vient de rapporter
+      var gainKey = p.moves + ':' + p.score;
+      if (p.lastGain > 0 && el._bbGainKey !== gainKey) {
+        el._bbGainKey = gainKey;
+        html += '<div class="bb-float">+' + p.lastGain +
+          (p.lastCombo > 1 ? ' ×' + p.lastCombo : '') + '</div>';
+      }
+      html += '</div>';
+      el._bbPrev = glyphs;
 
-      if (p.moves <= 0) html += '<p class="mini-msg">🍬 Plus de coups ! On attend les autres…</p>';
-      else html += '<p class="hint">' + (sel === -1
-        ? 'Touchez un bonbon, puis son voisin pour l’échanger.'
-        : 'Touchez un bonbon voisin pour l’échanger.') + '</p>';
+      if (p.moves <= 0 && !s.solo) html += '<p class="mini-msg">🍬 Plus de coups ! On attend les autres…</p>';
 
       if (s.players.length > 1) {
         html += '<div class="mem-stats">' + s.players.map(function (q, qi) {
@@ -398,31 +587,79 @@
 
       el.innerHTML = html;
 
-      el.querySelectorAll('.bb-cell').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          if (p.moves <= 0) return;
-          var i2 = parseInt(btn.dataset.i, 10);
-          var cur = el._bbSel !== undefined ? el._bbSel : -1;
-          if (cur === -1) {
-            el._bbSel = i2;
-            mod.render(el, ctx);
-          } else if (cur === i2) {
-            el._bbSel = -1;
-            mod.render(el, ctx);
-          } else if (adjacent(cur, i2)) {
-            el._bbSel = -1;
-            mod.render(el, ctx); // désélection AVANT l'action, jamais après
-            ctx.act({ t: 'swap', a: cur, b: i2 });
-          } else {
-            el._bbSel = i2;
-            mod.render(el, ctx);
-          }
-        });
+      /* ===== échanges : glisser (ou toucher-toucher) ===== */
+      var grid = el.querySelector('.bb-grid');
+
+      function cellEl(i2) { return el.querySelector('.bb-cell[data-i="' + i2 + '"]'); }
+
+      function doSwap(a, b2) {
+        if (p.moves <= 0) return;
+        el._bbSel = -1;
+        var ca = cellEl(a), cb = cellEl(b2);
+        if (!ca || !cb) return;
+        var ra = ca.getBoundingClientRect(), rb = cb.getBoundingClientRect();
+        var dx = rb.left - ra.left, dy = rb.top - ra.top;
+        var arc = p.board[a].t === ARC || p.board[b2].t === ARC;
+        var valide = arc || wouldMatch(p.board, a, b2);
+        ca.style.zIndex = 3;
+        ca.style.transition = 'transform .14s ease';
+        cb.style.transition = 'transform .14s ease';
+        ca.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+        cb.style.transform = 'translate(' + (-dx) + 'px,' + (-dy) + 'px)';
+        if (valide) {
+          setTimeout(function () { ctx.act({ t: 'swap', a: a, b: b2 }); }, 150);
+        } else {
+          // rien ne s'aligne : les bonbons reviennent en tremblant
+          setTimeout(function () {
+            ca.style.transform = '';
+            cb.style.transform = '';
+            ca.classList.add('bb-shake');
+            cb.classList.add('bb-shake');
+          }, 160);
+        }
+      }
+
+      var touche = null;
+      grid.addEventListener('pointerdown', function (e) {
+        var c = e.target.closest ? e.target.closest('.bb-cell') : null;
+        if (!c) return;
+        touche = { i: parseInt(c.dataset.i, 10), x: e.clientX, y: e.clientY };
       });
+      grid.addEventListener('pointermove', function (e) {
+        if (!touche) return;
+        var dx = e.clientX - touche.x, dy = e.clientY - touche.y;
+        if (Math.abs(dx) < 16 && Math.abs(dy) < 16) return;
+        var a = touche.i, cible;
+        if (Math.abs(dx) > Math.abs(dy)) cible = dx > 0 ? a + 1 : a - 1;
+        else cible = dy > 0 ? a + N : a - N;
+        touche = null;
+        if (cible < 0 || cible >= N * N || !adjacent(a, cible)) return;
+        doSwap(a, cible);
+      });
+      grid.addEventListener('pointerup', function (e) {
+        if (!touche) return;
+        var i2 = touche.i;
+        touche = null;
+        var cur = el._bbSel !== undefined ? el._bbSel : -1;
+        if (cur === -1) {
+          el._bbSel = i2;
+          mod.render(el, ctx);
+        } else if (cur === i2) {
+          el._bbSel = -1;
+          mod.render(el, ctx);
+        } else if (adjacent(cur, i2)) {
+          doSwap(cur, i2); // désélection faite dans doSwap, act après l'animation
+        } else {
+          el._bbSel = i2;
+          mod.render(el, ctx);
+        }
+      });
+      grid.addEventListener('pointercancel', function () { touche = null; });
     },
 
     _findRuns: findRuns, _resolve: resolve, _buildBoard: buildBoard,
-    _wouldMatch: wouldMatch, _hasMove: hasMove, _N: N // pour les tests
+    _wouldMatch: wouldMatch, _hasMove: hasMove, _N: N, // pour les tests
+    _levelCfg: levelCfg, _stars: stars, _zoneOf: zoneOf, _ZONES: ZONES
   };
 
   GG.register(mod);

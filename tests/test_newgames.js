@@ -376,5 +376,46 @@ check('échange non voisin refusé', bonbons.apply(bg, 0, { t: 'swap', a: 0, b: 
   check('rejouer après la fin refusé', bonbons.apply(st, 0, { t: 'swap', a: 0, b: 1 }).ok === false);
 }
 
+
+// ===== mode aventure : niveaux infinis =====
+{
+  const cfgs = [1, 2, 7, 25, 100, 500].map(n => bonbons._levelCfg(n));
+  check('aventure : réglages déterministes et jouables',
+    cfgs.every(c => c.coups >= 12 && c.coups <= 24 && (c.types === 5 || c.types === 6) && c.cible > 0));
+  check('aventure : la difficulté grimpe', bonbons._levelCfg(100).cible > bonbons._levelCfg(1).cible);
+  check('aventure : 8 mondes qui tournent',
+    bonbons._zoneOf(1) === 0 && bonbons._zoneOf(11) === 1 && bonbons._zoneOf(81) === 0 &&
+    bonbons._ZONES.length === 8);
+  check('étoiles : 1 à l’objectif, 3 au double',
+    bonbons._stars(999, 1000) === 0 && bonbons._stars(1000, 1000) === 1 &&
+    bonbons._stars(1400, 1000) === 2 && bonbons._stars(1900, 1000) === 3);
+
+  const st = bonbons.create(['Solo']);
+  check('aventure réservée au solo',
+    bonbons.apply(bonbons.create(['A', 'B']), 0, { t: 'start', lvl: 1 }).ok === false);
+  check('niveau lancé', bonbons.apply(st, 0, { t: 'start', lvl: 3 }).ok === true &&
+    st.solo === true && st.soloLvl === 3 && st.players[0].moves === bonbons._levelCfg(3).coups);
+  check('re-lancer en pleine partie refusé', bonbons.apply(st, 0, { t: 'start', lvl: 4 }).ok === false);
+  // on vide les coups : résultat sur place, jamais de fin de partie
+  st.players[0].moves = 1;
+  function findSwapA(b) {
+    for (let i = 0; i < BN * BN; i++) {
+      if (b[i].t === -1) continue;
+      const c = i % BN;
+      if (c < BN - 1 && bonbons._wouldMatch(b, i, i + 1)) return [i, i + 1];
+      if (i < BN * (BN - 1) && bonbons._wouldMatch(b, i, i + BN)) return [i, i + BN];
+    }
+    return null;
+  }
+  const sw = findSwapA(st.players[0].board);
+  bonbons.apply(st, 0, { t: 'swap', a: sw[0], b: sw[1] });
+  check('coups épuisés → écran de résultat, PAS de fin',
+    st.phase === 'result' && bonbons.over(st) === false);
+  check('rejouer le niveau depuis le résultat',
+    bonbons.apply(st, 0, { t: 'start', lvl: 3 }).ok === true && st.phase === 'play');
+  st.players[0].moves = 0;
+  st.phase = 'result';
+  check('retour à la carte', bonbons.apply(st, 0, { t: 'backmap' }).ok === true && st.phase === 'setup');
+}
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests nouveaux jeux OK.');
 process.exit(failures ? 1 : 0);

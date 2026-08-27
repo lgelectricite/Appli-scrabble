@@ -162,11 +162,13 @@ function check(n, c, e) {
   await p.click('.game-tile[data-g="bonbons"]');
   await p.click('#btn-mini-hotseat');
   await p.click('#btn-mini-start');
-  await p.waitForSelector('[data-lvl="facile"]', { timeout: 15000 });
-  await p.click('[data-lvl="facile"]');
+  await p.waitForSelector('.bb-map', { timeout: 15000 });
+  check('carte de l’aventure : niveau 1 prêt', await p.locator('.bb-node.cur').count() === 1);
+  await p.click('.bb-node.cur');
   await p.waitForSelector('.bb-grid', { timeout: 15000 });
   check('grille de 64 bonbons', await p.locator('.bb-cell').count() === 64);
-  check('25 coups annoncés', /25 coups/.test(await p.textContent('#mini-area')));
+  check('objectif du niveau affiché', await p.locator('.bb-obj').count() === 1 &&
+    /24 coups/.test(await p.textContent('#mini-area')));
   // trouve un échange valable en lisant la grille avec le moteur du jeu
   const swap = await p.evaluate(() => {
     const mod = GG.byId.bonbons;
@@ -188,7 +190,7 @@ function check(n, c, e) {
     await p.click('.bb-cell[data-i="' + swap[1] + '"]');
     await p.waitForTimeout(400);
     const stats = await p.textContent('#mini-area');
-    check('coup joué : 24 restants et des points', /24 coups/.test(stats) && /\+\d+/.test(stats), stats.slice(0, 80));
+    check('coup joué : 23 restants et des points', /23 coups/.test(stats) && /\+\d+/.test(stats), stats.slice(0, 80));
   }
 
   await browser.close();
