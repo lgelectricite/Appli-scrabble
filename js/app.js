@@ -739,8 +739,12 @@
   };
 
   function catInfo(id) {
-    if (id === 'mots') return { id: 'mots', nom: 'Words', icone: '🔤' };
+    if (id === 'mots') return { id: 'mots', nom: 'Words', icone: '🔤', min: 1, max: 4 };
     return window.GG.byId[id];
+  }
+
+  function playersLabel(m) {
+    return m.min + (m.max > m.min ? '–' + m.max : '') + ' joueur' + (m.max > 1 ? 's' : '');
   }
 
   function boxHtml(m, i, flat) {
@@ -748,13 +752,15 @@
     if (flat) {
       return '<button class="game-tile bx-flat" data-g="' + m.id + '" style="--bx:' + color + '">' +
         '<span class="bx-ic">' + m.icone + '</span>' +
-        '<span class="bx-nm">' + m.nom + '</span></button>';
+        '<span class="bx-nm">' + m.nom + '</span>' +
+        '<span class="bx-pl">' + m.min + (m.max > m.min ? '–' + m.max : '') + ' j.</span></button>';
     }
     var h = 122 + ((i * 13) % 27); // hauteurs de boîtes irrégulières
     return '<button class="game-tile bx" data-g="' + m.id + '" style="--bx:' + color +
       ';height:' + h + 'px">' +
       '<span class="bx-ic">' + m.icone + '</span>' +
       '<span class="bx-nm">' + m.nom + '</span>' +
+      '<span class="bx-pl">' + playersLabel(m) + '</span>' +
       '<span class="bx-gg">GG</span></button>';
   }
 

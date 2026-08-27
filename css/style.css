@@ -507,8 +507,14 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   font-size: 11px; line-height: 1.18; text-align: center;
   overflow-wrap: normal; word-break: keep-all; max-width: 100%;
   text-shadow: 0 1px 0 rgba(44, 34, 24, .4);
-  margin: 4px 0 auto;
+  margin: 4px 0 2px;
 }
+.bx-pl {
+  font-size: 8.5px; letter-spacing: .3px; opacity: .9;
+  margin-top: auto; padding-top: 2px;
+  text-shadow: 0 1px 0 rgba(44, 34, 24, .4);
+}
+.bx-flat .bx-pl { margin: 0; font-size: 9px; opacity: .85; white-space: nowrap; }
 .bx-gg {
   font-family: 'Fraunces', Georgia, serif; font-size: 8px; font-weight: 700;
   letter-spacing: 1px; opacity: .65; border: 1px solid currentColor;
