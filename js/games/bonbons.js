@@ -703,32 +703,6 @@
        moyen — il repère une poignée d'échanges valides et en tente un au
        hasard, sans chercher le meilleur coup (battable !). Un sucre magique
        à portée de main est toujours joué : trop gourmand pour résister. */
-    bot: function (state, me) {
-      if (state.finished || state.phase !== 'play') return null;
-      var p = state.players[me];
-      if (!p || !p.board || p.moves <= 0) return null; // plus de coups : on attend
-      var b = p.board;
-      var choix = [];
-      for (var i = 0; i < N * N; i++) {
-        if (!b[i]) continue;
-        var c = i % N;
-        if (b[i].t === ARC) {
-          // sucre magique : échangé avec n'importe quel voisin, gain garanti
-          return { t: 'swap', a: i, b: c < N - 1 ? i + 1 : i - 1 };
-        }
-        if (c < N - 1 && b[i + 1] && b[i + 1].t !== ARC && wouldMatch(b, i, i + 1)) {
-          choix.push([i, i + 1]);
-        }
-        if (i < N * (N - 1) && b[i + N] && b[i + N].t !== ARC && wouldMatch(b, i, i + N)) {
-          choix.push([i, i + N]);
-        }
-        if (choix.length >= 6) break; // une poignée suffit pour varier les coups
-      }
-      if (!choix.length) return null; // grille morte ? ensurePlayable veille, prudence
-      var mv = choix[Math.floor(Math.random() * choix.length)];
-      return { t: 'swap', a: mv[0], b: mv[1] };
-    },
-
     render: function (el, ctx) {
       var s = ctx.state;
       var me = ctx.me;

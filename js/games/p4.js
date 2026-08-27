@@ -89,52 +89,107 @@
       return { ok: true };
     },
 
-    /* L'adversaire IA : gagne si possible, bloque sinon, évite d'offrir
-       une victoire, préfère le centre. Un soupçon de hasard le rend humain. */
+    /* L'adversaire IA : un vrai moteur qui anticipe. Il explore l'arbre des
+       coups sur 5 demi-tours (minimax avec élagage alpha-bêta) et évalue
+       chaque position par fenêtres de 4 cases (menaces, doubles menaces,
+       centre). Entre plusieurs coups quasi équivalents il tranche au
+       hasard : ses ouvertures et son style varient d'une partie à l'autre. */
     bot: function (state, me) {
       if (state.roundOver) return null;
       if (state.current !== me) return null;
-      var grid = state.grid;
       var moi = me === 0 ? 'R' : 'J';
       var lui = me === 0 ? 'J' : 'R';
+      var g = state.grid.slice();
+      var ORDRE = [3, 2, 4, 1, 5, 0, 6]; // le centre d'abord : meilleur élagage
+      var DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];
+      var PROF = 5;
 
-      function ligneLibre(g, col) {
-        for (var r = ROWS - 1; r >= 0; r--) if (!g[r * COLS + col]) return r;
+      function ligneLibre(gr, col) {
+        for (var r = ROWS - 1; r >= 0; r--) if (!gr[r * COLS + col]) return r;
         return -1;
       }
-      function gagne(g, col, jeton) {
-        var r = ligneLibre(g, col);
-        if (r === -1) return false;
-        g[r * COLS + col] = jeton;
-        var ok = !!winLine(g, r * COLS + col);
-        g[r * COLS + col] = null;
-        return ok;
+      // score de la position vue de l'IA : chaque fenêtre de 4 cases où un
+      // seul camp est présent compte — 3 jetons pèsent lourd, 2 un peu,
+      // et tenir la colonne centrale rapporte toujours
+      function evalue(gr) {
+        var s = 0, r, c, d, k;
+        for (r = 0; r < ROWS; r++) {
+          if (gr[r * COLS + 3] === moi) s += 3;
+          else if (gr[r * COLS + 3] === lui) s -= 3;
+        }
+        for (r = 0; r < ROWS; r++) {
+          for (c = 0; c < COLS; c++) {
+            for (d = 0; d < 4; d++) {
+              var dc = DIRS[d][0], dr = DIRS[d][1];
+              var r3 = r + 3 * dr, c3 = c + 3 * dc;
+              if (r3 < 0 || r3 >= ROWS || c3 < 0 || c3 >= COLS) continue;
+              var nm = 0, nl = 0;
+              for (k = 0; k < 4; k++) {
+                var v = gr[(r + k * dr) * COLS + (c + k * dc)];
+                if (v === moi) nm++; else if (v === lui) nl++;
+              }
+              if (nm && nl) continue; // fenêtre neutralisée
+              if (nm === 3) s += 60; else if (nm === 2) s += 8;
+              if (nl === 3) s -= 70; else if (nl === 2) s -= 9;
+            }
+          }
+        }
+        return s;
       }
-      var jouables = [];
-      for (var c = 0; c < COLS; c++) if (ligneLibre(grid, c) !== -1) jouables.push(c);
-      if (!jouables.length) return null;
-      // 1) un coup gagnant ? on le joue
-      for (var w = 0; w < jouables.length; w++) {
-        if (gagne(grid, jouables[w], moi)) return { t: 'drop', col: jouables[w] };
+      function minimax(gr, prof, alpha, beta, aMoi) {
+        var meilleur = aMoi ? -1e9 : 1e9;
+        var plein = true;
+        for (var o = 0; o < COLS; o++) {
+          var col = ORDRE[o];
+          var r = ligneLibre(gr, col);
+          if (r === -1) continue;
+          plein = false;
+          var idx = r * COLS + col;
+          gr[idx] = aMoi ? moi : lui;
+          var val;
+          if (winLine(gr, idx)) val = aMoi ? 100000 + prof : -100000 - prof;
+          else if (prof === 0) val = evalue(gr);
+          else val = minimax(gr, prof - 1, alpha, beta, !aMoi);
+          gr[idx] = null;
+          if (aMoi) {
+            if (val > meilleur) meilleur = val;
+            if (meilleur > alpha) alpha = meilleur;
+          } else {
+            if (val < meilleur) meilleur = val;
+            if (meilleur < beta) beta = meilleur;
+          }
+          if (alpha >= beta) break;
+        }
+        return plein ? 0 : meilleur;
       }
-      // 2) l'adversaire menace de gagner ? on bloque
-      for (var b = 0; b < jouables.length; b++) {
-        if (gagne(grid, jouables[b], lui)) return { t: 'drop', col: jouables[b] };
+      var poses = 0;
+      for (var q = 0; q < COLS * ROWS; q++) if (g[q]) poses++;
+      var coups = [];
+      for (var o2 = 0; o2 < COLS; o2++) {
+        var col2 = ORDRE[o2];
+        var r2 = ligneLibre(g, col2);
+        if (r2 === -1) continue;
+        var idx2 = r2 * COLS + col2;
+        g[idx2] = moi;
+        var val2 = winLine(g, idx2) ? 200000
+          : minimax(g, PROF - 1, -1e9, 1e9, false);
+        g[idx2] = null;
+        coups.push({ col: col2, val: val2 });
       }
-      // 3) on écarte les colonnes qui offriraient la victoire juste au-dessus
-      var sures = jouables.filter(function (col) {
-        var r = ligneLibre(grid, col);
-        grid[r * COLS + col] = moi;
-        var offre = r > 0 && gagne(grid, col, lui);
-        grid[r * COLS + col] = null;
-        return !offre;
-      });
-      var choix = sures.length ? sures : jouables;
-      // 4) préférence pour le centre, pondérée d'un peu de hasard
-      choix.sort(function (a, b2) {
-        return (Math.abs(b2 - 3) - Math.abs(a - 3)) * -1 + (Math.random() - 0.5);
-      });
-      return { t: 'drop', col: choix[0] };
+      if (!coups.length) return null;
+      var top = -1e9;
+      coups.forEach(function (cp) { if (cp.val > top) top = cp.val; });
+      // en ouverture il varie son jeu entre les colonnes centrales ; ensuite
+      // seuls les coups quasi équivalents restent tirés au sort — et une
+      // victoire se prend, point final
+      var marge = poses < 4 ? 18 : 12;
+      if (top > 50000) marge = 0;
+      var bons = coups.filter(function (cp) { return cp.val >= top - marge; });
+      if (poses < 4 && bons.length > 2) {
+        var centres = bons.filter(function (cp) { return cp.col >= 1 && cp.col <= 5; });
+        if (centres.length) bons = centres;
+      }
+      return { t: 'drop', col: bons[Math.floor(Math.random() * bons.length)].col };
     },
 
     render: function (el, ctx) {

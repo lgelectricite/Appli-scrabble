@@ -84,14 +84,15 @@ tour, écran masqué entre les tours quand il y a des infos cachées).
 
 Presque tous les jeux se jouent **en solo** : les jeux de réflexion le sont
 par nature (Sudoku, Mots mêlés/croisés/fléchés, Solitaire, Blackjack,
-l'aventure Bonbons, la série Mot Mystère…), et **14 jeux embarquent des
+l'aventure Bonbons, la série Mot Mystère…), et **13 jeux embarquent des
 adversaires IA** — bouton « 🤖 Jouer seul contre l'ordinateur » sur l'écran
 du jeu, pastille 🤖 sur la boîte : Words, Puissance 4, Morpion, Bataille
 navale, Yams, Cochon, Memory, 8 américain, Poker, Le Plus Proche, Petit Bac,
-Quiz, Bonbons (course), Mot Mystère (duel) et même L'Imposteur. Les robots
-jouent avec un petit temps de réflexion, un vrai style (le Puissance 4
-bloque, la Bataille navale chasse en damier, le Poker relance ses paires…)
-et une part d'imprévu qui les rend **battables**. Fair-play garanti : une IA
+Quiz, Mot Mystère (duel) et même L'Imposteur. Les robots jouent avec un
+petit temps de réflexion et un vrai style : le **Puissance 4 anticipe sur
+5 demi-tours** (minimax) et varie ses ouvertures, la Bataille navale chasse
+en damier, le Poker relance ses paires… avec une part d'imprévu qui les
+rend **battables**. Fair-play garanti : une IA
 ne lit jamais une information cachée qu'un joueur humain à sa place ne
 verrait pas (ni votre main au 8 américain, ni votre flotte, ni le mot
 secret) — seule exception assumée, Le Plus Proche, où elle fabrique son

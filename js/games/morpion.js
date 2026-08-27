@@ -103,6 +103,13 @@
         return arr;
       }
 
+      // plateau vierge : il n'ouvre pas toujours au centre — parfois en coin
+      var vide = true;
+      for (var v2 = 0; v2 < 9; v2++) if (grid[v2]) { vide = false; break; }
+      if (vide && Math.random() < 0.4) {
+        var coins = [0, 2, 6, 8];
+        return { t: 'play', i: coins[Math.floor(Math.random() * coins.length)] };
+      }
       // classement : gagner > bloquer > centre > coins > bords
       var ordre = decisives(moi).concat(decisives(lui))
         .concat([4], melange([0, 2, 6, 8]), melange([1, 3, 5, 7]));
@@ -111,8 +118,12 @@
         if (!grid[ordre[c]] && choix.indexOf(ordre[c]) === -1) choix.push(ordre[c]);
       }
       if (!choix.length) return null;
-      // ~12 % du temps, le 2e meilleur coup : un adversaire humain, pas une machine
-      var pick = (choix.length > 1 && Math.random() < 0.12) ? 1 : 0;
+      // ~12 % du temps, le 2e meilleur coup : un adversaire humain, pas une
+      // machine — mais JAMAIS quand le meilleur gagne ou bloque une victoire
+      var pick = 0;
+      if (choix.length > 1 && Math.random() < 0.12 &&
+          decisives(moi).indexOf(choix[0]) === -1 &&
+          decisives(lui).indexOf(choix[0]) === -1) pick = 1;
       return { t: 'play', i: choix[pick] };
     },
 

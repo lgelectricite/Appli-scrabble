@@ -206,19 +206,31 @@
         if (courants.length > 30) pool = courants;
       }
       var ds = ctx.dict.set;
-      var tries = p.tries;
-      var cand = pool.filter(function (w) {
-        if (w.length !== state.length || !/^[A-Z]+$/.test(w)) return false;
-        if (ds && ds.size && !ds.has(w)) return false; // apply le refuserait
-        // compatible avec toutes les couleurs déjà reçues ?
-        for (var i = 0; i < tries.length; i++) {
-          var m = marks(w, tries[i].word);
-          for (var j = 0; j < m.length; j++) {
-            if (m[j] !== tries[i].marks[j]) return false;
+      var dejaJoue = {};
+      p.tries.forEach(function (t2) { dejaJoue[t2.word] = true; });
+      var candidats = function (essais) {
+        return pool.filter(function (w) {
+          if (dejaJoue[w]) return false;
+          if (w.length !== state.length || !/^[A-Z]+$/.test(w)) return false;
+          if (ds && ds.size && !ds.has(w)) return false; // apply le refuserait
+          // compatible avec toutes les couleurs retenues ?
+          for (var i = 0; i < essais.length; i++) {
+            var m = marks(w, essais[i].word);
+            for (var j = 0; j < m.length; j++) {
+              if (m[j] !== essais[i].marks[j]) return false;
+            }
           }
-        }
-        return true;
-      });
+          return true;
+        });
+      };
+      // un vrai joueur oublie parfois un indice : dans ~35 % des cas, l'IA
+      // ne retient que son DERNIER essai — elle reste battable en duel
+      var essais = p.tries;
+      if (essais.length > 1 && Math.random() < 0.35) {
+        essais = [essais[essais.length - 1]];
+      }
+      var cand = candidats(essais);
+      if (!cand.length && essais.length !== p.tries.length) cand = candidats(p.tries);
       if (!cand.length) return null; // on n'invente jamais un mot
       return { t: 'guess', w: cand[Math.floor(Math.random() * cand.length)] };
     },
