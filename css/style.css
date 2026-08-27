@@ -1628,12 +1628,35 @@ body.theme-manoir .btn { box-shadow: none; }
   to { transform: translateY(-34px); opacity: 0; }
 }
 
-/* objectif du niveau : barre de progression */
+/* objectif du niveau : barre de progression jalonnée d'étoiles */
 .bb-obj {
   position: relative; height: 22px; max-width: min(94vw, 58vh);
   margin: 6px auto 0; border: 2px solid var(--ink); border-radius: 999px;
   background: var(--card); overflow: hidden;
 }
+.bb-obj-star {
+  position: absolute; top: 50%; transform: translate(-50%, -52%);
+  font-size: 11px; opacity: .3; pointer-events: none;
+}
+.bb-obj-star.lit {
+  opacity: 1; font-size: 13px;
+  filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 6px var(--gold));
+}
+/* plus que 3 coups : le compteur s'affole */
+.mem-stat.bb-low {
+  background: var(--accent); color: #fff;
+  animation: bb-lowp .7s infinite alternate;
+}
+@keyframes bb-lowp { from { transform: scale(1); } to { transform: scale(1.09); } }
+/* chaque monde de l'aventure teinte la grille à ses couleurs */
+.bb-wrap.zn0 .bb-grid { background: #fce4ee; } /* Prairie Guimauve */
+.bb-wrap.zn1 .bb-grid { background: #ecdcc2; } /* Forêt Chocolat */
+.bb-wrap.zn2 .bb-grid { background: #d8ecf3; } /* Lagon Réglisse */
+.bb-wrap.zn3 .bb-grid { background: #eef1f5; } /* Montagne Meringue */
+.bb-wrap.zn4 .bb-grid { background: #f6e5c1; } /* Désert Caramel */
+.bb-wrap.zn5 .bb-grid { background: #f8dcd0; } /* Volcan Praline */
+.bb-wrap.zn6 .bb-grid { background: #def3ea; } /* Banquise Menthe */
+.bb-wrap.zn7 .bb-grid { background: #f0e7d9; } /* Cité Nougat */
 .bb-obj-fill {
   height: 100%; background: linear-gradient(90deg, var(--gold), var(--accent));
   transition: width .5s ease;
@@ -1649,7 +1672,13 @@ body.theme-manoir .btn { box-shadow: none; }
   text-align: center; font-size: 12px; color: var(--ink-soft);
   border: 1.5px dashed var(--ink-16); border-radius: 10px; padding: 6px; margin: 8px 0;
 }
-.bb-path { display: flex; flex-direction: column; gap: 10px; padding: 6px 12px 2px; }
+.bb-path { display: flex; flex-direction: column; gap: 10px; padding: 6px 12px 2px; position: relative; }
+.bb-path::before { /* le sentier pointillé qui relie les niveaux */
+  content: ''; position: absolute; left: 50%; top: 14px; bottom: 14px;
+  border-left: 3px dashed var(--ink-16); transform: translateX(-1.5px);
+}
+.bb-zone { position: relative; z-index: 1; }
+.bb-step { position: relative; z-index: 1; }
 .bb-zone {
   align-self: center; margin: 10px 0 4px;
   font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 15px;

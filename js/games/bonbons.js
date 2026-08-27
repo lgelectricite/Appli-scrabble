@@ -246,6 +246,11 @@
     for (var i = 0; i < N * N; i++) {
       if (b[i].t === ARC) return true;
       var c = i % N;
+      // deux spéciaux voisins peuvent toujours combiner leurs pouvoirs
+      if (b[i].s > 0) {
+        if (c < N - 1 && b[i + 1] && b[i + 1].s > 0) return true;
+        if (i < N * (N - 1) && b[i + N] && b[i + N].s > 0) return true;
+      }
       if (c < N - 1 && wouldMatch(b, i, i + 1)) return true;
       if (i < N * (N - 1) && wouldMatch(b, i, i + N)) return true;
     }
@@ -387,6 +392,7 @@
     regles: '<p><strong>🎯 Le but :</strong> atteindre l’objectif de points du niveau avant d’épuiser vos coups — chaque niveau réussi (jusqu’à ⭐⭐⭐) débloque le suivant, la carte est sans fin et votre progression est enregistrée.</p>' +
       '<p><strong>Comment jouer :</strong> glissez un bonbon vers son voisin pour les échanger — l’échange doit former un alignement d’au moins 3 bonbons identiques, qui sont croqués. Les bonbons du dessus tombent, il en pleut de nouveaux : les cascades rapportent de plus en plus (×2, ×3…).</p>' +
       '<p><strong>🍭 Les spéciaux :</strong> 4 alignés = un <strong>bonbon rayé</strong> qui raye toute une ligne quand on le croque · liaison en <strong>L, en T ou en carré</strong> = un <strong>bonbon enveloppé</strong> 💥 qui explose tout autour de lui · 5 alignés = un <strong>sucre magique</strong> 🌟 : échangez-le avec n’importe quel bonbon pour croquer toute sa couleur !</p>' +
+      '<p><strong>💥 Les combos :</strong> échangez deux spéciaux <strong>entre eux</strong> ! Rayé + rayé = croix géante · rayé + enveloppé = trois lignes ET trois colonnes · enveloppé + enveloppé = déflagration 5×5 · sucre magique + spécial = toute la couleur croquée et ses jumeaux spéciaux réveillés.</p>' +
       '<p><strong>👥 À plusieurs :</strong> course sur la même grille de départ, même nombre de coups — le meilleur score gagne.</p>',
     min: 1, max: 4,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
@@ -530,6 +536,54 @@
             gain = eatColor(b, state.types, other, fx);
             fx.arc = Math.round(gain / 15);
           }
+        } else if (b[a].s > 0 && b[b2].s > 0) {
+          // deux bonbons spéciaux échangés : leurs pouvoirs se combinent !
+          var sA = b[a].s, sB = b[b2].s;
+          var r0 = Math.floor(b2 / N), c0 = b2 % N;
+          b[a].s = 0; b[b2].s = 0; // consommés ensemble, pas de double emploi
+          var marks = {};
+          marks[a] = true; marks[b2] = true;
+          var ligne = function (r) {
+            if (r < 0 || r >= N) return;
+            if (fx.rows.indexOf(r) === -1) fx.rows.push(r);
+            for (var q = 0; q < N; q++) marks[r * N + q] = true;
+          };
+          var colonne = function (c) {
+            if (c < 0 || c >= N) return;
+            if (fx.cols.indexOf(c) === -1) fx.cols.push(c);
+            for (var q = 0; q < N; q++) marks[q * N + c] = true;
+          };
+          if (sA === 3 && sB === 3) {
+            // enveloppé + enveloppé : déflagration géante de 5×5
+            for (var dr2 = -2; dr2 <= 2; dr2++) {
+              for (var dc2 = -2; dc2 <= 2; dc2++) {
+                var rr = r0 + dr2, cc = c0 + dc2;
+                if (rr >= 0 && rr < N && cc >= 0 && cc < N) marks[rr * N + cc] = true;
+              }
+            }
+            fx.bombs.push(b2); fx.bombs.push(a);
+          } else if (sA === 3 || sB === 3) {
+            // rayé + enveloppé : trois lignes ET trois colonnes d'un coup
+            ligne(r0 - 1); ligne(r0); ligne(r0 + 1);
+            colonne(c0 - 1); colonne(c0); colonne(c0 + 1);
+          } else {
+            // rayé + rayé : la croix — toute la ligne et toute la colonne
+            ligne(r0); colonne(c0);
+          }
+          // la déflagration peut réveiller d'autres spéciaux pris dedans
+          spread(b, marks, fx);
+          var croques = 0;
+          for (var m2 = 0; m2 < N * N; m2++) {
+            if (marks[m2] && b[m2]) {
+              if (fx.pops.length < 96) fx.pops.push({ i: m2, t: b[m2].t, w: 0 });
+              b[m2] = null; croques++;
+            }
+          }
+          drop(b, state.types);
+          gain = croques * 15;
+          var resC = resolve(b, state.types, -1, fx);
+          gain += resC.pts;
+          combo = Math.max(1, resC.combo);
         } else {
           if (!wouldMatch(b, a, b2)) {
             return { ok: false, error: 'Cet échange ne forme aucun alignement.' };
@@ -716,15 +770,21 @@
 
       var html = '';
       if (s.solo) {
-        var pc = Math.min(100, Math.round(p.score * 100 / s.cible));
+        // la barre montre tout le voyage : l'objectif (⭐) puis ⭐⭐ et ⭐⭐⭐
+        var pc = Math.min(100, Math.round(p.score * 100 / (s.cible * 1.9)));
+        var stNow = stars(p.score, s.cible);
         var z2 = zoneOf(s.soloLvl);
         html += '<div class="mem-stats">' +
           '<span class="mem-stat">' + ZONE_ICONS[z2] + ' Niveau ' + s.soloLvl + '</span>' +
-          '<span class="mem-stat">🍬 ' + p.moves + ' coup' + (p.moves > 1 ? 's' : '') + '</span>' +
+          '<span class="mem-stat' + (p.moves <= 3 ? ' bb-low' : '') + '">🍬 ' +
+          p.moves + ' coup' + (p.moves > 1 ? 's' : '') + '</span>' +
           (p.lastGain > 0 ? '<span class="mem-stat bb-gain">+' + p.lastGain +
             (p.lastCombo > 1 ? ' · ×' + p.lastCombo : '') + '</span>' : '') +
           '</div>' +
           '<div class="bb-obj"><div class="bb-obj-fill" style="width:' + pc + '%"></div>' +
+          '<span class="bb-obj-star' + (stNow >= 1 ? ' lit' : '') + '" style="left:52.6%">⭐</span>' +
+          '<span class="bb-obj-star' + (stNow >= 2 ? ' lit' : '') + '" style="left:73.7%">⭐</span>' +
+          '<span class="bb-obj-star' + (stNow >= 3 ? ' lit' : '') + '" style="left:96%">⭐</span>' +
           '<span class="bb-obj-txt">' + p.score + ' / ' + s.cible + '</span></div>';
       } else {
         html += '<div class="mem-stats">' +
@@ -748,8 +808,9 @@
       // animation : seuls les bonbons qui ont changé tombent en scène
       var prev = el._bbPrev;
       var glyphs = [];
-      html += '<div class="bb-wrap"><div class="bb-grid' +
-        (secousse ? ' bb-quake' : '') + '">';
+      // en aventure, chaque monde teinte la grille à ses couleurs
+      html += '<div class="bb-wrap' + (s.solo ? ' zn' + zoneOf(s.soloLvl) : '') +
+        '"><div class="bb-grid' + (secousse ? ' bb-quake' : '') + '">';
       for (var i = 0; i < N * N; i++) {
         var c2 = p.board[i];
         var tk = c2.t === ARC ? 'x' : c2.t;
@@ -851,7 +912,8 @@
         var ra = ca.getBoundingClientRect(), rb = cb.getBoundingClientRect();
         var dx = rb.left - ra.left, dy = rb.top - ra.top;
         var arc = p.board[a].t === ARC || p.board[b2].t === ARC;
-        var valide = arc || wouldMatch(p.board, a, b2);
+        var duo = p.board[a].s > 0 && p.board[b2].s > 0; // combo de spéciaux
+        var valide = arc || duo || wouldMatch(p.board, a, b2);
         ca.style.zIndex = 3;
         ca.style.transition = 'transform .14s ease';
         cb.style.transition = 'transform .14s ease';

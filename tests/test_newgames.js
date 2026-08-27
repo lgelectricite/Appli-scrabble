@@ -513,5 +513,61 @@ check('échange non voisin refusé', bonbons.apply(bg, 0, { t: 'swap', a: 0, b: 
     fx.pops.filter(pp => pp.w === 0).length >= 5 &&
     fx.pops.every(pp => pp.i >= 0 && pp.i < 64 && typeof pp.t === 'number'), fx.pops.length);
 }
+// ===== combos de bonbons spéciaux : échanger deux spéciaux entre eux =====
+{
+  // rayé + rayé : la croix — toute la ligne 3 et toute la colonne 4
+  const st = bonbons.create(['Solo']);
+  bonbons.apply(st, 0, { t: 'start', lvl: 1 });
+  const b = safeBoard();
+  b[27] = { t: 0, s: 1 }; b[28] = { t: 1, s: 2 };
+  st.players[0].board = b;
+  const ok = bonbons.apply(st, 0, { t: 'swap', a: 27, b: 28 });
+  const fx = st.players[0].fx;
+  check('combo rayé+rayé accepté sans alignement', ok.ok === true);
+  check('combo rayé+rayé : la croix est signalée au rendu',
+    fx && fx.rows.indexOf(3) !== -1 && fx.cols.indexOf(4) !== -1, fx && { r: fx.rows, c: fx.cols });
+  check('combo rayé+rayé : au moins 15 bonbons croqués (225 pts)',
+    st.players[0].lastGain >= 225, st.players[0].lastGain);
+  check('combo : un coup consommé', st.players[0].moves === bonbons._levelCfg(1).coups - 1);
+}
+{
+  // enveloppé + enveloppé : déflagration 5×5
+  const st = bonbons.create(['Solo']);
+  bonbons.apply(st, 0, { t: 'start', lvl: 1 });
+  const b = safeBoard();
+  b[27] = { t: 0, s: 3 }; b[28] = { t: 1, s: 3 };
+  st.players[0].board = b;
+  bonbons.apply(st, 0, { t: 'swap', a: 27, b: 28 });
+  const fx = st.players[0].fx;
+  check('combo enveloppé+enveloppé : double déflagration signalée',
+    fx && fx.bombs.length >= 2, fx && fx.bombs);
+  check('combo enveloppé+enveloppé : au moins 25 bonbons croqués (375 pts)',
+    st.players[0].lastGain >= 375, st.players[0].lastGain);
+}
+{
+  // rayé + enveloppé : trois lignes ET trois colonnes
+  const st = bonbons.create(['Solo']);
+  bonbons.apply(st, 0, { t: 'start', lvl: 1 });
+  const b = safeBoard();
+  b[27] = { t: 0, s: 2 }; b[28] = { t: 1, s: 3 };
+  st.players[0].board = b;
+  bonbons.apply(st, 0, { t: 'swap', a: 27, b: 28 });
+  const fx = st.players[0].fx;
+  check('combo rayé+enveloppé : 3 lignes et 3 colonnes signalées',
+    fx && [2, 3, 4].every(r => fx.rows.indexOf(r) !== -1) &&
+    [3, 4, 5].every(c => fx.cols.indexOf(c) !== -1), fx && { r: fx.rows, c: fx.cols });
+  check('combo rayé+enveloppé : au moins 39 bonbons croqués (585 pts)',
+    st.players[0].lastGain >= 585, st.players[0].lastGain);
+}
+{
+  // deux spéciaux voisins comptent comme un coup jouable (grille jamais morte)
+  const dead = new Array(BN * BN);
+  for (let r = 0; r < BN; r++) for (let c = 0; c < BN; c++) {
+    dead[r * BN + c] = mkCell((r % 2) * 2 + (c % 2));
+  }
+  check('damier mort : toujours aucun coup', bonbons._hasMove(dead) === false);
+  dead[0].s = 1; dead[1].s = 3;
+  check('deux spéciaux voisins : un coup existe', bonbons._hasMove(dead) === true);
+}
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests nouveaux jeux OK.');
 process.exit(failures ? 1 : 0);
