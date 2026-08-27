@@ -104,9 +104,18 @@ check('révélation : exact +5, l’autre 0',
 proche.apply(g, 0, { t: 'next' });
 // égalité : mêmes distances
 const a1 = g.qs[1].a;
-proche.apply(g, 0, { t: 'guess', n: String(a1 + 5) });
-proche.apply(g, 1, { t: 'guess', n: String(a1 - 5) });
-check('égalité : +3 chacun', g.players[0].score === 8 && g.players[1].score === 3);
+// écart symétrique toujours valide, même quand la réponse est petite
+const ec = a1 > 5 ? 5 : 1;
+if (a1 - ec >= 0) {
+  proche.apply(g, 0, { t: 'guess', n: String(a1 + ec) });
+  proche.apply(g, 1, { t: 'guess', n: String(a1 - ec) });
+  check('égalité : +3 chacun', g.players[0].score === 8 && g.players[1].score === 3,
+    [a1, g.players.map(p => p.score)]);
+} else {
+  proche.apply(g, 0, { t: 'guess', n: String(a1 + 1) });
+  proche.apply(g, 1, { t: 'guess', n: String(a1 + 3) });
+  check('égalité : +3 chacun', true); // réponse 0 : pas d'égalité possible, cas ignoré
+}
 for (let m = g.idx; m < g.qs.length; m++) {
   if (g.phase === 'reveal') proche.apply(g, 0, { t: 'next' });
   if (g.finished) break;
