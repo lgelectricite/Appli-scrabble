@@ -82,18 +82,18 @@ function check(n, c, e) {
 
   // ---------- barrière de jetons du Poker ----------
   console.log('--- Poker : barrière de jetons ---');
-  await p.evaluate(() => localStorage.setItem('gg-jetons', JSON.stringify({ n: 300, ts: Date.now() })));
+  await p.evaluate(() => localStorage.setItem('gg-jetons', JSON.stringify({ n: 40, ts: Date.now() })));
   await p.reload();
   await p.waitForSelector('.game-tile[data-g="poker"]');
   await p.click('.game-tile[data-g="poker"]');
   await p.waitForSelector('#screen-boutique.active', { timeout: 8000 });
   check('cagnotte trop basse : renvoyé vers la Boutique', true);
-  check('jauge à 300', /300/.test(await p.textContent('#wallet-amount')));
-  // le blackjack reste accessible (mise mini 100)
+  check('jauge à 40', /40/.test(await p.textContent('#wallet-amount')));
+  // le blackjack reste accessible (mise mini 1 jeton)
   await p.click('#screen-boutique [data-back]');
   await p.click('.game-tile[data-g="blackjack"]');
   await p.waitForSelector('#screen-mini-setup.active', { timeout: 8000 });
-  check('blackjack accessible avec 300 jetons', true);
+  check('blackjack accessible avec 40 jetons', true);
 
   await browser.close();
   console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests casino UI OK.');

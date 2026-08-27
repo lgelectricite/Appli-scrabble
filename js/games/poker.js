@@ -2,8 +2,8 @@
 (function (root) {
   'use strict';
   var GG = root.GG;
-  var START_CHIPS = 1000;
-  var BLINDS = [10, 20];
+  var START_CHIPS = 100;
+  var BLINDS = [1, 2];
   var RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R', 'A'];
   var SUITS = ['♠', '♥', '♦', '♣'];
   var CAT_NAMES = ['Carte haute', 'Paire', 'Deux paires', 'Brelan', 'Suite',
@@ -99,7 +99,7 @@
     // Tournoi : blinds qui doublent toutes les 6 mains
     if (state.mode === 'tournoi') {
       var level = Math.floor(state.handNum / 6);
-      state.blinds = [10 * Math.pow(2, level), 20 * Math.pow(2, level)];
+      state.blinds = [1 * Math.pow(2, level), 2 * Math.pow(2, level)];
     }
     var alive = state.players.filter(function (p) { return !p.out && p.chips > 0; });
     if (alive.length < 2) {
@@ -287,7 +287,7 @@
     nom: 'Poker',
     icone: '🃏',
     desc: 'Texas Hold’em, au choix : cash game (recaves) ou tournoi (blinds montantes).',
-    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p><p><strong>🪙 La cagnotte :</strong> la cave (1 000) et chaque recave sortent de la cagnotte de votre téléphone ; votre pile y retourne quand vous quittez la table. Recharge automatique chaque semaine.</p>',
+    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p><p><strong>🪙 La cagnotte :</strong> la cave (100) et chaque recave sortent de la cagnotte de votre téléphone ; votre pile y retourne quand vous quittez la table. Recharge automatique chaque semaine.</p>',
     min: 2, max: 4,
     hotseat: false, hidden: true, netOnly: true,
 
@@ -468,7 +468,7 @@
           html0 += '<p class="mini-msg">Choisissez le mode de jeu :</p>' +
             '<div class="pk-modes">' +
             '<button class="btn big" data-a=\'{"t":"mode","m":"cash"}\'>💵 Cash game' +
-            '<small>Blinds fixes 10/20 · recave à volonté</small></button>' +
+            '<small>Blinds fixes 1/2 · recave à volonté</small></button>' +
             '<button class="btn big primary" data-a=\'{"t":"mode","m":"tournoi"}\'>🏆 Tournoi' +
             '<small>Blinds montantes · dernier survivant</small></button>' +
             '</div>';

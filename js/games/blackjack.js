@@ -2,7 +2,7 @@
   'use strict';
   var GG = root.GG;
 
-  var MISES = [100, 250, 500, 1000];
+  var MISES = [1, 5, 25, 100, 500];
   var RANGS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R'];
   var SYMBOLES = ['♠', '♥', '♦', '♣'];
 
@@ -137,7 +137,7 @@
     icone: '♠️',
     desc: 'Défiez le croupier : approchez 21 sans le dépasser et repartez avec les jetons !',
     regles: '<p><strong>🎯 Le but :</strong> battre le croupier en vous approchant de 21 sans jamais le dépasser.</p>' +
-      '<p><strong>Comment jouer :</strong> misez vos jetons (100 à 1000), recevez deux cartes, puis à votre tour : tirez, restez, ou doublez (uniquement avec deux cartes : mise doublée, une seule carte de plus). L\'as vaut 1 ou 11.</p>' +
+      '<p><strong>Comment jouer :</strong> misez vos jetons (de 1 à 500), recevez deux cartes, puis à votre tour : tirez, restez, ou doublez (uniquement avec deux cartes : mise doublée, une seule carte de plus). L\'as vaut 1 ou 11.</p>' +
       '<p><strong>Le croupier :</strong> il révèle sa carte cachée après vous et tire jusqu\'à 17 — il reste sur tous les 17.</p>' +
       '<p><strong>Les gains :</strong> victoire 1 pour 1, blackjack naturel 3 pour 2, égalité : mise rendue. Pas de partage de paires (split) dans cette version.</p>',
     min: 1,
@@ -200,6 +200,17 @@
       delete r.shoe;
       if (r.phase !== 'result' && r.dealer && r.dealer.length > 1) r.dealer[1] = -1;
       return r;
+    },
+
+    /* On quitte la table en pleine manche : la mise engagée (déjà débitée
+       localement) retourne dans la cagnotte du téléphone. En phase résultat,
+       le paiement a déjà été fait par le rendu — rien à rendre. */
+    cashout: function (state, me) {
+      if (!GG.wallet || !state || !state.players || !state.players[me]) return;
+      var p = state.players[me];
+      if (state.phase !== 'result' && !state.finished && p.bet > 0) {
+        GG.wallet.add(p.bet);
+      }
     },
 
     apply: function (state, player, action) {
@@ -331,7 +342,7 @@
             html += '<p class="waiting">Mise posée : ' + moi.bet + ' 🪙 — on attend les autres…</p>';
           } else {
             var solde = GG.wallet ? GG.wallet.get() : 0;
-            if (GG.wallet && solde < 100) {
+            if (GG.wallet && solde < 1) {
               html += '<p class="mini-msg">Plus de jetons ! Recharge automatique chaque semaine, ou passez par la Boutique 🪙</p>' +
                 '<div class="bj-actions"><button class="btn" id="bj-sit">Passer la manche</button></div>';
             } else {

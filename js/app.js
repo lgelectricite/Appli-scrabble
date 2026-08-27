@@ -678,7 +678,7 @@
 
   /* ---------- cagnotte de jetons et boutique ---------- */
   // jetons exigés pour s'installer à une table (cave du poker, mise mini du blackjack)
-  var CHIP_ENTRY = { poker: 1000, blackjack: 100 };
+  var CHIP_ENTRY = { poker: 100, blackjack: 1 };
 
   function updateWallet() {
     if (!window.GG.wallet) return;

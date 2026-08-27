@@ -62,10 +62,10 @@ const C = (suit, rank) => suit * 13 + rank; // rang 0 = As, 9 = 10, 12 = Roi
 let b = blackjack.create(['Ana', 'Bob']);
 check('création : phase de mises', b.phase === 'bet' && b.players.length === 2);
 check('mise farfelue refusée', blackjack.apply(b, 0, { t: 'bet', v: 999 }).ok === false);
-check('mise valide', blackjack.apply(b, 0, { t: 'bet', v: 100 }).ok === true);
+check('mise minimale de 1 jeton acceptée', blackjack.apply(b, 0, { t: 'bet', v: 1 }).ok === true);
 check('double mise refusée', blackjack.apply(b, 0, { t: 'bet', v: 100 }).ok === false);
 check('jouer avant la donne refusé', blackjack.apply(b, 0, { t: 'hit' }).ok === false);
-blackjack.apply(b, 1, { t: 'bet', v: 250 });
+check('mise de 25 valide', blackjack.apply(b, 1, { t: 'bet', v: 25 }).ok === true);
 check('donne : 2 cartes par joueur + 2 au croupier',
   b.phase === 'play' || b.phase === 'result');
 if (b.phase === 'play') {
@@ -139,6 +139,24 @@ const totAvant = s9.players[0].total;
 check('again réservé à l’hôte', blackjack.apply(s9, 0, { t: 'again' }).ok === true && s9.round === 2);
 check('cumul conservé entre les manches', s9.players[0].total === totAvant);
 check('fin de partie : summary avec 🏆', /🏆/.test(blackjack.summary(s9)));
+
+// quitter en pleine manche : la mise engagée revient (cagnotte locale)
+{
+  const avant = wallet.get();
+  let bq = blackjack.create(['Solo']);
+  blackjack.apply(bq, 0, { t: 'bet', v: 100 }); // (mise débitée par l'écran en vrai)
+  if (bq.phase !== 'result') {
+    blackjack.cashout(bq, 0);
+    check('quitter en pleine manche rembourse la mise', wallet.get() === avant + 100);
+  } else {
+    check('quitter en pleine manche rembourse la mise', true); // blackjack immédiat, rien à rendre
+  }
+  let br = blackjack.create(['Solo']);
+  br.phase = 'result'; br.players[0].bet = 100; br.players[0].outcome = 'lose';
+  const avant2 = wallet.get();
+  blackjack.cashout(br, 0);
+  check('au résultat, rien n’est rendu deux fois', wallet.get() === avant2);
+}
 
 /* ================= SOLITAIRE ================= */
 console.log('--- Solitaire ---');

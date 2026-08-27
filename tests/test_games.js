@@ -55,11 +55,11 @@ check('best7 trouve le full', b7(seven)[0] === 6, b7(seven));
 console.log('--- Poker : partie ---');
 let g = poker.create(['A', 'B', 'C']);
 const chipsTotal = s => s.players.reduce((t, p) => t + p.chips + p.cont, 0);
-check('3000 jetons en jeu', chipsTotal(g) === 3000, chipsTotal(g));
+check('300 jetons en jeu (3 caves de 100)', chipsTotal(g) === 300, chipsTotal(g));
 check('action avant choix du mode refusée', !poker.apply(g, 0, { t: 'call' }).ok);
 check('mode choisi par l’hôte uniquement', !poker.apply(g, 1, { t: 'mode', m: 'tournoi' }).ok);
 check('mode accepté', poker.apply(g, 0, { t: 'mode', m: 'tournoi' }).ok);
-check('blinds posées', g.players.reduce((t, p) => t + p.cont, 0) === 30);
+check('blinds 1/2 posées', g.players.reduce((t, p) => t + p.cont, 0) === 3);
 check('c’est au joueur après la BB', g.current >= 0);
 // hors tour refusé
 const notTurn = (g.current + 1) % 3;
@@ -73,7 +73,7 @@ while (!g.handOver && guard++ < 60) {
   if (!res.ok) { check('action légale acceptée', false, res); break; }
 }
 check('main jouée jusqu’au bout', g.handOver === true);
-check('jetons conservés après la main', chipsTotal(g) === 3000, chipsTotal(g));
+check('jetons conservés après la main', chipsTotal(g) === 300, chipsTotal(g));
 check('5 cartes communes', g.community.length === 5, g.community.length);
 check('un message de gain', g.handMsg.length > 0, g.handMsg);
 // main suivante + tout le monde se couche sauf un
@@ -84,7 +84,7 @@ while (!g.handOver && guard++ < 10) {
   if (!res.ok) break;
 }
 check('victoire par abandon', g.handOver && /couché/.test(g.handMsg), g.handMsg);
-check('jetons conservés après abandon', chipsTotal(g) === 3000, chipsTotal(g));
+check('jetons conservés après abandon', chipsTotal(g) === 300, chipsTotal(g));
 // redact : cartes adverses masquées
 let red = poker.redact(g, 1);
 const hidden = red.players.every((p, i) => i === 1 || p.hole.every(c => c === -1) || p.show);
@@ -98,20 +98,20 @@ poker.apply(g, 0, { t: 'mode', m: 'cash' });
 check('recave refusée avec des jetons', !poker.apply(g, 0, { t: 'rebuy' }).ok);
 g.players[1].chips = 0; g.players[1].folded = true;
 poker.apply(g, 1, { t: 'rebuy' });
-check('recave acceptée à 0 jeton', g.players[1].chips === 1000);
+check('recave acceptée à 0 jeton', g.players[1].chips === 100);
 check('cash : blinds fixes après 20 mains', (() => {
   const s = poker.create(['A', 'B']);
   poker.apply(s, 0, { t: 'mode', m: 'cash' });
   s.handNum = 20; s.handOver = true;
   poker.apply(s, 0, { t: 'next' });
-  return s.blinds[0] === 10 && s.blinds[1] === 20;
+  return s.blinds[0] === 1 && s.blinds[1] === 2;
 })());
 check('tournoi : blinds doublées après 6 mains', (() => {
   const s = poker.create(['A', 'B']);
   poker.apply(s, 0, { t: 'mode', m: 'tournoi' });
   s.handNum = 6; s.handOver = true;
   poker.apply(s, 0, { t: 'next' });
-  return s.blinds[0] === 20 && s.blinds[1] === 40;
+  return s.blinds[0] === 2 && s.blinds[1] === 4;
 })());
 check('tournoi : élimination à 0 jeton', (() => {
   const s = poker.create(['A', 'B']);
