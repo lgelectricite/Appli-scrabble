@@ -1,0 +1,24 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  logique:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Moteur du jeu de lettres
+        run: node tests/test_engine.js
+      - name: IA de Words
+        run: node tests/test_ai.js
+      - name: Règles de tous les jeux
+        run: node tests/test_games.js
+      - name: Jeux de réflexion
+        run: node tests/test_puzzle.js
+      - name: Quiz, Le Plus Proche, 8 américain
+        run: node tests/test_newgames.js

@@ -926,3 +926,88 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
   background: #ffffff14; border-radius: 8px; padding: 4px 10px; font-size: 13px;
 }
 .imp-role-tag.imp { background: #7c2d3e; }
+
+/* ===== Quiz & Le Plus Proche ===== */
+.qz-head { text-align: center; font-size: 13px; opacity: .85; margin: 2px 0 10px; }
+.qz-q {
+  background: linear-gradient(160deg, #1a2130, #141924);
+  border: 1px solid #ffffff12; border-radius: 16px;
+  padding: 18px 16px; text-align: center;
+  font-size: 19px; font-weight: 700; line-height: 1.4; margin-bottom: 12px;
+}
+.qz-choices { display: flex; flex-direction: column; gap: 8px; }
+.qz-choice {
+  background: #ffffff0f; border: 2px solid #ffffff14; color: var(--paper);
+  border-radius: 13px; padding: 13px 14px; font-size: 16px; font-weight: 600;
+  cursor: pointer; font-family: inherit; text-align: left; position: relative;
+}
+.qz-choice:disabled { opacity: .55; }
+.qz-choice.picked { border-color: var(--accent); opacity: 1; }
+.qz-choice.show { cursor: default; }
+.qz-choice.good { border-color: var(--accent); background: #d8ff4f1c; }
+.qz-choice small { display: block; font-size: 11px; opacity: .65; margin-top: 3px; }
+.pr-answer { text-align: center; font-size: 20px; margin: 12px 0; }
+.pr-answer strong { color: var(--accent); font-size: 26px; }
+.pr-rows { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.pr-row {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #ffffff0d; border: 1px solid #ffffff10;
+  border-radius: 10px; padding: 8px 12px; font-size: 14px;
+}
+.pr-row.win { border-color: var(--accent); background: #d8ff4f14; font-weight: 700; }
+.pr-row small { opacity: .6; font-weight: 400; }
+
+/* ===== 8 américain ===== */
+.ha-opps { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 8px; }
+.ha-opp {
+  background: #ffffff0d; border: 2px solid #ffffff10; border-radius: 12px;
+  padding: 6px 12px; text-align: center; font-size: 12px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.ha-opp.turn { border-color: var(--tile-new); }
+.ha-opp-count { font-size: 15px; font-weight: 800; }
+.ha-center { display: flex; gap: 20px; justify-content: center; align-items: center; margin: 10px 0; }
+.ha-card {
+  position: relative; display: inline-flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px;
+  width: 52px; height: 72px; flex: none;
+  background: #f7f4ec; color: #1c2330;
+  border: 1px solid #d8d2c2; border-radius: 8px;
+  font-size: 19px; font-weight: 800; cursor: pointer; font-family: inherit;
+  box-shadow: 0 3px 8px #00000040;
+}
+.ha-card span { font-size: 17px; line-height: 1; }
+.ha-card.red { color: #cf3345; }
+.ha-card.big { width: 68px; height: 94px; font-size: 26px; cursor: default; }
+.ha-card.big span { font-size: 24px; }
+.ha-card.off { opacity: .45; }
+.ha-card.ok { box-shadow: 0 0 0 2px var(--accent), 0 3px 8px #00000040; }
+.ha-card.sel { transform: translateY(-6px); }
+.ha-top { position: relative; }
+.ha-suit-tag {
+  position: absolute; right: -12px; top: -10px;
+  background: var(--accent); color: var(--accent-ink);
+  border-radius: 50%; width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 800;
+}
+.ha-pile {
+  width: 68px; height: 94px; border-radius: 8px; border: 1px dashed #ffffff38;
+  background: repeating-linear-gradient(45deg, #1c2331, #1c2331 7px, #161c27 7px, #161c27 14px);
+  color: var(--paper); font-size: 24px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.ha-pile small { font-size: 11px; opacity: .7; }
+.ha-pile:disabled { opacity: .5; cursor: default; }
+.ha-dir { text-align: center; font-size: 12px; opacity: .6; margin: 2px 0; }
+.ha-hand {
+  display: flex; gap: 7px; overflow-x: auto; padding: 10px 4px 14px;
+  -webkit-overflow-scrolling: touch;
+}
+.ha-suits { display: flex; gap: 10px; justify-content: center; }
+.ha-suit-btn {
+  width: 56px; height: 56px; border-radius: 12px; border: 1px solid #ffffff20;
+  background: #f7f4ec; color: #1c2330; font-size: 28px; cursor: pointer;
+}
+.ha-suit-btn.red { color: #cf3345; }
+.ha-scores { margin: 10px 0; }

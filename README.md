@@ -1,5 +1,7 @@
 # GGgames 🎮
 
+![Tests](https://github.com/lgelectricite/Appli-scrabble/actions/workflows/tests.yml/badge.svg)
+
 **GGgames** est une collection de jeux à plusieurs, **entièrement hors ligne**,
 pensée pour les mobiles — parfaite pour un avion, un train ou un endroit sans
 réseau. Aucun compte, aucun serveur externe, aucune connexion Internet
@@ -25,6 +27,9 @@ nécessaire pendant les parties.
 | ✏️ **Mots croisés** | 1–4 | Base de **près de 800 définitions écrites à la main** en 3 niveaux de vocabulaire ; le générateur croise les mots au hasard : des milliers de grilles possibles. Points à la longueur du mot, erreurs comptées, chrono et records. Les solutions **ne circulent jamais** sur le réseau. |
 | 🕵️ **Le Manoir** | 1–12 | **Enquête collaborative** façon Cluedo/escape game : **3 décors d'affaires tirés au sort** (le manoir, l'opéra, le train de nuit), et **chaque joueur incarne un rôle** (Détective, Voyante, Cryptographe…) avec ses **informations confidentielles** à partager de vive voix et parfois un pouvoir spécial. Six pistes verrouillées par des énigmes, carnet de déduction automatique, deux accusations. La solution et les infos privées **ne quittent jamais le téléphone-serveur**. |
 | 🥸 **L'Imposteur** | 3–12 | Jeu de bluff : tout le monde reçoit le **même mot secret… sauf l'imposteur**, qui reçoit un mot voisin — et **personne ne connaît son propre camp** ! Un indice par joueur, puis un vote pour éliminer un suspect. Plus de 180 paires de mots, 1 à 3 imposteurs selon le nombre de joueurs, scores en série. Les mots **ne circulent jamais** entre téléphones. |
+| 💡 **Quiz** | 1–12 | Culture générale : 10 questions tirées d'une **banque maison fact-checkée**, chacun répond en secret, +10 par bonne réponse et **+5 au plus rapide**. Les bonnes réponses ne circulent jamais avant la révélation. Record personnel en solo. |
+| 🎯 **Le Plus Proche** | 2–12 | Jeu d'estimation : une question à réponse chiffrée, chacun propose un nombre **en secret** — le plus proche marque 3 points, la réponse exacte en vaut 5. Pas besoin de savoir, il suffit d'être moins loin que les autres ! |
+| 🎴 **8 américain** | 2–5 | Le jeu de cartes façon Uno : même couleur ou même valeur, le **8 est joker**, le Valet saute, l'As change de sens, les **2 se cumulent**. Mains adverses **jamais transmises**. Points de manche en manche. |
 
 ## Impossible de tricher
 
