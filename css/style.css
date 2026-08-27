@@ -265,7 +265,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 }
 
 /* ===== choix du nombre de joueurs / niveau IA ===== */
-#player-count, #ai-level, #mini-count { display: flex; gap: 10px; margin: 8px 0 4px; }
+#player-count, #ai-level, #mini-count, #msolo-bots { display: flex; gap: 10px; margin: 8px 0 4px; }
 #ai-level .count-btn { font-size: 15px; }
 .count-btn {
   flex: 1; padding: 12px 0; font-size: 18px; font-weight: 700;
@@ -466,21 +466,43 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   background-size: 100% 100%, 100% 5px, 100% 88px;
   background-position: 0 0, 0 calc(100% - 88px), bottom;
 }
-/* le cadre accroché au mur */
-.room-pic {
-  position: absolute; top: 12px; right: 30px;
-  width: 40px; height: 50px;
-  background: #fffcf2; border: 4px solid #6e5236; border-radius: 2px;
-  box-shadow: 0 3px 7px rgba(30, 22, 14, .35), inset 0 0 0 2px #d9cba9;
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Fraunces', Georgia, serif; font-size: 14px; font-weight: 700;
-  color: var(--accent);
+/* l'horloge en bois accrochée au mur */
+.room-clock {
+  position: absolute; top: 10px; right: 28px;
+  width: 46px; height: 46px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fffdf4, #f2e7cd 72%);
+  border: 4px solid #6e5236;
+  box-shadow: 0 3px 7px rgba(30, 22, 14, .35), inset 0 0 0 1.5px #d9cba9,
+    inset 0 2px 5px rgba(30, 22, 14, .18);
 }
-/* la plante posée sur le meuble */
+.room-clock::before { /* les repères de midi, 3, 6 et 9 heures */
+  content: ''; position: absolute; inset: 3px; border-radius: 50%;
+  background:
+    radial-gradient(circle 1.5px at 50% 8%, #2c2218 98%, transparent),
+    radial-gradient(circle 1.5px at 92% 50%, #2c2218 98%, transparent),
+    radial-gradient(circle 1.5px at 50% 92%, #2c2218 98%, transparent),
+    radial-gradient(circle 1.5px at 8% 50%, #2c2218 98%, transparent);
+}
+.room-clock::after { /* l'axe des aiguilles */
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
+  background: #8a2f22; border-radius: 50%;
+}
+.rc-h, .rc-m {
+  position: absolute; left: 50%; bottom: 50%;
+  transform-origin: 50% 100%; background: #2c2218; border-radius: 2px;
+}
+.rc-h { width: 3px; height: 10px; margin-left: -1.5px; transform: rotate(-55deg); }
+.rc-m { width: 2px; height: 14px; margin-left: -1px; transform: rotate(115deg); }
+/* la plante, bien posée sur la corniche du meuble */
 .room-plant {
-  position: absolute; top: -34px; left: 14px; font-size: 32px;
-  filter: drop-shadow(0 3px 3px rgba(30, 22, 14, .35));
-  z-index: 2;
+  position: absolute; bottom: 100%; margin-bottom: 5px; left: 12px;
+  font-size: 32px; line-height: 1; z-index: 2;
+  filter: drop-shadow(0 3px 2px rgba(30, 22, 14, .4));
+}
+.room-plant::after { /* ombre de contact : le pot repose sur le bois */
+  content: ''; position: absolute; left: 12%; right: 10%; bottom: 0; height: 5px;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(30, 22, 14, .45), transparent 72%);
 }
 
 /* la bibliothèque : corniche, flancs en noyer, fond sombre, ombre au sol */
@@ -567,6 +589,12 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   font-family: 'Fraunces', Georgia, serif; font-size: 8px; font-weight: 700;
   letter-spacing: 1px; opacity: .65; border: 1px solid currentColor;
   border-radius: 3px; padding: 0 3px; margin-top: 4px;
+}
+/* pastille « jouable seul contre l'ordinateur » au coin de la boîte */
+.bx-bot {
+  position: absolute; top: 2px; right: 3px;
+  font-size: 9px; opacity: .85;
+  filter: drop-shadow(0 1px 1px rgba(30, 22, 14, .5));
 }
 
 /* plinthe et parquet */

@@ -171,6 +171,71 @@
       return { ok: false, error: 'Action inconnue.' };
     },
 
+    /* Adversaire IA : chasse en damier, puis ciblage autour des touches.
+       Fair-play : n'utilise que ce qu'un humain verrait à sa place — ses
+       propres tirs (touché / à l'eau) et les navires adverses déjà coulés
+       (affichés des deux côtés). Jamais les positions secrètes. */
+    bot: function (state, me) {
+      if (state.finished) return null; // écran de revanche : l'humain décide
+      if (state.phase === 'place') {
+        if (state.players[me].ready) return null; // on attend l'adversaire
+        return { t: 'ready' }; // la flotte aléatoire de create() convient
+      }
+      if (state.current !== me) return null;
+      var opp = 1 - me;
+      var shots = state.shots[opp]; // MES tirs sur la grille adverse
+      // cases des navires adverses coulés : information publique
+      var coule = {};
+      state.boards[opp].ships.forEach(function (sh) {
+        if (sh.sunk) sh.cells.forEach(function (i) { coule[i] = true; });
+      });
+      function libre(i) { return !shots[i]; }
+      function actif(i) { return shots[i] === 'H' && !coule[i]; }
+      // touches « actives » : navire touché mais pas encore coulé
+      var actifs = [];
+      for (var i = 0; i < N * N; i++) if (actif(i)) actifs.push(i);
+      var cibles = [];
+      // deux touches actives alignées → on prolonge la ligne aux deux bouts
+      actifs.forEach(function (h) {
+        var r = Math.floor(h / N), c = h % N;
+        if (c + 1 < N && actif(h + 1)) { // segment horizontal
+          var g = c; while (g > 0 && actif(r * N + g - 1)) g--;
+          var d = c + 1; while (d < N - 1 && actif(r * N + d + 1)) d++;
+          if (g > 0 && libre(r * N + g - 1)) cibles.push(r * N + g - 1);
+          if (d < N - 1 && libre(r * N + d + 1)) cibles.push(r * N + d + 1);
+        }
+        if (r + 1 < N && actif(h + N)) { // segment vertical
+          var ht = r; while (ht > 0 && actif((ht - 1) * N + c)) ht--;
+          var bs = r + 1; while (bs < N - 1 && actif((bs + 1) * N + c)) bs++;
+          if (ht > 0 && libre((ht - 1) * N + c)) cibles.push((ht - 1) * N + c);
+          if (bs < N - 1 && libre((bs + 1) * N + c)) cibles.push((bs + 1) * N + c);
+        }
+      });
+      if (!cibles.length && actifs.length) {
+        // touche isolée : on tâte les voisins orthogonaux
+        actifs.forEach(function (h) {
+          var r = Math.floor(h / N), c = h % N;
+          if (c > 0 && libre(h - 1)) cibles.push(h - 1);
+          if (c < N - 1 && libre(h + 1)) cibles.push(h + 1);
+          if (r > 0 && libre(h - N)) cibles.push(h - N);
+          if (r < N - 1 && libre(h + N)) cibles.push(h + N);
+        });
+      }
+      if (!cibles.length) {
+        // chasse : quadrillage en damier (le plus petit navire fait 2 cases),
+        // avec une pointe de fantaisie pour rester battable
+        var toutes = [], damier = [];
+        for (var j = 0; j < N * N; j++) {
+          if (shots[j]) continue;
+          toutes.push(j);
+          if ((Math.floor(j / N) + j % N) % 2 === 0) damier.push(j);
+        }
+        if (!toutes.length) return null; // grille épuisée (impossible en pratique)
+        cibles = (damier.length && Math.random() > 0.15) ? damier : toutes;
+      }
+      return { t: 'fire', i: cibles[Math.floor(Math.random() * cibles.length)] };
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       var me = ctx.me;

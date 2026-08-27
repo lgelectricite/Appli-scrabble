@@ -120,8 +120,17 @@
     <h2 id="mini-setup-title"></h2>
     <p class="hint" id="mini-setup-desc"></p>
     <div class="home-buttons" id="mini-setup-modes">
+      <button class="btn big" id="btn-mini-solo">🤖 Jouer seul contre l’ordinateur</button>
       <button class="btn big" id="btn-mini-hotseat">📱 Sur ce téléphone</button>
       <button class="btn big" id="btn-mini-host">📶 Créer une partie (plusieurs téléphones)</button>
+    </div>
+    <div id="mini-solo-config" class="hidden">
+      <label>Votre prénom
+        <input type="text" id="msolo-name" maxlength="14" value="Joueur 1">
+      </label>
+      <label id="msolo-bots-label">Adversaires IA</label>
+      <div id="msolo-bots"></div>
+      <button class="btn big primary" id="btn-msolo-start">Commencer la partie</button>
     </div>
     <div id="mini-hotseat-config" class="hidden">
       <label>Nombre de joueurs</label>

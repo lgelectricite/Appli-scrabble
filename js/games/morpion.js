@@ -73,6 +73,49 @@
       return { ok: true };
     },
 
+    /* L'adversaire IA : gagne si possible, bloque sinon, vise le centre puis
+       les coins. Il joue parfois le 2e meilleur coup : ça le rend battable. */
+    bot: function (state, me) {
+      if (state.roundOver) return null;
+      if (state.current !== me) return null;
+      var grid = state.grid;
+      var moi = me === 0 ? 'X' : 'O';
+      var lui = me === 0 ? 'O' : 'X';
+
+      // cases libres qui complètent une ligne pour un symbole donné
+      function decisives(jeton) {
+        var res = [];
+        for (var l = 0; l < LINES.length; l++) {
+          var ln = LINES[l], vide = -1, n = 0;
+          for (var k = 0; k < 3; k++) {
+            if (grid[ln[k]] === jeton) n++;
+            else if (!grid[ln[k]]) vide = ln[k];
+          }
+          if (n === 2 && vide !== -1 && res.indexOf(vide) === -1) res.push(vide);
+        }
+        return res;
+      }
+      function melange(arr) {
+        for (var a = arr.length - 1; a > 0; a--) {
+          var j = Math.floor(Math.random() * (a + 1));
+          var t = arr[a]; arr[a] = arr[j]; arr[j] = t;
+        }
+        return arr;
+      }
+
+      // classement : gagner > bloquer > centre > coins > bords
+      var ordre = decisives(moi).concat(decisives(lui))
+        .concat([4], melange([0, 2, 6, 8]), melange([1, 3, 5, 7]));
+      var choix = [];
+      for (var c = 0; c < ordre.length; c++) {
+        if (!grid[ordre[c]] && choix.indexOf(ordre[c]) === -1) choix.push(ordre[c]);
+      }
+      if (!choix.length) return null;
+      // ~12 % du temps, le 2e meilleur coup : un adversaire humain, pas une machine
+      var pick = (choix.length > 1 && Math.random() < 0.12) ? 1 : 0;
+      return { t: 'play', i: choix[pick] };
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       var html = '<div class="ttt-board">';

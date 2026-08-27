@@ -35,6 +35,10 @@
   var miniTimer = null;      // minuteur d'autorité (petit bac…)
   var miniLastViewer = -1;   // dernier joueur affiché (écran passe-téléphone)
   var miniCount = 2;         // nombre de joueurs (mini-jeu sur un téléphone)
+  var miniBots = 0;          // adversaires IA en jeu (mode « contre l'ordinateur »)
+  var miniSoloBots = 1;      // choix courant sur l'écran de config solo
+  var miniBotTimer = null;   // prochaine action IA programmée
+  var BOT_NAMES = ['🤖 Margot', '🤖 Ernest', '🤖 Suzette', '🤖 Marcel'];
   var scanner = null;
   var pending = [];          // [{index, letter, blank, rackPos}]
   var selected = -1;         // position sélectionnée dans le chevalet
@@ -739,7 +743,7 @@
   };
 
   function catInfo(id) {
-    if (id === 'mots') return { id: 'mots', nom: 'Words', icone: '🔤', min: 1, max: 4 };
+    if (id === 'mots') return { id: 'mots', nom: 'Words', icone: '🔤', min: 1, max: 4, bot: true };
     return window.GG.byId[id];
   }
 
@@ -758,6 +762,7 @@
     var h = 122 + ((i * 13) % 27); // hauteurs de boîtes irrégulières
     return '<button class="game-tile bx" data-g="' + m.id + '" style="--bx:' + color +
       ';height:' + h + 'px">' +
+      (m.bot ? '<span class="bx-bot" title="Jouable seul contre l’ordinateur">🤖</span>' : '') +
       '<span class="bx-ic">' + m.icone + '</span>' +
       '<span class="bx-nm">' + m.nom + '</span>' +
       '<span class="bx-pl">' + playersLabel(m) + '</span>' +
@@ -770,7 +775,7 @@
     // parquet. Tout défile verticalement — 4 boîtes par planche, toutes
     // droites, aucun défilement horizontal.
     var html = '<div class="room">' +
-      '<div class="room-pic">GG</div>' +
+      '<div class="room-clock"><span class="rc-h"></span><span class="rc-m"></span></div>' +
       '<div class="bookcase"><span class="room-plant">🪴</span><div class="case-inner">';
     SHELVES.forEach(function (sh) {
       html += '<div class="case-label">' + sh.titre + '</div>';
@@ -816,6 +821,31 @@
     $('btn-mini-hotseat').classList.toggle('hidden', !mod.hotseat || mod.netOnly);
     $('btn-mini-host').classList.toggle('hidden', mod.max < 2);
     $('mini-hotseat-config').classList.add('hidden');
+    // jouer seul : le jeu sait faire jouer des adversaires IA
+    $('btn-mini-solo').classList.toggle('hidden', !mod.bot);
+    $('mini-solo-config').classList.add('hidden');
+    if (mod.bot) {
+      var bb = $('msolo-bots');
+      bb.innerHTML = '';
+      var bMin = Math.max(1, mod.min - 1);
+      var bMax = Math.min(BOT_NAMES.length, mod.max - 1);
+      miniSoloBots = bMin;
+      for (var nb = bMin; nb <= bMax; nb++) {
+        var btn = document.createElement('button');
+        btn.className = 'count-btn' + (nb === miniSoloBots ? ' active' : '');
+        btn.textContent = nb;
+        btn.dataset.n = nb;
+        btn.addEventListener('click', function (ev) {
+          miniSoloBots = parseInt(ev.currentTarget.dataset.n, 10);
+          bb.querySelectorAll('.count-btn').forEach(function (x) {
+            x.classList.toggle('active', x === ev.currentTarget);
+          });
+        });
+        bb.appendChild(btn);
+      }
+      $('msolo-bots-label').classList.toggle('hidden', bMin === bMax);
+      bb.classList.toggle('hidden', bMin === bMax);
+    }
     var box = $('mini-count');
     box.innerHTML = '';
     miniCount = mod.min;
@@ -851,10 +881,59 @@
       currentGame = pendingGame;
       miniMod = mod;
       mode = 'local';
+      miniBots = 0;
       miniState = mod.create(names, { dict: dict });
       miniMe = 0;
       enterMini();
     });
+  }
+
+  /* Jouer seul : l'humain est le joueur 0, les autres sont des IA. */
+  function miniStartSolo() {
+    var mod = window.GG.byId[pendingGame];
+    var names = [($('msolo-name').value.trim() || 'Vous').slice(0, 14)];
+    for (var i = 0; i < miniSoloBots; i++) names.push(BOT_NAMES[i]);
+    var needDict = pendingGame === 'motus';
+    (needDict ? loadDict().catch(function () {}) : Promise.resolve()).then(function () {
+      currentGame = pendingGame;
+      miniMod = mod;
+      mode = 'local';
+      miniBots = miniSoloBots;
+      miniState = mod.create(names, { dict: dict });
+      miniMe = 0;
+      enterMini();
+    });
+  }
+
+  /* La pompe des IA : après chaque changement d'état, un robot qui a
+     quelque chose à faire joue UNE action, avec un petit temps de
+     réflexion pour que la partie respire. Les IA reçoivent une copie de
+     l'état (jamais l'original) et leurs refus restent silencieux. */
+  function pumpBots() {
+    if (mode !== 'local' || !miniBots || !miniState || !miniMod || !miniMod.bot) return;
+    clearTimeout(miniBotTimer);
+    if (miniMod.over(miniState)) return;
+    miniBotTimer = setTimeout(function () {
+      if (mode !== 'local' || !miniBots || !miniState || !miniMod) return;
+      if (miniMod.over(miniState)) return;
+      for (var i = 1; i < miniState.players.length; i++) {
+        var a = null;
+        try { a = miniMod.bot(window.GG.clone(miniState), i, { dict: dict }); } catch (e) { a = null; }
+        if (!a) continue;
+        var res = null;
+        try { res = miniMod.apply(miniState, i, a, { dict: dict }); } catch (e2) { res = null; }
+        if (res && res.ok) {
+          if (res.timer) {
+            clearTimeout(miniTimer);
+            miniTimer = setTimeout(function () {
+              if (miniState && miniMod) miniApplyAuthority(-1, res.timer.action, null);
+            }, res.timer.ms);
+          }
+          miniAfterChange(); // re-rend et relance la pompe pour l'IA suivante
+          return;
+        }
+      }
+    }, 650 + Math.random() * 550);
   }
 
   function enterMini() {
@@ -863,11 +942,13 @@
     $('btn-menu-invite').classList.toggle('hidden', mode !== 'host');
     miniLastViewer = -1;
     miniRender();
+    pumpBots();
   }
 
   /* Quel joueur regarde l'écran en ce moment ? */
   function miniViewer() {
     if (mode !== 'local') return miniMe;
+    if (miniBots) return 0; // contre l'ordinateur : l'humain garde l'écran
     var t = miniMod.turnOf(miniState);
     if (t >= 0) return t;
     if (miniMod.viewerOf) return miniMod.viewerOf(miniState);
@@ -959,6 +1040,7 @@
     if (mode === 'host') miniBroadcast();
     miniRender();
     if (miniMod.over(miniState)) showMiniEnd();
+    pumpBots();
   }
 
   function showMiniEnd() {
@@ -977,6 +1059,7 @@
       hostPeers.forEach(function (peer) { if (peer.connected) sendInitTo(peer); });
     }
     miniRender();
+    pumpBots();
   }
 
   /* =================================================================
@@ -1358,6 +1441,7 @@
     (needDict ? loadDict().catch(function () {}) : Promise.resolve()).then(function () {
       currentGame = pendingGame;
       miniMod = window.GG.byId[currentGame];
+      miniBots = 0; // en réseau, tout le monde est humain
       miniState = miniMod.create(names, { dict: dict });
       miniMe = 0;
       miniLastViewer = -1;
@@ -1601,6 +1685,8 @@
     currentGame = 'mots';
     pendingGame = 'mots';
     miniLastViewer = -1;
+    miniBots = 0;
+    clearTimeout(miniBotTimer);
     clearTimeout(miniTimer);
     clearTimeout(pairingTimer);
     ['overlay-pass', 'overlay-joker', 'overlay-confirm', 'overlay-history',
@@ -1676,8 +1762,14 @@
     // Mini-jeux : configuration
     $('btn-mini-hotseat').addEventListener('click', function () {
       $('mini-hotseat-config').classList.remove('hidden');
+      $('mini-solo-config').classList.add('hidden');
+    });
+    $('btn-mini-solo').addEventListener('click', function () {
+      $('mini-solo-config').classList.remove('hidden');
+      $('mini-hotseat-config').classList.add('hidden');
     });
     $('btn-mini-start').addEventListener('click', miniStartLocal);
+    $('btn-msolo-start').addEventListener('click', miniStartSolo);
     $('btn-mini-host').addEventListener('click', openHostScreen);
     $('btn-mini-menu').addEventListener('click', function () { showOverlay('overlay-menu', true); });
     $('btn-mini-reconnect').addEventListener('click', reconnect);

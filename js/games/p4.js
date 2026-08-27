@@ -89,6 +89,54 @@
       return { ok: true };
     },
 
+    /* L'adversaire IA : gagne si possible, bloque sinon, évite d'offrir
+       une victoire, préfère le centre. Un soupçon de hasard le rend humain. */
+    bot: function (state, me) {
+      if (state.roundOver) return null;
+      if (state.current !== me) return null;
+      var grid = state.grid;
+      var moi = me === 0 ? 'R' : 'J';
+      var lui = me === 0 ? 'J' : 'R';
+
+      function ligneLibre(g, col) {
+        for (var r = ROWS - 1; r >= 0; r--) if (!g[r * COLS + col]) return r;
+        return -1;
+      }
+      function gagne(g, col, jeton) {
+        var r = ligneLibre(g, col);
+        if (r === -1) return false;
+        g[r * COLS + col] = jeton;
+        var ok = !!winLine(g, r * COLS + col);
+        g[r * COLS + col] = null;
+        return ok;
+      }
+      var jouables = [];
+      for (var c = 0; c < COLS; c++) if (ligneLibre(grid, c) !== -1) jouables.push(c);
+      if (!jouables.length) return null;
+      // 1) un coup gagnant ? on le joue
+      for (var w = 0; w < jouables.length; w++) {
+        if (gagne(grid, jouables[w], moi)) return { t: 'drop', col: jouables[w] };
+      }
+      // 2) l'adversaire menace de gagner ? on bloque
+      for (var b = 0; b < jouables.length; b++) {
+        if (gagne(grid, jouables[b], lui)) return { t: 'drop', col: jouables[b] };
+      }
+      // 3) on écarte les colonnes qui offriraient la victoire juste au-dessus
+      var sures = jouables.filter(function (col) {
+        var r = ligneLibre(grid, col);
+        grid[r * COLS + col] = moi;
+        var offre = r > 0 && gagne(grid, col, lui);
+        grid[r * COLS + col] = null;
+        return !offre;
+      });
+      var choix = sures.length ? sures : jouables;
+      // 4) préférence pour le centre, pondérée d'un peu de hasard
+      choix.sort(function (a, b2) {
+        return (Math.abs(b2 - 3) - Math.abs(a - 3)) * -1 + (Math.random() - 0.5);
+      });
+      return { t: 'drop', col: choix[0] };
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       var html = '<div class="p4-board">';
