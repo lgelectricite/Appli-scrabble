@@ -17,6 +17,7 @@
     nom: 'Memory',
     icone: '🧠',
     desc: 'Retrouvez les paires. Classement aux paires, aux essais et au chrono.',
+    regles: '<p><strong>🎯 Le but :</strong> retrouver le plus de paires de cartes identiques.</p><p><strong>Comment jouer :</strong> retournez 2 cartes. Une paire : 1 point et vous rejouez ! Sinon, mémorisez bien… et le tour passe.</p><p><strong>En solo :</strong> finissez en un minimum d’essais et de temps — record à battre.</p>',
     min: 1, max: 4,
     hotseat: true, hidden: false, netOnly: false,
 

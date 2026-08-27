@@ -97,6 +97,7 @@
     nom: 'Mots mêlés',
     icone: '🔎',
     desc: 'Retrouvez les mots cachés. En réseau, la grille est partagée : chaque mot trouvé prend votre couleur !',
+    regles: '<p><strong>🎯 Le but :</strong> retrouver tous les mots cachés dans la grille — horizontaux, verticaux, en diagonale… et parfois à l’envers.</p><p><strong>Comment jouer :</strong> touchez la première lettre d’un mot, puis sa dernière lettre.</p><p><strong>En réseau :</strong> la grille est partagée : chaque mot trouvé prend votre couleur, le plus rapide en prend le plus !</p>',
     min: 1, max: 4,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
 

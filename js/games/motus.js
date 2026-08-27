@@ -57,6 +57,7 @@
     nom: 'Mot Mystère',
     icone: '🟩',
     desc: 'Devinez le mot en 6 essais grâce aux couleurs. En duel : même mot secret pour tous !',
+    regles: '<p><strong>🎯 Le but :</strong> deviner le mot secret en 6 essais maximum.</p><p><strong>Comment jouer :</strong> proposez un vrai mot du dictionnaire. 🟩 vert : lettre bien placée · 🟨 jaune : présente ailleurs · gris : absente.</p><p><strong>En duel :</strong> même mot secret pour tous — vous voyez les couleurs des autres, jamais leurs lettres. Le plus rapide gagne.</p>',
     min: 1, max: 4,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
 

@@ -272,6 +272,7 @@
     nom: 'Le Manoir',
     icone: '🕵️',
     desc: 'Enquête collaborative : 3 décors d’affaires, et chaque joueur incarne un rôle avec ses infos secrètes et son pouvoir. Jusqu’à 12 joueurs !',
+    regles: '<p><strong>🎯 Le but :</strong> découvrir ENSEMBLE qui a tué, avec quelle arme et dans quel lieu — avant d’épuiser vos 2 accusations.</p><p><strong>Comment jouer :</strong> chaque piste est verrouillée par une énigme : élucidez-la pour révéler des indices qui innocentent des suspects, des armes ou des lieux. Le carnet de déduction se remplit tout seul.</p><p><strong>Vos rôles :</strong> chaque enquêteur a un personnage, des informations confidentielles visibles uniquement sur SON téléphone — à partager à voix haute ! — et parfois un pouvoir spécial. Coopérez, recoupez, accusez.</p>',
     min: 1, max: 12,
     hotseat: true, hidden: false, netOnly: false,
     noBadges: true,

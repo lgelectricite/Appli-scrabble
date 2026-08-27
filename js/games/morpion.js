@@ -22,6 +22,7 @@
     nom: 'Morpion',
     icone: '⭕',
     desc: 'Le tic-tac-toe classique, en série.',
+    regles: '<p><strong>🎯 Le but :</strong> aligner 3 de vos symboles avant l’adversaire.</p><p><strong>Comment jouer :</strong> touchez une case libre, chacun son tour. Bloquez l’adversaire, tendez des pièges !</p><p><strong>La série :</strong> les manches s’enchaînent, chaque victoire compte.</p>',
     min: 2, max: 2,
     hotseat: true, hidden: false, netOnly: false,
 

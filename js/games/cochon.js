@@ -9,6 +9,7 @@
     nom: 'Cochon',
     icone: '🐷',
     desc: 'Lancez le dé, tentez votre chance : le 1 fait tout perdre ! Premier à 100.',
+    regles: '<p><strong>🎯 Le but :</strong> être le premier à 100 points.</p><p><strong>Comment jouer :</strong> lancez le dé autant de fois que vous l’osez, les points s’accumulent… puis « banquez » pour les mettre à l’abri. Mais si le dé fait 1, tout le tour est perdu !</p><p><strong>Le sel du jeu :</strong> oser un lancer de plus… ou pas. 🐷</p>',
     min: 2, max: 4,
     hotseat: true, hidden: false, netOnly: false,
 

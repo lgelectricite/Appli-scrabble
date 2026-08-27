@@ -172,6 +172,7 @@
     nom: 'L’Imposteur',
     icone: '🥸',
     desc: 'Tout le monde reçoit le même mot… sauf l’imposteur — et personne ne sait dans quel camp il est ! Un indice chacun, un vote : démasquez-le. 3 à 12 joueurs.',
+    regles: '<p><strong>🎯 Le but :</strong> démasquer celui qui n’a pas le même mot que les autres.</p><p><strong>La mise en place :</strong> tout le monde reçoit secrètement le même mot… sauf l’imposteur, qui reçoit un mot voisin (PLAGE / PISCINE, par exemple). Et personne — pas même lui — ne sait dans quel camp il est !</p><p><strong>Le tour :</strong> chacun donne à voix haute UN seul mot d’indice sur son mot secret : assez juste pour prouver qu’on a le bon mot, assez flou pour ne rien dévoiler à l’imposteur… Puis tout le monde vote : le plus suspect est éliminé et son camp est révélé.</p><p><strong>La victoire :</strong> les civils gagnent (+3 points chacun) en éliminant tous les imposteurs ; l’imposteur gagne (+5) s’il survit jusqu’à égalité avec les civils. À 6 joueurs et plus : 2 imposteurs, à 9 et plus : 3 !</p>',
     min: 3, max: 12,
     hotseat: true, hidden: true, netOnly: false,
     noBadges: true,

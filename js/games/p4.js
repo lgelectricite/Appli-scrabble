@@ -37,6 +37,7 @@
     nom: 'Puissance 4',
     icone: '🔴',
     desc: 'Alignez 4 jetons. Série de manches.',
+    regles: '<p><strong>🎯 Le but :</strong> aligner 4 jetons de votre couleur — à l’horizontale, à la verticale ou en diagonale — avant l’adversaire.</p><p><strong>Comment jouer :</strong> touchez une colonne, votre jeton tombe tout en bas. Chacun son tour !</p><p><strong>La série :</strong> les manches s’enchaînent, chaque victoire compte au score.</p>',
     min: 2, max: 2,
     hotseat: true, hidden: false, netOnly: false,
 

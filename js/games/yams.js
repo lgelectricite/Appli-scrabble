@@ -75,6 +75,7 @@
     nom: 'Yams',
     icone: '🎲',
     desc: '5 dés, 3 lancers, 13 cases : la feuille de score se remplit toute seule.',
+    regles: '<p><strong>🎯 Le but :</strong> remplir les 13 cases de votre feuille avec les meilleures combinaisons de dés.</p><p><strong>Comment jouer :</strong> 3 lancers par tour ; entre deux, touchez les dés à garder. Puis choisissez une case (brelan, full, suite, yams…) — chaque case ne sert qu’une fois, même pour 0 !</p><p><strong>Les points :</strong> +35 de bonus si vos cases 1 à 6 totalisent 63 ou plus. Le plus gros total gagne.</p>',
     min: 1, max: 4,
     hotseat: true, hidden: false, netOnly: false,
 

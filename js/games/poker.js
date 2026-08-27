@@ -274,6 +274,7 @@
     nom: 'Poker',
     icone: '🃏',
     desc: 'Texas Hold’em, au choix : cash game (recaves) ou tournoi (blinds montantes).',
+    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p>',
     min: 2, max: 4,
     hotseat: false, hidden: true, netOnly: true,
 

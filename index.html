@@ -231,6 +231,7 @@
       <div class="info-row">
         <span id="bag-count" title="Lettres restantes dans le sac">🎒 86</span>
         <div id="turn-banner"></div>
+        <button class="icon-btn" id="btn-rules" title="Règles du jeu">❓</button>
         <button class="icon-btn" id="btn-history" title="Historique">📜</button>
         <button class="icon-btn" id="btn-menu" title="Menu">☰</button>
       </div>
@@ -266,6 +267,7 @@
       <div class="info-row">
         <span id="mini-icon"></span>
         <div id="mini-turn"></div>
+        <button class="icon-btn" id="btn-mini-rules" title="Règles du jeu">❓</button>
         <button class="icon-btn" id="btn-mini-menu" title="Menu">☰</button>
       </div>
     </header>
@@ -305,6 +307,14 @@
       <h2>Historique</h2>
       <div id="history-list"></div>
       <button class="btn link" id="btn-history-close">Fermer</button>
+    </div>
+  </div>
+
+  <div id="overlay-rules" class="overlay hidden">
+    <div class="overlay-card scroll">
+      <h2 id="rules-title">Règles</h2>
+      <div id="rules-body" class="rules-body"></div>
+      <button class="btn big primary" id="btn-rules-close">C’est parti !</button>
     </div>
   </div>
 

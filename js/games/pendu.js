@@ -37,6 +37,7 @@
     nom: 'Pendu',
     icone: '🪢',
     desc: 'Devinez le mot lettre par lettre. Le jeu choisit les mots : pas de triche !',
+    regles: '<p><strong>🎯 Le but :</strong> deviner le mot caché lettre par lettre — c’est le jeu qui le choisit dans le dictionnaire, personne ne peut tricher.</p><p><strong>Comment jouer :</strong> à votre tour, proposez une lettre. Trouvée : +1 point par lettre révélée et vous rejouez. Absente : le tour passe et un cœur s’éteint.</p><p><strong>Les points :</strong> +3 à qui termine le mot. 8 erreurs et le mot est perdu. 5 manches, meilleur score gagnant.</p>',
     min: 1, max: 4,
     hotseat: true, hidden: false, netOnly: false,
 

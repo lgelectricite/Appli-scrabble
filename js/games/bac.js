@@ -60,6 +60,7 @@
     nom: 'Petit Bac',
     icone: '📝',
     desc: 'Une lettre, 6 catégories, 60 secondes. Les autres valident vos réponses.',
+    regles: '<p><strong>🎯 Le but :</strong> pour la lettre tirée au sort, trouver un mot par catégorie (prénom, animal, ville…) en 60 secondes.</p><p><strong>Comment jouer :</strong> écrivez vos réponses avant la fin du chrono. Ensuite, tout le monde vote la validité des réponses des autres !</p><p><strong>Les points :</strong> 10 par mot accepté, 5 si un autre joueur a écrit le même. Mauvaise lettre = refusé automatiquement.</p>',
     min: 2, max: 4,
     hotseat: false, hidden: true, netOnly: true,
 

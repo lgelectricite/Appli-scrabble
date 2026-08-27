@@ -1503,6 +1503,37 @@
     $('btn-mini-menu').addEventListener('click', function () { showOverlay('overlay-menu', true); });
     $('btn-mini-reconnect').addEventListener('click', reconnect);
 
+    // Règles du jeu en cours
+    var MOTS_REGLES = '<p><strong>🎯 Le but :</strong> marquer plus de points que les autres ' +
+      'en posant des mots sur la grille, comme au jeu de lettres classique.</p>' +
+      '<p><strong>Comment jouer :</strong> touchez une lettre de votre chevalet puis une case ' +
+      'de la grille. Chaque mot doit exister dans le dictionnaire français (vérifié ' +
+      'automatiquement) et toucher les mots déjà posés.</p>' +
+      '<p><strong>Les points :</strong> chaque lettre a une valeur ; les cases colorées ' +
+      'multiplient la lettre (LD ×2, LT ×3) ou le mot (MD ×2, MT ×3). Poser ses 7 lettres ' +
+      'd’un coup rapporte 50 points bonus !</p>';
+    function showRules() {
+      var isMots = document.getElementById('screen-game').classList.contains('active');
+      var titre, corps;
+      if (isMots || currentGame === 'mots') {
+        titre = '🔤 Words';
+        corps = MOTS_REGLES;
+      } else if (miniMod) {
+        titre = miniMod.icone + ' ' + miniMod.nom;
+        corps = miniMod.regles || ('<p>' + esc(miniMod.desc) + '</p>');
+      } else {
+        return;
+      }
+      $('rules-title').textContent = titre;
+      $('rules-body').innerHTML = corps;
+      showOverlay('overlay-rules', true);
+    }
+    $('btn-rules').addEventListener('click', showRules);
+    $('btn-mini-rules').addEventListener('click', showRules);
+    $('btn-rules-close').addEventListener('click', function () {
+      showOverlay('overlay-rules', false);
+    });
+
     // Retours
     document.querySelectorAll('[data-back]').forEach(function (b) {
       b.addEventListener('click', function () { quitToHome(); });

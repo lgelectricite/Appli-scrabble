@@ -44,6 +44,7 @@
     nom: 'Bataille navale',
     icone: '🚢',
     desc: 'Coulez la flotte adverse. Vos bateaux restent secrets.',
+    regles: '<p><strong>🎯 Le but :</strong> couler les 5 navires adverses avant que les vôtres ne le soient.</p><p><strong>Comment jouer :</strong> à votre tour, touchez une case de la grille adverse. 💥 Touché : vous rejouez ! 🌊 À l’eau : le tour passe. Les flottes restent secrètes, le dernier tir adverse est encadré.</p><p><strong>La série :</strong> revanche après chaque manche, victoires comptées — le perdant commence.</p>',
     min: 2, max: 2,
     hotseat: true, hidden: true, netOnly: false,
 
