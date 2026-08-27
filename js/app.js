@@ -719,17 +719,64 @@
     return false;
   }
 
+  /* L'accueil est une étagère de salon : chaque jeu est une boîte rangée
+     sur une planche, par rayon. Les boîtes gardent la classe .game-tile et
+     l'attribut data-g dont dépendent les tests et le reste du code. */
+  var SHELVES = [
+    { titre: 'Jeux de lettres', jeux: ['mots', 'pendu', 'motus', 'bac', 'meles', 'croises', 'fleches'], couches: 2 },
+    { titre: 'Cartes & casino', jeux: ['huit', 'poker', 'blackjack', 'solitaire'], couches: 1 },
+    { titre: 'Réflexion', jeux: ['sudoku', 'memory', 'quiz', 'proche'], couches: 0 },
+    { titre: 'Grands classiques', jeux: ['p4', 'morpion', 'bataille', 'yams', 'cochon'], couches: 1 },
+    { titre: 'Jeux de soirée', jeux: ['manoir', 'imposteur'], couches: 0 }
+  ];
+  var BOX_COLORS = {
+    mots: '#c2452c', pendu: '#1e6f77', motus: '#2f7a50', bac: '#d9992b',
+    meles: '#7d4a6b', croises: '#3f4b6e', fleches: '#b96a3d',
+    huit: '#a83a4f', poker: '#234c37', blackjack: '#2c2218', solitaire: '#1e6f77',
+    sudoku: '#3f4b6e', memory: '#c2452c', quiz: '#d9992b', proche: '#2f7a50',
+    p4: '#1e6f77', morpion: '#b96a3d', bataille: '#3f4b6e', yams: '#7d4a6b', cochon: '#c2452c',
+    manoir: '#241d38', imposteur: '#6d4f3a'
+  };
+
+  function catInfo(id) {
+    if (id === 'mots') return { id: 'mots', nom: 'Words', icone: '🔤' };
+    return window.GG.byId[id];
+  }
+
+  function boxHtml(m, i, flat) {
+    var color = BOX_COLORS[m.id] || '#c2452c';
+    if (flat) {
+      return '<button class="game-tile bx-flat" data-g="' + m.id + '" style="--bx:' + color + '">' +
+        '<span class="bx-ic">' + m.icone + '</span>' +
+        '<span class="bx-nm">' + m.nom + '</span></button>';
+    }
+    var h = 122 + ((i * 13) % 27); // hauteurs de boîtes irrégulières
+    return '<button class="game-tile bx" data-g="' + m.id + '" style="--bx:' + color +
+      ';height:' + h + 'px">' +
+      '<span class="bx-ic">' + m.icone + '</span>' +
+      '<span class="bx-nm">' + m.nom + '</span>' +
+      '<span class="bx-gg">GG</span></button>';
+  }
+
   function renderCatalog() {
     var cat = $('catalog');
-    var tiles = [{ id: 'mots', nom: 'Words', icone: '🔤', min: 1, max: 4 }]
-      .concat(window.GG.list);
-    cat.innerHTML = tiles.map(function (m) {
-      return '<button class="game-tile" data-g="' + m.id + '">' +
-        '<span class="gt-icon">' + m.icone + '</span>' +
-        '<span class="gt-name">' + m.nom + '</span>' +
-        '<span class="gt-players">' + m.min + (m.max > m.min ? '–' + m.max : '') + ' joueur' +
-        (m.max > 1 ? 's' : '') + '</span></button>';
-    }).join('');
+    var html = '<div class="shelf-unit">';
+    SHELVES.forEach(function (sh, si) {
+      var debout = sh.jeux.slice(0, sh.jeux.length - sh.couches);
+      var couchees = sh.jeux.slice(sh.jeux.length - sh.couches);
+      html += '<div class="shelf-row">' +
+        '<div class="shelf-tag">' + sh.titre + '</div>' +
+        '<div class="shelf-books">';
+      debout.forEach(function (id, i) { html += boxHtml(catInfo(id), i + si, false); });
+      if (couchees.length) {
+        html += '<div class="bx-pile">';
+        couchees.forEach(function (id) { html += boxHtml(catInfo(id), 0, true); });
+        html += '</div>';
+      }
+      html += '</div><div class="shelf-board"></div></div>';
+    });
+    html += '</div>';
+    cat.innerHTML = html;
     cat.querySelectorAll('.game-tile').forEach(function (t) {
       t.addEventListener('click', function () {
         var id = t.dataset.g;

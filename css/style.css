@@ -447,35 +447,96 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   box-shadow: 0 8px 24px rgba(44, 34, 24, .4);
 }
 
-/* ================= GGgames : catalogue ================= */
+/* ================= GGgames : l'étagère du salon ================= */
 .logo-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
-#catalog {
-  display: grid; grid-template-columns: repeat(2, 1fr);
-  gap: 12px; margin: 18px 0 14px; text-align: center;
+#catalog { margin: 14px 0 10px; text-align: left; }
+.shelf-unit { display: flex; flex-direction: column; gap: 20px; }
+.shelf-row { position: relative; }
+.shelf-tag {
+  display: inline-block; margin: 0 0 6px 4px;
+  background: var(--ink); color: var(--paper-bg);
+  font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+  border-radius: 3px 10px 10px 3px; padding: 3px 12px 3px 8px;
+  transform: rotate(-1deg);
 }
-.game-tile {
-  background: var(--card);
-  border: 2px solid var(--ink); border-radius: 16px;
-  padding: 14px 6px 10px; color: var(--ink); cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
+.shelf-books {
+  display: flex; align-items: flex-end; gap: 7px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  padding: 12px 6px 0; margin-bottom: -2px;
+  scrollbar-width: none;
+}
+.shelf-books::-webkit-scrollbar { display: none; }
+.shelf-board {
+  height: 13px; border: 2px solid var(--ink); border-radius: 3px;
+  background: linear-gradient(180deg, #6b5138, #513d29 55%, #45331f);
+  box-shadow: 0 5px 0 rgba(44, 34, 24, .35);
+  position: relative; z-index: 2;
+}
+
+/* une boîte de jeu debout sur la planche */
+.bx {
+  position: relative; flex: none;
+  width: 79px;
+  background:
+    repeating-linear-gradient(115deg, rgba(255, 252, 242, .07) 0 5px, transparent 5px 14px),
+    linear-gradient(100deg, rgba(255, 255, 255, .16), transparent 26%),
+    var(--bx);
+  border: 2px solid var(--ink); border-radius: 6px 6px 2px 2px;
+  color: #fdf6e5; cursor: pointer; font-family: inherit;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: space-between; padding: 9px 3px 5px;
   touch-action: manipulation;
-  box-shadow: 0 4px 0 var(--ink);
-  transform: rotate(-0.5deg);
+  box-shadow: inset 0 3px 0 rgba(255, 252, 242, .18), 3px 4px 0 rgba(44, 34, 24, .28);
+  transform-origin: 50% 100%;
 }
-#catalog .game-tile:nth-child(even) { transform: rotate(0.5deg); }
-.game-tile:active { transform: translateY(3px) rotate(0deg); box-shadow: 0 1px 0 var(--ink); }
-.gt-icon {
-  font-size: 30px; width: 56px; height: 56px;
+.shelf-books .bx:nth-child(3n+2) { transform: rotate(-1.4deg); }
+.shelf-books .bx:nth-child(4n+3) { transform: rotate(1.2deg); }
+.shelf-books .bx:nth-child(5n+4) { margin-bottom: 4px; } /* boîte mal rangée */
+.bx:active { transform: translateY(3px) rotate(0deg); box-shadow: inset 0 3px 0 rgba(255, 252, 242, .18), 1px 1px 0 rgba(44, 34, 24, .28); }
+.bx-ic {
+  width: 40px; height: 40px; flex: none;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; background: var(--ink-06);
+  font-size: 23px; background: #eee1c0;
+  border: 1.5px solid var(--ink); border-radius: 50%;
+  box-shadow: 0 2px 0 rgba(44, 34, 24, .3), inset 0 0 0 2px rgba(44, 34, 24, .08);
+  filter: drop-shadow(0 0 0 transparent);
 }
-#catalog .game-tile:nth-child(4n+1) .gt-icon { background: rgba(194, 69, 44, .14); }
-#catalog .game-tile:nth-child(4n+2) .gt-icon { background: rgba(30, 111, 119, .14); }
-#catalog .game-tile:nth-child(4n+3) .gt-icon { background: rgba(217, 153, 43, .16); }
-#catalog .game-tile:nth-child(4n+4) .gt-icon { background: rgba(47, 122, 80, .14); }
-.gt-name { font-size: 15px; font-weight: 700; font-family: 'Fraunces', Georgia, serif; }
-.gt-players { font-size: 11px; color: var(--ink-soft); }
-#btn-home-join { margin-top: 4px; }
+.bx-ic, .bx-flat .bx-ic { text-shadow: 0 1px 2px rgba(44, 34, 24, .45); }
+.bx-nm {
+  font-family: 'Fraunces', Georgia, serif; font-weight: 600;
+  font-size: 11px; line-height: 1.18; text-align: center;
+  overflow-wrap: normal; word-break: keep-all; max-width: 100%;
+  text-shadow: 0 1px 0 rgba(44, 34, 24, .4);
+  margin: 4px 0 auto;
+}
+.bx-gg {
+  font-family: 'Fraunces', Georgia, serif; font-size: 8px; font-weight: 700;
+  letter-spacing: 1px; opacity: .65; border: 1px solid currentColor;
+  border-radius: 3px; padding: 0 3px; margin-top: 4px;
+}
+
+/* boîtes couchées, empilées au bout de la planche */
+.bx-pile { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: none; }
+.bx-flat {
+  position: relative; flex: none;
+  min-width: 104px; height: 34px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .16), transparent 45%),
+    var(--bx);
+  border: 2px solid var(--ink); border-radius: 5px;
+  color: #fdf6e5; cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 0 10px; touch-action: manipulation;
+  box-shadow: 3px 3px 0 rgba(44, 34, 24, .28);
+}
+.bx-pile .bx-flat:first-child { transform: rotate(-1.6deg) translateX(3px); min-width: 96px; }
+.bx-flat:active { transform: translateY(2px); box-shadow: 1px 1px 0 rgba(44, 34, 24, .28); }
+.bx-flat .bx-ic {
+  width: 24px; height: 24px; font-size: 14px; border-width: 1px;
+  box-shadow: none;
+}
+.bx-flat .bx-nm { margin: 0; font-size: 12px; white-space: nowrap; }
+#btn-home-join { margin-top: 14px; }
 
 /* ================= écran mini-jeux ================= */
 #screen-mini { padding: 6px 8px 12px; max-width: 640px; }
