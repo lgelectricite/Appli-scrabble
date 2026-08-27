@@ -155,6 +155,42 @@ function check(n, c, e) {
   }
   check('case-flèche → mot sélectionné', selOk);
 
+
+  // ---------- Bonbons : solo, un échange gagnant ----------
+  console.log('--- Bonbons (solo) ---');
+  await quit();
+  await p.click('.game-tile[data-g="bonbons"]');
+  await p.click('#btn-mini-hotseat');
+  await p.click('#btn-mini-start');
+  await p.waitForSelector('[data-lvl="facile"]', { timeout: 15000 });
+  await p.click('[data-lvl="facile"]');
+  await p.waitForSelector('.bb-grid', { timeout: 15000 });
+  check('grille de 64 bonbons', await p.locator('.bb-cell').count() === 64);
+  check('25 coups annoncés', /25 coups/.test(await p.textContent('#mini-area')));
+  // trouve un échange valable en lisant la grille avec le moteur du jeu
+  const swap = await p.evaluate(() => {
+    const mod = GG.byId.bonbons;
+    const cells = [...document.querySelectorAll('.bb-cell')];
+    const glyphs = ['🍬', '🍭', '🍫', '🍩', '🧁', '🍪'];
+    const b = cells.map(c => ({ t: c.textContent === '🌟' ? -1 : glyphs.indexOf(c.textContent), s: 0 }));
+    for (let i = 0; i < 64; i++) {
+      const c = i % 8;
+      if (c < 7 && mod._wouldMatch(b, i, i + 1)) return [i, i + 1];
+      if (i < 56 && mod._wouldMatch(b, i, i + 8)) return [i, i + 8];
+    }
+    return null;
+  });
+  check('un échange jouable trouvé', !!swap, swap);
+  if (swap) {
+    await p.click('.bb-cell[data-i="' + swap[0] + '"]');
+    await p.waitForTimeout(150);
+    check('bonbon sélectionné', await p.locator('.bb-cell.sel').count() === 1);
+    await p.click('.bb-cell[data-i="' + swap[1] + '"]');
+    await p.waitForTimeout(400);
+    const stats = await p.textContent('#mini-area');
+    check('coup joué : 24 restants et des points', /24 coups/.test(stats) && /\+\d+/.test(stats), stats.slice(0, 80));
+  }
+
   await browser.close();
   console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests nouveaux jeux UI OK.');
   process.exit(failures ? 1 : 0);

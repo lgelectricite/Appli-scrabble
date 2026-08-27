@@ -1,5 +1,5 @@
 /* Service worker : rend l'application utilisable entièrement hors ligne. */
-var CACHE = 'gggames-v25';
+var CACHE = 'gggames-v26';
 
 var ASSETS = [
   './',
@@ -40,6 +40,7 @@ var ASSETS = [
   'js/games/poker.js',
   'js/games/blackjack.js',
   'js/games/solitaire.js',
+  'js/games/bonbons.js',
   'js/games/manoir.js',
   'data/mots.txt',
   'vendor/qrcode.js',

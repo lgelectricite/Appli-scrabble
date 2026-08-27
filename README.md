@@ -20,6 +20,7 @@ nécessaire pendant les parties.
 | 🎲 **Yams** | 1–4 | 5 dés, 3 lancers, feuille de score **calculée automatiquement** (bonus 35 compris). |
 | 🐷 **Cochon** | 2–4 | Le dé qui fait tout perdre sur un 1. Premier à 100. |
 | 🧠 **Memory** | 1–4 | Une paire = un point et on rejoue. |
+| 🍬 **Bonbons** | 1–4 | Jeu d'alignements type match-3 : échangez deux bonbons voisins pour en croquer 3, cascades multiplicatrices, **bonbon rayé** (4 alignés) et **sucre magique** (5 alignés) qui croque toute une couleur. 3 niveaux, records, et en réseau : même grille, meilleur score. |
 | 🃏 **Poker** | 2–4 | Texas Hold'em, **cash game** (blinds fixes, recave) ou **tournoi** (blinds montantes, élimination) : tapis et pots secondaires, **mains évaluées par le jeu**, cartes adverses jamais transmises avant l'abattage. |
 | 🔢 **Sudoku** | 1–4 | Grilles générées à volonté (**solution unique garantie**), 3 niveaux, erreurs comptées, chrono. En réseau : même grille, le plus rapide gagne — sans voir la grille des autres. Record personnel par niveau. |
 | 🔎 **Mots mêlés** | 1–4 | Mots **courants** cachés, 3 niveaux : facile (horizontaux et verticaux), moyen (+ diagonales), difficile (8 sens, mots à l'envers) — l'équilibre des directions est garanti. En réseau, grille **partagée** : chaque mot trouvé prend la couleur de son découvreur. |
@@ -106,7 +107,7 @@ Actions, dépôt public requis). Essai local : `python3 -m http.server 8080`.
   est compressée et transportée dans une **URL encodée en QR code**, la
   réponse par QR ou copier/coller.
 - `sw.js` — service worker : application 100 % hors ligne après la première visite.
-- `tests/` — suites de tests automatisés (logique des 22 jeux, moteur de Mots,
+- `tests/` — suites de tests automatisés (logique des 23 jeux, moteur de Mots,
   IA, cagnotte, interface via Playwright) ; GitHub Actions les rejoue à chaque
   push (`.github/workflows/tests.yml`).
 - `vendor/fonts/` — typographie Fraunces embarquée (licence OFL, libre y

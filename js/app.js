@@ -725,7 +725,7 @@
   var SHELVES = [
     { titre: 'Jeux de lettres', jeux: ['mots', 'pendu', 'motus', 'bac', 'meles', 'croises', 'fleches'], couches: 2 },
     { titre: 'Cartes & casino', jeux: ['huit', 'poker', 'blackjack', 'solitaire'], couches: 1 },
-    { titre: 'Réflexion', jeux: ['sudoku', 'memory', 'quiz', 'proche'], couches: 0 },
+    { titre: 'Réflexion', jeux: ['sudoku', 'memory', 'bonbons', 'quiz', 'proche'], couches: 1 },
     { titre: 'Grands classiques', jeux: ['p4', 'morpion', 'bataille', 'yams', 'cochon'], couches: 1 },
     { titre: 'Jeux de soirée', jeux: ['manoir', 'imposteur'], couches: 0 }
   ];
@@ -733,7 +733,7 @@
     mots: '#c2452c', pendu: '#1e6f77', motus: '#2f7a50', bac: '#d9992b',
     meles: '#7d4a6b', croises: '#3f4b6e', fleches: '#b96a3d',
     huit: '#a83a4f', poker: '#234c37', blackjack: '#2c2218', solitaire: '#1e6f77',
-    sudoku: '#3f4b6e', memory: '#c2452c', quiz: '#d9992b', proche: '#2f7a50',
+    sudoku: '#3f4b6e', memory: '#c2452c', bonbons: '#d9679b', quiz: '#d9992b', proche: '#2f7a50',
     p4: '#1e6f77', morpion: '#b96a3d', bataille: '#3f4b6e', yams: '#7d4a6b', cochon: '#c2452c',
     manoir: '#241d38', imposteur: '#6d4f3a'
   };

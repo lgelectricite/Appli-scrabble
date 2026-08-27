@@ -257,5 +257,124 @@ check('solutions non trouvées masquées (réseau)',
 for (let i = 1; i < g.words.length; i++) fleches.apply(g, 0, { t: 'claim', i, text: g.words[i].w });
 check('grille finie', g.finished === true && g.durationSec >= 1);
 
+
+/* ================= BONBONS (match-3) ================= */
+console.log('--- Bonbons ---');
+const bonbons = require(ROOT + '/js/games/bonbons.js');
+const BN = bonbons._N;
+const mkCell = t => ({ t, s: 0 });
+// grille de base sans aucun alignement : t = (ligne + 2*colonne) % 5
+function safeBoard() {
+  const b = new Array(BN * BN);
+  for (let r = 0; r < BN; r++) for (let c = 0; c < BN; c++) b[r * BN + c] = mkCell((r + 2 * c) % 5);
+  return b;
+}
+check('grille témoin sans alignement', bonbons._findRuns(safeBoard()).length === 0);
+
+let bg = bonbons.create(['Ana', 'Bob']);
+check('niveau réservé à l’hôte', bonbons.apply(bg, 1, { t: 'level', l: 'facile' }).ok === false);
+check('niveau inconnu refusé', bonbons.apply(bg, 0, { t: 'level', l: 'sucre' }).ok === false);
+bonbons.apply(bg, 0, { t: 'level', l: 'facile' });
+check('64 bonbons servis, 25 coups', bg.players[0].board.length === 64 && bg.players[0].moves === 25);
+check('grille de départ sans alignement', bonbons._findRuns(bg.players[0].board).length === 0);
+check('même grille pour tous', JSON.stringify(bg.players[0].board) === JSON.stringify(bg.players[1].board));
+check('au moins un coup jouable garanti', bonbons._hasMove(bg.players[0].board) === true);
+check('échange non voisin refusé', bonbons.apply(bg, 0, { t: 'swap', a: 0, b: 9 }).ok === false);
+
+// échange qui ne forme rien : refusé, aucun coup consommé
+{
+  const st = bonbons.create(['Solo']);
+  bonbons.apply(st, 0, { t: 'level', l: 'facile' });
+  st.players[0].board = safeBoard(); // aucun échange 0↔1 ne forme d'alignement ici
+  const r = bonbons.apply(st, 0, { t: 'swap', a: 0, b: 1 });
+  check('échange sans alignement refusé', r.ok === false && st.players[0].moves === 25);
+}
+
+// alignement de 3 : points, coup consommé, grille toujours pleine
+{
+  const st = bonbons.create(['Solo']);
+  bonbons.apply(st, 0, { t: 'level', l: 'facile' });
+  const b = safeBoard();
+  // ligne 7 (en bas, loin des chutes) : XX.X → l'échange vertical amène le 3e
+  b[56].t = 4; b[57].t = 4; b[59].t = 4; b[58].t = 0; b[50].t = 4;
+  b[48].t = 1; b[49].t = 2; b[51].t = 2; // évite tout autre alignement
+  st.players[0].board = b;
+  if (bonbons._findRuns(b).length !== 0) { failures++; console.log('  FAIL grille du scénario 3-match déjà alignée'); }
+  const ok = bonbons.apply(st, 0, { t: 'swap', a: 50, b: 58 });
+  check('alignement de 3 accepté', ok.ok === true);
+  check('au moins 30 points (3 × 10)', st.players[0].score >= 30, st.players[0].score);
+  check('un coup consommé', st.players[0].moves === 24);
+  check('la grille reste pleine (64 bonbons)', st.players[0].board.every(c => c && typeof c.t === 'number'));
+}
+
+// alignement de 4 : un bonbon rayé apparaît (sauf s'il part dans la cascade)
+{
+  const b = safeBoard();
+  b[56].t = 4; b[57].t = 4; b[58].t = 4; b[59].t = 4; // 4 à l'horizontale, prêts
+  const res = bonbons._resolve(b, 5, 57);
+  check('4 alignés : au moins 40 points', res.pts >= 40, res.pts);
+  check('4 alignés : bonbon rayé créé (ou déjà croqué en cascade)',
+    b.some(c => c && c.s > 0) || res.combo > 1);
+}
+
+// alignement de 5 : le sucre magique apparaît
+{
+  const b = safeBoard();
+  b[56].t = 4; b[57].t = 4; b[58].t = 4; b[59].t = 4; b[60].t = 4;
+  const res = bonbons._resolve(b, 5, 58);
+  check('5 alignés : sucre magique créé', b.some(c => c && c.t === -1));
+  check('5 alignés : au moins 50 points', res.pts >= 50, res.pts);
+}
+
+// sucre magique échangé : toute la couleur y passe
+{
+  const st = bonbons.create(['Solo']);
+  bonbons.apply(st, 0, { t: 'level', l: 'facile' });
+  const b = safeBoard();
+  b[0] = { t: -1, s: 0 }; // sucre magique dans le coin
+  st.players[0].board = b;
+  const cible = b[1].t;
+  const avant = b.filter(c => c.t === cible).length;
+  const ok = bonbons.apply(st, 0, { t: 'swap', a: 0, b: 1 });
+  const gain = st.players[0].lastGain;
+  check('sucre magique : échange accepté', ok.ok === true);
+  check('sucre magique : toute la couleur croquée (' + avant + ' bonbons)',
+    gain === avant * 15 || gain === (avant + 1) * 15, gain);
+  check('sucre magique : coup consommé', st.players[0].moves === 24);
+}
+
+// grille morte détectée
+{
+  const dead = new Array(BN * BN);
+  for (let r = 0; r < BN; r++) for (let c = 0; c < BN; c++) {
+    dead[r * BN + c] = mkCell((r % 2) * 2 + (c % 2)); // damier 0101/2323 : aucun coup
+  }
+  check('grille morte : aucun coup détecté', bonbons._hasMove(dead) === false);
+}
+
+// course à deux : la partie se termine quand tout le monde a épuisé ses coups
+{
+  const st = bonbons.create(['Ana', 'Bob']);
+  bonbons.apply(st, 0, { t: 'level', l: 'facile' });
+  st.players.forEach(p => { p.moves = 1; });
+  function findSwap(b) {
+    for (let i = 0; i < BN * BN; i++) {
+      if (b[i].t === -1) continue;
+      const c = i % BN;
+      if (c < BN - 1 && bonbons._wouldMatch(b, i, i + 1)) return [i, i + 1];
+      if (i < BN * (BN - 1) && bonbons._wouldMatch(b, i, i + BN)) return [i, i + BN];
+    }
+    return null;
+  }
+  const s1 = findSwap(st.players[0].board);
+  bonbons.apply(st, 0, { t: 'swap', a: s1[0], b: s1[1] });
+  check('un joueur fini, l’autre pas : la course continue', st.finished === false);
+  const s2 = findSwap(st.players[1].board);
+  bonbons.apply(st, 1, { t: 'swap', a: s2[0], b: s2[1] });
+  check('tous à court de coups : partie terminée', st.finished === true);
+  check('classement au score avec 🏆', /🏆/.test(bonbons.summary(st)));
+  check('rejouer après la fin refusé', bonbons.apply(st, 0, { t: 'swap', a: 0, b: 1 }).ok === false);
+}
+
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests nouveaux jeux OK.');
 process.exit(failures ? 1 : 0);
