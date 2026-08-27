@@ -164,6 +164,16 @@
       return html;
     },
 
+    /* en réseau : les POSITIONS des mots non trouvés ne circulent jamais
+       (la liste des mots reste visible, c'est le jeu) */
+    redact: function (state) {
+      var copy = GG.clone(state);
+      copy.words.forEach(function (w) {
+        if (w.foundBy === -1) { delete w.cells; w.foundCells = null; }
+      });
+      return copy;
+    },
+
     apply: function (state, player, action, ctx) {
       if (state.finished) return { ok: false, error: 'Partie terminée.' };
       if (action.t === 'level') {
@@ -200,6 +210,14 @@
             return { ok: true };
           }
         }
+        // mot de la liste déjà pris par quelqu'un ? message honnête
+        for (var w2 = 0; w2 < state.words.length; w2++) {
+          var word2 = state.words[w2];
+          if (word2.foundBy !== -1 && (word2.w === text || word2.w === reversed)) {
+            return { ok: false, error: '« ' + text + ' » a déjà été trouvé par ' +
+              state.players[word2.foundBy].name + ' !' };
+          }
+        }
         return { ok: false, error: '« ' + text + ' » n’est pas dans la liste.' };
       }
       return { ok: false, error: 'Action inconnue.' };
@@ -210,6 +228,8 @@
       var me = ctx.me;
 
       if (s.phase === 'setup') {
+        el._melSel = -1; // remise à zéro entre deux parties
+        if (el._melTimer) { clearInterval(el._melTimer); el._melTimer = null; }
         var html0 = '<p class="mini-msg big-msg">🔎 Mots mêlés</p>';
         if (me === 0) {
           html0 += '<p class="mini-msg">Choisissez le niveau :</p><div class="lvl-btns">' +
@@ -260,7 +280,7 @@
           GG.esc(p.name) + ' : ' + p.found + '</span>';
       }).join('') +
         '<span class="mem-stat" id="mel-timer">⏱️ ' +
-        fmt(Math.round((Date.now() - s.startTs) / 1000)) + '</span></div>';
+        fmt(Math.max(0, Math.round((Date.now() - s.startTs) / 1000))) + '</span></div>';
       el.innerHTML = html;
 
       el.querySelectorAll('.mel-cell').forEach(function (c) {
@@ -275,8 +295,10 @@
           } else {
             var a = el._melSel;
             el._melSel = -1;
-            ctx.act({ t: 'claim', a: a, b: i2 });
+            // efface la sélection AVANT l'action : act() redessine déjà
+            // l'écran avec le nouvel état, un re-rendu après l'écraserait
             mod.render(el, ctx);
+            ctx.act({ t: 'claim', a: a, b: i2 });
           }
         });
       });
@@ -286,7 +308,7 @@
           if (!t || !document.body.contains(t)) {
             clearInterval(el._melTimer); el._melTimer = null; return;
           }
-          t.textContent = '⏱️ ' + fmt(Math.round((Date.now() - s.startTs) / 1000));
+          t.textContent = '⏱️ ' + fmt(Math.max(0, Math.round((Date.now() - s.startTs) / 1000)));
         }, 1000);
       }
     },

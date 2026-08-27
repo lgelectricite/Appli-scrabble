@@ -148,7 +148,7 @@
             if (stored && stored.ts === state.startTs) html += '<h1>🏆 Nouveau record !</h1>';
             else if (stored) {
               html += '<p>🏅 Record (' + LEVELS[state.level].nom.toLowerCase() + ') : ' +
-                fmt(stored.sec) + ' · ' + stored.err + ' erreurs.</p>';
+                fmt(stored.sec) + ' · ' + stored.err + ' erreur' + (stored.err > 1 ? 's' : '') + '.</p>';
             }
           }
         } catch (e) {}
@@ -223,6 +223,7 @@
       var me = ctx.me;
 
       if (s.phase === 'setup') {
+        el._sdkSel = -1; // remise à zéro entre deux parties
         var html0 = '<p class="mini-msg big-msg">🔢 Sudoku</p>';
         if (me === 0) {
           html0 += '<p class="mini-msg">Choisissez le niveau :</p><div class="lvl-btns">' +

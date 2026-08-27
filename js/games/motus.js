@@ -113,7 +113,7 @@
             var stored = JSON.parse(localStorage.getItem(key) || 'null');
             if (stored && stored.ts === state.startTs) html += '<h1>🏆 Nouveau record !</h1>';
             else if (stored) {
-              html += '<p>🏅 Record : ' + stored.tries + ' essais en ' + fmt(stored.sec) + '.</p>';
+              html += '<p>🏅 Record : ' + stored.tries + ' essai' + (stored.tries > 1 ? 's' : '') + ' en ' + fmt(stored.sec) + '.</p>';
             }
           }
         } catch (e) {}
@@ -208,6 +208,9 @@
       }
 
       var my = s.players[me];
+      // la saisie n'est vidée que lorsqu'un essai a réellement été accepté
+      if (el._motLen === undefined) el._motLen = my.tries.length;
+      if (my.tries.length !== el._motLen) { el._motTyped = ''; el._motLen = my.tries.length; }
       var typed = el._motTyped || '';
       var html = '';
 
@@ -257,16 +260,14 @@
         k.addEventListener('click', function () {
           var key = k.dataset.k;
           var cur = el._motTyped || '';
-          if (key === '⌫') el._motTyped = cur.slice(0, -1);
-          else if (key === 'OK') {
-            if (cur.length === s.length) {
-              el._motTyped = '';
-              ctx.act({ t: 'guess', w: cur });
-              return;
-            }
-          } else if (cur.length < s.length) {
-            el._motTyped = cur + key;
+          if (key === 'OK') {
+            // act() redessine l'écran avec le nouvel état ; la saisie
+            // n'est vidée que si l'essai est réellement accepté
+            if (cur.length === s.length) ctx.act({ t: 'guess', w: cur });
+            return;
           }
+          if (key === '⌫') el._motTyped = cur.slice(0, -1);
+          else if (cur.length < s.length) el._motTyped = cur + key;
           mod.render(el, ctx);
         });
       });

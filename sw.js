@@ -1,5 +1,5 @@
 /* Service worker : rend l'application utilisable entièrement hors ligne. */
-var CACHE = 'gggames-v19';
+var CACHE = 'gggames-v20';
 
 var ASSETS = [
   './',
@@ -44,7 +44,11 @@ var ASSETS = [
 self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(CACHE).then(function (cache) {
-      return cache.addAll(ASSETS);
+      // cache:'reload' contourne le cache HTTP du navigateur : la nouvelle
+      // version embarque toujours des fichiers frais, jamais d'anciens
+      return cache.addAll(ASSETS.map(function (u) {
+        return new Request(u, { cache: 'reload' });
+      }));
     }).then(function () {
       return self.skipWaiting();
     })

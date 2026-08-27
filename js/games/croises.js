@@ -324,13 +324,19 @@
     var ar = er + dr, ac = ec + dc;
     if (ar >= 0 && ac >= 0 && ar < N && ac < N && grid[ar * N + ac]) return -1;
     var crossed = 0;
+    var prevOccupied = false;
     for (var k = 0; k < len; k++) {
       var rr = r + dr * k, cc = c + dc * k;
       var cur = grid[rr * N + cc];
       if (cur) {
         if (cur !== word[k]) return -1;
+        // deux cases occupées CONSÉCUTIVES = on recouvre un mot colinéaire
+        // déjà posé (CHAT sous CHATEAU…) : interdit
+        if (prevOccupied) return -1;
+        prevOccupied = true;
         crossed++;
       } else {
+        prevOccupied = false;
         var p1r = rr + dc, p1c = cc + dr; // voisins perpendiculaires
         var p2r = rr - dc, p2c = cc - dr;
         if (p1r >= 0 && p1r < N && p1c >= 0 && p1c < N && grid[p1r * N + p1c]) return -1;
@@ -557,6 +563,7 @@
         if (!numAt[w.cells[0]]) numAt[w.cells[0]] = w.num;
       });
 
+      if (el._crGame !== s.startTs) { el._crGame = s.startTs; el._crSel = -1; }
       var sel = el._crSel !== undefined ? el._crSel : -1;
       if (sel !== -1 && (!s.words[sel] || s.words[sel].foundBy !== -1)) {
         sel = -1; el._crSel = -1;
@@ -610,7 +617,7 @@
           GG.esc(p.name) + ' : ' + p.points + (p.errors ? ' · ❌' + p.errors : '') + '</span>';
       }).join('') +
         '<span class="mem-stat" id="cr-timer">⏱️ ' +
-        fmt(Math.round((Date.now() - s.startTs) / 1000)) + '</span></div>';
+        fmt(Math.max(0, Math.round((Date.now() - s.startTs) / 1000))) + '</span></div>';
       el.innerHTML = html;
 
       function select(i2) {
@@ -654,7 +661,7 @@
           if (!t || !document.body.contains(t)) {
             clearInterval(el._crTimer); el._crTimer = null; return;
           }
-          t.textContent = '⏱️ ' + fmt(Math.round((Date.now() - s.startTs) / 1000));
+          t.textContent = '⏱️ ' + fmt(Math.max(0, Math.round((Date.now() - s.startTs) / 1000)));
         }, 1000);
       }
     },

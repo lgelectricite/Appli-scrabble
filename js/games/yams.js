@@ -104,7 +104,8 @@
       var html = rows.map(function (r) {
         return '<div class="final-line"><span>' + GG.esc(r.n) + '</span><strong>' +
           r.s + ' pts</strong></div>';
-      }).join('') + '<h1>🏆 ' + GG.esc(rows[0].n) + '</h1>';
+      }).join('') + '<h1>🏆 ' + rows.filter(function (r) { return r.s === rows[0].s; })
+        .map(function (r) { return GG.esc(r.n); }).join(' & ') + '</h1>';
       if (state.players.length === 1) {
         try {
           if (typeof localStorage !== 'undefined') {

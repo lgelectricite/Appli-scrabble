@@ -163,6 +163,19 @@
         contenders.push(i);
       }
     });
+    // excédent non suivi : le plus gros contributeur récupère la différence
+    // avec le second — ce n'est pas un gain, juste un remboursement
+    var conts = state.players.map(function (p) { return p.cont; }).sort(function (a, b) { return b - a; });
+    if (conts.length > 1 && conts[0] > conts[1]) {
+      var excess = conts[0] - conts[1];
+      for (var xi = 0; xi < state.players.length; xi++) {
+        if (state.players[xi].cont === conts[0]) {
+          state.players[xi].cont -= excess;
+          state.players[xi].chips += excess;
+          break;
+        }
+      }
+    }
     // pots (principal + secondaires) selon les contributions
     var msgs = [];
     var guard = 0;
@@ -307,7 +320,8 @@
       return rows.map(function (r) {
         return '<div class="final-line"><span>' + GG.esc(r.n) + '</span><strong>' +
           r.s + ' 🪙</strong></div>';
-      }).join('') + '<h1>🏆 ' + GG.esc(rows[0].n) + '</h1>';
+      }).join('') + '<h1>🏆 ' + rows.filter(function (r) { return r.s === rows[0].s; })
+        .map(function (r) { return GG.esc(r.n); }).join(' & ') + '</h1>';
     },
 
     redact: function (state, viewer) {
@@ -337,6 +351,9 @@
         if (state.mode !== 'cash') return { ok: false, error: 'Recave possible en cash game uniquement.' };
         var rp = state.players[player];
         if (rp.chips > 0) return { ok: false, error: 'Vous avez encore des jetons.' };
+        if (!state.handOver && rp.hole && rp.hole.length && !rp.folded) {
+          return { ok: false, error: 'Recave possible à la fin de la main.' };
+        }
         rp.chips = START_CHIPS;
         state.handMsg = GG.esc(rp.name) + ' recave ' + START_CHIPS + ' 🪙.';
         return { ok: true };
@@ -384,12 +401,15 @@
         if (p.bet > state.maxBet) {
           var raised = p.bet - state.maxBet;
           state.maxBet = p.bet;
-          if (fullRaise) {
-            state.minRaise = raised;
-            state.players.forEach(function (q, i) {
-              if (i !== player && canPlay(q) && !q.out) state.need[i] = true;
-            });
-          }
+          // toute augmentation rouvre la parole : chacun doit suivre ou se
+          // coucher, même face à un tapis « incomplet » ; seule une VRAIE
+          // relance remonte le minimum de sur-relance
+          if (fullRaise) state.minRaise = raised;
+          state.players.forEach(function (q, i) {
+            if (i !== player && canPlay(q) && !q.out && q.bet < state.maxBet) {
+              state.need[i] = true;
+            }
+          });
         }
         state.need[player] = false;
         afterAction(state);

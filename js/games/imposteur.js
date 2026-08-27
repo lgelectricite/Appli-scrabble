@@ -218,7 +218,8 @@
       return rows.map(function (r) {
         return '<div class="final-line"><span>' + GG.esc(r.n) + '</span><strong>' +
           r.s + ' pts</strong></div>';
-      }).join('') + '<h1>🏆 ' + GG.esc(rows[0].n) + '</h1>';
+      }).join('') + '<h1>🏆 ' + rows.filter(function (r) { return r.s === rows[0].s; })
+        .map(function (r) { return GG.esc(r.n); }).join(' & ') + '</h1>';
     },
 
     /* les mots et les camps ne circulent jamais : chacun ne voit que SON mot */
@@ -231,7 +232,7 @@
           if (p.alive) delete p.role; // même soi-même : on ignore son camp !
         }
         p.hasVoted = p.vote !== -1;
-        if (i !== viewer && copy.phase === 'vote') delete p.vote;
+        if (i !== viewer && copy.phase !== 'end') delete p.vote;
       });
       return copy;
     },
@@ -362,9 +363,7 @@
         }
       } else if (s.phase === 'vote') {
         html += cluesHtml();
-        var votedN = av.filter(function (i) {
-          return s.players[i].hasVoted || s.players[i].vote !== -1;
-        }).length;
+        var votedN = av.filter(function (i) { return !!s.players[i].hasVoted; }).length;
         if (my && my.alive && (my.vote === -1 || my.vote === undefined)) {
           html += '<p class="mini-msg big-msg">🗳️ Qui est l’imposteur ?</p><div class="imp-votes">' +
             av.filter(function (i) { return i !== me; }).map(function (i) {
@@ -395,7 +394,8 @@
       } else if (s.phase === 'end') {
         html += '<div class="imp-card">' +
           '<p class="mini-msg big-msg">' + (s.winner === 'civils'
-            ? '😇 Les civils gagnent !' : '🥸 L’imposteur gagne !') + '</p>' +
+            ? '😇 Les civils gagnent !'
+            : (c.imp > 1 ? '🥸 Les imposteurs gagnent !' : '🥸 L’imposteur gagne !')) + '</p>' +
           '<p>Mot des civils : <strong>' + GG.esc(s.pair[0]) + '</strong><br>' +
           'Mot de l’imposteur : <strong>' + GG.esc(s.pair[1]) + '</strong></p>' +
           '<div class="imp-roles">' + s.players.map(function (pl) {

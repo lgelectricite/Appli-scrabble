@@ -1,5 +1,6 @@
 const ROOT = require('path').join(__dirname, '..');
 require(ROOT + '/js/games/registry.js');
+require(ROOT + '/js/games/motscourants.js');
 const sudoku = require(ROOT + '/js/games/sudoku.js');
 const meles = require(ROOT + '/js/games/meles.js');
 const motus = require(ROOT + '/js/games/motus.js');
@@ -66,9 +67,35 @@ for (const lvl of ['facile', 'moyen', 'difficile']) {
     w.cells.every((c, k) => built.grid[c] === w.w[k])));
   check(lvl + ' : toutes les cases remplies', built.grid.every(ch => /^[A-Z]$/.test(ch)));
 }
+// niveaux : tailles, nombres de mots, répartition des directions
+check('niveaux : 9×9/7, 11×11/10, 13×13/13', (() => {
+  const a = meles._buildGrid('facile'), b = meles._buildGrid('moyen'), c = meles._buildGrid('difficile');
+  return a.size === 9 && a.words.length === 7 && b.size === 11 && b.words.length === 10 &&
+    c.size === 13 && c.words.length === 13;
+})());
+check('facile : mélange garanti d’horizontaux ET de verticaux', (() => {
+  for (let t = 0; t < 10; t++) {
+    const b = meles._buildGrid('facile');
+    const vert = b.words.filter(w => w.cells[1] - w.cells[0] === b.size).length;
+    const horiz = b.words.filter(w => w.cells[1] - w.cells[0] === 1).length;
+    if (vert < 2 || horiz < 2) return false;
+  }
+  return true;
+})());
+check('difficile : présence de mots à l’envers ou en diagonale', (() => {
+  const b = meles._buildGrid('difficile');
+  return b.words.some(w => {
+    const d = w.cells[1] - w.cells[0];
+    return d !== 1 && d !== b.size; // ni → ni ↓ classiques
+  });
+})());
+check('les mots viennent de la liste des mots courants', (() => {
+  const b = meles._buildGrid('moyen');
+  return b.words.every(w => GG.MOTS_COURANTS.indexOf(w.w) !== -1);
+})());
 g = meles.create(['A', 'B']);
 meles.apply(g, 0, { t: 'level', l: 'facile' }, { dict });
-check('partie lancée', g.phase === 'play' && g.words.length === 6);
+check('partie lancée', g.phase === 'play' && g.words.length === 7);
 const w0 = g.words[0];
 r = meles.apply(g, 1, { t: 'claim', a: w0.cells[0], b: w0.cells[w0.cells.length - 1] });
 check('mot revendiqué', r.ok && w0.foundBy === 1 && g.players[1].found === 1);
@@ -97,6 +124,7 @@ check('absentes', JSON.stringify(mk('CHIEN', 'ROBOT')) === '[0,0,0,0,0]');
 g = motus.create(['A', 'B']);
 motus.apply(g, 0, { t: 'level', l: 'facile' }, { dict });
 check('mot de 5 lettres choisi', g.secret.length === 5 && dict.set.has(g.secret));
+check('secret pris dans les mots courants', GG.MOTS_COURANTS.indexOf(g.secret) !== -1, g.secret);
 r = motus.apply(g, 1, { t: 'guess', w: 'ZZZZZ' }, { dict });
 check('mot hors dictionnaire refusé', !r.ok);
 r = motus.apply(g, 1, { t: 'guess', w: 'chien' }, { dict });

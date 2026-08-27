@@ -132,7 +132,7 @@
           (p.tries > 1 ? 's' : '') + '</span>';
       }).join('') +
         '<span class="mem-stat" id="mem-timer">⏱️ ' +
-        (s.startTs ? fmt(Math.round((Date.now() - s.startTs) / 1000)) : '0 s') + '</span></div>';
+        (s.startTs ? fmt(Math.max(0, Math.round((Date.now() - s.startTs) / 1000))) : '0 s') + '</span></div>';
       html += '<p class="mini-msg">' +
         (s.finished ? 'Toutes les paires sont trouvées !'
           : mine ? 'À vous de jouer !' : 'Au tour de ' + GG.esc(s.players[s.current].name) + '…') +
@@ -144,7 +144,8 @@
         });
       });
       // chrono vivant
-      if (!s.finished && s.startTs && !el._memTimer) {
+      if (el._memTimer) { clearInterval(el._memTimer); el._memTimer = null; }
+      if (!s.finished && s.startTs) {
         el._memTimer = setInterval(function () {
           var t = el.querySelector('#mem-timer');
           if (!t || !document.body.contains(t)) {
@@ -152,7 +153,7 @@
             el._memTimer = null;
             return;
           }
-          t.textContent = '⏱️ ' + fmt(Math.round((Date.now() - s.startTs) / 1000));
+          t.textContent = '⏱️ ' + fmt(Math.max(0, Math.round((Date.now() - s.startTs) / 1000)));
         }, 1000);
       }
     }

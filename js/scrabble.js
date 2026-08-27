@@ -113,6 +113,12 @@
     var seen = {};
     for (var k = 0; k < placements.length; k++) {
       var pl = placements[k];
+      // validation stricte : l'hôte est l'autorité, un client modifié ne doit
+      // pas pouvoir poser autre chose qu'UNE lettre A-Z par case
+      if (!pl || typeof pl !== 'object' || !Number.isInteger(pl.index) ||
+          typeof pl.letter !== 'string' || !/^[A-Z]$/.test(pl.letter)) {
+        return { ok: false, error: 'Placement invalide.' };
+      }
       if (pl.index < 0 || pl.index >= SIZE * SIZE) {
         return { ok: false, error: 'Case hors du plateau.' };
       }
@@ -319,7 +325,8 @@
     p.rack = newRack;
     p.score += res.total;
     state.moveCount++;
-    state.scoreless = 0;
+    // un coup légal à 0 point (joker seul) compte comme tour sans score
+    if (res.total > 0) state.scoreless = 0; else state.scoreless++;
     // dernier coup joué : mis en évidence sur le plateau de tous les joueurs
     state.lastMove = {
       player: playerIdx,
@@ -337,6 +344,8 @@
 
     if (p.rack.length === 0 && state.bag.length === 0) {
       endByPlayOut(state, playerIdx);
+    } else if (state.scoreless >= MAX_SCORELESS) {
+      endByScoreless(state);
     } else {
       draw(state, playerIdx);
       nextTurn(state);

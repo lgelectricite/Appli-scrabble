@@ -32,7 +32,7 @@ function check(n, c, e) {
   await p.reload();
   await p.waitForSelector('#screen-home h1', { timeout: 15000 });
   check('l’appli se lance SANS réseau', (await p.textContent('#screen-home h1')) === 'GGgames');
-  check('catalogue complet hors-ligne', await p.locator('#catalog .game-tile').count() === 16);
+  check('catalogue complet hors-ligne', await p.locator('#catalog .game-tile').count() >= 19);
   await p.waitForSelector('#offline-badge:not(.hidden)', { timeout: 10000 });
   check('badge « prête pour le mode avion » affiché', true);
 

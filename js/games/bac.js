@@ -91,10 +91,11 @@
     summary: function (state) {
       var rows = state.players.map(function (p) { return { n: p.name, s: p.score }; })
         .sort(function (a, b) { return b.s - a.s; });
+      var top = rows.filter(function (r) { return r.s === rows[0].s; });
       return rows.map(function (r) {
         return '<div class="final-line"><span>' + GG.esc(r.n) + '</span><strong>' +
           r.s + ' pts</strong></div>';
-      }).join('') + '<h1>🏆 ' + GG.esc(rows[0].n) + '</h1>';
+      }).join('') + '<h1>🏆 ' + top.map(function (r) { return GG.esc(r.n); }).join(' & ') + '</h1>';
     },
 
     /* pendant l'écriture, les réponses des autres restent secrètes */
@@ -105,6 +106,10 @@
         copy.answers = {};
         if (mine) copy.answers[viewer] = mine;
       }
+      // les votes de chacun restent secrets (seul le décompte final est public)
+      var myVote = copy.votes[viewer];
+      copy.votes = {};
+      if (myVote) copy.votes[viewer] = myVote;
       return copy;
     },
 
@@ -137,7 +142,13 @@
       }
 
       if (action.t === 'answers') {
-        if (state.phase !== 'answers') return { ok: false, error: 'Le temps est écoulé.' };
+        // tolérance : une feuille qui arrive juste après le coup de sifflet
+        // est acceptée tant que personne n'a commencé à voter
+        var grace = state.phase === 'vote' && !state.submitted[player] &&
+          state.voted.every(function (v) { return !v; });
+        if (state.phase !== 'answers' && !grace) {
+          return { ok: false, error: 'Le temps est écoulé.' };
+        }
         var list = Array.isArray(action.list) ? action.list.slice(0, CATS.length) : [];
         state.answers[player] = list.map(function (a) { return String(a || '').slice(0, 30); });
         state.submitted[player] = true;
@@ -162,6 +173,15 @@
         return { ok: true };
       }
 
+      if (action.t === 'closeVote') {
+        // filet de sécurité : un joueur ne vote pas (téléphone posé…) →
+        // l'hôte clôt, les votes manquants valent « tout accepté »
+        if (player !== 0) return { ok: false, error: 'Seul l’hôte peut clore le vote.' };
+        if (state.phase !== 'vote') return { ok: false, error: 'Pas de vote en cours.' };
+        scoreRound(state);
+        return { ok: true };
+      }
+
       return { ok: false, error: 'Action inconnue.' };
     },
 
@@ -174,12 +194,18 @@
           !s.submitted[me] && el._bacMineSub === false) {
         return;
       }
+      // Idem pendant le vote : mes coches ✔️/✗ ne doivent pas être remises à zéro
+      if (s.phase === 'vote' && el._bacPhase === 'vote' && !s.voted[me] &&
+          el._bacMineVoted === false) {
+        return;
+      }
       el._bacPhase = s.phase;
       el._bacMineSub = s.phase === 'answers' ? !!s.submitted[me] : null;
+      el._bacMineVoted = s.phase === 'vote' ? !!s.voted[me] : null;
 
       var html = '';
 
-      if (s.phase === 'intro' || (s.phase === 'result' && s.round >= s.maxRounds)) {
+      if (s.phase === 'intro') {
         html += '<h2 class="mini-center">📝 Petit Bac</h2>' +
           '<p class="mini-msg">Une lettre est tirée au sort, remplissez les 6 catégories en ' +
           s.duration + ' secondes. Les autres joueurs valident ensuite vos réponses.<br>' +
@@ -207,6 +233,10 @@
           '</strong> — validez (ou refusez) les réponses des autres :</p>';
         if (s.voted[me]) {
           html += '<p class="waiting">⏳ En attente des votes des autres…</p>';
+          if (me === 0) {
+            html += '<button class="btn" data-a="closevote">⏱️ Clore le vote ' +
+              '(les votes manquants valent « tout accepté »)</button>';
+          }
         } else {
           s.players.forEach(function (p, pi) {
             if (pi === me) return;
@@ -266,6 +296,8 @@
           b.textContent = b.classList.contains('yes') ? '✔️' : '✗';
         });
       });
+      var cv = el.querySelector('[data-a="closevote"]');
+      if (cv) cv.addEventListener('click', function () { ctx.act({ t: 'closeVote' }); });
       var vote = el.querySelector('[data-a="vote"]');
       if (vote) vote.addEventListener('click', function () {
         var grid = {};
@@ -284,6 +316,11 @@
           var left = s.duration;
           el._bacTimer = setInterval(function () {
             left--;
+            if (left <= 1 && document.body.contains(timerEl)) {
+              // le temps est écoulé : on envoie ce qui est écrit, rien ne se perd
+              var sendBtn = el.querySelector('[data-a="send"]');
+              if (sendBtn && !sendBtn.disabled) sendBtn.click();
+            }
             if (left <= 0 || !document.body.contains(timerEl)) {
               clearInterval(el._bacTimer);
               el._bacTimer = null;

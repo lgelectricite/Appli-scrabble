@@ -116,7 +116,8 @@
       return rows.map(function (r) {
         return '<div class="final-line"><span>' + GG.esc(r.n) + '</span><strong>' +
           r.s + ' pts</strong></div>';
-      }).join('') + '<h1>🏆 ' + GG.esc(rows[0].n) + '</h1>';
+      }).join('') + '<h1>🏆 ' + rows.filter(function (r) { return r.s === rows[0].s; })
+        .map(function (r) { return GG.esc(r.n); }).join(' & ') + '</h1>';
     },
 
     /* les mains adverses et la pioche ne circulent jamais */
@@ -229,7 +230,7 @@
       var html = '';
       if (s.finished) {
         html += '<p class="mini-msg big-msg">🏆 ' + GG.esc(s.players[s.winner].name) +
-          ' vide sa main et marque ' + (s.lastGain || 0) + ' points !</p>';
+          ' vide sa main et marque ' + (s.lastGain || 0) + ' point' + ((s.lastGain || 0) > 1 ? 's' : '') + ' !</p>';
         html += '<div class="ha-scores">' + s.players.map(function (pl) {
           return '<div class="final-line"><span>' + GG.esc(pl.name) +
             (pl.hand && pl.hand.length ? ' <small>(' + pl.hand.map(function (c) {

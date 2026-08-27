@@ -97,10 +97,10 @@
     }
   ];
   var ALIBIS = [
-    'faisait une réussite aux cartes sous les yeux de deux invités',
-    'téléphonait à Paris depuis le hall, le standard le confirme',
-    'était déjà couché(e), la gouvernante détient la clé de la chambre',
-    'a joué du piano jusqu’à minuit, tout le manoir l’a entendu'
+    'faisait une réussite aux cartes sous les yeux de deux témoins',
+    'téléphonait à Paris, le standard le confirme',
+    'était déjà couché(e), le personnel détient la clé de sa chambre',
+    'fredonnait au piano, tout le monde l’a entendu'
   ];
 
   /* Rôles d'enquêteurs : chaque joueur reçoit un personnage, des informations
@@ -297,8 +297,16 @@
       if (copy.phase !== 'end') delete copy.solution;
       copy.pistes.forEach(function (p) {
         if (role === 'cryptographe' && p.answers && p.answers[0]) {
-          p.first = p.answers[0][0]; // pouvoir : première lettre de la réponse
+          // le don se tait sur les réponses d'un seul caractère (sinon il
+          // livrerait la réponse entière) : on prend la première réponse longue
+          var longAns = null;
+          for (var ai = 0; ai < p.answers.length; ai++) {
+            if (p.answers[ai].length > 1) { longAns = p.answers[ai]; break; }
+          }
+          if (longAns) p.first = longAns[0];
         }
+        // l'indice ne circule que s'il a été payé (ou pour le serrurier)
+        if (!p.solved && !p.hintShown && role !== 'serrurier') delete p.hint;
         delete p.answers;
         if (!p.solved) {
           if (role === 'archiviste' && p.deductions) {
@@ -333,7 +341,8 @@
       if (state.phase !== 'play') return { ok: false, error: 'L’enquête n’est pas en cours.' };
 
       if (action.t === 'answer') {
-        var p = state.pistes[action.piste | 0];
+        if (!Number.isInteger(action.piste)) return { ok: false, error: 'Piste inconnue.' };
+        var p = state.pistes[action.piste];
         if (!p) return { ok: false, error: 'Piste inconnue.' };
         if (p.solved) return { ok: false, error: 'Piste déjà élucidée.' };
         var given = norm(action.text);
@@ -350,7 +359,8 @@
       }
 
       if (action.t === 'hint') {
-        var ph = state.pistes[action.piste | 0];
+        if (!Number.isInteger(action.piste)) return { ok: false, error: 'Piste inconnue.' };
+        var ph = state.pistes[action.piste];
         if (!ph || ph.solved) return { ok: false, error: 'Piste indisponible.' };
         if (!ph.hintShown) {
           ph.hintShown = true;
@@ -367,6 +377,11 @@
 
       if (action.t === 'accuse') {
         var s = state.solution;
+        // une accusation malformée ne doit pas brûler une tentative
+        if (!byId(SUSPECTS, action.suspect) || !byId(ARMES, action.arme) ||
+            !byId(state.scenario.lieux, action.lieu)) {
+          return { ok: false, error: 'Accusation incomplète.' };
+        }
         state.lastAccuser = state.players[player] ? state.players[player].name : '';
         if (action.suspect === s.suspect && action.arme === s.arme && action.lieu === s.lieu) {
           state.won = true;
@@ -435,6 +450,17 @@
         }
         return out + '</div>';
       }
+
+      // avant de reconstruire l'écran : mémoriser la saisie et la sélection
+      var oldInput = el.querySelector('#mn-answer');
+      var draft = oldInput ? oldInput.value : (el._mnDraft || '');
+      var hadFocus = oldInput && document.activeElement === oldInput;
+      el._mnDraft = draft;
+      el.querySelectorAll('.mn-pick').forEach(function (pick) {
+        var selOpt = pick.querySelector('.mn-opt.sel');
+        if (!el._mnChosen) el._mnChosen = {};
+        if (selOpt) el._mnChosen[pick.dataset.grp] = selOpt.dataset.id;
+      });
 
       var html = '<div class="mn">';
 
@@ -673,6 +699,7 @@
           t.addEventListener('click', function () {
             view.mode = 'enigme';
             view.piste = parseInt(t.dataset.piste, 10);
+            el._mnDraft = '';
             mod.render(el, ctx);
           });
         });
@@ -690,20 +717,41 @@
         });
         b = el.querySelector('[data-a="answer"]');
         if (b) {
+          // restaurer la saisie en cours (un rafraîchissement réseau ne doit
+          // jamais effacer ce que le joueur est en train de taper)
+          var inp0 = el.querySelector('#mn-answer');
+          if (inp0 && el._mnDraft) {
+            inp0.value = el._mnDraft;
+            if (hadFocus) inp0.focus();
+          }
           var send = function () {
             var input = el.querySelector('#mn-answer');
             if (input && input.value.trim()) {
+              el._mnDraft = '';
               ctx.act({ t: 'answer', piste: view.piste, text: input.value });
             }
           };
           b.addEventListener('click', send);
           var inp = el.querySelector('#mn-answer');
-          if (inp) inp.addEventListener('keydown', function (ev) {
-            if (ev.key === 'Enter') send();
-          });
+          if (inp) {
+            inp.addEventListener('input', function () { el._mnDraft = inp.value; });
+            inp.addEventListener('keydown', function (ev) {
+              if (ev.key === 'Enter') send();
+            });
+          }
         }
-        // sélection de l'accusation
+        // sélection de l'accusation (restaurée après un rafraîchissement réseau)
         var chosen = { suspect: null, arme: null, lieu: null };
+        if (el._mnChosen) {
+          Object.keys(el._mnChosen).forEach(function (grp) {
+            var pick = el.querySelector('.mn-pick[data-grp="' + grp + '"]');
+            if (!pick) return;
+            var opt = pick.querySelector('.mn-opt[data-id="' + el._mnChosen[grp] + '"]');
+            if (opt) { opt.classList.add('sel'); chosen[grp] = el._mnChosen[grp]; }
+          });
+          var acc0 = el.querySelector('[data-a="accuse"]');
+          if (acc0) acc0.disabled = !(chosen.suspect && chosen.arme && chosen.lieu);
+        }
         el.querySelectorAll('.mn-pick').forEach(function (pick) {
           pick.querySelectorAll('.mn-opt').forEach(function (opt) {
             opt.addEventListener('click', function () {

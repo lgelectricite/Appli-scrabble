@@ -273,6 +273,7 @@
       // les cases-flèches ne doivent pas être écrasées par des lettres
       Object.keys(clues).forEach(function (c) { active[c] = false; });
 
+      if (el._flGame !== s.startTs) { el._flGame = s.startTs; el._flSel = -1; }
       var sel = el._flSel !== undefined ? el._flSel : -1;
       if (sel !== -1 && (!s.words[sel] || s.words[sel].foundBy !== -1)) {
         sel = -1; el._flSel = -1;
@@ -330,7 +331,7 @@
           GG.esc(p.name) + ' : ' + p.points + (p.errors ? ' · ❌' + p.errors : '') + '</span>';
       }).join('') +
         '<span class="mem-stat" id="fl-timer">⏱️ ' +
-        fmt(Math.round((Date.now() - s.startTs) / 1000)) + '</span></div>';
+        fmt(Math.max(0, Math.round((Date.now() - s.startTs) / 1000))) + '</span></div>';
       el.innerHTML = html;
 
       function select(i2) {
@@ -384,7 +385,7 @@
           if (!t || !document.body.contains(t)) {
             clearInterval(el._flTimer); el._flTimer = null; return;
           }
-          t.textContent = '⏱️ ' + fmt(Math.round((Date.now() - s.startTs) / 1000));
+          t.textContent = '⏱️ ' + fmt(Math.max(0, Math.round((Date.now() - s.startTs) / 1000)));
         }, 1000);
       }
     },

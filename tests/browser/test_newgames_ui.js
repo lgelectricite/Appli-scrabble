@@ -1,3 +1,4 @@
+const ROOT = require('path').join(__dirname, '../..');
 /* UI : Quiz (solo), Le Plus Proche (2 joueurs pass-device), 8 américain (2 joueurs). */
 const { chromium } = require('playwright');
 let failures = 0;
@@ -27,6 +28,10 @@ function check(n, c, e) {
   await p.click('.game-tile[data-g="quiz"]');
   await p.click('#btn-mini-hotseat');
   await p.click('#btn-mini-start');
+  // écran de choix du thème d'abord
+  await p.waitForSelector('.qz-theme[data-th]', { timeout: 15000 });
+  check('choix du thème proposé (≥ 2 thèmes)', await p.locator('.qz-theme[data-th]').count() >= 2);
+  await p.click('.qz-theme[data-th="melange"]');
   await p.waitForSelector('.qz-q', { timeout: 15000 });
   check('question affichée avec 4 choix', await p.locator('.qz-choice[data-i]').count() === 4);
   for (let qn = 0; qn < 10; qn++) {
@@ -102,6 +107,53 @@ function check(n, c, e) {
   await p.waitForSelector('#overlay-rules:not(.hidden)');
   check('règles du 8 américain', /joker|couleur/i.test(await p.textContent('#rules-body')));
   await p.click('#btn-rules-close');
+
+  // ---------- Mots fléchés : solo, force 1, un mot résolu ----------
+  console.log('--- Mots fléchés (solo) ---');
+  require(ROOT + '/js/games/registry.js');
+  const croises2 = require(ROOT + '/js/games/croises.js');
+  const defMap2 = {};
+  for (const lvl of ['facile', 'moyen', 'difficile']) {
+    for (const e of croises2._DB[lvl]) {
+      const i = e.indexOf('|');
+      defMap2[e.slice(i + 1)] = e.slice(0, i);
+    }
+  }
+  await quit();
+  await p.click('.game-tile[data-g="fleches"]');
+  await p.click('#btn-mini-hotseat');
+  check('Mots fléchés : solo uniquement sur ce téléphone',
+    await p.locator('#mini-count .count-btn').count() === 1);
+  await p.click('#btn-mini-start');
+  await p.waitForSelector('[data-f="1"]', { timeout: 15000 });
+  check('5 forces proposées avec progression', await p.locator('[data-f]').count() === 5 &&
+    /200 grilles/.test(await p.textContent('#mini-area')));
+  await p.click('[data-f="1"]');
+  await p.waitForSelector('.cr-grid', { timeout: 15000 });
+  check('grille n°1 force 1 affichée', /Grille n°1 · force 1/.test(await p.textContent('#mini-area')));
+  const nbClues = await p.locator('.fl-clue').count();
+  check('cases-flèches présentes (' + nbClues + ')', nbClues >= 3);
+  // répond à la 1re définition via la base
+  const defBtn2 = p.locator('.cr-def:not(.found)').first();
+  const defTxt2 = (await defBtn2.textContent()).replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\)$/, '');
+  const answer2 = defMap2[defTxt2];
+  check('définition retrouvée dans la base', !!answer2, defTxt2);
+  await defBtn2.click();
+  await p.waitForSelector('#fl-guess');
+  await p.fill('#fl-guess', answer2);
+  await p.click('[data-a="try"]');
+  await p.waitForTimeout(300);
+  check('mot inscrit dans la grille', await p.locator('.cr-def.found').count() === 1);
+  // une case-flèche sélectionne bien un mot (celle d'un mot déjà résolu
+  // ne fait volontairement plus rien : on essaie jusqu'à une sélection)
+  let selOk = false;
+  const nClues2 = await p.locator('.fl-clue').count();
+  for (let ci = 0; ci < nClues2 && !selOk; ci++) {
+    await p.locator('.fl-clue').nth(ci).click();
+    await p.waitForTimeout(150);
+    selOk = (await p.locator('.cr-cell.sel').count()) > 0;
+  }
+  check('case-flèche → mot sélectionné', selOk);
 
   await browser.close();
   console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests nouveaux jeux UI OK.');

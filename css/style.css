@@ -802,7 +802,7 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
   cursor: pointer; color: var(--tile-new);
 }
 .sdk-cell.given { color: var(--paper); font-weight: 800; background: #ffffff14; cursor: default; }
-.sdk-cell.sel { background: var(--accent); color: #fff; }
+.sdk-cell.sel { background: var(--accent); color: var(--accent-ink); }
 .sdk-cell.br { border-right: 2px solid var(--paper); }
 .sdk-cell.bb { border-bottom: 2px solid var(--paper); }
 .sdk-pad { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }

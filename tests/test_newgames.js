@@ -13,8 +13,14 @@ function check(n, c, e) {
 
 /* ================= QUIZ ================= */
 console.log('--- Quiz ---');
-check('banque : au moins 200 questions', quiz._BANK.length >= 200, quiz._BANK.length);
-check('banque : format 5 champs partout', quiz._BANK.every(e => e.split('|').length === 5));
+check('banque : au moins 1000 questions', quiz._BANK.length >= 1000, quiz._BANK.length);
+check('thèmes : au moins 6 thèmes fournis (50+ questions chacun)',
+  quiz._THEMES.filter(t => t.id !== 'melange' && quiz._themeCount(t.id) >= 50).length >= 6,
+  quiz._THEMES.map(t => t.id + ':' + quiz._themeCount(t.id)).join(' '));
+check('banque : format 5 ou 6 champs partout', quiz._BANK.every(e => {
+  const n = e.split('|').length;
+  return n === 5 || n === 6;
+}));
 check('banque : pas de doublon de question',
   new Set(quiz._BANK.map(e => e.split('|')[0])).size === quiz._BANK.length);
 check('banque : leurres distincts de la bonne réponse', quiz._BANK.every(e => {
@@ -22,7 +28,11 @@ check('banque : leurres distincts de la bonne réponse', quiz._BANK.every(e => {
   return new Set([p[1], p[2], p[3], p[4]]).size === 4;
 }));
 let g = quiz.create(['A', 'B', 'C']);
-check('10 questions tirées', g.qs.length === 10, g.qs.length);
+check('phase de choix du thème', g.phase === 'setup');
+check('thème réservé à l’hôte', !quiz.apply(g, 1, { t: 'theme', th: 'melange' }).ok);
+check('réponse avant le thème refusée', !quiz.apply(g, 0, { t: 'answer', i: 0 }).ok);
+quiz.apply(g, 0, { t: 'theme', th: 'melange' });
+check('10 questions tirées', g.qs.length === 10 && g.phase === 'question', g.qs.length);
 check('la bonne réponse est bien indexée', g.qs.every(q => {
   const src = quiz._BANK.find(e => e.split('|')[0] === q.q);
   return src && q.choices[q.correct] === src.split('|')[1] && q.choices.length === 4;
@@ -50,6 +60,17 @@ check('question suivante, réponses remises à zéro',
   g.idx === 1 && g.phase === 'question' && g.players.every(p => p.answer === -1));
 // hotseat : le viewer tourne avec la question
 check('viewerOf tourne avec la question', quiz.viewerOf(g) === 1 % 3);
+// thèmes : chaque thème listé a assez de questions ou est refusé proprement
+quiz._THEMES.forEach(t => {
+  if (t.id === 'melange') return;
+  const n = quiz._themeCount(t.id);
+  if (n >= 10) {
+    const x = quiz.create(['A']);
+    const rr = quiz.apply(x, 0, { t: 'theme', th: t.id });
+    if (!(rr.ok && x.qs.length === 10)) { failures++; console.log('  FAIL thème ' + t.id); }
+  }
+});
+check('thèmes cohérents (tirage 10 questions par thème fourni)', true);
 // on termine la partie
 for (let qn = g.idx; qn < g.qs.length; qn++) {
   for (let pl = 0; pl < 3; pl++) quiz.apply(g, pl, { t: 'answer', i: g.qs[qn].correct });
@@ -179,6 +200,62 @@ const totalBefore = g.discard.length + g.players[0].hand.length + g.players[1].h
 const got = huit._drawCards(g, 0, 2);
 check('défausse rebattue pour repiocher', got === 2 && g.discard.length === 1 &&
   g.discard.length + g.pile.length + g.players[0].hand.length + g.players[1].hand.length === totalBefore);
+
+/* ================= MOTS FLÉCHÉS ================= */
+console.log('--- Mots fléchés ---');
+require(ROOT + '/js/games/croises.js');
+require(ROOT + '/js/games/fleches-data.js');
+const fleches = require(ROOT + '/js/games/fleches.js');
+check('1000 grilles dans la base', GG.FLECHES_GRILLES.length === 1000, GG.FLECHES_GRILLES.length);
+// intégrité : chaque grille se charge, croisements cohérents, définitions présentes
+let flBad = 0, flDef = 0, flTotal = 0;
+for (let f = 1; f <= 5; f++) {
+  for (let gn = 0; gn < 200; gn++) {
+    const grid = fleches._loadGrid(f, gn);
+    if (!grid) { flBad++; continue; }
+    const cellMap = {};
+    for (const w of grid.words) {
+      flTotal++;
+      if (w.def && w.def !== 'Mot mystère…') flDef++;
+      w.cells.forEach((c, k) => {
+        if (c < 0 || c >= grid.size * grid.size) flBad++;
+        if (cellMap[c] && cellMap[c] !== w.w[k]) flBad++;
+        cellMap[c] = w.w[k];
+      });
+      if (!w.num) flBad++;
+    }
+  }
+}
+check('les 1000 grilles sont cohérentes (croisements, numéros)', flBad === 0, flBad);
+check('aucune superposition colinéaire dans les 1000 grilles', (() => {
+  for (let f2 = 1; f2 <= 5; f2++) for (let g2 = 0; g2 < 200; g2++) {
+    const gr = fleches._loadGrid(f2, g2);
+    for (let a2 = 0; a2 < gr.words.length; a2++) for (let b2 = a2 + 1; b2 < gr.words.length; b2++) {
+      const A = gr.words[a2], B = gr.words[b2];
+      if (A.dir === B.dir && A.cells.some(c => B.cells.includes(c))) return false;
+    }
+  }
+  return true;
+})());
+check('chaque mot a sa définition (' + flTotal + ' mots)', flDef === flTotal);
+check('les forces montent en taille', (() => {
+  const t1 = fleches._loadGrid(1, 0), t5 = fleches._loadGrid(5, 0);
+  return t1.size === 8 && t5.size === 12 && t1.words.length < t5.words.length;
+})());
+g = fleches.create(['A', 'B']);
+check('phase de choix de la force', g.phase === 'setup');
+check('force réservée à l’hôte', !fleches.apply(g, 1, { t: 'force', f: 1 }).ok);
+fleches.apply(g, 0, { t: 'force', f: 2, g: 7 });
+check('grille n°8 de force 2 chargée', g.force === 2 && g.gnum === 7 && g.words.length >= 7);
+const fw = g.words[0];
+check('mauvaise longueur refusée', !fleches.apply(g, 0, { t: 'claim', i: 0, text: 'X' }).ok);
+fleches.apply(g, 1, { t: 'claim', i: 0, text: fw.w.toLowerCase() });
+check('mot trouvé : points = longueur', fw.foundBy === 1 && g.players[1].points === fw.w.length);
+const redF = fleches.redact(g, 0);
+check('solutions non trouvées masquées (réseau)',
+  redF.words.every((w, i) => i === 0 ? w.w === fw.w : w.w === undefined));
+for (let i = 1; i < g.words.length; i++) fleches.apply(g, 0, { t: 'claim', i, text: g.words[i].w });
+check('grille finie', g.finished === true && g.durationSec >= 1);
 
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests nouveaux jeux OK.');
 process.exit(failures ? 1 : 0);

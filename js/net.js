@@ -121,7 +121,10 @@
     var self = this;
     this.pc.addEventListener('connectionstatechange', function () {
       var st = self.pc && self.pc.connectionState;
-      if ((st === 'failed' || st === 'disconnected' || st === 'closed') && self.onClose) {
+      // 'disconnected' est souvent TRANSITOIRE (veille d'écran, micro-coupure
+      // Wi-Fi) et se rétablit seul : seuls 'failed' et 'closed' sont
+      // définitifs — la fermeture du canal de données couvre le reste.
+      if ((st === 'failed' || st === 'closed') && self.onClose) {
         self.onClose();
       }
     });

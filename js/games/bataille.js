@@ -96,7 +96,8 @@
         var b = copy.boards[i];
         b.cells = {}; // positions secrètes
         b.ships = b.ships.map(function (s) {
-          return s.sunk ? s : { size: s.size, cells: [], hits: s.hits, sunk: false };
+          // ni les positions NI le détail des touches par navire ne circulent
+          return s.sunk ? s : { size: s.size, cells: [], hits: 0, sunk: false };
         });
       }
       return copy;
@@ -109,7 +110,7 @@
         state.shots = [new Array(N * N).fill(null), new Array(N * N).fill(null)];
         state.players.forEach(function (p) { p.ready = false; });
         state.phase = 'place';
-        state.current = 1 - state.winner; // le perdant commence la revanche
+        state.firstNext = 1 - state.winner; // le perdant commencera la revanche
         state.finished = false;
         state.winner = -1;
         state.lastMsg = '';
@@ -128,7 +129,9 @@
         state.players[player].ready = true;
         if (state.players.every(function (p) { return p.ready; })) {
           state.phase = 'play';
-          state.current = 0;
+          state.current = state.firstNext === undefined || state.firstNext === null
+            ? 0 : state.firstNext;
+          state.firstNext = null;
         }
         return { ok: true };
       }

@@ -182,17 +182,49 @@ check('case remplie non rejouable', g.players[0].sheet.chance !== null);
 
 /* ================= PENDU ================= */
 console.log('--- Pendu ---');
+require(ROOT + '/js/games/motscourants.js');
+check('liste de mots courants chargée', Array.isArray(GG.MOTS_COURANTS) &&
+  GG.MOTS_COURANTS.length >= 700, GG.MOTS_COURANTS && GG.MOTS_COURANTS.length);
 g = pendu.create(['A', 'B'], null);
-g.secret = 'MAISON';
-g.revealed = new Array(6).fill(null);
+check('phase de choix du niveau', g.phase === 'setup');
+check('lettre avant le niveau refusée', !pendu.apply(g, 0, { t: 'letter', l: 'A' }).ok);
+check('niveau réservé à l’hôte', !pendu.apply(g, 1, { t: 'level', l: 'facile' }).ok);
+pendu.apply(g, 0, { t: 'level', l: 'difficile' });
+check('difficile : mot court (4-6) et 6 cœurs', g.maxErrors === 6 &&
+  g.secret.length >= 4 && g.secret.length <= 6, g.secret);
+check('le mot vient des mots courants', GG.MOTS_COURANTS.indexOf(g.secret) !== -1, g.secret);
+// niveaux : longueurs respectées sur 30 tirages
+let lvlOk = true;
+for (let t = 0; t < 30; t++) {
+  const x = pendu.create(['A']);
+  pendu.apply(x, 0, { t: 'level', l: 'facile' });
+  if (x.secret.length < 7 || x.secret.length > 10 || x.maxErrors !== 8) lvlOk = false;
+}
+check('facile : mots de 7-10 lettres, 8 cœurs (30 tirages)', lvlOk);
+g = pendu.create(['A', 'B'], null);
+pendu.apply(g, 0, { t: 'level', l: 'facile' });
+g.secret = 'MAISONS';
+g.revealed = new Array(7).fill(null);
+g.tried = [];
 let r = pendu.apply(g, 0, { t: 'letter', l: 'A' });
 check('lettre trouvée : +1 et rejoue', r.ok && g.players[0].score === 1 && g.current === 0);
 r = pendu.apply(g, 0, { t: 'letter', l: 'Z' });
 check('lettre fausse : erreur et tour passe', r.ok && g.errors === 1 && g.current === 1);
 check('lettre déjà jouée refusée', !pendu.apply(g, 1, { t: 'letter', l: 'A' }).ok);
+// indice : coûte un cœur, révèle sans donner de points
+const scoreAvant = g.players[1].score;
+const revAvant = g.revealed.filter(Boolean).length;
+r = pendu.apply(g, 1, { t: 'hint' });
+check('indice accepté : +1 erreur, lettre(s) révélée(s), 0 point',
+  r.ok && g.errors === 2 && g.revealed.filter(Boolean).length > revAvant &&
+  g.players[1].score === scoreAvant);
+check('indice hors tour refusé', !pendu.apply(g, 0, { t: 'hint' }).ok);
+// à un cœur de la fin : indice bloqué
+g.errors = g.maxErrors - 1;
+check('indice refusé au dernier cœur', !pendu.apply(g, 1, { t: 'hint' }).ok);
+g.errors = 2;
 ['M', 'I', 'S', 'O', 'N'].forEach(l => pendu.apply(g, g.current, { t: 'letter', l }));
-check('mot complété : manche finie', g.roundOver && g.answer === 'MAISON');
-check('bonus de fin de mot (+3)', g.players[1].score >= 3 || g.players[0].score >= 4);
+check('mot complété : manche finie', g.roundOver && g.answer === 'MAISONS');
 const redP = pendu.redact(g, 1);
 check('secret absent du réseau', redP.secret === undefined);
 
@@ -243,11 +275,13 @@ check('over() reste faux : série de manches', bataille.over(g) === false);
 check('victoire comptée dans la série', g.players[0].wins === 1 && g.players[1].wins === 0);
 check('score série avec trophée', String(bataille.scoreOf(g, 0)).indexOf('🏆') !== -1);
 const rev = bataille.apply(g, 0, { t: 'again' });
-check('revanche relancée, le perdant commence', rev.ok && g.phase === 'place' &&
-  !g.finished && g.current === 1);
+check('revanche relancée', rev.ok && g.phase === 'place' && !g.finished);
 check('victoires conservées après revanche', g.players[0].wins === 1);
 check('flottes replacées et joueurs plus prêts',
   Object.keys(g.boards[0].cells).length === 17 && !g.players[0].ready && !g.players[1].ready);
+bataille.apply(g, 0, { t: 'ready' });
+bataille.apply(g, 1, { t: 'ready' });
+check('le PERDANT commence vraiment la revanche', g.phase === 'play' && g.current === 1);
 g = bataille.create(['A', 'B']);
 check('revanche refusée en cours de manche', !bataille.apply(g, 0, { t: 'again' }).ok);
 g = bataille.create(['A', 'B']);
@@ -338,7 +372,8 @@ check('bonne réponse acceptée (insensible casse/espaces)', g.pistes[0].solved)
 check('2 déductions révélées', g.eliminated.length === 2);
 check('l’auteur de la trouvaille est noté', g.pistes[0].solvedBy === 'C');
 check('re-répondre à une piste élucidée refusé', !manoir.apply(g, 0, { t: 'answer', piste: 0, text: bonne }).ok);
-// indice compté une seule fois
+// indice compté une seule fois (rôles neutralisés : pas d'indice gratuit ici)
+g.players.forEach(p => { p.freeHintUsed = true; });
 manoir.apply(g, 0, { t: 'hint', piste: 1 });
 manoir.apply(g, 1, { t: 'hint', piste: 1 });
 check('indice compté une seule fois par piste', g.hintsUsed === 1);
@@ -427,6 +462,7 @@ check('voyante : DEUX infos confidentielles', !!gVoy &&
   gVoy.players[1].clues[0].text !== gVoy.players[1].clues[1].text);
 // inspecteur : décompte d'accusation pour lui seul
 g = manoir.create(['A', 'B']);
+g.players[0].role = manoir._ROLES.find(r => r.id === 'majordome');
 g.players[1].role = manoir._ROLES.find(r => r.id === 'inspecteur');
 manoir.apply(g, 0, { t: 'start' });
 manoir.apply(g, 0, { t: 'accuse',
@@ -442,7 +478,12 @@ g.players[1].role = manoir._ROLES.find(r => r.id === 'archiviste');
 manoir.apply(g, 0, { t: 'start' });
 const redCry = manoir.redact(g, 0);
 check('cryptographe : première lettre visible, réponses masquées',
-  redCry.pistes.every(p => p.first && p.first.length === 1 && p.answers === undefined));
+  redCry.pistes.every((p, i) => p.answers === undefined &&
+    (g.pistes[i].answers.some(a => a.length > 1)
+      ? p.first && p.first.length === 1     // don actif : l'initiale d'une vraie réponse
+      : p.first === undefined)));           // réponse d'une lettre : le don se tait
+check('cryptographe : jamais la réponse entière',
+  redCry.pistes.every((p, i) => !p.first || !g.pistes[i].answers.includes(p.first)));
 check('cryptographe : pas les natures de pistes', redCry.pistes.every(p => p.kinds === undefined));
 const redArc = manoir.redact(g, 1);
 check('archiviste : nature des révélations de chaque piste',

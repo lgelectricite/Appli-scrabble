@@ -996,10 +996,28 @@
   }
 
   function attachPeerHandlers(peer) {
-    peer.net.onMessage = function (msg) { hostHandleMessage(peer, msg); };
+    peer.net.onMessage = function (msg) {
+      // un message qui arrive prouve que le lien est vivant : si le pair
+      // avait été marqué déconnecté (micro-coupure), on le réintègre et on
+      // lui renvoie l'état à jour
+      if (!peer.connected && hostPeers.indexOf(peer) !== -1 && msg.t !== 'hello') {
+        peer.connected = true;
+        updateNetBanner();
+        renderBadgesSafe();
+        sendInitTo(peer);
+      }
+      hostHandleMessage(peer, msg);
+    };
     peer.net.onOpen = function () { /* attend le « hello » de l'invité */ };
     peer.net.onClose = function () {
       peer.connected = false;
+      // dans le salon (partie non lancée) : on retire le pair, sinon il
+      // compte comme un fantôme (« partie complète », prénom occupé…)
+      if (!gameStarted()) {
+        var at = hostPeers.indexOf(peer);
+        if (at !== -1) hostPeers.splice(at, 1);
+        broadcastLobby();
+      }
       updateNetBanner();
       renderBadgesSafe();
       if (document.querySelector('#screen-host.active')) renderLobby();
@@ -1040,12 +1058,21 @@
         }
       }
       if (!match) {
+        var off = hostPeers.filter(function (p) { return !p.connected; })
+          .map(function (p) { return p.name; });
         peer.net.send({
           t: 'err',
-          msg: 'Partie en cours : indiquez exactement le même prénom qu’au début (' +
-            hostPeers.filter(function (p) { return !p.connected; })
-              .map(function (p) { return p.name; }).join(', ') + ').'
+          msg: off.length
+            ? 'Partie en cours : indiquez exactement le même prénom qu’au début (' +
+              off.join(', ') + ').'
+            : 'Partie en cours et aucun joueur à remplacer.'
         });
+        peer.net.close();
+        // ne pas laisser l'hôte bloqué sur « Connexion en cours… » : retour au jeu
+        if (document.querySelector('#screen-host.active')) hostBackToGame();
+        toast(off.length
+          ? 'Prénom inconnu : l’invité doit reprendre son prénom (' + off.join(', ') + ').'
+          : 'Un téléphone a tenté de rejoindre, mais personne n’est à remplacer.');
         return;
       }
       match.net.close();
@@ -1266,6 +1293,13 @@
         enterGame();
       } else {
         miniMod = window.GG.byId[currentGame];
+        if (!miniMod) {
+          // versions décalées : ce téléphone ne connaît pas encore ce jeu
+          toast('Ce jeu nécessite une version plus récente de GGgames : ' +
+            'rechargez l’application (avec Internet) puis rejoignez à nouveau.');
+          quitToHome();
+          return;
+        }
         miniState = msg.state;
         miniMe = msg.you || 1;
         enterMini();
@@ -1273,6 +1307,7 @@
       return;
     }
     if (msg.t === 'state') {
+      setNetBanner(false); // l'état arrive : le lien est vivant
       if (currentGame === 'mots') {
         state = msg.state;
         pending = [];
@@ -1439,6 +1474,7 @@
 
   function quitToHome() {
     stopScanner();
+    autoOffer = null; // une vieille invitation ne doit jamais être rejouée
     hostPeers.forEach(function (p) { p.net.close(); });
     hostPeers = [];
     if (invitePeer) { invitePeer.net.close(); invitePeer = null; }
@@ -1495,6 +1531,7 @@
     }
 
     function openJoinScreen() {
+      autoOffer = null; // entrée manuelle : on scanne, on ne rejoue pas un vieux code
       showScreen('screen-join');
       $('join-step-name').classList.remove('hidden');
       $('join-step-scan').classList.add('hidden');
@@ -1716,9 +1753,10 @@
     // (au chargement, mais aussi si l'app était déjà ouverte : hashchange)
     function handleInviteHash() {
       if (!(location.hash && location.hash.indexOf('#j=') === 0)) return;
-      autoOffer = extractCode(location.hash);
+      var code = extractCode(location.hash);
       history.replaceState(null, '', location.pathname + location.search);
-      if (gameStarted()) return; // partie en cours : on ne coupe pas le jeu
+      if (gameStarted()) return; // partie en cours : on ne stocke rien
+      autoOffer = code;
       showScreen('screen-join');
       $('join-step-name').classList.remove('hidden');
       $('join-step-scan').classList.add('hidden');
@@ -1751,8 +1789,11 @@
       navigator.serviceWorker.addEventListener('controllerchange', function () {
         if (!hadController) { hadController = true; return; }
         if (reloaded) return;
+        // on ne recharge qu'au repos complet : ni partie, ni salon, ni
+        // appairage en cours (un reload fermerait les connexions WebRTC)
+        if (gameStarted() || mode !== null) return;
         reloaded = true;
-        if (!gameStarted()) location.reload();
+        location.reload();
       });
     }
   }
