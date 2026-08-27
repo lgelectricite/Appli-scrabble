@@ -3,9 +3,13 @@
   'use strict';
   var GG = root.GG;
   var LEVELS = {
-    facile: { nom: 'Facile', size: 8, n: 6, dirs: [[0, 1], [1, 0]] },
-    moyen: { nom: 'Moyen', size: 10, n: 8, dirs: [[0, 1], [1, 0], [1, 1]] },
-    difficile: { nom: 'Difficile', size: 12, n: 10, dirs: [[0, 1], [1, 0], [1, 1], [1, -1], [0, -1], [-1, 0]] }
+    facile: { nom: 'Facile', size: 9, n: 7,
+      dirs: [[0, 1], [1, 0]] },                                  // → et ↓
+    moyen: { nom: 'Moyen', size: 11, n: 10,
+      dirs: [[0, 1], [1, 0], [1, 1], [1, -1]] },                 // + diagonales
+    difficile: { nom: 'Difficile', size: 13, n: 13,
+      dirs: [[0, 1], [1, 0], [1, 1], [1, -1],
+        [0, -1], [-1, 0], [-1, -1], [-1, 1]] }                   // 8 sens, à l'envers
   };
   var FILLERS = 'EEEAAAIISSNNRRTTOOLUDCMP'; // lettres de remplissage plausibles
   var FALLBACK = ['MAISON', 'JARDIN', 'SOLEIL', 'NUAGE', 'RIVIERE', 'FORET', 'MONTAGNE',
@@ -14,14 +18,15 @@
     'CHATEAU', 'DRAGON', 'PLAGE', 'VAGUE', 'HIVER', 'NEIGE', 'CABANE'];
   var COLORS = ['#e2a33c', '#5aa7de', '#68b56b', '#c77bd6'];
 
+  /* Les mots cachés viennent de la liste de mots COURANTS : le grand
+     dictionnaire contient trop de formes rares pour un jeu de recherche. */
   function pickWords(ctx, count, maxLen) {
     var pool = FALLBACK.slice();
-    if (ctx && ctx.dict && ctx.dict.byLen) {
-      var candidates = [];
-      for (var l = 4; l <= Math.min(8, maxLen); l++) {
-        if (ctx.dict.byLen[l]) candidates = candidates.concat(ctx.dict.byLen[l]);
-      }
-      if (candidates.length > 500) pool = candidates;
+    if (GG.MOTS_COURANTS) {
+      var courants = GG.MOTS_COURANTS.filter(function (w) {
+        return w.length >= 4 && w.length <= Math.min(9, maxLen);
+      });
+      if (courants.length > 100) pool = courants;
     }
     var out = [];
     var seen = {};
@@ -46,8 +51,12 @@
       for (var w = 0; w < words.length && ok; w++) {
         var word = words[w];
         var done = false;
-        for (var tries = 0; tries < 300 && !done; tries++) {
-          var d = cfg.dirs[Math.floor(Math.random() * cfg.dirs.length)];
+        for (var tries = 0; tries < 400 && !done; tries++) {
+          // répartition garantie : chaque mot vise d'abord « sa » direction
+          // (rotation sur toutes les directions du niveau), puis au hasard
+          var d = tries < 150
+            ? cfg.dirs[w % cfg.dirs.length]
+            : cfg.dirs[Math.floor(Math.random() * cfg.dirs.length)];
           var r = Math.floor(Math.random() * N);
           var c = Math.floor(Math.random() * N);
           var er = r + d[0] * (word.length - 1);
@@ -68,6 +77,14 @@
         if (!done) ok = false;
       }
       if (!ok) continue;
+      // équilibre garanti : au moins 2 mots horizontaux ET 2 verticaux,
+      // sinon on régénère (fini les grilles tout-horizontal)
+      var nh = 0, nv = 0;
+      placed.forEach(function (pw) {
+        var step = Math.abs(pw.cells[1] - pw.cells[0]);
+        if (step === 1) nh++; else if (step === N) nv++;
+      });
+      if (nh < 2 || nv < 2) continue;
       for (var i = 0; i < N * N; i++) {
         if (!grid[i]) grid[i] = FILLERS[Math.floor(Math.random() * FILLERS.length)];
       }
@@ -96,7 +113,7 @@
     id: 'meles',
     nom: 'Mots mêlés',
     icone: '🔎',
-    desc: 'Retrouvez les mots cachés. En réseau, la grille est partagée : chaque mot trouvé prend votre couleur !',
+    desc: 'Retrouvez des mots courants cachés dans tous les sens. En réseau, la grille est partagée : chaque mot trouvé prend votre couleur !',
     regles: '<p><strong>🎯 Le but :</strong> retrouver tous les mots cachés dans la grille — horizontaux, verticaux, en diagonale… et parfois à l’envers.</p><p><strong>Comment jouer :</strong> touchez la première lettre d’un mot, puis sa dernière lettre.</p><p><strong>En réseau :</strong> la grille est partagée : chaque mot trouvé prend votre couleur, le plus rapide en prend le plus !</p>',
     min: 1, max: 4,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
@@ -200,8 +217,10 @@
               var c = LEVELS[l];
               return '<button class="btn big" data-lvl="' + l + '">' +
                 (l === 'facile' ? '😌' : l === 'moyen' ? '🙂' : '😈') + ' ' + c.nom +
-                ' <small>' + c.size + '×' + c.size + ' · ' + c.n + ' mots' +
-                (l === 'difficile' ? ' · à l’envers' : l === 'moyen' ? ' · diagonales' : '') +
+                ' <small>' + c.size + '×' + c.size + ' · ' + c.n + ' mots · ' +
+                (l === 'facile' ? 'horizontaux et verticaux'
+                  : l === 'moyen' ? '+ diagonales'
+                    : '8 sens, mots à l’envers !') +
                 '</small></button>';
             }).join('') + '</div>';
         } else {

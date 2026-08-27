@@ -1,28 +1,37 @@
-/* GGgames — Pendu (1 à 4 joueurs, mots tirés du dictionnaire). */
+/* GGgames — Pendu (1 à 4 joueurs, mots courants, 3 niveaux). */
 (function (root) {
   'use strict';
   var GG = root.GG;
   var ROUNDS = 5;
-  var MAX_ERRORS = 8;
+  var LEVELS = {
+    facile: { nom: 'Facile', min: 7, max: 10, lives: 8 },
+    moyen: { nom: 'Moyen', min: 5, max: 7, lives: 7 },
+    difficile: { nom: 'Difficile', min: 4, max: 6, lives: 6 }
+  };
   var FALLBACK = ['MAISON', 'JARDIN', 'MUSIQUE', 'VOITURE', 'CHATEAU', 'PLANETE',
     'ORDINATEUR', 'MONTAGNE', 'PAPILLON', 'CHOCOLAT', 'BIBLIOTHEQUE', 'AVENTURE',
     'TEMPETE', 'HORIZON', 'LUMIERE', 'FROMAGE', 'BATEAU', 'ETOILE', 'CAMION',
     'PISCINE', 'BALEINE', 'TIGRE', 'SERPENT', 'FUSEE', 'ROBOT'];
 
-  function pickWord(ctx) {
-    var pool = FALLBACK;
-    if (ctx && ctx.dict && ctx.dict.byLen) {
-      var candidates = [];
-      [6, 7, 8].forEach(function (l) {
-        if (ctx.dict.byLen[l]) candidates = candidates.concat(ctx.dict.byLen[l]);
+  /* Les mots à deviner viennent de la liste de mots COURANTS : le grand
+     dictionnaire contient trop de conjugaisons rares pour être deviné. */
+  function pickWord(level) {
+    var cfg = LEVELS[level] || LEVELS.moyen;
+    var pool = FALLBACK.filter(function (w) {
+      return w.length >= cfg.min && w.length <= cfg.max;
+    });
+    if (pool.length < 10) pool = FALLBACK;
+    if (GG.MOTS_COURANTS) {
+      var courants = GG.MOTS_COURANTS.filter(function (w) {
+        return w.length >= cfg.min && w.length <= cfg.max;
       });
-      if (candidates.length > 100) pool = candidates;
+      if (courants.length > 50) pool = courants;
     }
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
-  function newRound(state, ctx) {
-    var w = pickWord(ctx);
+  function newRound(state) {
+    var w = pickWord(state.level);
     state.secret = w;
     state.revealed = new Array(w.length).fill(null);
     state.tried = [];
@@ -36,24 +45,28 @@
     id: 'pendu',
     nom: 'Pendu',
     icone: '🪢',
-    desc: 'Devinez le mot lettre par lettre. Le jeu choisit les mots : pas de triche !',
-    regles: '<p><strong>🎯 Le but :</strong> deviner le mot caché lettre par lettre — c’est le jeu qui le choisit dans le dictionnaire, personne ne peut tricher.</p><p><strong>Comment jouer :</strong> à votre tour, proposez une lettre. Trouvée : +1 point par lettre révélée et vous rejouez. Absente : le tour passe et un cœur s’éteint.</p><p><strong>Les points :</strong> +3 à qui termine le mot. 8 erreurs et le mot est perdu. 5 manches, meilleur score gagnant.</p>',
+    desc: 'Devinez le mot lettre par lettre. Le jeu choisit des mots courants : pas de triche, pas de pièges !',
+    regles: '<p><strong>🎯 Le but :</strong> deviner le mot caché lettre par lettre — le jeu le choisit dans une liste de mots courants : pas de mots impossibles, et personne ne peut tricher.</p><p><strong>Comment jouer :</strong> à votre tour, proposez une lettre. Trouvée : +1 point par lettre révélée et vous rejouez. Absente : le tour passe et un cœur s’éteint.</p><p><strong>Les niveaux :</strong> facile = mots longs (plus de lettres à attraper) et 8 cœurs ; difficile = mots courts et 6 cœurs. Coincé ? <strong>💡 Révéler une lettre coûte un cœur</strong> (et ne rapporte aucun point).</p><p><strong>Les points :</strong> +3 à qui termine le mot. 5 manches, meilleur score gagnant.</p>',
     min: 1, max: 4,
     hotseat: true, hidden: false, netOnly: false,
 
-    create: function (names, ctx) {
-      var state = {
+    create: function (names) {
+      return {
         players: names.map(function (n) { return { name: n, score: 0 }; }),
         current: 0,
         round: 1,
         maxRounds: ROUNDS,
+        phase: 'setup',      // l'hôte choisit le niveau
+        level: null,
+        maxErrors: 8,
         finished: false
       };
-      newRound(state, ctx);
-      return state;
     },
 
-    turnOf: function (state) { return (state.finished || state.roundOver) ? -1 : state.current; },
+    turnOf: function (state) {
+      return (state.phase === 'setup' || state.finished || state.roundOver)
+        ? -1 : state.current;
+    },
     over: function (state) { return state.finished; },
     scoreOf: function (state, i) { return state.players[i].score; },
 
@@ -89,14 +102,52 @@
 
     apply: function (state, player, action, ctx) {
       if (state.finished) return { ok: false, error: 'Partie terminée.' };
+      if (action.t === 'level') {
+        if (state.phase !== 'setup') return { ok: false, error: 'Niveau déjà choisi.' };
+        if (player !== 0) return { ok: false, error: 'L’hôte choisit le niveau.' };
+        if (!LEVELS[action.l]) return { ok: false, error: 'Niveau inconnu.' };
+        state.level = action.l;
+        state.maxErrors = LEVELS[action.l].lives;
+        state.phase = 'play';
+        newRound(state);
+        return { ok: true };
+      }
+      if (state.phase !== 'play') return { ok: false, error: 'Choisissez d’abord le niveau.' };
       if (action.t === 'next') {
         if (!state.roundOver) return { ok: false, error: 'La manche n’est pas finie.' };
         state.round++;
         if (state.round > state.maxRounds) {
           state.finished = true;
         } else {
-          newRound(state, ctx);
+          newRound(state);
           state.current = (state.round - 1) % state.players.length;
+        }
+        return { ok: true };
+      }
+      if (action.t === 'hint') {
+        // indice : révèle une lettre au hasard… au prix d'un cœur
+        if (state.roundOver) return { ok: false, error: 'Manche terminée.' };
+        if (player !== state.current) return { ok: false, error: 'Ce n’est pas votre tour.' };
+        if (state.errors >= state.maxErrors - 1) {
+          return { ok: false, error: 'Plus assez de cœurs pour un indice !' };
+        }
+        var hidden = [];
+        for (var h = 0; h < state.secret.length; h++) {
+          if (!state.revealed[h] && hidden.indexOf(state.secret[h]) === -1) {
+            hidden.push(state.secret[h]);
+          }
+        }
+        if (!hidden.length) return { ok: false, error: 'Tout est déjà révélé.' };
+        var pick = hidden[Math.floor(Math.random() * hidden.length)];
+        state.errors++; // l'indice coûte un cœur
+        if (state.tried.indexOf(pick) === -1) state.tried.push(pick);
+        for (var h2 = 0; h2 < state.secret.length; h2++) {
+          if (state.secret[h2] === pick) state.revealed[h2] = pick;
+        }
+        // pas de points pour une lettre offerte ; le mot peut se terminer sans bonus
+        if (state.revealed.every(function (r) { return r; })) {
+          state.roundOver = true;
+          state.answer = state.secret;
         }
         return { ok: true };
       }
@@ -124,7 +175,7 @@
         // lettre trouvée : le joueur rejoue
       } else {
         state.errors++;
-        if (state.errors >= MAX_ERRORS) {
+        if (state.errors >= state.maxErrors) {
           state.roundOver = true;
           state.lost = true;
           state.answer = state.secret;
@@ -137,13 +188,33 @@
 
     render: function (el, ctx) {
       var s = ctx.state;
+      if (s.phase === 'setup') {
+        var html0 = '<p class="mini-msg big-msg">🪢 Pendu</p>';
+        if (ctx.me === 0) {
+          html0 += '<p class="mini-msg">Choisissez le niveau :</p><div class="lvl-btns">' +
+            Object.keys(LEVELS).map(function (l) {
+              var c = LEVELS[l];
+              return '<button class="btn big" data-lvl="' + l + '">' +
+                (l === 'facile' ? '😌' : l === 'moyen' ? '🙂' : '😈') + ' ' + c.nom +
+                ' <small>mots de ' + c.min + ' à ' + c.max + ' lettres · ' +
+                c.lives + ' cœurs</small></button>';
+            }).join('') + '</div>';
+        } else {
+          html0 += '<p class="waiting">⏳ L’hôte choisit le niveau…</p>';
+        }
+        el.innerHTML = html0;
+        el.querySelectorAll('[data-lvl]').forEach(function (b) {
+          b.addEventListener('click', function () { ctx.act({ t: 'level', l: b.dataset.lvl }); });
+        });
+        return;
+      }
       var mine = ctx.me === s.current && !s.roundOver && !s.finished;
       var word = s.revealed.map(function (r) {
         return '<span class="pendu-slot">' + (r || '&nbsp;') + '</span>';
       }).join('');
       var lives = '';
-      for (var i = 0; i < MAX_ERRORS; i++) {
-        lives += i < MAX_ERRORS - s.errors ? '❤️' : '🖤';
+      for (var i = 0; i < s.maxErrors; i++) {
+        lives += i < s.maxErrors - s.errors ? '❤️' : '🖤';
       }
       var html = '<p class="mini-msg">Manche ' + s.round + ' / ' + s.maxRounds + '</p>' +
         '<div class="pendu-word">' + word + '</div>' +
@@ -164,6 +235,10 @@
             (used || !mine ? ' disabled' : '') + '>' + L + '</button>';
         });
         html += '</div>';
+        if (mine && s.errors < s.maxErrors - 1) {
+          html += '<div class="mini-actions"><button class="btn" data-a="hint">' +
+            '💡 Révéler une lettre (coûte un ❤️)</button></div>';
+        }
         html += '<p class="hint">+1 point par lettre révélée, +3 pour celui qui termine le mot.</p>';
       }
       el.innerHTML = html;
@@ -172,6 +247,8 @@
       });
       var next = el.querySelector('[data-a="next"]');
       if (next) next.addEventListener('click', function () { ctx.act({ t: 'next' }); });
+      var hintBtn = el.querySelector('[data-a="hint"]');
+      if (hintBtn) hintBtn.addEventListener('click', function () { ctx.act({ t: 'hint' }); });
     }
   };
 

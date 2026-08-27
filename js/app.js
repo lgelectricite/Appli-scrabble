@@ -657,7 +657,7 @@
     showOverlay('overlay-end', false);
     if (mode === 'host') {
       hostPeers.forEach(function (peer) {
-        if (peer.connected) peer.net.send({ t: 'init', state: state, you: peer.playerIndex });
+        if (peer.connected) peer.net.send({ t: 'init', state: wordsRedactFor(peer.playerIndex), you: peer.playerIndex });
       });
     }
     if (mode === 'local') {
@@ -744,7 +744,7 @@
     for (var i = 1; i <= miniCount; i++) {
       names.push(($('mini-name-' + i).value.trim() || 'Joueur ' + i).slice(0, 14));
     }
-    var needDict = ['pendu', 'meles', 'motus'].indexOf(pendingGame) !== -1;
+    var needDict = pendingGame === 'motus'; // seul Mot Mystère valide au dictionnaire
     (needDict ? loadDict().catch(function () {}) : Promise.resolve()).then(function () {
       currentGame = pendingGame;
       miniMod = mod;
@@ -909,9 +909,25 @@
     });
   }
 
+  /* État Words expurgé pour un invité : ses lettres à lui, mais jamais les
+     chevalets adverses ni l'ordre du sac (anti-triche). */
+  function wordsRedactFor(playerIdx) {
+    if (!state || state.over) return state; // fin de partie : tout devient public
+    var copy = JSON.parse(JSON.stringify(state));
+    copy.players.forEach(function (p, i) {
+      if (i !== playerIdx) {
+        p.rack = p.rack.map(function () { return '?'; });
+      }
+    });
+    copy.bag = copy.bag.map(function () { return '?'; });
+    return copy;
+  }
+
   function broadcastState() {
     hostPeers.forEach(function (peer) {
-      if (peer.connected) peer.net.send({ t: 'state', state: state });
+      if (peer.connected) {
+        peer.net.send({ t: 'state', state: wordsRedactFor(peer.playerIndex) });
+      }
     });
   }
 
@@ -936,7 +952,7 @@
         state: miniRedactFor(peer.playerIndex), you: peer.playerIndex
       });
     } else if (state) {
-      peer.net.send({ t: 'init', game: 'mots', state: state, you: peer.playerIndex });
+      peer.net.send({ t: 'init', game: 'mots', state: wordsRedactFor(peer.playerIndex), you: peer.playerIndex });
     }
   }
 
@@ -1203,13 +1219,13 @@
       pending = [];
       selected = -1;
       hostPeers.forEach(function (peer) {
-        peer.net.send({ t: 'init', game: 'mots', state: state, you: peer.playerIndex });
+        peer.net.send({ t: 'init', game: 'mots', state: wordsRedactFor(peer.playerIndex), you: peer.playerIndex });
       });
       enterGame();
       return;
     }
     // Mini-jeu en réseau : l'hôte crée l'état et fait autorité
-    var needDict = ['pendu', 'meles', 'motus'].indexOf(pendingGame) !== -1;
+    var needDict = pendingGame === 'motus'; // seul Mot Mystère valide au dictionnaire
     (needDict ? loadDict().catch(function () {}) : Promise.resolve()).then(function () {
       currentGame = pendingGame;
       miniMod = window.GG.byId[currentGame];
@@ -1539,11 +1555,12 @@
       b.addEventListener('click', function () { quitToHome(); });
     });
 
-    // Choix du nombre de joueurs (mode local)
-    document.querySelectorAll('.count-btn').forEach(function (b) {
+    // Choix du nombre de joueurs (mode local) — uniquement les boutons de
+    // CET écran : les boutons de niveau IA partagent la classe count-btn
+    document.querySelectorAll('#player-count .count-btn').forEach(function (b) {
       b.addEventListener('click', function () {
         localCount = parseInt(b.dataset.n, 10);
-        document.querySelectorAll('.count-btn').forEach(function (x) {
+        document.querySelectorAll('#player-count .count-btn').forEach(function (x) {
           x.classList.toggle('active', x === b);
         });
         $('local-label-3').classList.toggle('hidden', localCount < 3);

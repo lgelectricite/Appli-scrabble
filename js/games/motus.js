@@ -14,13 +14,16 @@
     7: ['CHATEAU', 'MUSIQUE', 'PLANETE', 'MONTRES', 'CUISINE', 'FROMAGE', 'LUMIERE', 'TEMPETE', 'HORIZON', 'BALEINE']
   };
 
+  /* Le mot secret vient de la liste de mots COURANTS (pas du grand
+     dictionnaire, plein de formes rares) ; le dictionnaire ne sert qu'à
+     valider les propositions des joueurs. */
   function pickSecret(ctx, len) {
     var pool = FALLBACK[len] || FALLBACK[5];
-    if (ctx && ctx.dict && ctx.dict.byLen && ctx.dict.byLen[len]) {
-      var candidates = ctx.dict.byLen[len].filter(function (w) {
-        return !/[KWXYZ]/.test(w);
+    if (GG.MOTS_COURANTS) {
+      var courants = GG.MOTS_COURANTS.filter(function (w) {
+        return w.length === len;
       });
-      if (candidates.length > 200) pool = candidates;
+      if (courants.length > 30) pool = courants;
     }
     return pool[Math.floor(Math.random() * pool.length)];
   }

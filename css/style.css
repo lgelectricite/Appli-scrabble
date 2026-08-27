@@ -929,6 +929,17 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
 
 /* ===== Quiz & Le Plus Proche ===== */
 .qz-head { text-align: center; font-size: 13px; opacity: .85; margin: 2px 0 10px; }
+.qz-themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+.qz-theme {
+  background: linear-gradient(160deg, #1a2130, #141924);
+  border: 1px solid #ffffff12; border-radius: 14px;
+  padding: 12px 4px 9px; color: var(--paper); cursor: pointer; font-family: inherit;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 24px;
+}
+.qz-theme:active { border-color: #d8ff4f55; transform: scale(.97); }
+.qz-theme span { font-size: 13px; font-weight: 700; }
+.qz-theme small { font-size: 10px; opacity: .55; }
 .qz-q {
   background: linear-gradient(160deg, #1a2130, #141924);
   border: 1px solid #ffffff12; border-radius: 16px;
@@ -1011,3 +1022,14 @@ body.theme-manoir .icon-btn { background: #ffffff14; }
 }
 .ha-suit-btn.red { color: #cf3345; }
 .ha-scores { margin: 10px 0; }
+
+/* ===== Mots fléchés : cases-flèches ===== */
+.cr-cell.fl-clue {
+  background: #2a3140; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0;
+}
+.cr-cell.fl-clue span {
+  color: var(--accent); font-size: clamp(8px, 2.2vw, 12px); font-weight: 800;
+  line-height: 1.15; letter-spacing: -0.5px;
+}
