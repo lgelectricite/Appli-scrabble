@@ -676,6 +676,49 @@
     return mod ? mod.nom : '';
   }
 
+  /* ---------- cagnotte de jetons et boutique ---------- */
+  // jetons exigés pour s'installer à une table (cave du poker, mise mini du blackjack)
+  var CHIP_ENTRY = { poker: 1000, blackjack: 100 };
+
+  function updateWallet() {
+    if (!window.GG.wallet) return;
+    $('wallet-amount').textContent = window.GG.wallet.fmt();
+  }
+
+  function renderBoutique() {
+    if (!window.GG.wallet) return;
+    var w = window.GG.wallet;
+    $('bank-n').textContent = w.fmt();
+    var msg;
+    if (w.get() >= w.START) {
+      msg = 'Votre cagnotte est pleine (' + w.fmt(w.START) +
+        ' 🪙 ou plus) : vos gains sont à vous, la recharge hebdomadaire attendra.';
+    } else {
+      var ms = w.nextRefillMs();
+      var j = Math.floor(ms / 86400000);
+      var h = Math.floor((ms % 86400000) / 3600000);
+      msg = '⏳ Recharge automatique à ' + w.fmt(w.START) + ' 🪙 dans ' +
+        (j > 0 ? j + ' j ' : '') + h + ' h.';
+    }
+    $('bank-refill').textContent = msg;
+  }
+
+  function openBoutique() {
+    renderBoutique();
+    showScreen('screen-boutique');
+  }
+
+  /* Vérifie qu'on a de quoi s'asseoir à une table à jetons. */
+  function chipGate(gameId) {
+    var need = CHIP_ENTRY[gameId];
+    if (!need || !window.GG.wallet) return true;
+    if (window.GG.wallet.get() >= need) return true;
+    toast('Il faut au moins ' + window.GG.wallet.fmt(need) + ' 🪙 pour jouer — ' +
+      'la cagnotte se recharge chaque semaine (voir la Boutique).');
+    openBoutique();
+    return false;
+  }
+
   function renderCatalog() {
     var cat = $('catalog');
     var tiles = [{ id: 'mots', nom: 'Words', icone: '🔤', min: 1, max: 4 }]
@@ -690,6 +733,7 @@
     cat.querySelectorAll('.game-tile').forEach(function (t) {
       t.addEventListener('click', function () {
         var id = t.dataset.g;
+        if (!chipGate(id)) return;
         if (id === 'mots') {
           pendingGame = 'mots';
           showScreen('screen-mots-home');
@@ -1300,6 +1344,7 @@
           quitToHome();
           return;
         }
+        if (!chipGate(currentGame)) { quitToHome(); return; }
         miniState = msg.state;
         miniMe = msg.you || 1;
         enterMini();
@@ -1473,6 +1518,11 @@
   }
 
   function quitToHome() {
+    // on quitte une table à jetons : la pile du joueur retourne dans sa cagnotte
+    if (miniMod && miniMod.cashout && miniState) {
+      try { miniMod.cashout(miniState, miniViewer()); } catch (e) {}
+    }
+    updateWallet();
     stopScanner();
     autoOffer = null; // une vieille invitation ne doit jamais être rejouée
     hostPeers.forEach(function (p) { p.net.close(); });
@@ -1520,6 +1570,24 @@
 
     // Accueil : catalogue des jeux
     renderCatalog();
+
+    // Cagnotte de jetons : jauge d'accueil et boutique
+    if (window.GG.wallet) {
+      $('btn-wallet').addEventListener('click', openBoutique);
+      window.GG.wallet.onChange(function () {
+        updateWallet();
+        if ($('screen-boutique').classList.contains('active')) renderBoutique();
+      });
+      // table de poker fermée brutalement (appli tuée) : la cave est remboursée
+      try {
+        var orphan = JSON.parse(localStorage.getItem('gg-poker-open') || 'null');
+        if (orphan && orphan.invested) {
+          window.GG.wallet.add(orphan.invested);
+          localStorage.removeItem('gg-poker-open');
+        }
+      } catch (e) {}
+      updateWallet();
+    }
 
     function openHostScreen() {
       showScreen('screen-host');

@@ -31,6 +31,17 @@ nécessaire pendant les parties.
 | 💡 **Quiz** | 1–12 | **Près de 1 100 questions fact-checkées** et **9 thèmes au choix** (tout mélangé, culture générale, cinéma, séries TV, musique, sport, histoire-géo, sciences, France) : 10 questions par partie, chacun répond en secret, +10 par bonne réponse et **+5 au plus rapide**. Les bonnes réponses ne circulent jamais avant la révélation. Record personnel en solo. |
 | 🎯 **Le Plus Proche** | 2–12 | Jeu d'estimation : une question à réponse chiffrée, chacun propose un nombre **en secret** — le plus proche marque 3 points, la réponse exacte en vaut 5. Pas besoin de savoir, il suffit d'être moins loin que les autres ! |
 | 🎴 **8 américain** | 2–5 | Le jeu de cartes façon Uno : même couleur ou même valeur, le **8 est joker**, le Valet saute, l'As change de sens, les **2 se cumulent**. Mains adverses **jamais transmises**. Points de manche en manche. |
+| ♠️ **Blackjack** | 1–4 | Face au croupier : misez vos **jetons de la cagnotte** (100 à 1 000), tirez, restez ou doublez. Blackjack payé **3 pour 2**, le croupier tire jusqu'à 17. Chacun mise la cagnotte de **son** téléphone. |
+| ♦️ **Solitaire** | 1–4 | Le Klondike classique, tirage 1 ou 3 cartes. En réseau : **course sur la même donne** — le premier qui termine gagne. L'ordre de la pioche **ne circule jamais**. Records par niveau. |
+
+## La cagnotte de jetons 🪙
+
+Chaque téléphone possède une **cagnotte de 10 000 jetons** qui sert de cave au
+Poker (1 000 par table, recave comprise) et de mise au Blackjack. Les gains y
+retournent en quittant la table. Si elle passe sous 10 000, elle **remonte
+automatiquement à 10 000 chaque semaine** ; au-dessus, les gains restent
+acquis. La **Boutique** (accueil → jauge de jetons) affichera des packs
+d'achat dans la version distribuée en magasin d'applications.
 
 ## Impossible de tricher
 
@@ -95,9 +106,12 @@ Actions, dépôt public requis). Essai local : `python3 -m http.server 8080`.
   est compressée et transportée dans une **URL encodée en QR code**, la
   réponse par QR ou copier/coller.
 - `sw.js` — service worker : application 100 % hors ligne après la première visite.
-- `tests/` — suites de tests automatisés (logique des 20 jeux, moteur de Mots,
-  IA, interface via Playwright) ; GitHub Actions les rejoue à chaque push
-  (`.github/workflows/tests.yml`).
+- `tests/` — suites de tests automatisés (logique des 22 jeux, moteur de Mots,
+  IA, cagnotte, interface via Playwright) ; GitHub Actions les rejoue à chaque
+  push (`.github/workflows/tests.yml`).
+- `vendor/fonts/` — typographie Fraunces embarquée (licence OFL, libre y
+  compris pour un usage commercial) : l'identité graphique fonctionne
+  entièrement hors ligne.
 - `data/mots.txt` — dictionnaire français (~311 000 mots, 2 à 15 lettres,
   sans accents), dérivé de
   [an-array-of-french-words](https://www.npmjs.com/package/an-array-of-french-words) (MIT).

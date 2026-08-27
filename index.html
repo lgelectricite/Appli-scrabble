@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>GGgames</title>
   <meta name="description" content="GGgames : des jeux à plusieurs, entièrement hors ligne — mots, Puissance 4, pendu, poker, bataille navale…">
-  <meta name="theme-color" content="#0f1218">
+  <meta name="theme-color" content="#f1e7d4">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/favicon.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -23,12 +23,38 @@
       <p class="subtitle">Des jeux à plusieurs, entièrement hors&nbsp;ligne.</p>
       <p id="offline-badge" class="offline-badge hidden">✈️ Prête pour le mode avion —
         tout est enregistré sur ce téléphone.</p>
+      <button id="btn-wallet" class="wallet-chip">🪙 <b id="wallet-amount">10 000</b> jetons
+        <span class="wallet-more">Boutique ›</span></button>
       <div id="catalog"></div>
       <button class="btn big" id="btn-home-join">🔗 Rejoindre une partie</button>
       <p class="hint">Mode plusieurs téléphones : celui qui crée la partie sert de serveur
         (Internet inutile). L’invité scanne 2 QR codes avec son appareil photo :
         le 1ᵉʳ le connecte au réseau de l’hôte, le 2ᵉ à la partie.</p>
     </div>
+  </section>
+
+  <!-- ============ BOUTIQUE DE JETONS ============ -->
+  <section id="screen-boutique" class="screen">
+    <h2>🪙 Boutique de jetons</h2>
+    <div class="bank-card">
+      <p class="bank-label">Votre cagnotte</p>
+      <p class="bank-amount"><b id="bank-n">10 000</b> 🪙</p>
+      <p class="hint" id="bank-refill"></p>
+    </div>
+    <div class="shop-grid">
+      <div class="shop-pack"><span class="pack-amt">5 000 🪙</span>
+        <span class="pack-soon">Bientôt</span></div>
+      <div class="shop-pack best"><span class="pack-amt">25 000 🪙</span>
+        <span class="pack-soon">Bientôt</span></div>
+      <div class="shop-pack"><span class="pack-amt">100 000 🪙</span>
+        <span class="pack-soon">Bientôt</span></div>
+    </div>
+    <p class="hint">Les jetons servent à s’asseoir au 🃏 Poker (cave de 1 000) et à miser
+      au ♠️ Blackjack. Vos gains restent dans la cagnotte. Si elle passe sous
+      10 000, elle remonte automatiquement à 10 000 chaque semaine — et les
+      packs de la boutique arriveront avec la version vendue en magasin
+      d’applications.</p>
+    <button class="btn link" data-back>← Retour</button>
   </section>
 
   <!-- ============ MOTS : SOUS-MENU ============ -->
@@ -348,6 +374,7 @@
   <script src="js/ai.js"></script>
   <script src="js/net.js"></script>
   <script src="js/games/registry.js"></script>
+  <script src="js/wallet.js"></script>
   <script src="js/games/motscourants.js"></script>
   <script src="js/games/p4.js"></script>
   <script src="js/games/morpion.js"></script>
@@ -368,6 +395,8 @@
   <script src="js/games/proche.js"></script>
   <script src="js/games/huit.js"></script>
   <script src="js/games/poker.js"></script>
+  <script src="js/games/blackjack.js"></script>
+  <script src="js/games/solitaire.js"></script>
   <script src="js/games/manoir.js"></script>
   <script src="js/app.js"></script>
 </body>

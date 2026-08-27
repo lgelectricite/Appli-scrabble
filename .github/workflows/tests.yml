@@ -22,3 +22,5 @@ jobs:
         run: node tests/test_puzzle.js
       - name: Quiz, Le Plus Proche, 8 américain
         run: node tests/test_newgames.js
+      - name: Casino et cagnotte (Blackjack, Solitaire, jetons)
+        run: node tests/test_casino.js

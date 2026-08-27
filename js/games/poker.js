@@ -287,7 +287,7 @@
     nom: 'Poker',
     icone: '🃏',
     desc: 'Texas Hold’em, au choix : cash game (recaves) ou tournoi (blinds montantes).',
-    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p>',
+    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p><p><strong>🪙 La cagnotte :</strong> la cave (1 000) et chaque recave sortent de la cagnotte de votre téléphone ; votre pile y retourne quand vous quittez la table. Recharge automatique chaque semaine.</p>',
     min: 2, max: 4,
     hotseat: false, hidden: true, netOnly: true,
 
@@ -297,6 +297,8 @@
           return { name: n, chips: START_CHIPS, hole: [], bet: 0, cont: 0,
                    folded: false, allin: false, out: false, show: false };
         }),
+        // identifiant de table : chaque téléphone y accroche sa cave (cagnotte)
+        gameId: 'pk' + Date.now() + '-' + Math.floor(Math.random() * 1e6),
         mode: null,       // choisi par l'hôte : 'cash' | 'tournoi'
         handNum: 0,
         blinds: BLINDS.slice(),
@@ -332,6 +334,26 @@
         delete p.rank;
       });
       return copy;
+    },
+
+    /* ---- Cagnotte du téléphone (jamais dans apply : locale à l'appareil) ---- */
+    _marker: function (m) {
+      try {
+        if (m === undefined) return JSON.parse(localStorage.getItem('gg-poker-open') || 'null');
+        if (m) localStorage.setItem('gg-poker-open', JSON.stringify(m));
+        else localStorage.removeItem('gg-poker-open');
+      } catch (e) { return null; }
+    },
+
+    /* Règle les comptes du spectateur local : crédite sa pile et libère la table.
+       Appelé en fin de partie (render) et quand on quitte en cours (app). */
+    cashout: function (state, me) {
+      if (!GG.wallet || !state || !state.gameId) return;
+      var mk = mod._marker();
+      if (!mk || mk.gameId !== state.gameId) return;
+      var p = state.players[me];
+      GG.wallet.add(p ? p.chips : mk.invested);
+      mod._marker(null);
     },
 
     apply: function (state, player, action) {
@@ -423,6 +445,22 @@
       var me = ctx.me;
       var my = s.players[me];
 
+      /* Cagnotte : on s'assoit (la cave est débitée une seule fois par table)
+         et on encaisse sa pile quand la partie se termine. */
+      if (GG.wallet && s.gameId) {
+        var mk = mod._marker();
+        if (!s.finished && (!mk || mk.gameId !== s.gameId)) {
+          if (mk) GG.wallet.add(mk.invested); // vieille table abandonnée : remboursée
+          if (GG.wallet.spend(START_CHIPS)) {
+            mod._marker({ gameId: s.gameId, invested: START_CHIPS });
+          } else {
+            mod._marker(null); // partie amicale : rien ne sera encaissé non plus
+          }
+        } else if (s.finished && mk && mk.gameId === s.gameId) {
+          mod.cashout(s, me);
+        }
+      }
+
       // choix du mode par l'hôte
       if (!s.mode) {
         var html0 = '<div class="pk-table"><p class="mini-msg big-msg">🃏 Texas Hold’em</p>';
@@ -495,7 +533,8 @@
           my.hole.map(function (c) { return cardHtml(c, true); }).join('') + '</div>';
       }
       if (my.chips === 0 && s.mode === 'cash' && !my.out) {
-        html += '<button class="btn big" data-a=\'{"t":"rebuy"}\'>💵 Recave (' + START_CHIPS + ')</button>';
+        html += '<button class="btn big" data-a=\'{"t":"rebuy"}\'>🪙 Recave (' + START_CHIPS +
+          ' de la cagnotte)</button>';
       }
       if (s.handOver && !s.finished) {
         html += '<button class="btn big primary" data-a=\'{"t":"next"}\'>' +
@@ -523,7 +562,21 @@
       el.innerHTML = html;
       el.querySelectorAll('[data-a]').forEach(function (b) {
         b.addEventListener('click', function () {
-          ctx.act(JSON.parse(b.dataset.a));
+          var a = JSON.parse(b.dataset.a);
+          // la recave sort de la cagnotte du téléphone AVANT d'être demandée
+          if (a.t === 'rebuy' && GG.wallet) {
+            if (!GG.wallet.spend(START_CHIPS)) {
+              b.textContent = '🪙 Pas assez de jetons — Boutique sur l’accueil';
+              b.disabled = true;
+              return;
+            }
+            var mk2 = mod._marker();
+            if (mk2 && mk2.gameId === s.gameId) {
+              mk2.invested += START_CHIPS;
+              mod._marker(mk2);
+            }
+          }
+          ctx.act(a);
         });
       });
     },

@@ -11,6 +11,7 @@ node tests/test_ai.js         # IA de Words (coups légaux, niveaux)
 node tests/test_games.js      # tous les jeux de plateau/cartes/enquête
 node tests/test_puzzle.js     # sudoku, mots mêlés, mot mystère, mots croisés
 node tests/test_newgames.js   # quiz, le plus proche, 8 américain
+node tests/test_casino.js     # cagnotte de jetons, blackjack, solitaire, encaissement poker
 ```
 
 Ils tournent automatiquement en CI à chaque push (`.github/workflows/tests.yml`).
@@ -28,6 +29,7 @@ python3 -m http.server 8642 &          # sert l'appli à la racine du dépôt
 node tests/browser/test_platform.js    # catalogue + parcours de chaque écran
 node tests/browser/test_ui.js          # Words en réseau : hôte + 3 invités
 node tests/browser/test_offline.js     # mode avion de bout en bout
+node tests/browser/test_casino_ui.js   # boutique, blackjack, solitaire, barrière de jetons
 # … voir le dossier pour les autres suites
 ```
 

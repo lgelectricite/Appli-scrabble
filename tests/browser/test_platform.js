@@ -21,7 +21,7 @@ function check(n, c, e) {
   check('titre GGgames', (await p.title()) === 'GGgames');
   check('h1 GGgames', (await p.textContent('#screen-home h1')) === 'GGgames');
   const tiles = await p.locator('#catalog .game-tile').count();
-  check('catalogue : 20 jeux', tiles === 20, tiles);
+  check('catalogue : 22 jeux', tiles === 22, tiles);
   const names = await p.textContent('#catalog');
   ['Words', 'Puissance 4', 'Morpion', 'Pendu', 'Petit Bac', 'Bataille navale',
    'Yams', 'Cochon', 'Memory', 'Poker', 'Le Manoir', 'Sudoku', 'Mots mêlés', 'Mot Mystère',

@@ -1,15 +1,22 @@
 /* Service worker : rend l'application utilisable entièrement hors ligne. */
-var CACHE = 'gggames-v20';
+var CACHE = 'gggames-v21';
 
 var ASSETS = [
   './',
   'index.html',
   'manifest.webmanifest',
   'css/style.css',
+  'vendor/fonts/fraunces-latin-400.woff2',
+  'vendor/fonts/fraunces-latin-600.woff2',
+  'vendor/fonts/fraunces-latin-700.woff2',
+  'vendor/fonts/fraunces-latin-ext-400.woff2',
+  'vendor/fonts/fraunces-latin-ext-600.woff2',
+  'vendor/fonts/fraunces-latin-ext-700.woff2',
   'js/scrabble.js',
   'js/ai.js',
   'js/net.js',
   'js/app.js',
+  'js/wallet.js',
   'js/games/registry.js',
   'js/games/motscourants.js',
   'js/games/p4.js',
@@ -31,6 +38,8 @@ var ASSETS = [
   'js/games/proche.js',
   'js/games/huit.js',
   'js/games/poker.js',
+  'js/games/blackjack.js',
+  'js/games/solitaire.js',
   'js/games/manoir.js',
   'data/mots.txt',
   'vendor/qrcode.js',
