@@ -33,14 +33,22 @@ function check(n, c, e) {
   await p.click('#btn-mini-start');
   await p.waitForSelector('.bj-mises', { timeout: 15000 });
   check('table du croupier affichée', await p.locator('.bj-felt').count() === 1);
+  check('jetons de casino affichés (5 valeurs)', await p.locator('.bj-chipbtn .bj-chip').count() === 5);
+  check('rond de mise vide sur le tapis', await p.locator('.bj-spot').count() === 1);
   await p.click('.bj-bet[data-v="100"]');
   await p.waitForSelector('.bj-cartes-moi .bj-card', { timeout: 8000 });
   check('2 cartes distribuées', await p.locator('.bj-cartes-moi .bj-card').count() === 2);
-  check('mise débitée de la cagnotte', /9\s*900/.test(await p.textContent('.bj-wallet')));
-  check('carte du croupier cachée', await p.locator('.bj-dos').count() === 1);
-  // on reste : la manche se résout
+  check('mise débitée de la cagnotte',
+    (await p.evaluate(() => JSON.parse(localStorage.getItem('gg-jetons')).n)) === 9900);
+  check('jetons posés dans le rond de mise', await p.locator('.bj-spot.filled .bj-chip').count() >= 1);
+  check('inscription du tapis (3 contre 2)', /3 CONTRE 2/.test(await p.textContent('.bj-arc')));
+  // la carte du croupier est cachée tant que la main se joue (un blackjack
+  // d'entrée résout la manche immédiatement : carte déjà révélée, c'est normal)
   if (await p.locator('#bj-stand').count()) {
+    check('carte du croupier cachée pendant la main', await p.locator('.bj-dos').count() === 1);
     await p.click('#bj-stand');
+  } else {
+    check('blackjack immédiat : manche déjà résolue', await p.locator('.bj-result').count() === 1);
   }
   await p.waitForSelector('.bj-result, .bj-r-win, .bj-r-lose, .bj-r-push', { timeout: 8000 });
   check('résultat affiché', await p.locator('.bj-result').count() === 1);
@@ -48,6 +56,9 @@ function check(n, c, e) {
   const solde = await p.evaluate(() => JSON.parse(localStorage.getItem('gg-jetons')).n);
   check('cagnotte réglée après la manche (perte, gain, égalité ou blackjack)',
     [9900, 10100, 10000, 10150].indexOf(solde) !== -1, solde);
+  await p.click('#bj-end');
+  await p.waitForTimeout(250);
+  check('quitter la table demande confirmation', /Vraiment/.test(await p.textContent('#bj-end')));
   await p.click('#bj-end');
   await p.waitForSelector('#overlay-end:not(.hidden)', { timeout: 8000 });
   check('fin de partie : classement', /🪙/.test(await p.textContent('#end-detail')));

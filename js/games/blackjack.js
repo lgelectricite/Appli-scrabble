@@ -117,6 +117,33 @@
 
   function signe(n) { return (n > 0 ? '+' + n : '' + n); }
 
+  /* Jetons de casino : couleurs classiques par valeur. */
+  var CHIP_STYLE = {
+    1: { c: '#ece1c4', t: '#2c2218' },
+    5: { c: '#bb3b2c', t: '#fff6ea' },
+    25: { c: '#1e7a4c', t: '#fff6ea' },
+    100: { c: '#2c2c33', t: '#fff6ea' },
+    500: { c: '#6a3d8f', t: '#fff6ea' }
+  };
+
+  function chipHtml(v, mini, attrs) {
+    var st = CHIP_STYLE[v] || CHIP_STYLE[5];
+    return '<span class="bj-chip' + (mini ? ' mini' : '') + '" style="--c:' + st.c +
+      ';--ct:' + st.t + '"' + (attrs || '') + '><b>' + v + '</b></span>';
+  }
+
+  /* Décompose une mise en une petite pile de jetons réalistes. */
+  function chipStack(amount) {
+    var vals = [500, 100, 25, 5, 1];
+    var out = [], i, rest = amount;
+    for (i = 0; i < vals.length && out.length < 5; i++) {
+      while (rest >= vals[i] && out.length < 5) { out.push(vals[i]); rest -= vals[i]; }
+    }
+    var html = '<span class="bj-stack">';
+    for (i = 0; i < out.length; i++) html += chipHtml(out[i], true);
+    return html + '</span>';
+  }
+
   function carteHTML(c) {
     if (c < 0) return '<span class="bj-card bj-dos"></span>';
     var coul = Math.floor(c / 13);
@@ -306,87 +333,39 @@
         }
       }
 
-      var html = '<div class="bj-top">' +
-        '<span>Manche ' + s.round + '</span>' +
-        '<span class="bj-shoe">Sabot : ' + (s.shoeCount || 0) + '</span>' +
-        (GG.wallet ? '<span class="bj-wallet">🪙 ' + GG.wallet.fmt(GG.wallet.get()) + '</span>' : '') +
-        '</div>';
-
-      // Table du croupier
+      /* ===== la table de casino ===== */
       var vc = valeurMain(s.dealer);
       var cache = false;
       for (i = 0; i < s.dealer.length; i++) if (s.dealer[i] < 0) cache = true;
-      html += '<div class="bj-felt"><div class="bj-felt-titre">Croupier</div>';
+
+      var html = '<div class="bj-rim"><div class="bj-felt">';
+
+      // coins hauts du tapis : n° de manche et sabot
+      html += '<div class="bj-head"><span>Manche ' + s.round + '</span>' +
+        '<span class="bj-shoe">🂠 ' + (s.shoeCount || 0) + '</span></div>';
+
+      // le croupier, en haut de table
+      html += '<div class="bj-dealer"><div class="bj-deal-lbl">— CROUPIER —</div>';
       if (s.dealer.length) {
         html += '<div class="bj-cartes">' + mainHTML(s.dealer) + '</div>';
         if (cache) html += '<div class="bj-total">' + vc.total + ' + ?</div>';
         else html += '<div class="bj-total">' + vc.total +
-          (s.phase === 'result' && estBlackjack(s.dealer) ? ' — Blackjack !' : (vc.total > 21 ? ' — le croupier saute !' : '')) + '</div>';
+          (s.phase === 'result' && estBlackjack(s.dealer) ? ' — Blackjack !' : (vc.total > 21 ? ' — il saute !' : '')) + '</div>';
       } else if (s.phase === 'result') {
         html += '<div class="bj-cartes"><span class="bj-vide">Personne n’a misé cette manche.</span></div>';
       } else {
-        html += '<div class="bj-cartes"><span class="bj-vide">Faites vos mises…</span></div>';
+        html += '<div class="bj-cartes"><span class="bj-vide">Faites vos jeux…</span></div>';
       }
       html += '</div>';
 
-      // Ma zone
-      html += '<div class="bj-main">';
-      if (!moi) {
-        html += '<p class="waiting">Vous regardez la partie…</p>';
-      } else {
-        html += '<div class="bj-moi-titre">Votre main</div>';
-        if (s.phase === 'bet') {
-          if (moi.sit) {
-            html += '<p class="waiting">Vous passez cette manche…</p>';
-          } else if (moi.bet > 0) {
-            html += '<p class="waiting">Mise posée : ' + moi.bet + ' 🪙 — on attend les autres…</p>';
-          } else {
-            var solde = GG.wallet ? GG.wallet.get() : 0;
-            if (GG.wallet && solde < 1) {
-              html += '<p class="mini-msg">Plus de jetons ! Recharge automatique chaque semaine, ou passez par la Boutique 🪙</p>' +
-                '<div class="bj-actions"><button class="btn" id="bj-sit">Passer la manche</button></div>';
-            } else {
-              html += '<p class="hint">Choisissez votre mise :</p><div class="bj-mises">';
-              for (i = 0; i < MISES.length; i++) {
-                html += '<button class="btn bj-bet" data-v="' + MISES[i] + '"' +
-                  (GG.wallet && solde < MISES[i] ? ' disabled' : '') + '>' + MISES[i] + ' 🪙</button>';
-              }
-              html += '</div><button class="bj-passe" id="bj-sit">Je passe cette manche</button>' +
-                '<p class="mini-msg" id="bj-msg"></p>';
-            }
-          }
-        } else if (moi.bet <= 0) {
-          html += '<p class="waiting">Vous passez cette manche…</p>';
-        } else {
-          var vm = valeurMain(moi.hand);
-          html += '<div class="bj-cartes bj-cartes-moi">' + mainHTML(moi.hand) + '</div>';
-          html += '<div class="bj-total-moi">' + vm.total + (vm.souple ? ' (souple)' : '') + (vm.total > 21 ? ' — dépassé !' : '') + '</div>';
-          html += '<div class="bj-ligne">Mise : ' + moi.bet + ' 🪙' + (moi.doubled ? ' (doublée)' : '') + '</div>';
-          if (s.phase === 'play') {
-            if (s.turn === me) {
-              html += '<div class="bj-actions">' +
-                '<button class="btn big" id="bj-hit">Tirer</button>' +
-                '<button class="btn big" id="bj-stand">Rester</button>' +
-                (moi.hand.length === 2 && !moi.doubled ? '<button class="btn" id="bj-double">Doubler</button>' : '') +
-                '</div><p class="mini-msg" id="bj-msg"></p>';
-            } else if (s.turn >= 0) {
-              html += '<p class="waiting">Au tour de ' + GG.esc(s.players[s.turn].name) + '…</p>';
-            }
-          } else if (s.phase === 'result') {
-            var lbl = 'Égalité — mise rendue', cls = 'bj-r-push';
-            if (moi.outcome === 'bj') { lbl = 'Blackjack ! +' + moi.net + ' 🪙'; cls = 'bj-r-win'; }
-            else if (moi.outcome === 'win') { lbl = 'Gagné ! +' + moi.net + ' 🪙'; cls = 'bj-r-win'; }
-            else if (moi.outcome === 'lose') { lbl = 'Perdu… ' + moi.net + ' 🪙'; cls = 'bj-r-lose'; }
-            html += '<div class="bj-result ' + cls + '">' + lbl + '</div>';
-          }
-        }
-        if (s.phase === 'result') {
-          html += '<div class="bj-ligne">Cumul : ' + signe(moi.total) + ' 🪙</div>';
-        }
-      }
-      html += '</div>';
+      // l'inscription en arc, comme sur les vrais tapis
+      html += '<svg class="bj-arc" viewBox="0 0 320 54" aria-hidden="true">' +
+        '<defs><path id="bj-arc-p" d="M 14 46 A 400 400 0 0 1 306 46"/></defs>' +
+        '<text><textPath href="#bj-arc-p" startOffset="50%" text-anchor="middle">' +
+        'BLACKJACK PAIE 3 CONTRE 2</textPath></text></svg>' +
+        '<div class="bj-rule">Le croupier reste sur tous les 17 · l’as vaut 1 ou 11</div>';
 
-      // Les autres joueurs, en résumé
+      // les autres joueurs, posés sur le tapis
       var autres = '';
       for (i = 0; i < s.players.length; i++) {
         if (i === me) continue;
@@ -408,16 +387,82 @@
       }
       if (autres) html += '<div class="bj-autres">' + autres + '</div>';
 
-      // Suite de la partie
-      if (s.phase === 'result') {
-        if (me === 0) {
-          html += '<div class="bj-fin">' +
-            '<button class="btn big" id="bj-again">Manche suivante</button>' +
-            '<button class="btn" id="bj-end">Terminer la partie</button></div>';
-        } else {
-          html += '<p class="waiting">' + GG.esc(s.players[0].name) + ' décide de la suite…</p>';
+      // ma place : mes cartes au-dessus du rond de mise
+      html += '<div class="bj-me-zone">';
+      if (!moi) {
+        html += '<p class="bj-vide">Vous regardez la partie…</p>';
+      } else if (s.phase !== 'bet' && moi.bet > 0) {
+        var vm = valeurMain(moi.hand);
+        html += '<div class="bj-cartes bj-cartes-moi">' + mainHTML(moi.hand) + '</div>';
+        html += '<div class="bj-total-moi">' + vm.total + (vm.souple ? ' (souple)' : '') +
+          (vm.total > 21 ? ' — dépassé !' : '') + '</div>';
+        if (s.phase === 'result') {
+          var lbl = 'Égalité — mise rendue', cls = 'bj-r-push';
+          if (moi.outcome === 'bj') { lbl = '♠ BLACKJACK ! +' + moi.net + ' 🪙'; cls = 'bj-r-win'; }
+          else if (moi.outcome === 'win') { lbl = 'Gagné ! +' + moi.net + ' 🪙'; cls = 'bj-r-win'; }
+          else if (moi.outcome === 'lose') { lbl = 'Perdu… ' + moi.net + ' 🪙'; cls = 'bj-r-lose'; }
+          html += '<div class="bj-result ' + cls + '">' + lbl + '</div>';
+        }
+      } else if (moi.sit || (s.phase !== 'bet' && moi.bet <= 0)) {
+        html += '<p class="bj-vide">Vous passez cette manche…</p>';
+      }
+      // le rond de mise
+      if (moi) {
+        if (moi.bet > 0) {
+          html += '<div class="bj-spot filled">' + chipStack(moi.bet) +
+            '<span class="bj-spot-amt">' + moi.bet + (moi.doubled ? ' · doublée' : '') + '</span></div>';
+        } else if (!moi.sit) {
+          html += '<div class="bj-spot"><span class="bj-spot-lbl">MISE</span></div>';
         }
       }
+      html += '</div>';
+
+      html += '</div></div>'; // fin tapis + arceau
+
+      /* ===== la console, sur le rebord ===== */
+      html += '<div class="bj-console">';
+      if (moi && s.phase === 'bet' && !moi.sit && moi.bet <= 0) {
+        var solde = GG.wallet ? GG.wallet.get() : 0;
+        if (GG.wallet && solde < 1) {
+          html += '<p class="mini-msg">Plus de jetons ! Recharge automatique chaque semaine, ou passez par la Boutique 🪙</p>' +
+            '<div class="bj-actions"><button class="btn" id="bj-sit">Passer la manche</button></div>';
+        } else {
+          html += (GG.wallet ? '<div class="bj-wallet">Votre cagnotte : 🪙 ' +
+            GG.wallet.fmt(GG.wallet.get()) + '</div>' : '');
+          html += '<div class="bj-mises">';
+          for (i = 0; i < MISES.length; i++) {
+            html += '<button class="bj-chipbtn bj-bet" data-v="' + MISES[i] + '"' +
+              (GG.wallet && solde < MISES[i] ? ' disabled' : '') + '>' +
+              chipHtml(MISES[i], false) + '</button>';
+          }
+          html += '</div><button class="bj-passe" id="bj-sit">Je passe cette manche</button>' +
+            '<p class="mini-msg" id="bj-msg"></p>';
+        }
+      } else if (moi && s.phase === 'bet' && moi.bet > 0) {
+        html += '<p class="waiting">Mise posée — on attend les autres…</p>';
+      } else if (s.phase === 'play') {
+        if (moi && s.turn === me) {
+          html += '<div class="bj-actions">' +
+            '<button class="btn big" id="bj-hit">Tirer</button>' +
+            '<button class="btn big" id="bj-stand">Rester</button>' +
+            (moi.hand.length === 2 && !moi.doubled ? '<button class="btn" id="bj-double">Doubler</button>' : '') +
+            '</div><p class="mini-msg" id="bj-msg"></p>';
+        } else if (s.turn >= 0) {
+          html += '<p class="waiting">Au tour de ' + GG.esc(s.players[s.turn].name) + '…</p>';
+        }
+      } else if (s.phase === 'result') {
+        if (moi) html += '<div class="bj-cumul">Cumul à cette table : ' + signe(moi.total) + ' 🪙</div>';
+        if (me === 0) {
+          // pas de fin au blackjack : on relance, ou on quitte la table
+          // volontairement (petit lien discret, confirmé en deux temps)
+          html += '<div class="bj-fin"><button class="btn big primary" id="bj-again">Manche suivante</button></div>' +
+            '<button class="bj-passe" id="bj-end">' +
+            (el._bjEndArm === rondCle ? '⚠️ Vraiment quitter la table ?' : 'Quitter la table') + '</button>';
+        } else {
+          html += '<p class="waiting">' + GG.esc(s.players[0].name) + ' relance…</p>';
+        }
+      }
+      html += '</div>';
 
       el.innerHTML = html;
 
@@ -451,8 +496,17 @@
         el._bjDbl = rondCle;
         ctx.act({ t: 'double' });
       });
-      on('bj-again', function () { ctx.act({ t: 'again' }); });
-      on('bj-end', function () { ctx.act({ t: 'end' }); });
+      on('bj-again', function () { el._bjEndArm = null; ctx.act({ t: 'again' }); });
+      // quitter la table demande une confirmation (fini les départs par mégarde)
+      on('bj-end', function () {
+        if (el._bjEndArm === rondCle) {
+          el._bjEndArm = null;
+          ctx.act({ t: 'end' });
+        } else {
+          el._bjEndArm = rondCle;
+          mod.render(el, ctx);
+        }
+      });
     }
   };
 
