@@ -1584,3 +1584,73 @@ body.theme-manoir .btn { box-shadow: none; }
 .mot-reveal .btn.big { margin-top: 14px; }
 .mini-center { text-align: center; }
 .mot-reveal .mot-row { display: flex; }
+
+/* ===== Bonbons : explosions des super bonus ===== */
+.bb-grid { position: relative; }
+.bb-grid.bb-quake { animation: bb-quake .45s; }
+@keyframes bb-quake {
+  15% { transform: translate(-4px, 2px) rotate(-.4deg); }
+  30% { transform: translate(4px, -2px) rotate(.4deg); }
+  45% { transform: translate(-3px, -2px); }
+  60% { transform: translate(3px, 2px); }
+  75% { transform: translate(-1px, 1px); }
+}
+.bb-beam {
+  position: absolute; pointer-events: none; z-index: 4; border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #fff9e0 18%, var(--gold) 50%, #fff9e0 82%, transparent);
+  box-shadow: 0 0 18px 4px rgba(217, 153, 43, .75);
+  animation: bb-beam .55s ease-out forwards;
+}
+.bb-beam.h { left: 2%; right: 2%; height: 10.5%; }
+.bb-beam.v {
+  top: 2%; bottom: 2%; width: 10.5%;
+  background: linear-gradient(180deg, transparent, #fff9e0 18%, var(--gold) 50%, #fff9e0 82%, transparent);
+}
+@keyframes bb-beam {
+  from { opacity: 0; transform: scale(.4); }
+  25% { opacity: 1; transform: scale(1.05); }
+  to { opacity: 0; transform: scale(1); }
+}
+.bb-flash {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: radial-gradient(circle, #fff9e0cc, transparent 70%);
+  border-radius: 12px;
+  animation: bb-flashk .5s ease-out forwards;
+}
+@keyframes bb-flashk { from { opacity: 1; } to { opacity: 0; } }
+.bb-boom {
+  position: absolute; left: 50%; top: 50%; z-index: 5; pointer-events: none;
+}
+.bb-part {
+  position: absolute; width: 12px; height: 12px; border-radius: 50%;
+  left: -6px; top: -6px;
+  box-shadow: 0 0 8px 2px rgba(255, 255, 255, .55);
+  animation: bb-part .8s cubic-bezier(.1, .8, .4, 1) forwards;
+}
+@keyframes bb-part {
+  from { transform: translate(0, 0) scale(1.3); opacity: 1; }
+  to { transform: translate(var(--dx), var(--dy)) scale(.2); opacity: 0; }
+}
+.bb-ring {
+  position: absolute; left: -10px; top: -10px; width: 20px; height: 20px;
+  border: 4px solid var(--gold); border-radius: 50%; pointer-events: none;
+  animation: bb-ring .6s ease-out forwards;
+}
+@keyframes bb-ring {
+  from { transform: scale(.4); opacity: 1; }
+  to { transform: scale(11); opacity: 0; border-width: 1px; }
+}
+.bb-combo {
+  position: absolute; left: 0; right: 0; top: 42%; z-index: 6;
+  text-align: center; pointer-events: none;
+  font-family: 'Fraunces', Georgia, serif; font-size: 34px; font-weight: 700;
+  color: var(--gold);
+  text-shadow: 0 2px 0 var(--ink), 0 0 22px rgba(217, 153, 43, .9), 0 3px 8px rgba(44, 34, 24, .4);
+  animation: bb-combo 1.1s cubic-bezier(.2, 1.5, .4, 1) forwards;
+}
+@keyframes bb-combo {
+  from { transform: scale(.2) rotate(-6deg); opacity: 0; }
+  30% { transform: scale(1.15) rotate(2deg); opacity: 1; }
+  70% { transform: scale(1); opacity: 1; }
+  to { transform: scale(1.05); opacity: 0; }
+}

@@ -77,8 +77,9 @@
     return runs;
   }
 
-  /* Étend l'ensemble à effacer : un bonbon rayé emporte sa ligne/colonne. */
-  function spread(b, marks) {
+  /* Étend l'ensemble à effacer : un bonbon rayé emporte sa ligne/colonne.
+     fx (optionnel) mémorise les rayons déclenchés pour les animations. */
+  function spread(b, marks, fx) {
     var changed = true;
     while (changed) {
       changed = false;
@@ -87,9 +88,11 @@
         var r = Math.floor(i / N), c = i % N, k;
         if (b[i].s === 1) {
           b[i].s = 0;
+          if (fx && fx.rows.indexOf(r) === -1) fx.rows.push(r);
           for (k = 0; k < N; k++) if (!marks[r * N + k]) { marks[r * N + k] = true; changed = true; }
         } else if (b[i].s === 2) {
           b[i].s = 0;
+          if (fx && fx.cols.indexOf(c) === -1) fx.cols.push(c);
           for (k = 0; k < N; k++) if (!marks[k * N + c]) { marks[k * N + c] = true; changed = true; }
         }
       }
@@ -112,7 +115,7 @@
 
   /* Résout tous les alignements en cascade ; renvoie les points gagnés.
      swapIdx : la case échangée (elle devient le bonbon rayé du 4-aligné). */
-  function resolve(b, types, swapIdx) {
+  function resolve(b, types, swapIdx, fx) {
     var total = 0, combo = 0, maxCombo = 0;
     for (var guard = 0; guard < 30; guard++) {
       var runs = findRuns(b);
@@ -132,7 +135,7 @@
         }
         run.cells.forEach(function (i) { marks[i] = true; });
       });
-      spread(b, marks);
+      spread(b, marks, fx);
       var cleared = 0;
       for (var i = 0; i < N * N; i++) {
         if (marks[i]) { b[i] = null; cleared++; }
@@ -149,12 +152,12 @@
   }
 
   /* Croque toute une couleur (échange avec un sucre magique). */
-  function eatColor(b, types, t) {
+  function eatColor(b, types, t, fx) {
     var marks = {};
     for (var i = 0; i < N * N; i++) {
       if (b[i] && (b[i].t === t || b[i].t === ARC)) marks[i] = true;
     }
-    spread(b, marks);
+    spread(b, marks, fx);
     var cleared = 0;
     for (var j = 0; j < N * N; j++) if (marks[j]) { b[j] = null; cleared++; }
     drop(b, types);
@@ -366,6 +369,8 @@
         }
         var b = p.board;
         var gain = 0, combo = 1;
+        // rapport d'effets du coup : le rendu s'en sert pour les explosions
+        var fx = { rows: [], cols: [], arc: 0, wipe: false, at: b2 };
         if (b[a].t === ARC || b[b2].t === ARC) {
           var other = b[a].t === ARC ? b[b2].t : b[a].t;
           if (other === ARC) {
@@ -373,21 +378,25 @@
             for (var i = 0; i < N * N; i++) b[i] = null;
             drop(b, state.types);
             gain = N * N * 15;
+            fx.wipe = true;
           } else {
             // le sucre magique croque toute la couleur de son voisin
             b[b[a].t === ARC ? a : b2] = null;
             drop(b, state.types);
-            gain = eatColor(b, state.types, other);
+            gain = eatColor(b, state.types, other, fx);
+            fx.arc = Math.round(gain / 15);
           }
         } else {
           if (!wouldMatch(b, a, b2)) {
             return { ok: false, error: 'Cet échange ne forme aucun alignement.' };
           }
           var tmp = b[a]; b[a] = b[b2]; b[b2] = tmp;
-          var res = resolve(b, state.types, b2);
+          var res = resolve(b, state.types, b2, fx);
           gain = res.pts;
           combo = res.combo;
         }
+        fx.combo = combo;
+        p.fx = fx;
         p.score += gain;
         p.lastGain = gain;
         p.lastCombo = combo;
@@ -549,10 +558,19 @@
           '</div>';
       }
 
+      // un coup vient-il de rapporter ? (déclenche bulles et explosions)
+      var gainKey = p.moves + ':' + p.score;
+      var frais = p.lastGain > 0 && el._bbGainKey !== gainKey;
+      if (frais) el._bbGainKey = gainKey;
+      var fx = frais && p.fx ? p.fx : null;
+      var secousse = fx && (fx.combo >= 3 || fx.arc > 0 || fx.wipe ||
+        fx.rows.length || fx.cols.length);
+
       // animation : seuls les bonbons qui ont changé tombent en scène
       var prev = el._bbPrev;
       var glyphs = [];
-      html += '<div class="bb-wrap"><div class="bb-grid">';
+      html += '<div class="bb-wrap"><div class="bb-grid' +
+        (secousse ? ' bb-quake' : '') + '">';
       for (var i = 0; i < N * N; i++) {
         var c2 = p.board[i];
         var glyph = c2.t === ARC ? '🌟' : EMOJIS[c2.t];
@@ -564,13 +582,43 @@
           (i === sel ? ' sel' : '') + (c2.s ? ' raye' + c2.s : '') + anim +
           ' data-i="' + i + '">' + glyph + '</button>';
       }
+
+      /* ===== explosions des super bonus ===== */
+      if (fx) {
+        // rayons des bonbons rayés : un éclair balaye la ligne / la colonne
+        fx.rows.forEach(function (r2) {
+          html += '<div class="bb-beam h" style="top:' + (r2 * 12.5 + 1.2) + '%"></div>';
+        });
+        fx.cols.forEach(function (c3) {
+          html += '<div class="bb-beam v" style="left:' + (c3 * 12.5 + 1.2) + '%"></div>';
+        });
+        // sucre magique ou grille entière : déflagration à particules
+        if (fx.arc > 0 || fx.wipe) {
+          html += '<div class="bb-flash"></div><div class="bb-boom">';
+          var teintes = ['#f26d9d', '#5aa7de', '#f2a93b', '#62c46f', '#9a6dd7', '#ffd23f'];
+          var nb = fx.wipe ? 22 : 14;
+          for (var q2 = 0; q2 < nb; q2++) {
+            var ang = (q2 / nb) * Math.PI * 2 + Math.random() * 0.4;
+            var dist = 90 + Math.random() * 110;
+            html += '<span class="bb-part" style="background:' + teintes[q2 % 6] +
+              ';--dx:' + Math.round(Math.cos(ang) * dist) + 'px;--dy:' +
+              Math.round(Math.sin(ang) * dist) + 'px;animation-delay:' +
+              (Math.random() * 120 | 0) + 'ms"></span>';
+          }
+          html += '<span class="bb-ring"></span></div>';
+        }
+      }
       html += '</div>';
-      // bulle de score flottante quand un coup vient de rapporter
-      var gainKey = p.moves + ':' + p.score;
-      if (p.lastGain > 0 && el._bbGainKey !== gainKey) {
-        el._bbGainKey = gainKey;
+
+      if (frais) {
         html += '<div class="bb-float">+' + p.lastGain +
           (p.lastCombo > 1 ? ' ×' + p.lastCombo : '') + '</div>';
+      }
+      // les grandes cascades s'annoncent en fanfare
+      if (fx && fx.combo >= 3) {
+        html += '<div class="bb-combo">COMBO ×' + fx.combo + ' !</div>';
+      } else if (fx && fx.wipe) {
+        html += '<div class="bb-combo">EXPLOSION TOTALE !</div>';
       }
       html += '</div>';
       el._bbPrev = glyphs;

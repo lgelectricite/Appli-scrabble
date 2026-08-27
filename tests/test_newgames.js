@@ -426,5 +426,31 @@ check('échange non voisin refusé', bonbons.apply(bg, 0, { t: 'swap', a: 0, b: 
   st.phase = 'result';
   check('retour à la carte', bonbons.apply(st, 0, { t: 'backmap' }).ok === true && st.phase === 'setup');
 }
+
+// ===== rapport d'effets : le moteur raconte les explosions au rendu =====
+{
+  const st = bonbons.create(['Solo']);
+  bonbons.apply(st, 0, { t: 'start', lvl: 1 });
+  const b = safeBoard();
+  // ligne 7 : un bonbon RAYÉ (raye sa ligne) au milieu d'un futur alignement
+  b[56].t = 4; b[57] = { t: 4, s: 1 }; b[59].t = 4; b[58].t = 0; b[50].t = 4;
+  b[48].t = 1; b[49].t = 2; b[51].t = 2;
+  st.players[0].board = b;
+  bonbons.apply(st, 0, { t: 'swap', a: 50, b: 58 });
+  const fx = st.players[0].fx;
+  check('explosion : le rayon de la ligne 7 est signalé au rendu',
+    fx && fx.rows.indexOf(7) !== -1, fx);
+  check('explosion : combo transmis', fx && fx.combo >= 1);
+
+  const st2 = bonbons.create(['Solo']);
+  bonbons.apply(st2, 0, { t: 'start', lvl: 1 });
+  const b2 = safeBoard();
+  b2[0] = { t: -1, s: 0 };
+  st2.players[0].board = b2;
+  bonbons.apply(st2, 0, { t: 'swap', a: 0, b: 1 });
+  const fx2 = st2.players[0].fx;
+  check('explosion : la déflagration du sucre magique est signalée',
+    fx2 && fx2.arc > 0, fx2);
+}
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests nouveaux jeux OK.');
 process.exit(failures ? 1 : 0);
