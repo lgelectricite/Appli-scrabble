@@ -137,9 +137,19 @@ for (let k = 0; k < 6; k++) {
   motus.apply(g, 0, { t: 'guess', w: guess }, { dict });
 }
 check('essais épuisés → échec', g.players[0].failed === true);
-check('tous terminés → fin', g.finished === true);
+check('mot terminé → révélation, PAS de fin de partie', g.phase === 'reveal' && motus.over(g) === false);
+check('série : B marque, A retombe à zéro',
+  g.players[1].wins === 1 && g.players[1].streak === 1 &&
+  g.players[0].wins === 0 && g.players[0].streak === 0);
+check('secret visible à la révélation', motus.redact(g, 0).secret === g.secret);
 const sum = motus.summary(g);
 check('classement : B gagne', /🏆 B/.test(sum));
+check('mot suivant réservé à l’hôte', motus.apply(g, 1, { t: 'next' }, { dict }).ok === false);
+r = motus.apply(g, 0, { t: 'next' }, { dict });
+check('mot suivant : nouveau mot, essais vierges, série conservée',
+  r.ok && g.round === 2 && g.phase === 'play' && g.secret.length === 5 &&
+  g.players.every(p => p.tries.length === 0 && !p.found && !p.failed) &&
+  g.players[1].wins === 1);
 // redact : secret + lettres adverses cachés
 g = motus.create(['A', 'B']);
 motus.apply(g, 0, { t: 'level', l: 'moyen' }, { dict });

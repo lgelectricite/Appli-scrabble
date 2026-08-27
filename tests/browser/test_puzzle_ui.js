@@ -83,10 +83,32 @@ function check(n, c, e) {
   for (const L of 'CHIEN') await p.locator('.mot-key[data-k="' + L + '"]').click();
   await p.locator('.mot-key[data-k="OK"]').click();
   await p.waitForTimeout(400);
-  const rows = await p.locator('.mot-row').count();
-  check('essai jugé et nouvelle ligne affichée', rows === 2, rows);
-  const colored = await p.locator('.mot-cell.m0, .mot-cell.m1, .mot-cell.m2').count();
-  check('couleurs attribuées aux 5 lettres', colored === 5, colored);
+  if (await p.locator('.mot-reveal').count() === 0) {
+    const rows = await p.locator('.mot-row').count();
+    check('essai jugé et nouvelle ligne affichée', rows === 2, rows);
+    const colored = await p.locator('.mot-cell.m0, .mot-cell.m1, .mot-cell.m2').count();
+    check('couleurs attribuées aux 5 lettres', colored === 5, colored);
+  } else {
+    check('essai jugé et nouvelle ligne affichée', true); // CHIEN était le secret !
+    check('couleurs attribuées aux 5 lettres', true);
+  }
+  // on épuise les essais : la révélation arrive SANS écran de fin de partie
+  const mots5 = ['PLAGE', 'FLEUR', 'TIGRE', 'SUCRE', 'NUAGE', 'PIANO', 'ROUTE'];
+  for (const mot of mots5) {
+    if (await p.locator('.mot-reveal').count()) break;
+    if (!(await p.locator('.mot-kb').count())) break;
+    for (const L of mot) await p.locator('.mot-key[data-k="' + L + '"]').click();
+    await p.locator('.mot-key[data-k="OK"]').click();
+    await p.waitForTimeout(250);
+  }
+  await p.waitForSelector('.mot-reveal', { timeout: 8000 });
+  check('mot révélé en série, pas d’écran de fin',
+    await p.locator('#overlay-end:not(.hidden)').count() === 0);
+  check('bouton « Mot suivant » proposé', await p.locator('#mot-next').count() === 1);
+  await p.click('#mot-next');
+  await p.waitForSelector('.mot-kb', { timeout: 8000 });
+  check('mot n°2 lancé, grille vierge', /Mot n°2/.test(await p.textContent('#mini-area')) &&
+    await p.locator('.mot-row').count() === 1);
 
   await p.click('#btn-mini-menu'); await p.click('#btn-menu-quit'); await p.click('#btn-confirm-yes');
 

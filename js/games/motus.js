@@ -1,4 +1,6 @@
-/* GGgames — Le Mot Mystère (type Motus : 1 à 4 joueurs, 3 niveaux). */
+/* GGgames — Le Mot Mystère (type Motus : 1 à 4 joueurs, 3 niveaux).
+   Série SANS FIN : chaque mot révélé enchaîne sur le suivant. On compte
+   les mots trouvés et la série d'affilée ; on quitte quand on veut. */
 (function (root) {
   'use strict';
   var GG = root.GG;
@@ -55,85 +57,76 @@
     return (m ? m + ' min ' : '') + (sec % 60) + ' s';
   }
 
+  function newWord(state, ctx) {
+    state.secret = pickSecret(ctx, state.length);
+    state.players.forEach(function (p) {
+      p.tries = [];
+      p.found = false;
+      p.failed = false;
+      p.order = 0;
+    });
+    state.phase = 'play';
+    state.roundTs = Date.now();
+  }
+
   var mod = {
     id: 'motus',
     nom: 'Mot Mystère',
     icone: '🟩',
-    desc: 'Devinez le mot en 6 essais grâce aux couleurs. En duel : même mot secret pour tous !',
-    regles: '<p><strong>🎯 Le but :</strong> deviner le mot secret en 6 essais maximum.</p><p><strong>Comment jouer :</strong> proposez un vrai mot du dictionnaire. 🟩 vert : lettre bien placée · 🟨 jaune : présente ailleurs · gris : absente.</p><p><strong>En duel :</strong> même mot secret pour tous — vous voyez les couleurs des autres, jamais leurs lettres. Le plus rapide gagne.</p>',
+    desc: 'Devinez le mot en 6 essais grâce aux couleurs — et enchaînez les mots en série, sans fin !',
+    regles: '<p><strong>🎯 Le but :</strong> deviner le mot secret en 6 essais maximum… puis enchaîner le suivant !</p><p><strong>Comment jouer :</strong> proposez un vrai mot du dictionnaire. 🟩 vert : lettre bien placée · 🟨 jaune : présente ailleurs · gris : absente.</p><p><strong>La série :</strong> chaque mot trouvé allonge votre série 🔥 — un mot manqué la remet à zéro. Battez votre record de série ! On quitte la partie quand on veut, par le menu.</p><p><strong>En duel :</strong> même mot secret pour tous — vous voyez les couleurs des autres, jamais leurs lettres.</p>',
     min: 1, max: 4,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
 
     create: function (names) {
       return {
         players: names.map(function (n) {
-          return { name: n, tries: [], found: false, failed: false, order: 0 };
+          return { name: n, tries: [], found: false, failed: false, order: 0,
+                   wins: 0, streak: 0 };
         }),
         phase: 'setup',
         level: null,
         length: 0,
         secret: null,
-        startTs: 0,
-        durationSec: 0,
-        finished: false
+        round: 1,
+        roundTs: 0,
+        revealSec: 0,
+        finished: false // jamais vrai : la série n'a pas de fin
       };
     },
 
     turnOf: function () { return -1; }, // chacun cherche de son côté
-    over: function (state) { return state.finished; },
+    over: function () { return false; },
     scoreOf: function (state, i) {
       var p = state.players[i];
-      return p.found ? '🎉' : p.failed ? '💀' : p.tries.length + '/' + MAX_TRIES;
+      if (state.phase === 'play') {
+        return p.found ? '🎉' : p.failed ? '💀' : p.tries.length + '/' + MAX_TRIES;
+      }
+      return '✓ ' + p.wins;
     },
 
+    /* La série ne se termine jamais toute seule, mais on garde un résumé
+       propre si l'écran de fin devait s'afficher (sécurité). */
     summary: function (state) {
       var rows = state.players.map(function (p) {
-        return { n: p.name, f: p.found, t: p.tries.length, o: p.order };
-      }).sort(function (a, b) {
-        return (b.f - a.f) || (a.t - b.t) || (a.o - b.o);
-      });
-      var html = '<p class="mini-msg big-msg">Le mot était <strong>' +
-        GG.esc(state.secret || '?') + '</strong></p>';
-      html += rows.map(function (r) {
+        return { n: p.name, w: p.wins, s: p.streak };
+      }).sort(function (a, b) { return b.w - a.w; });
+      var html = rows.map(function (r) {
         return '<div class="final-line"><span>' + GG.esc(r.n) + '</span><strong>' +
-          (r.f ? '✅ en ' + r.t + ' essai' + (r.t > 1 ? 's' : '') : '❌ non trouvé') +
-          '</strong></div>';
+          r.w + ' mot' + (r.w > 1 ? 's' : '') + ' trouvé' + (r.w > 1 ? 's' : '') + '</strong></div>';
       }).join('');
-      html += '<p>⏱️ ' + fmt(state.durationSec) + ' · ' + state.length + ' lettres</p>';
-      if (state.players.length === 1) {
-        try {
-          if (typeof localStorage !== 'undefined' && state.players[0].found) {
-            var key = 'gg-motus-best-' + state.level;
-            var best = JSON.parse(localStorage.getItem(key) || 'null');
-            var cur = { tries: rows[0].t, sec: state.durationSec, ts: state.startTs };
-            if (!best || cur.tries < best.tries ||
-                (cur.tries === best.tries && cur.sec < best.sec)) {
-              localStorage.setItem(key, JSON.stringify(cur));
-            }
-            var stored = JSON.parse(localStorage.getItem(key) || 'null');
-            if (stored && stored.ts === state.startTs) html += '<h1>🏆 Nouveau record !</h1>';
-            else if (stored) {
-              html += '<p>🏅 Record : ' + stored.tries + ' essai' + (stored.tries > 1 ? 's' : '') + ' en ' + fmt(stored.sec) + '.</p>';
-            }
-          }
-        } catch (e) {}
-      } else {
-        var winners = rows.filter(function (r) { return r.f && r.t === rows[0].t && rows[0].f; });
-        if (winners.length) {
-          html += '<h1>🏆 ' + winners.map(function (r) { return GG.esc(r.n); }).join(' & ') + '</h1>';
-        } else {
-          html += '<h1>💀 Personne n’a trouvé !</h1>';
-        }
-      }
+      var top = rows.filter(function (r) { return r.w === rows[0].w; });
+      html += '<h1>🏆 ' + top.map(function (r) { return GG.esc(r.n); }).join(' & ') + '</h1>';
       return html;
     },
 
-    /* le secret et les lettres des essais adverses restent cachés */
+    /* le secret et les lettres des essais adverses restent cachés
+       tant que le mot n'est pas révélé */
     redact: function (state, viewer) {
       var copy = GG.clone(state);
-      if (!copy.finished) delete copy.secret;
+      if (copy.phase !== 'reveal') delete copy.secret;
       copy.players.forEach(function (p, i) {
-        if (i === viewer || copy.finished) return;
+        if (i === viewer || copy.phase === 'reveal') return;
         p.tries = p.tries.map(function (t) {
           return { word: t.word.replace(/./g, '·'), marks: t.marks };
         });
@@ -142,22 +135,26 @@
     },
 
     apply: function (state, player, action, ctx) {
-      if (state.finished) return { ok: false, error: 'Partie terminée.' };
       if (action.t === 'level') {
         if (state.phase !== 'setup') return { ok: false, error: 'Niveau déjà choisi.' };
         if (player !== 0) return { ok: false, error: 'L’hôte choisit le niveau.' };
         if (!LEVELS[action.l]) return { ok: false, error: 'Niveau inconnu.' };
         state.level = action.l;
         state.length = LEVELS[action.l].len;
-        state.secret = pickSecret(ctx, state.length);
-        state.phase = 'play';
-        state.startTs = Date.now();
+        newWord(state, ctx);
+        return { ok: true };
+      }
+      if (action.t === 'next') {
+        if (state.phase !== 'reveal') return { ok: false, error: 'Le mot n’est pas encore révélé.' };
+        if (player !== 0) return { ok: false, error: 'L’hôte lance le mot suivant.' };
+        state.round++;
+        newWord(state, ctx);
         return { ok: true };
       }
       if (state.phase !== 'play') return { ok: false, error: 'La partie n’a pas commencé.' };
       if (action.t === 'guess') {
         var p = state.players[player];
-        if (p.found || p.failed) return { ok: false, error: 'Vous avez terminé.' };
+        if (p.found || p.failed) return { ok: false, error: 'Vous avez terminé ce mot.' };
         var word = String(action.w || '').toUpperCase();
         if (word.length !== state.length) {
           return { ok: false, error: 'Il faut un mot de ' + state.length + ' lettres.' };
@@ -175,8 +172,13 @@
           p.failed = true;
         }
         if (allDone(state)) {
-          state.finished = true;
-          state.durationSec = Math.max(1, Math.round((Date.now() - state.startTs) / 1000));
+          // révélation : la série avance, puis on enchaînera le mot suivant
+          state.phase = 'reveal';
+          state.revealSec = Math.max(1, Math.round((Date.now() - state.roundTs) / 1000));
+          state.players.forEach(function (q) {
+            if (q.found) { q.wins++; q.streak++; }
+            else q.streak = 0;
+          });
         }
         return { ok: true };
       }
@@ -188,15 +190,18 @@
       var me = ctx.me;
 
       if (s.phase === 'setup') {
+        el._motTyped = '';
+        el._motLen = 0;
+        el._motRound = 1;
         var html0 = '<p class="mini-msg big-msg">🟩 Le Mot Mystère</p>';
         if (me === 0) {
           html0 += '<p class="mini-msg">Choisissez le niveau :</p><div class="lvl-btns">' +
             Object.keys(LEVELS).map(function (l) {
               return '<button class="btn big" data-lvl="' + l + '">' +
                 (l === 'facile' ? '😌' : l === 'moyen' ? '🙂' : '😈') + ' ' + LEVELS[l].nom +
-                ' <small>' + LEVELS[l].len + ' lettres</small></button>';
+                ' <small>' + LEVELS[l].len + ' lettres · série sans fin</small></button>';
             }).join('') + '</div>' +
-            '<p class="hint">🟩 lettre bien placée · 🟨 présente ailleurs · 6 essais.</p>';
+            '<p class="hint">🟩 lettre bien placée · 🟨 présente ailleurs · 6 essais par mot, les mots s’enchaînent.</p>';
         } else {
           html0 += '<p class="waiting">⏳ L’hôte choisit le niveau…</p>';
         }
@@ -208,11 +213,69 @@
       }
 
       var my = s.players[me];
+
+      /* ===== révélation : le mot, la série, et on enchaîne ===== */
+      if (s.phase === 'reveal') {
+        var html2 = '<div class="mot-reveal">' +
+          '<p class="mini-msg">Le mot était</p>' +
+          '<div class="mot-row mot-reveal-word">' + s.secret.split('').map(function (ch) {
+            return '<span class="mot-cell m2">' + ch + '</span>';
+          }).join('') + '</div>';
+        html2 += s.players.map(function (p, i) {
+          return '<div class="final-line"><span>' + GG.esc(p.name) + '</span><strong>' +
+            (p.found ? '✅ en ' + p.tries.length + ' essai' + (p.tries.length > 1 ? 's' : '')
+              : '❌ pas trouvé') + '</strong></div>';
+        }).join('');
+        html2 += '<div class="mem-stats">' + s.players.map(function (p) {
+          return '<span class="mem-stat">' + GG.esc(p.name) + ' : ✓ ' + p.wins +
+            (p.streak > 1 ? ' · 🔥 ' + p.streak : '') + '</span>';
+        }).join('') + '<span class="mem-stat">⏱️ ' + fmt(s.revealSec) + '</span></div>';
+
+        // record de série (solo) : enregistré une seule fois par mot
+        if (s.players.length === 1 && el._motRecRnd !== s.round) {
+          el._motRecRnd = s.round;
+          try {
+            var key = 'gg-motus-serie-' + s.level;
+            var best = JSON.parse(localStorage.getItem(key) || 'null');
+            if (my.streak > 0 && (!best || my.streak > best.streak)) {
+              localStorage.setItem(key, JSON.stringify({ streak: my.streak }));
+              if (best) el._motNewRec = s.round;
+            }
+          } catch (e) {}
+        }
+        try {
+          var rec = JSON.parse(localStorage.getItem('gg-motus-serie-' + s.level) || 'null');
+          if (s.players.length === 1 && rec) {
+            html2 += el._motNewRec === s.round
+              ? '<p class="mini-msg">🏆 Record de série battu : ' + rec.streak + ' !</p>'
+              : '<p class="hint mini-center">🏅 Record de série : ' + rec.streak + ' mot' +
+                (rec.streak > 1 ? 's' : '') + ' d’affilée.</p>';
+          }
+        } catch (e) {}
+
+        if (me === 0) {
+          html2 += '<button class="btn big primary" id="mot-next">Mot suivant</button>';
+        } else {
+          html2 += '<p class="waiting">' + GG.esc(s.players[0].name) + ' lance le mot suivant…</p>';
+        }
+        html2 += '</div>';
+        el.innerHTML = html2;
+        var bn = el.querySelector('#mot-next');
+        if (bn) bn.addEventListener('click', function () { ctx.act({ t: 'next' }); });
+        return;
+      }
+
+      /* ===== un mot en cours ===== */
       // la saisie n'est vidée que lorsqu'un essai a réellement été accepté
+      if (el._motRound !== s.round) { el._motTyped = ''; el._motLen = 0; el._motRound = s.round; }
       if (el._motLen === undefined) el._motLen = my.tries.length;
       if (my.tries.length !== el._motLen) { el._motTyped = ''; el._motLen = my.tries.length; }
       var typed = el._motTyped || '';
-      var html = '';
+      var html = '<div class="mem-stats">' +
+        '<span class="mem-stat">Mot n°' + s.round + '</span>' +
+        '<span class="mem-stat">✓ ' + my.wins + '</span>' +
+        (my.streak > 1 ? '<span class="mem-stat">🔥 ' + my.streak + '</span>' : '') +
+        '</div>';
 
       // mes essais + ligne en cours
       html += '<div class="mot-board">';
