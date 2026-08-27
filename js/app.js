@@ -766,22 +766,27 @@
 
   function renderCatalog() {
     var cat = $('catalog');
-    var html = '<div class="shelf-unit">';
-    SHELVES.forEach(function (sh, si) {
-      var debout = sh.jeux.slice(0, sh.jeux.length - sh.couches);
-      var couchees = sh.jeux.slice(sh.jeux.length - sh.couches);
-      html += '<div class="shelf-row">' +
-        '<div class="shelf-tag">' + sh.titre + '</div>' +
-        '<div class="shelf-books">';
-      debout.forEach(function (id, i) { html += boxHtml(catInfo(id), i + si, false); });
-      if (couchees.length) {
-        html += '<div class="bx-pile">';
-        couchees.forEach(function (id) { html += boxHtml(catInfo(id), 0, true); });
-        html += '</div>';
+    // La pièce : un mur peint, la bibliothèque en bois, la plinthe et le
+    // parquet. Tout défile verticalement — 4 boîtes par planche, toutes
+    // droites, aucun défilement horizontal.
+    var html = '<div class="room">' +
+      '<div class="room-pic">GG</div>' +
+      '<div class="bookcase"><span class="room-plant">🪴</span><div class="case-inner">';
+    SHELVES.forEach(function (sh) {
+      html += '<div class="case-label">' + sh.titre + '</div>';
+      // planches équilibrées : 5 jeux font 3 + 2, jamais une boîte esseulée
+      var n = sh.jeux.length;
+      var planches = Math.ceil(n / 4);
+      var parPlanche = Math.ceil(n / planches);
+      for (var o = 0; o < n; o += parPlanche) {
+        html += '<div class="shelf-books">';
+        sh.jeux.slice(o, o + parPlanche).forEach(function (id, i) {
+          html += boxHtml(catInfo(id), i + o, false);
+        });
+        html += '</div><div class="shelf-board"></div>';
       }
-      html += '</div><div class="shelf-board"></div></div>';
     });
-    html += '</div>';
+    html += '</div></div><div class="room-floor"></div></div>';
     cat.innerHTML = html;
     cat.querySelectorAll('.game-tile').forEach(function (t) {
       t.addEventListener('click', function () {
