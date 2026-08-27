@@ -158,6 +158,52 @@ check('fin de partie : summary avec 🏆', /🏆/.test(blackjack.summary(s9)));
   check('au résultat, rien n’est rendu deux fois', wallet.get() === avant2);
 }
 
+
+// ===== split : la paire séparée en deux mains =====
+{
+  // paire de 8 : split accepté, chaque main reçoit une carte et sa mise
+  let sp = forced([[C(0, 7), C(1, 7)]], [C(2, 9), C(3, 6)], [C(2, 5), C(1, 9), C(0, 9)]);
+  check('split refusé sans paire',
+    blackjack.apply(forced([[C(0, 7), C(1, 8)]], [C(2, 9), C(3, 6)], [C(0, 5)]), 0, { t: 'split' }).ok === false);
+  check('split accepté sur une paire', blackjack.apply(sp, 0, { t: 'split' }).ok === true);
+  check('deux mains de 2 cartes, mise doublée en jeu',
+    sp.players[0].hand.length === 2 && sp.players[0].hand2.length === 2 &&
+    sp.players[0].bet2 === sp.players[0].bet && sp.players[0].split === true);
+  check('un seul split par manche', blackjack.apply(sp, 0, { t: 'split' }).ok === false);
+  // main 1 : 8+10=18, on reste → la MAIN 2 devient active, le tour ne passe pas
+  blackjack.apply(sp, 0, { t: 'stand' });
+  check('après la main 1, la main 2 est active', sp.players[0].hi === 1 && sp.phase === 'play');
+  blackjack.apply(sp, 0, { t: 'stand' });
+  check('deux mains 18 contre 17 : +100 et +100, cumul +200',
+    sp.phase === 'result' && sp.players[0].outcome === 'win' && sp.players[0].outcome2 === 'win' &&
+    sp.players[0].net === 100 && sp.players[0].net2 === 100 && sp.players[0].total === 200,
+    sp.players[0]);
+
+  // paire d'as : une carte par main et les mains sont terminées
+  let sa = forced([[C(0, 0), C(1, 0)]], [C(2, 9), C(3, 6)], [C(2, 4), C(1, 9), C(0, 9)]);
+  blackjack.apply(sa, 0, { t: 'split' });
+  check('as séparés : une carte chacun, manche résolue',
+    sa.phase === 'result' && sa.players[0].hand.length === 2 && sa.players[0].hand2.length === 2);
+  check('as+10 après split ne compte pas blackjack naturel (paye 1:1)',
+    sa.players[0].outcome !== 'bj' && sa.players[0].outcome2 !== 'bj');
+
+  // doubler la seconde main après un split
+  let sd = forced([[C(0, 4), C(1, 4)]], [C(2, 9), C(3, 6)], [C(2, 10), C(0, 4), C(3, 5), C(1, 4)]);
+  blackjack.apply(sd, 0, { t: 'split' }); // main1: 5+5=10, main2: 5+6=11
+  blackjack.apply(sd, 0, { t: 'stand' }); // main 1 reste à 10
+  check('doubler la main 2 après split',
+    blackjack.apply(sd, 0, { t: 'double' }).ok === true &&
+    sd.players[0].bet2 === 200 && sd.players[0].doubled2 === true, sd.players[0]);
+  check('manche résolue après le double', sd.phase === 'result');
+
+  // quitter en pleine manche avec un split : les DEUX mises reviennent
+  const avantQ = wallet.get();
+  let sq = forced([[C(0, 7), C(1, 7)]], [C(2, 9), C(3, 6)], [C(2, 5), C(1, 3), C(0, 3)]);
+  blackjack.apply(sq, 0, { t: 'split' });
+  blackjack.cashout(sq, 0);
+  check('quitter avec un split rembourse les deux mises', wallet.get() === avantQ + 200);
+}
+
 /* ================= SOLITAIRE ================= */
 console.log('--- Solitaire ---');
 let g = solitaire.create(['Ana', 'Bob']);

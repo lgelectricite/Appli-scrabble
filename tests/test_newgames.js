@@ -452,5 +452,66 @@ check('échange non voisin refusé', bonbons.apply(bg, 0, { t: 'swap', a: 0, b: 
   check('explosion : la déflagration du sucre magique est signalée',
     fx2 && fx2.arc > 0, fx2);
 }
+
+// ===== liaisons en L, en T et en carré : le bonbon enveloppé =====
+{
+  // L : 3 en ligne (56-58) + 3 en colonne (42-50-58), coin partagé en 58
+  const b = safeBoard();
+  b[56].t = 4; b[57].t = 4; b[58].t = 4; b[50].t = 4; b[42].t = 4;
+  const runs = bonbons._findRuns(b);
+  check('liaison en L : les deux branches détectées', runs.length === 2);
+  const pr = bonbons._promoteFor(runs, b, 58);
+  check('liaison en L : UN bonbon enveloppé naît au coin',
+    pr.length === 1 && pr[0].i === 58 && pr[0].s === 3 && pr[0].t === 4, pr);
+}
+{
+  // T : 4 en ligne (56-59) + 3 en colonne (41-49-57), croisement en 57
+  const b = safeBoard();
+  b[56].t = 4; b[57].t = 4; b[58].t = 4; b[59].t = 4;
+  b[41].t = 4; b[49].t = 4;
+  const runs = bonbons._findRuns(b);
+  const pr = bonbons._promoteFor(runs, b, 57);
+  check('liaison en T : l’enveloppé prime sur le rayé',
+    pr.length === 1 && pr[0].i === 57 && pr[0].s === 3, pr);
+}
+{
+  // carré 2×2 : détecté comme alignement, il donne aussi un enveloppé
+  const b = safeBoard();
+  b[48].t = 4; b[49].t = 4; b[56].t = 4; b[57].t = 4;
+  const runs = bonbons._findRuns(b);
+  check('carré 2×2 : détecté comme alignement',
+    runs.length === 1 && runs[0].dir === 'q' && runs[0].cells.length === 4, runs);
+  const pr = bonbons._promoteFor(runs, b, 49);
+  check('carré 2×2 : un bonbon enveloppé naît sur la case échangée',
+    pr.length === 1 && pr[0].i === 49 && pr[0].s === 3, pr);
+}
+{
+  // un échange qui ferme un carré est un coup valable
+  const b = safeBoard();
+  b[48].t = 4; b[49].t = 4; b[56].t = 4; b[57].t = 0; b[58].t = 4;
+  check('échange fermant un carré accepté', bonbons._wouldMatch(b, 57, 58) === true);
+}
+{
+  // l'enveloppé marqué explose son carré de 3×3 et le signale au rendu
+  const b = safeBoard();
+  b[27] = { t: 2, s: 3 }; // ligne 3, colonne 3 : plein centre
+  const marks = { 27: true };
+  const fx = { rows: [], cols: [], bombs: [], pops: [] };
+  bonbons._spread(b, marks, fx);
+  const attendu = [18, 19, 20, 26, 27, 28, 34, 35, 36];
+  check('enveloppé : tout le 3×3 est croqué',
+    attendu.every(i => marks[i]) && Object.keys(marks).length === 9, Object.keys(marks));
+  check('enveloppé : la déflagration est signalée au rendu', fx.bombs.length === 1 && fx.bombs[0] === 27);
+}
+{
+  // chaque bonbon croqué est signalé au rendu (les « pops » des éclatements)
+  const b = safeBoard();
+  b[56].t = 4; b[57].t = 4; b[58].t = 4; b[50].t = 4; b[42].t = 4;
+  const fx = { rows: [], cols: [], bombs: [], pops: [], arc: 0, wipe: false };
+  bonbons._resolve(b, 5, 58, fx);
+  check('éclatements : la première vague est racontée au rendu',
+    fx.pops.filter(pp => pp.w === 0).length >= 5 &&
+    fx.pops.every(pp => pp.i >= 0 && pp.i < 64 && typeof pp.t === 'number'), fx.pops.length);
+}
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests nouveaux jeux OK.');
 process.exit(failures ? 1 : 0);

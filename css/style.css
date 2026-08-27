@@ -1486,36 +1486,93 @@ body.theme-manoir .btn { box-shadow: none; }
   background: var(--card); border: 2px solid var(--ink); border-radius: 14px;
   padding: 6px; box-shadow: 0 4px 0 var(--ink);
 }
+/* Chaque famille de bonbons a SA forme et SA couleur franche : impossible
+   de les confondre, même du coin de l'œil. Les formes sont dessinées en CSS. */
 .bb-cell {
-  aspect-ratio: 1; border-radius: 50%; border: none; padding: 0;
-  font-size: clamp(15px, 4.8vw, 24px);
-  display: flex; align-items: center; justify-content: center;
+  aspect-ratio: 1; border: none; padding: 0; background: none;
   cursor: pointer; touch-action: none; position: relative;
-  background:
-    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .85) 0 18%, transparent 42%),
-    var(--cd, #eee);
-  box-shadow: inset 0 -3px 5px rgba(44, 34, 24, .18), 0 2px 3px rgba(44, 34, 24, .22);
 }
-.bb-cell.t0 { --cd: #f9c6d8; }
-.bb-cell.t1 { --cd: #bcd9f7; }
-.bb-cell.t2 { --cd: #dfc3a5; }
-.bb-cell.t3 { --cd: #fbe3a4; }
-.bb-cell.t4 { --cd: #c4ecc9; }
-.bb-cell.t5 { --cd: #ddc9f5; }
-.bb-cell.tx {
-  --cd: #ffd76e;
+.bb-candy {
+  position: absolute; inset: 5%; display: flex;
+  align-items: center; justify-content: center;
+  filter: drop-shadow(0 2px 2px rgba(44, 34, 24, .3));
+}
+/* 🔴 boule cerise */
+.bb-cell.t0 .bb-candy {
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, #ffb3b3 0 16%, #e5484d 55%, #a82a30 100%);
+}
+/* 🟠 papillote orange (avec ses deux oreilles de papier) */
+.bb-cell.t1 .bb-candy {
+  inset: 16% 4%;
+  border-radius: 46% / 58%;
+  background: radial-gradient(circle at 34% 28%, #ffd9ae 0 16%, #f28b30 58%, #c05f13 100%);
+}
+.bb-cell.t1 .bb-candy::before, .bb-cell.t1 .bb-candy::after {
+  content: ''; position: absolute; top: 26%; bottom: 26%; width: 18%;
+  background: #f28b30; clip-path: polygon(100% 50%, 0 0, 0 100%);
+}
+.bb-cell.t1 .bb-candy::before { left: -14%; }
+.bb-cell.t1 .bb-candy::after { right: -14%; transform: scaleX(-1); }
+/* 🟡 losange citron */
+.bb-cell.t2 .bb-candy {
+  inset: 12%; border-radius: 18%; transform: rotate(45deg);
+  background: linear-gradient(135deg, #ffe37a, #f2c937 45%, #cf9d14);
+}
+/* 🟢 carré pomme */
+.bb-cell.t3 .bb-candy {
+  inset: 9%; border-radius: 26%;
+  background: radial-gradient(circle at 32% 26%, #b8e6a9 0 14%, #5fb45f 58%, #3c8542 100%);
+}
+/* 🔵 anneau menthe (le trou clair au milieu) */
+.bb-cell.t4 .bb-candy {
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 46%, #eaf4ff 0 30%, #4f9cd9 37% 78%, #2f6ea6 100%);
+}
+/* 🟣 hexagone myrtille */
+.bb-cell.t5 .bb-candy {
+  inset: 7%;
+  clip-path: polygon(50% 0, 94% 26%, 94% 74%, 50% 100%, 6% 74%, 6% 26%);
+  background: linear-gradient(150deg, #cfa9ee 0 22%, #a06bd8 55%, #6f3fa8 100%);
+}
+/* 🌟 sucre magique */
+.bb-cell.tx .bb-candy {
+  border-radius: 50%; font-size: clamp(14px, 4.4vw, 22px);
   background:
     radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .9) 0 18%, transparent 42%),
     conic-gradient(#ffd76e, #ffb3c8, #bcd9f7, #c4ecc9, #ffd76e);
   animation: bb-glow 1.1s infinite alternate;
 }
-.bb-cell.sel { outline: 3px solid var(--accent); transform: scale(1.08); z-index: 2; }
-.bb-cell.raye1 { background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, .75) 0 3px, transparent 3px 8px), radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .85) 0 18%, transparent 42%); }
-.bb-cell.raye2 { background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, .75) 0 3px, transparent 3px 8px), radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .85) 0 18%, transparent 42%); }
+.bb-cell.sel { transform: scale(1.14); z-index: 2; }
+.bb-cell.sel .bb-candy { filter: drop-shadow(0 0 6px var(--accent)); }
+/* rayés : bandes blanches dans le sens du rayon (horizontal = raye la ligne) */
+.bb-cell.raye1::after, .bb-cell.raye2::after {
+  content: ''; position: absolute; inset: 20%; border-radius: 50%;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .9) 0 3px, transparent 3px 8px);
+  pointer-events: none; z-index: 1;
+}
+.bb-cell.raye2::after { background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .9) 0 3px, transparent 3px 8px); }
+/* enveloppé : il palpite dans son papier blanc avant d'exploser en 3×3 */
+.bb-cell.envel .bb-candy { animation: bb-envp .8s infinite alternate; }
+.bb-cell.envel::after {
+  content: ''; position: absolute; inset: 4%; border-radius: 30%;
+  border: 2.5px dashed #fff; pointer-events: none; z-index: 1;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, .9));
+  animation: bb-envr 1.6s linear infinite;
+}
+@keyframes bb-envp { from { transform: scale(.94); } to { transform: scale(1.08); } }
+.bb-cell.t2.envel .bb-candy { animation: none; } /* le losange garde sa rotation */
+@keyframes bb-envr { from { transform: rotate(0deg); } to { transform: rotate(90deg); } }
+/* indice : les deux bonbons d'un coup jouable clignotent */
+.bb-cell.bb-hint { animation: bb-hintp .8s infinite alternate; z-index: 2; }
+@keyframes bb-hintp {
+  from { transform: scale(1); }
+  to { transform: scale(1.16); filter: drop-shadow(0 0 8px var(--gold)); }
+}
 .bb-gain { background: var(--tile-new); border-color: var(--gold); font-weight: 800; }
 @keyframes bb-glow {
-  from { box-shadow: inset 0 -3px 5px rgba(44, 34, 24, .18), 0 0 0 rgba(217, 153, 43, 0); }
-  to { box-shadow: inset 0 -3px 5px rgba(44, 34, 24, .18), 0 0 14px rgba(217, 153, 43, .9); }
+  from { box-shadow: 0 0 0 rgba(217, 153, 43, 0); }
+  to { box-shadow: 0 0 14px rgba(217, 153, 43, .9); }
 }
 
 /* bonbons qui tombent en scène + tremblement d'échange raté */
@@ -1689,3 +1746,40 @@ body.theme-manoir .btn { box-shadow: none; }
   70% { transform: scale(1); opacity: 1; }
   to { transform: scale(1.05); opacity: 0; }
 }
+.bb-combo small {
+  display: block; font-size: 15px; letter-spacing: 3px; margin-top: 2px;
+  color: var(--accent); text-shadow: 0 1px 0 #fff;
+}
+/* fantôme d'éclatement : chaque bonbon croqué éclate sur place, vague à vague */
+.bb-pop {
+  position: absolute; width: 12.5%; height: 12.5%; z-index: 4; pointer-events: none;
+  background: radial-gradient(circle, #fff 0 22%, var(--tt, var(--gold)) 30% 58%, transparent 66%);
+  border-radius: 50%;
+  animation: bb-popk .5s ease-out both;
+}
+@keyframes bb-popk {
+  from { transform: scale(.9); opacity: 1; }
+  45% { transform: scale(1.45); opacity: .95; }
+  to { transform: scale(.1); opacity: 0; }
+}
+/* déflagration ronde d'un bonbon enveloppé : tout son carré de 3×3 y passe */
+.bb-blast {
+  position: absolute; width: 37.5%; height: 37.5%; z-index: 5; pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, .95) 0 18%,
+      rgba(242, 169, 59, .8) 40%, rgba(229, 72, 77, .45) 58%, transparent 72%);
+  animation: bb-blastk .6s ease-out both;
+}
+@keyframes bb-blastk {
+  from { transform: scale(.15); opacity: 1; }
+  55% { transform: scale(1.08); opacity: .95; }
+  to { transform: scale(1.25); opacity: 0; }
+}
+
+/* ===== Blackjack : les deux mains du split ===== */
+.bj-mains2 { display: flex; gap: 10px; justify-content: center; }
+.bj-main2 { flex: 1; max-width: 46%; border-radius: 12px; padding: 6px 2px; opacity: .75; }
+.bj-main2.actv { opacity: 1; background: rgba(0, 0, 0, .18); box-shadow: inset 0 0 0 2px rgba(212, 175, 55, .7); }
+.bj-main2 .bj-card { width: 40px; height: 56px; }
+.bj-mains2 + .bj-result, .bj-result + .bj-result { margin-top: 2px; }
+.bj-result { font-size: 1.1rem; }

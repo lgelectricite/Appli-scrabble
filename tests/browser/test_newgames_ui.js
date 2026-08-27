@@ -169,12 +169,13 @@ function check(n, c, e) {
   check('grille de 64 bonbons', await p.locator('.bb-cell').count() === 64);
   check('objectif du niveau affiché', await p.locator('.bb-obj').count() === 1 &&
     /24 coups/.test(await p.textContent('#mini-area')));
+  check('chaque bonbon porte sa famille (data-t) et sa forme CSS',
+    await p.locator('.bb-cell[data-t] .bb-candy').count() === 64);
   // trouve un échange valable en lisant la grille avec le moteur du jeu
   const swap = await p.evaluate(() => {
     const mod = GG.byId.bonbons;
     const cells = [...document.querySelectorAll('.bb-cell')];
-    const glyphs = ['🍬', '🍭', '🍫', '🍩', '🧁', '🍪'];
-    const b = cells.map(c => ({ t: c.textContent === '🌟' ? -1 : glyphs.indexOf(c.textContent), s: 0 }));
+    const b = cells.map(c => ({ t: c.dataset.t === 'x' ? -1 : parseInt(c.dataset.t, 10), s: 0 }));
     for (let i = 0; i < 64; i++) {
       const c = i % 8;
       if (c < 7 && mod._wouldMatch(b, i, i + 1)) return [i, i + 1];

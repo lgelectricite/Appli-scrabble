@@ -9,7 +9,8 @@
   'use strict';
   var GG = root.GG;
   var N = 8; // grille 8×8
-  var EMOJIS = ['🍬', '🍭', '🍫', '🍩', '🧁', '🍪'];
+  // teintes des 6 familles de bonbons (le rendu dessine les formes en CSS)
+  var TINTS = ['#e5484d', '#f28b30', '#f2c937', '#5fb45f', '#4f9cd9', '#a06bd8'];
   var LEVELS = {
     facile: { nom: 'Facile', types: 5, coups: 25, cible: 1500 },
     moyen: { nom: 'Moyen', types: 6, coups: 20, cible: 1800 },
@@ -17,7 +18,8 @@
   };
   var ARC = -1; // sucre magique (joker de couleur)
 
-  function cell(t) { return { t: t, s: 0 }; } // s : 0 normal, 1 raye la ligne, 2 raye la colonne
+  // s : 0 normal, 1 raye la ligne, 2 raye la colonne, 3 enveloppé (explose en 3×3)
+  function cell(t) { return { t: t, s: 0 }; }
 
   /* Grille de départ SANS alignement déjà formé (sinon points gratuits). */
   function buildBoard(types) {
@@ -28,7 +30,7 @@
       do {
         t = Math.floor(Math.random() * types);
         guard++;
-      } while (guard < 20 && createsRun(b, i, t));
+      } while (guard < 40 && createsRun(b, i, t));
       b[i] = cell(t);
     }
     return b;
@@ -38,6 +40,9 @@
     var r = Math.floor(i / N), c = i % N;
     if (c >= 2 && b[i - 1] && b[i - 2] && b[i - 1].t === t && b[i - 2].t === t) return true;
     if (r >= 2 && b[i - N] && b[i - 2 * N] && b[i - N].t === t && b[i - 2 * N].t === t) return true;
+    // pas de carré 2×2 déjà formé non plus (le carré compte comme alignement)
+    if (r >= 1 && c >= 1 && b[i - 1] && b[i - N] && b[i - N - 1] &&
+      b[i - 1].t === t && b[i - N].t === t && b[i - N - 1].t === t) return true;
     return false;
   }
 
@@ -74,11 +79,24 @@
         if (r === start) r++;
       }
     }
+    // les carrés 2×2 comptent aussi : liaison « en carré » demandée par les joueurs
+    for (r = 0; r < N - 1; r++) {
+      for (c = 0; c < N - 1; c++) {
+        i = r * N + c;
+        if (!b[i] || b[i].t === ARC) continue;
+        t = b[i].t;
+        if (b[i + 1] && b[i + N] && b[i + N + 1] &&
+          b[i + 1].t === t && b[i + N].t === t && b[i + N + 1].t === t) {
+          runs.push({ cells: [i, i + 1, i + N, i + N + 1], dir: 'q' });
+        }
+      }
+    }
     return runs;
   }
 
-  /* Étend l'ensemble à effacer : un bonbon rayé emporte sa ligne/colonne.
-     fx (optionnel) mémorise les rayons déclenchés pour les animations. */
+  /* Étend l'ensemble à effacer : un bonbon rayé emporte sa ligne/colonne,
+     un bonbon enveloppé explose tout un carré de 3×3 autour de lui.
+     fx (optionnel) mémorise les effets déclenchés pour les animations. */
   function spread(b, marks, fx) {
     var changed = true;
     while (changed) {
@@ -94,6 +112,16 @@
           b[i].s = 0;
           if (fx && fx.cols.indexOf(c) === -1) fx.cols.push(c);
           for (k = 0; k < N; k++) if (!marks[k * N + c]) { marks[k * N + c] = true; changed = true; }
+        } else if (b[i].s === 3) {
+          b[i].s = 0;
+          if (fx && fx.bombs && fx.bombs.indexOf(i) === -1) fx.bombs.push(i);
+          for (var dr = -1; dr <= 1; dr++) {
+            for (var dc = -1; dc <= 1; dc++) {
+              var r2 = r + dr, c2 = c + dc;
+              if (r2 < 0 || r2 >= N || c2 < 0 || c2 >= N) continue;
+              if (!marks[r2 * N + c2]) { marks[r2 * N + c2] = true; changed = true; }
+            }
+          }
         }
       }
     }
@@ -113,8 +141,40 @@
     }
   }
 
+  /* Décide quels bonbons spéciaux naissent des alignements de cette vague :
+     5+ → sucre magique · croisement en L/T ou carré 2×2 → enveloppé (3×3) ·
+     4 alignés → rayé. swapIdx : la case échangée sert de berceau. */
+  function promoteFor(runs, b, swapIdx) {
+    var promote = [];
+    var hAt = {}, vAt = {};
+    runs.forEach(function (run) {
+      if (run.cells.length >= 5) return; // deviendra un sucre magique
+      if (run.dir === 'h') run.cells.forEach(function (i) { hAt[i] = true; });
+      if (run.dir === 'v') run.cells.forEach(function (i) { vAt[i] = true; });
+    });
+    runs.forEach(function (run) {
+      var pivot = run.cells.indexOf(swapIdx) !== -1 ? swapIdx
+        : run.cells[Math.floor(run.cells.length / 2)];
+      if (run.cells.length >= 5) { promote.push({ i: pivot, arc: true }); return; }
+      var cross = -1;
+      run.cells.forEach(function (i) { if (hAt[i] && vAt[i]) cross = i; });
+      if (cross !== -1) {
+        // liaison en L ou en T : un enveloppé naît au coin (une seule fois,
+        // la branche verticale du même croisement ne promeut rien)
+        if (run.dir === 'h') promote.push({ i: cross, s: 3, t: b[cross].t });
+        return;
+      }
+      if (run.dir === 'q') { promote.push({ i: pivot, s: 3, t: b[pivot].t }); return; }
+      if (run.cells.length === 4) {
+        // aligné horizontalement → raye la colonne, et inversement
+        promote.push({ i: pivot, s: run.dir === 'h' ? 2 : 1, t: b[pivot].t });
+      }
+    });
+    return promote;
+  }
+
   /* Résout tous les alignements en cascade ; renvoie les points gagnés.
-     swapIdx : la case échangée (elle devient le bonbon rayé du 4-aligné). */
+     swapIdx : la case échangée (elle devient le bonbon spécial). */
   function resolve(b, types, swapIdx, fx) {
     var total = 0, combo = 0, maxCombo = 0;
     for (var guard = 0; guard < 30; guard++) {
@@ -123,22 +183,20 @@
       combo++;
       maxCombo = combo;
       var marks = {};
-      var promote = []; // cases qui deviennent des bonbons spéciaux
       runs.forEach(function (run) {
-        var pivot = run.cells.indexOf(swapIdx) !== -1 ? swapIdx
-          : run.cells[Math.floor(run.cells.length / 2)];
-        if (run.cells.length >= 5) {
-          promote.push({ i: pivot, arc: true });
-        } else if (run.cells.length === 4) {
-          // aligné horizontalement → raye la colonne, et inversement
-          promote.push({ i: pivot, s: run.dir === 'h' ? 2 : 1, t: b[pivot].t });
-        }
         run.cells.forEach(function (i) { marks[i] = true; });
       });
+      var promote = promoteFor(runs, b, swapIdx);
       spread(b, marks, fx);
       var cleared = 0;
       for (var i = 0; i < N * N; i++) {
-        if (marks[i]) { b[i] = null; cleared++; }
+        if (marks[i] && b[i]) {
+          // chaque bonbon croqué éclate à l'écran, vague après vague
+          if (fx && fx.pops && fx.pops.length < 96) {
+            fx.pops.push({ i: i, t: b[i].t, w: combo - 1 });
+          }
+          b[i] = null; cleared++;
+        }
       }
       promote.forEach(function (p) {
         if (p.arc) b[p.i] = { t: ARC, s: 0 };
@@ -159,7 +217,14 @@
     }
     spread(b, marks, fx);
     var cleared = 0;
-    for (var j = 0; j < N * N; j++) if (marks[j]) { b[j] = null; cleared++; }
+    for (var j = 0; j < N * N; j++) {
+      if (marks[j]) {
+        if (b[j] && fx && fx.pops && fx.pops.length < 96) {
+          fx.pops.push({ i: j, t: b[j].t, w: 0 });
+        }
+        b[j] = null; cleared++;
+      }
+    }
     drop(b, types);
     return cleared * 15;
   }
@@ -240,6 +305,80 @@
     try { localStorage.setItem('gg-bonbons-map', JSON.stringify(d)); } catch (e) {}
   }
 
+  /* ===== retours sensoriels : petits sons sucrés et vibrations ===== */
+  var actx = null;
+
+  function initSon() {
+    // à créer/réveiller pendant un geste du joueur, sinon le navigateur le bloque
+    try {
+      var AC = root.AudioContext || root.webkitAudioContext;
+      if (AC && !actx) actx = new AC();
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) { actx = null; }
+  }
+
+  function plop(dt, f, g) {
+    var t = actx.currentTime + dt;
+    var o = actx.createOscillator(), gn = actx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.exponentialRampToValueAtTime(f * 2.1, t + 0.07);
+    gn.gain.setValueAtTime(0.0001, t);
+    gn.gain.exponentialRampToValueAtTime(g, t + 0.015);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    o.connect(gn); gn.connect(actx.destination);
+    o.start(t); o.stop(t + 0.2);
+  }
+
+  function boum(grand) {
+    var t = actx.currentTime;
+    var o = actx.createOscillator(), gn = actx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(grand ? 220 : 180, t);
+    o.frequency.exponentialRampToValueAtTime(55, t + 0.35);
+    gn.gain.setValueAtTime(0.0001, t);
+    gn.gain.exponentialRampToValueAtTime(grand ? 0.16 : 0.11, t + 0.02);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+    o.connect(gn); gn.connect(actx.destination);
+    o.start(t); o.stop(t + 0.45);
+  }
+
+  function sons(fx) {
+    try {
+      if (!actx || actx.state !== 'running') return;
+      // une petite gamme montante : plus la cascade est grosse, plus ça pétille
+      var n = Math.min(8, 2 + fx.combo + Math.floor((fx.pops || []).length / 8));
+      for (var k = 0; k < n; k++) {
+        plop(k * 0.085, 300 + k * 70, fx.arc > 0 || fx.wipe ? 0.09 : 0.06);
+      }
+      if ((fx.bombs && fx.bombs.length) || fx.arc > 0 || fx.wipe) boum(fx.wipe);
+    } catch (e) {}
+  }
+
+  function vibre(fx) {
+    try {
+      if (!navigator.vibrate) return;
+      if (fx.wipe || fx.arc > 0) navigator.vibrate([40, 60, 40]);
+      else if (fx.combo >= 3 || (fx.bombs && fx.bombs.length)) navigator.vibrate([25, 40, 25]);
+      else navigator.vibrate(15);
+    } catch (e) {}
+  }
+
+  /* Premier échange jouable : sert d'indice quand le joueur hésite. */
+  function findHint(b) {
+    for (var i = 0; i < N * N; i++) {
+      if (!b[i]) continue;
+      if (b[i].t === ARC) {
+        var c0 = i % N;
+        return [i, c0 < N - 1 ? i + 1 : i - 1];
+      }
+      var c = i % N;
+      if (c < N - 1 && wouldMatch(b, i, i + 1)) return [i, i + 1];
+      if (i < N * (N - 1) && wouldMatch(b, i, i + N)) return [i, i + N];
+    }
+    return null;
+  }
+
   var mod = {
     id: 'bonbons',
     nom: 'Bonbons',
@@ -247,7 +386,7 @@
     desc: 'L’aventure sucrée : des niveaux sans fin, des mondes acidulés, cascades et bonbons magiques !',
     regles: '<p><strong>🎯 Le but :</strong> atteindre l’objectif de points du niveau avant d’épuiser vos coups — chaque niveau réussi (jusqu’à ⭐⭐⭐) débloque le suivant, la carte est sans fin et votre progression est enregistrée.</p>' +
       '<p><strong>Comment jouer :</strong> glissez un bonbon vers son voisin pour les échanger — l’échange doit former un alignement d’au moins 3 bonbons identiques, qui sont croqués. Les bonbons du dessus tombent, il en pleut de nouveaux : les cascades rapportent de plus en plus (×2, ×3…).</p>' +
-      '<p><strong>🍭 Les spéciaux :</strong> 4 alignés = un <strong>bonbon rayé</strong> qui raye toute une ligne quand on le croque · 5 alignés = un <strong>sucre magique</strong> 🌟 : échangez-le avec n’importe quel bonbon pour croquer toute sa couleur !</p>' +
+      '<p><strong>🍭 Les spéciaux :</strong> 4 alignés = un <strong>bonbon rayé</strong> qui raye toute une ligne quand on le croque · liaison en <strong>L, en T ou en carré</strong> = un <strong>bonbon enveloppé</strong> 💥 qui explose tout autour de lui · 5 alignés = un <strong>sucre magique</strong> 🌟 : échangez-le avec n’importe quel bonbon pour croquer toute sa couleur !</p>' +
       '<p><strong>👥 À plusieurs :</strong> course sur la même grille de départ, même nombre de coups — le meilleur score gagne.</p>',
     min: 1, max: 4,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
@@ -370,12 +509,17 @@
         var b = p.board;
         var gain = 0, combo = 1;
         // rapport d'effets du coup : le rendu s'en sert pour les explosions
-        var fx = { rows: [], cols: [], arc: 0, wipe: false, at: b2 };
+        var fx = { rows: [], cols: [], bombs: [], pops: [], arc: 0, wipe: false, at: b2 };
         if (b[a].t === ARC || b[b2].t === ARC) {
           var other = b[a].t === ARC ? b[b2].t : b[a].t;
           if (other === ARC) {
             // deux sucres magiques échangés : toute la grille est croquée !
-            for (var i = 0; i < N * N; i++) b[i] = null;
+            for (var i = 0; i < N * N; i++) {
+              if (b[i] && fx.pops.length < 96) {
+                fx.pops.push({ i: i, t: b[i].t, w: Math.floor(i / N) >> 1 });
+              }
+              b[i] = null;
+            }
             drop(b, state.types);
             gain = N * N * 15;
             fx.wipe = true;
@@ -506,6 +650,9 @@
       var me = ctx.me;
       var soloLocal = ctx.mode === 'local' && s.players.length === 1;
 
+      // l'indice en attente ne doit pas survivre à un nouveau rendu
+      if (el._bbHintT) { clearTimeout(el._bbHintT); el._bbHintT = null; }
+
       if (s.phase === 'setup') {
         el._bbSel = -1;
         el._bbPrev = null;
@@ -520,7 +667,7 @@
                 ' <small>' + c.coups + ' coups · ' + c.types + ' bonbons · objectif ' +
                 c.cible + ' pts</small></button>';
             }).join('') + '</div>' +
-            '<p class="hint">4 alignés = bonbon rayé · 5 alignés = sucre magique 🌟</p>';
+            '<p class="hint">4 alignés = bonbon rayé · L, T ou carré = bonbon enveloppé 💥 · 5 alignés = sucre magique 🌟</p>';
         } else {
           html0 += '<p class="waiting">⏳ L’hôte choisit le niveau…</p>';
         }
@@ -563,8 +710,10 @@
       var frais = p.lastGain > 0 && el._bbGainKey !== gainKey;
       if (frais) el._bbGainKey = gainKey;
       var fx = frais && p.fx ? p.fx : null;
+      var bombs = fx ? (fx.bombs || []) : [];
+      var pops = fx ? (fx.pops || []) : [];
       var secousse = fx && (fx.combo >= 3 || fx.arc > 0 || fx.wipe ||
-        fx.rows.length || fx.cols.length);
+        fx.rows.length || fx.cols.length || bombs.length);
 
       // animation : seuls les bonbons qui ont changé tombent en scène
       var prev = el._bbPrev;
@@ -573,18 +722,33 @@
         (secousse ? ' bb-quake' : '') + '">';
       for (var i = 0; i < N * N; i++) {
         var c2 = p.board[i];
-        var glyph = c2.t === ARC ? '🌟' : EMOJIS[c2.t];
-        glyphs.push(glyph + c2.s);
+        var tk = c2.t === ARC ? 'x' : c2.t;
+        glyphs.push(tk + ':' + c2.s);
         var anim = prev && prev[i] !== glyphs[i]
           ? ' pop-in" style="animation-delay:' + (Math.floor(i / N) * 35) + 'ms"'
           : '"';
-        html += '<button class="bb-cell t' + (c2.t === ARC ? 'x' : c2.t) +
-          (i === sel ? ' sel' : '') + (c2.s ? ' raye' + c2.s : '') + anim +
-          ' data-i="' + i + '">' + glyph + '</button>';
+        html += '<button class="bb-cell t' + tk +
+          (i === sel ? ' sel' : '') +
+          (c2.s === 3 ? ' envel' : c2.s ? ' raye' + c2.s : '') + anim +
+          ' data-i="' + i + '" data-t="' + tk + '">' +
+          '<span class="bb-candy">' + (c2.t === ARC ? '🌟' : '') + '</span></button>';
       }
 
       /* ===== explosions des super bonus ===== */
       if (fx) {
+        // chaque bonbon croqué laisse un fantôme qui éclate, vague par vague
+        pops.forEach(function (pp) {
+          var pr = Math.floor(pp.i / N), pc = pp.i % N;
+          html += '<span class="bb-pop" style="left:' + (pc * 12.5) + '%;top:' +
+            (pr * 12.5) + '%;--tt:' + (pp.t === ARC ? '#f2c937' : TINTS[pp.t]) +
+            ';animation-delay:' + (pp.w * 170) + 'ms"></span>';
+        });
+        // bonbons enveloppés : une déflagration ronde sur leur carré de 3×3
+        bombs.forEach(function (bi) {
+          var br = Math.floor(bi / N), bc = bi % N;
+          html += '<span class="bb-blast" style="left:' + ((bc - 1) * 12.5) +
+            '%;top:' + ((br - 1) * 12.5) + '%"></span>';
+        });
         // rayons des bonbons rayés : un éclair balaye la ligne / la colonne
         fx.rows.forEach(function (r2) {
           html += '<div class="bb-beam h" style="top:' + (r2 * 12.5 + 1.2) + '%"></div>';
@@ -595,12 +759,11 @@
         // sucre magique ou grille entière : déflagration à particules
         if (fx.arc > 0 || fx.wipe) {
           html += '<div class="bb-flash"></div><div class="bb-boom">';
-          var teintes = ['#f26d9d', '#5aa7de', '#f2a93b', '#62c46f', '#9a6dd7', '#ffd23f'];
           var nb = fx.wipe ? 22 : 14;
           for (var q2 = 0; q2 < nb; q2++) {
             var ang = (q2 / nb) * Math.PI * 2 + Math.random() * 0.4;
             var dist = 90 + Math.random() * 110;
-            html += '<span class="bb-part" style="background:' + teintes[q2 % 6] +
+            html += '<span class="bb-part" style="background:' + TINTS[q2 % 6] +
               ';--dx:' + Math.round(Math.cos(ang) * dist) + 'px;--dy:' +
               Math.round(Math.sin(ang) * dist) + 'px;animation-delay:' +
               (Math.random() * 120 | 0) + 'ms"></span>';
@@ -615,13 +778,23 @@
           (p.lastCombo > 1 ? ' ×' + p.lastCombo : '') + '</div>';
       }
       // les grandes cascades s'annoncent en fanfare
-      if (fx && fx.combo >= 3) {
-        html += '<div class="bb-combo">COMBO ×' + fx.combo + ' !</div>';
-      } else if (fx && fx.wipe) {
-        html += '<div class="bb-combo">EXPLOSION TOTALE !</div>';
+      if (fx) {
+        var cri = fx.wipe ? 'EXPLOSION TOTALE !'
+          : fx.arc > 0 ? 'ROYAL !'
+          : fx.combo >= 5 ? 'MAGNIFIQUE !'
+          : fx.combo >= 4 ? 'DÉLICIEUX !'
+          : fx.combo >= 3 ? 'MIAM !'
+          : bombs.length ? 'BOUM !' : '';
+        if (cri) {
+          html += '<div class="bb-combo">' + cri +
+            (fx.combo >= 3 ? '<small>combo ×' + fx.combo + '</small>' : '') + '</div>';
+        }
       }
       html += '</div>';
       el._bbPrev = glyphs;
+
+      // gros coup = petite secousse dans la main et pluie de « pops » sucrés
+      if (fx) { vibre(fx); sons(fx); }
 
       if (p.moves <= 0 && !s.solo) html += '<p class="mini-msg">🍬 Plus de coups ! On attend les autres…</p>';
 
@@ -669,6 +842,7 @@
 
       var touche = null;
       grid.addEventListener('pointerdown', function (e) {
+        initSon(); // le son ne peut naître que dans la main du joueur
         var c = e.target.closest ? e.target.closest('.bb-cell') : null;
         if (!c) return;
         touche = { i: parseInt(c.dataset.i, 10), x: e.clientX, y: e.clientY };
@@ -703,11 +877,25 @@
         }
       });
       grid.addEventListener('pointercancel', function () { touche = null; });
+
+      // le joueur hésite ? au bout de 4 s, un coup jouable se met à clignoter
+      if (p.moves > 0) {
+        el._bbHintT = setTimeout(function () {
+          el._bbHintT = null;
+          var mv = findHint(p.board);
+          if (!mv) return;
+          mv.forEach(function (i3) {
+            var ce = cellEl(i3);
+            if (ce) ce.classList.add('bb-hint');
+          });
+        }, 4000);
+      }
     },
 
     _findRuns: findRuns, _resolve: resolve, _buildBoard: buildBoard,
     _wouldMatch: wouldMatch, _hasMove: hasMove, _N: N, // pour les tests
-    _levelCfg: levelCfg, _stars: stars, _zoneOf: zoneOf, _ZONES: ZONES
+    _levelCfg: levelCfg, _stars: stars, _zoneOf: zoneOf, _ZONES: ZONES,
+    _promoteFor: promoteFor, _spread: spread
   };
 
   GG.register(mod);

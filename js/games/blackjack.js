@@ -59,16 +59,24 @@
     for (i = 0; i < s.players.length; i++) {
       p = s.players[i];
       if (p.bet <= 0) { p.outcome = 'sit'; p.net = 0; continue; }
-      v = valeurMain(p.hand).total;
-      if (estBlackjack(p.hand)) {
-        if (bjCroupier) { p.outcome = 'push'; p.net = 0; }
-        else { p.outcome = 'bj'; p.net = Math.floor(p.bet * 1.5); }
-      } else if (v > 21) { p.outcome = 'lose'; p.net = -p.bet; }
-      else if (bjCroupier) { p.outcome = 'lose'; p.net = -p.bet; }
-      else if (vc > 21 || v > vc) { p.outcome = 'win'; p.net = p.bet; }
-      else if (v === vc) { p.outcome = 'push'; p.net = 0; }
-      else { p.outcome = 'lose'; p.net = -p.bet; }
-      p.total += p.net;
+      function juge(main, mise, naturelPossible) {
+        var v2 = valeurMain(main).total;
+        if (naturelPossible && estBlackjack(main)) {
+          return bjCroupier ? { o: 'push', n: 0 } : { o: 'bj', n: Math.floor(mise * 1.5) };
+        }
+        if (v2 > 21) return { o: 'lose', n: -mise };
+        if (bjCroupier) return { o: 'lose', n: -mise };
+        if (vc > 21 || v2 > vc) return { o: 'win', n: mise };
+        if (v2 === vc) return { o: 'push', n: 0 };
+        return { o: 'lose', n: -mise };
+      }
+      var j1 = juge(p.hand, p.bet, !p.split);
+      p.outcome = j1.o; p.net = j1.n;
+      if (p.split) {
+        var j2 = juge(p.hand2, p.bet2, false);
+        p.outcome2 = j2.o; p.net2 = j2.n;
+      }
+      p.total += p.net + (p.split ? p.net2 : 0);
     }
     s.turn = -1;
     s.phase = 'result';
@@ -78,7 +86,9 @@
     var i, p, besoin = false;
     for (i = 0; i < s.players.length; i++) {
       p = s.players[i];
-      if (p.bet > 0 && !estBlackjack(p.hand) && valeurMain(p.hand).total <= 21) besoin = true;
+      if (p.bet <= 0) continue;
+      if ((!p.split && !estBlackjack(p.hand) && valeurMain(p.hand).total <= 21) ||
+          (p.split && (valeurMain(p.hand).total <= 21 || valeurMain(p.hand2).total <= 21))) besoin = true;
     }
     if (besoin) while (valeurMain(s.dealer).total < 17) tire(s, s.dealer);
     resoudre(s);
@@ -113,6 +123,20 @@
   function avance(s) {
     s.turn = prochainTour(s, s.turn + 1);
     if (s.turn === -1) finDesJoueurs(s);
+  }
+
+  function mainActive(p) { return p.hi === 1 ? p.hand2 : p.hand; }
+
+  /* La main active est finie : au split, on enchaîne la seconde main,
+     sinon le joueur a terminé et le tour avance. */
+  function finMain(s, p) {
+    if (p.split && p.hi === 0) {
+      p.hi = 1;
+      if (valeurMain(p.hand2).total >= 21) finMain(s, p);
+    } else {
+      p.done = true;
+      avance(s);
+    }
   }
 
   function signe(n) { return (n > 0 ? '+' + n : '' + n); }
@@ -166,7 +190,8 @@
     regles: '<p><strong>🎯 Le but :</strong> battre le croupier en vous approchant de 21 sans jamais le dépasser.</p>' +
       '<p><strong>Comment jouer :</strong> misez vos jetons (de 1 à 500), recevez deux cartes, puis à votre tour : tirez, restez, ou doublez (uniquement avec deux cartes : mise doublée, une seule carte de plus). L\'as vaut 1 ou 11.</p>' +
       '<p><strong>Le croupier :</strong> il révèle sa carte cachée après vous et tire jusqu\'à 17 — il reste sur tous les 17.</p>' +
-      '<p><strong>Les gains :</strong> victoire 1 pour 1, blackjack naturel 3 pour 2, égalité : mise rendue. Pas de partage de paires (split) dans cette version.</p>',
+      '<p><strong>Séparer (split) :</strong> deux cartes de même valeur ? Séparez-les en deux mains, chacune avec sa mise — les as séparés ne reçoivent qu\'une carte chacun.</p>' +
+      '<p><strong>Les gains :</strong> victoire 1 pour 1, blackjack naturel 3 pour 2, égalité : mise rendue.</p>',
     min: 1,
     max: 4,
     hotseat: true,
@@ -177,7 +202,7 @@
     create: function (names) {
       var players = [], i;
       for (i = 0; i < names.length; i++) {
-        players.push({ name: names[i], bet: 0, hand: [], done: false, doubled: false, sit: false, outcome: null, net: 0, total: 0 });
+        players.push({ name: names[i], bet: 0, hand: [], done: false, doubled: false, sit: false, outcome: null, net: 0, total: 0, split: false, hand2: [], bet2: 0, doubled2: false, hi: 0, outcome2: null, net2: 0 });
       }
       return {
         round: 1,
@@ -236,7 +261,7 @@
       if (!GG.wallet || !state || !state.players || !state.players[me]) return;
       var p = state.players[me];
       if (state.phase !== 'result' && !state.finished && p.bet > 0) {
-        GG.wallet.add(p.bet);
+        GG.wallet.add(p.bet + (p.split ? p.bet2 : 0));
       }
     },
 
@@ -264,25 +289,45 @@
         return { ok: true };
       }
 
-      if (t === 'hit' || t === 'stand' || t === 'double') {
+      if (t === 'hit' || t === 'stand' || t === 'double' || t === 'split') {
         if (state.phase !== 'play') return { ok: false, error: 'Ce n\'est pas le moment de jouer.' };
         if (state.turn !== player) return { ok: false, error: 'Ce n\'est pas votre tour.' };
+        var m = mainActive(p);
         if (t === 'hit') {
-          tire(state, p.hand);
-          if (valeurMain(p.hand).total >= 21) { p.done = true; avance(state); }
+          tire(state, m);
+          if (valeurMain(m).total >= 21) finMain(state, p);
           return { ok: true };
         }
         if (t === 'stand') {
-          p.done = true;
-          avance(state);
+          finMain(state, p);
           return { ok: true };
         }
-        if (p.hand.length !== 2 || p.doubled) return { ok: false, error: 'On ne peut doubler qu\'avec ses deux premières cartes.' };
-        p.bet = p.bet * 2;
-        p.doubled = true;
-        tire(state, p.hand);
-        p.done = true;
-        avance(state);
+        if (t === 'split') {
+          if (p.split) return { ok: false, error: 'Une seule paire séparée par manche.' };
+          if (p.hand.length !== 2 || (p.hand[0] % 13) !== (p.hand[1] % 13)) {
+            return { ok: false, error: 'Il faut deux cartes de même valeur pour séparer.' };
+          }
+          p.split = true;
+          p.hand2 = [p.hand.pop()];
+          p.bet2 = p.bet;
+          tire(state, p.hand);
+          tire(state, p.hand2);
+          if ((p.hand2[0] % 13) === 0) {
+            // paire d'as séparée : une seule carte par main, mains terminées
+            p.done = true;
+            avance(state);
+          } else {
+            p.hi = 0;
+            if (valeurMain(p.hand).total >= 21) finMain(state, p);
+          }
+          return { ok: true };
+        }
+        var deja = p.hi === 1 ? p.doubled2 : p.doubled;
+        if (m.length !== 2 || deja) return { ok: false, error: 'On ne peut doubler qu\'avec ses deux premières cartes.' };
+        if (p.hi === 1) { p.bet2 = p.bet2 * 2; p.doubled2 = true; }
+        else { p.bet = p.bet * 2; p.doubled = true; }
+        tire(state, m);
+        finMain(state, p);
         return { ok: true };
       }
 
@@ -296,7 +341,7 @@
         var i, q;
         for (i = 0; i < state.players.length; i++) {
           q = state.players[i];
-          q.bet = 0; q.hand = []; q.done = false; q.doubled = false; q.sit = false; q.outcome = null; q.net = 0;
+          q.bet = 0; q.hand = []; q.done = false; q.doubled = false; q.sit = false; q.outcome = null; q.net = 0; q.split = false; q.hand2 = []; q.bet2 = 0; q.doubled2 = false; q.hi = 0; q.outcome2 = null; q.net2 = 0;
         }
         return { ok: true };
       }
@@ -325,10 +370,14 @@
       if (s.phase === 'result' && moi && el._bjPaid !== rondCle) {
         el._bjPaid = rondCle;
         if (GG.wallet && moi.bet > 0) {
-          var retour = 0;
-          if (moi.outcome === 'bj') retour = moi.bet + Math.floor(moi.bet * 1.5);
-          else if (moi.outcome === 'win') retour = moi.bet * 2;
-          else if (moi.outcome === 'push') retour = moi.bet;
+          function retourDe(o, mise) {
+            if (o === 'bj') return mise + Math.floor(mise * 1.5);
+            if (o === 'win') return mise * 2;
+            if (o === 'push') return mise;
+            return 0;
+          }
+          var retour = retourDe(moi.outcome, moi.bet) +
+            (moi.split ? retourDe(moi.outcome2, moi.bet2) : 0);
           if (retour > 0) GG.wallet.add(retour);
         }
       }
@@ -392,16 +441,40 @@
       if (!moi) {
         html += '<p class="bj-vide">Vous regardez la partie…</p>';
       } else if (s.phase !== 'bet' && moi.bet > 0) {
-        var vm = valeurMain(moi.hand);
-        html += '<div class="bj-cartes bj-cartes-moi">' + mainHTML(moi.hand) + '</div>';
-        html += '<div class="bj-total-moi">' + vm.total + (vm.souple ? ' (souple)' : '') +
-          (vm.total > 21 ? ' — dépassé !' : '') + '</div>';
+        if (moi.split) {
+          // deux mains côte à côte, la main en cours est soulignée
+          html += '<div class="bj-mains2">';
+          [0, 1].forEach(function (h2) {
+            var mn = h2 === 1 ? moi.hand2 : moi.hand;
+            var vh = valeurMain(mn);
+            var actv = s.phase === 'play' && s.turn === me && moi.hi === h2;
+            html += '<div class="bj-main2' + (actv ? ' actv' : '') + '">' +
+              '<div class="bj-cartes bj-cartes-moi">' + mainHTML(mn) + '</div>' +
+              '<div class="bj-total-moi">' + vh.total + (vh.souple ? ' s' : '') +
+              (vh.total > 21 ? ' 💥' : '') + '</div></div>';
+          });
+          html += '</div>';
+        } else {
+          var vm = valeurMain(moi.hand);
+          html += '<div class="bj-cartes bj-cartes-moi">' + mainHTML(moi.hand) + '</div>';
+          html += '<div class="bj-total-moi">' + vm.total + (vm.souple ? ' (souple)' : '') +
+            (vm.total > 21 ? ' — dépassé !' : '') + '</div>';
+        }
         if (s.phase === 'result') {
-          var lbl = 'Égalité — mise rendue', cls = 'bj-r-push';
-          if (moi.outcome === 'bj') { lbl = '♠ BLACKJACK ! +' + moi.net + ' 🪙'; cls = 'bj-r-win'; }
-          else if (moi.outcome === 'win') { lbl = 'Gagné ! +' + moi.net + ' 🪙'; cls = 'bj-r-win'; }
-          else if (moi.outcome === 'lose') { lbl = 'Perdu… ' + moi.net + ' 🪙'; cls = 'bj-r-lose'; }
-          html += '<div class="bj-result ' + cls + '">' + lbl + '</div>';
+          function libelle(o, n) {
+            if (o === 'bj') return ['♠ BLACKJACK ! +' + n + ' 🪙', 'bj-r-win'];
+            if (o === 'win') return ['Gagné ! +' + n + ' 🪙', 'bj-r-win'];
+            if (o === 'lose') return ['Perdu… ' + n + ' 🪙', 'bj-r-lose'];
+            return ['Égalité — mise rendue', 'bj-r-push'];
+          }
+          var l1 = libelle(moi.outcome, moi.net);
+          if (moi.split) {
+            var l2 = libelle(moi.outcome2, moi.net2);
+            html += '<div class="bj-result ' + l1[1] + '">Main 1 : ' + l1[0] + '</div>' +
+              '<div class="bj-result ' + l2[1] + '">Main 2 : ' + l2[0] + '</div>';
+          } else {
+            html += '<div class="bj-result ' + l1[1] + '">' + l1[0] + '</div>';
+          }
         }
       } else if (moi.sit || (s.phase !== 'bet' && moi.bet <= 0)) {
         html += '<p class="bj-vide">Vous passez cette manche…</p>';
@@ -442,10 +515,16 @@
         html += '<p class="waiting">Mise posée — on attend les autres…</p>';
       } else if (s.phase === 'play') {
         if (moi && s.turn === me) {
-          html += '<div class="bj-actions">' +
+          var mAct = moi.hi === 1 ? moi.hand2 : moi.hand;
+          var dblOk = mAct.length === 2 && !(moi.hi === 1 ? moi.doubled2 : moi.doubled);
+          var splitOk = !moi.split && moi.hand.length === 2 &&
+            (moi.hand[0] % 13) === (moi.hand[1] % 13);
+          html += (moi.split ? '<p class="hint mini-center">Main ' + (moi.hi + 1) + ' sur 2</p>' : '') +
+            '<div class="bj-actions">' +
             '<button class="btn big" id="bj-hit">Tirer</button>' +
             '<button class="btn big" id="bj-stand">Rester</button>' +
-            (moi.hand.length === 2 && !moi.doubled ? '<button class="btn" id="bj-double">Doubler</button>' : '') +
+            (dblOk ? '<button class="btn" id="bj-double">Doubler</button>' : '') +
+            (splitOk ? '<button class="btn" id="bj-split">Séparer ✂️</button>' : '') +
             '</div><p class="mini-msg" id="bj-msg"></p>';
         } else if (s.turn >= 0) {
           html += '<p class="waiting">Au tour de ' + GG.esc(s.players[s.turn].name) + '…</p>';
@@ -491,10 +570,18 @@
       on('bj-hit', function () { ctx.act({ t: 'hit' }); });
       on('bj-stand', function () { ctx.act({ t: 'stand' }); });
       on('bj-double', function () {
-        if (el._bjDbl === rondCle) return; // anti double-débit
-        if (GG.wallet && !GG.wallet.spend(moi.bet)) { msg('Pas assez de jetons pour doubler !'); return; }
-        el._bjDbl = rondCle;
+        var cle2 = rondCle + ':' + moi.hi;
+        if (el._bjDbl === cle2) return; // anti double-débit
+        var miseAct = moi.hi === 1 ? moi.bet2 : moi.bet;
+        if (GG.wallet && !GG.wallet.spend(miseAct)) { msg('Pas assez de jetons pour doubler !'); return; }
+        el._bjDbl = cle2;
         ctx.act({ t: 'double' });
+      });
+      on('bj-split', function () {
+        if (el._bjSplit === rondCle) return; // anti double-débit
+        if (GG.wallet && !GG.wallet.spend(moi.bet)) { msg('Pas assez de jetons pour séparer !'); return; }
+        el._bjSplit = rondCle;
+        ctx.act({ t: 'split' });
       });
       on('bj-again', function () { el._bjEndArm = null; ctx.act({ t: 'again' }); });
       // quitter la table demande une confirmation (fini les départs par mégarde)
