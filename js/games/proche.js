@@ -232,6 +232,23 @@
       return { ok: false, error: 'Action inconnue.' };
     },
 
+    /* IA : fabrique une estimation plausible autour de la vraie réponse.
+       Le facteur d'erreur simule l'à-peu-près d'un joueur humain :
+       souvent assez loin, parfois un vrai coup de flair. */
+    bot: function (state, me) {
+      if (state.finished) return null;
+      if (state.phase !== 'guess') return null; // révélation : l'hôte enchaîne
+      var p = state.players[me];
+      if (!p || p.guess !== null) return null;  // déjà répondu cette manche
+      var vrai = state.qs[state.idx].a;
+      var f = Math.random() < 0.25
+        ? 0.9 + Math.random() * 0.2             // coup de flair : tout proche
+        : 0.55 + Math.random() * 1.25;          // estimation ordinaire
+      var n = Math.round(vrai * f);
+      if (n < 0) n = 0;
+      return { t: 'guess', n: n };
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       if (s.finished) { el.innerHTML = ''; return; } // l'écran de fin prend le relais

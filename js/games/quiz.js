@@ -1290,6 +1290,24 @@
       return { ok: false, error: 'Action inconnue.' };
     },
 
+    /* L'adversaire IA : répond comme un joueur moyen — la bonne réponse
+       environ 6 fois sur 10, un leurre au hasard sinon. Le choix du thème et
+       le passage à la question suivante restent des écrans de l'hôte. */
+    bot: function (state, me) {
+      if (state.finished) return null;
+      if (state.phase !== 'question') return null;
+      var p = state.players[me];
+      if (!p || p.answer !== -1) return null;
+      var q = state.qs[state.idx];
+      if (!q || !q.choices) return null;
+      var bonne = typeof q.correct === 'number' ? q.correct : -1;
+      if (bonne !== -1 && Math.random() < 0.6) return { t: 'answer', i: bonne };
+      // sinon, un mauvais choix uniformément au hasard
+      var faux = [];
+      for (var i = 0; i < q.choices.length; i++) if (i !== bonne) faux.push(i);
+      return { t: 'answer', i: faux[Math.floor(Math.random() * faux.length)] };
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       if (s.finished) { el.innerHTML = ''; return; } // l'écran de fin prend le relais

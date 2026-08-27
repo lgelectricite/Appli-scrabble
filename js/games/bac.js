@@ -55,6 +55,107 @@
     state.phase = 'result';
   }
 
+  /* Petit lexique embarqué pour l'adversaire IA : quelques mots sûrs par
+     lettre et par catégorie. Volontairement incomplet — l'IA sèche parfois
+     sur une lettre, exactement comme un joueur humain. */
+  var BOT_LEX = [
+    { /* Prénom */
+      A: ['Alice', 'Arthur'], B: ['Bruno', 'Béatrice'], C: ['Camille', 'Claire'],
+      D: ['David', 'Denis'], E: ['Emma', 'Éric'], F: ['Fanny', 'François'],
+      G: ['Gabriel', 'Guy'], H: ['Hugo', 'Hélène'], I: ['Inès', 'Isabelle'],
+      J: ['Julie', 'Jules'], L: ['Léa', 'Louis'], M: ['Marie', 'Marc'],
+      N: ['Nicolas', 'Nathalie'], O: ['Olivier', 'Océane'], P: ['Paul', 'Pauline'],
+      R: ['Rémi', 'Rose'], S: ['Sophie', 'Simon'], T: ['Thomas', 'Théo'],
+      V: ['Victor', 'Valérie']
+    },
+    { /* Animal */
+      A: ['âne', 'abeille'], B: ['baleine', 'biche'], C: ['chat', 'cheval'],
+      D: ['dauphin', 'dromadaire'], E: ['éléphant', 'écureuil'], F: ['fourmi', 'faucon'],
+      G: ['girafe', 'grenouille'], H: ['hérisson', 'hibou'], I: ['iguane'],
+      J: ['jaguar'], L: ['lapin', 'lion'], M: ['mouton', 'morse'],
+      N: ['narval'], O: ['ours', 'oie'], P: ['poule', 'panda'],
+      R: ['renard', 'requin'], S: ['singe', 'souris'], T: ['tigre', 'tortue'],
+      V: ['vache', 'vautour']
+    },
+    { /* Ville ou pays */
+      A: ['Allemagne', 'Angers'], B: ['Belgique', 'Bordeaux'], C: ['Canada', 'Chine'],
+      D: ['Danemark', 'Dijon'], E: ['Espagne', 'Égypte'], F: ['France', 'Finlande'],
+      G: ['Grèce', 'Grenoble'], H: ['Hongrie', 'Honfleur'], I: ['Italie', 'Inde'],
+      J: ['Japon', 'Jordanie'], L: ['Lyon', 'Lille'], M: ['Maroc', 'Madrid'],
+      N: ['Nantes', 'Norvège'], O: ['Oslo', 'Orléans'], P: ['Paris', 'Portugal'],
+      R: ['Rome', 'Russie'], S: ['Suisse', 'Sénégal'], T: ['Toulouse', 'Tunisie'],
+      V: ['Vienne', 'Venise']
+    },
+    { /* Métier */
+      A: ['avocat', 'architecte'], B: ['boulanger', 'boucher'], C: ['coiffeur', 'cuisinier'],
+      D: ['dentiste', 'docteur'], E: ['électricien', 'éboueur'], F: ['facteur', 'fleuriste'],
+      G: ['garagiste', 'gendarme'], H: ['horloger'], I: ['infirmier', 'informaticien'],
+      J: ['journaliste', 'jardinier'], L: ['libraire', 'livreur'], M: ['médecin', 'maçon'],
+      N: ['notaire'], O: ['opticien', 'ouvrier'], P: ['pompier', 'pharmacien'],
+      R: ['ramoneur', 'reporter'], S: ['serveur', 'secrétaire'], T: ['traducteur', 'tailleur'],
+      V: ['vétérinaire', 'vendeur']
+    },
+    { /* Fruit ou légume */
+      A: ['abricot', 'ananas'], B: ['banane', 'betterave'], C: ['cerise', 'carotte'],
+      D: ['datte'], E: ['épinard', 'endive'], F: ['fraise', 'figue'],
+      G: ['groseille'], H: ['haricot'], L: ['laitue', 'litchi'],
+      M: ['melon', 'mangue'], N: ['navet', 'noisette'], O: ['orange', 'oignon'],
+      P: ['poire', 'pomme'], R: ['radis', 'raisin'], S: ['salade'],
+      T: ['tomate', 'topinambour']
+    },
+    { /* Objet */
+      A: ['armoire', 'assiette'], B: ['bouteille', 'ballon'], C: ['chaise', 'couteau'],
+      D: ['disque', 'drap'], E: ['échelle', 'éponge'], F: ['fourchette', 'fauteuil'],
+      G: ['gomme', 'gant'], H: ['horloge', 'hache'], I: ['imprimante'],
+      J: ['jouet', 'jumelles'], L: ['lampe', 'livre'], M: ['miroir', 'marteau'],
+      N: ['nappe'], O: ['ordinateur', 'oreiller'], P: ['parapluie', 'pinceau'],
+      R: ['réveil', 'règle'], S: ['stylo', 'seau'], T: ['table', 'tabouret'],
+      V: ['valise', 'verre']
+    }
+  ];
+
+  /* la feuille de l'IA : trous de mémoire (~1 case sur 4) et, très rarement,
+     une étourderie de mauvaise lettre — comme sous la pression du chrono */
+  function botSheet(letter) {
+    var list = [];
+    for (var c = 0; c < CATS.length; c++) {
+      var pool = BOT_LEX[c][letter] || [];
+      var r = Math.random();
+      if (!pool.length || r < 0.25) { list.push(''); continue; }
+      var word = pool[Math.floor(Math.random() * pool.length)];
+      if (r > 0.97) {
+        var others = Object.keys(BOT_LEX[c]);
+        var autre = others[Math.floor(Math.random() * others.length)];
+        if (autre !== letter) word = BOT_LEX[c][autre][0];
+      }
+      list.push(word);
+    }
+    return list;
+  }
+
+  /* le mot figure-t-il dans le lexique de l'IA pour cette catégorie ? */
+  function botConnait(cat, n) {
+    var pool = BOT_LEX[cat][n.charAt(0)] || [];
+    for (var i = 0; i < pool.length; i++) if (normalize(pool[i]) === n) return true;
+    return false;
+  }
+
+  /* jugement d'une réponse adverse : on accepte ce qui ressemble à un mot,
+     on refuse le charabia. Un léger doute subsiste sur les mots inconnus. */
+  function botJuge(ans, cat, ctx) {
+    var n = normalize(ans);
+    if (botConnait(cat, n)) return true;
+    var w = n.replace(/[ '-]/g, '');
+    if (w.length < 2) return false;
+    if (/[^A-Z]/.test(w)) return false;               // chiffres, symboles…
+    if (!/[AEIOUY]/.test(w)) return false;            // pas une seule voyelle
+    if (/[^AEIOUY]{5,}/.test(w)) return false;        // suite de consonnes illisible
+    // catégories de noms communs : le dictionnaire tranche quand il connaît
+    if ((cat === 1 || cat === 3 || cat === 4 || cat === 5) &&
+        ctx && ctx.dict && ctx.dict.set && ctx.dict.set.has(w)) return true;
+    return Math.random() > 0.1; // plausible : accepté, avec un soupçon de doute
+  }
+
   var mod = {
     id: 'bac',
     nom: 'Petit Bac',
@@ -183,6 +284,43 @@
       }
 
       return { ok: false, error: 'Action inconnue.' };
+    },
+
+    /* L'adversaire IA : remplit sa feuille depuis son petit lexique (sans
+       jamais regarder celles des autres), puis vote la validité des réponses
+       adverses. Il attend pendant les écrans qui appartiennent à l'hôte. */
+    bot: function (state, me, ctx) {
+      if (state.finished) return null;
+
+      // ma feuille : pendant la manche, ou juste après le coup de sifflet
+      // tant que personne n'a voté (la tolérance prévue par apply)
+      var grace = state.phase === 'vote' && !state.submitted[me] &&
+        state.voted.every(function (v) { return !v; });
+      if ((state.phase === 'answers' && !state.submitted[me]) || grace) {
+        return { t: 'answers', list: botSheet(state.letter) };
+      }
+
+      if (state.phase === 'vote' && !state.voted[me]) {
+        // on laisse les feuilles en retard arriver avant de voter (voter
+        // trop tôt fermerait la tolérance d'après-sifflet des autres)
+        var toutRendu = state.submitted.every(Boolean);
+        var voteLance = state.voted.some(Boolean);
+        if (!toutRendu && !voteLance) return null;
+        var grid = {};
+        for (var p = 0; p < state.players.length; p++) {
+          if (p === me) continue;
+          var row = [];
+          for (var c = 0; c < CATS.length; c++) {
+            var ans = (state.answers[p] || [])[c] || '';
+            if (autoInvalid(state, ans)) continue; // refus automatique, pas de vote
+            row[c] = botJuge(ans, c, ctx);
+          }
+          grid[p] = row;
+        }
+        return { t: 'vote', grid: grid };
+      }
+
+      return null; // intro, résultats, ou rien à faire : on attend
     },
 
     render: function (el, ctx) {

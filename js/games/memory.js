@@ -115,6 +115,32 @@
       return { ok: true };
     },
 
+    /* L'adversaire IA : une mémoire imparfaite. L'état ne garde aucune trace
+       des cartes déjà vues, alors on la simule : la première carte est prise
+       au hasard, et pour la seconde le robot « se souvient » de la bonne
+       environ une fois sur trois — sinon il pioche à l'aveugle. */
+    bot: function (state, me) {
+      if (state.finished) return null;
+      if (state.current !== me) return null;
+      // après un raté, apply() recache les cartes au prochain retournement
+      var up = state.mismatch ? [] : state.up;
+      var cachees = [];
+      for (var i = 0; i < state.cards.length; i++) {
+        if (!state.cards[i].matched && up.indexOf(i) === -1) cachees.push(i);
+      }
+      if (!cachees.length) return null;
+      var pioche = cachees[Math.floor(Math.random() * cachees.length)];
+      if (up.length === 1 && Math.random() < 0.35) {
+        // un éclair de mémoire : il retrouve la jumelle de sa première carte
+        for (var j = 0; j < cachees.length; j++) {
+          if (state.cards[cachees[j]].e === state.cards[up[0]].e) {
+            return { t: 'flip', i: cachees[j] };
+          }
+        }
+      }
+      return { t: 'flip', i: pioche };
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       var mine = ctx.me === s.current && !s.finished;

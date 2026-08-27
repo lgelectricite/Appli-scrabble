@@ -440,6 +440,128 @@
       return { ok: false, error: 'Action inconnue.' };
     },
 
+    /* L'adversaire IA : tiers pré-flop, force réelle post-flop (évaluée avec
+       rank5/best7), mises proportionnées au pot, un soupçon de bluff. Il ne
+       regarde que ses cartes et le tapis : jamais le deck ni les mains
+       adverses. Les écrans d'enchaînement (choix du mode, main suivante)
+       restent à l'humain. */
+    bot: function (state, me) {
+      var p = state.players[me];
+      if (state.finished || !state.mode || !p || p.out) return null;
+      // cash game : une IA fauchée recave dès que la règle le permet
+      // (jetons virtuels : la cagnotte ne concerne que les téléphones)
+      if (state.mode === 'cash' && p.chips === 0 &&
+          (state.handOver || p.folded || !p.hole || !p.hole.length)) {
+        return { t: 'rebuy' };
+      }
+      if (state.handOver) return null; // « Main suivante » : bouton de l'humain
+      if (state.current !== me || p.folded || p.allin) return null;
+
+      var owe = state.maxBet - p.bet;
+      var pot = potTotal(state);
+      var bb = state.blinds[1];
+      var alea = Math.random();
+
+      // relance légale : bornée par la relance minimale et le tapis
+      function relance(by) {
+        var maxBy = p.chips - owe;
+        if (maxBy < state.minRaise) return { t: 'allin' };
+        by = Math.max(state.minRaise, Math.min(Math.round(by), maxBy));
+        return { t: 'raise', by: by };
+      }
+      function suivre() { return owe > 0 ? { t: 'call' } : { t: 'check' }; }
+
+      var r1 = p.hole[0] >> 2, r2 = p.hole[1] >> 2;
+      var hi = Math.max(r1, r2), lo = Math.min(r1, r2);
+      var paire = r1 === r2;
+      var assortis = (p.hole[0] & 3) === (p.hole[1] & 3);
+
+      /* ---- pré-flop : jeu par catégories de mains ---- */
+      if (!state.community.length) {
+        var tier = 0;                                             // poubelle
+        if ((paire && hi >= 10) || (hi === 12 && lo === 11)) tier = 3; // QQ+ / AR
+        else if ((paire && hi >= 5) || (hi === 12 && lo >= 8) ||
+                 (assortis && lo >= 8)) tier = 2;  // 77+, A+figure, hautes assorties
+        else if (paire || hi === 12 || lo >= 8 ||
+                 (assortis && hi - lo <= 2 && hi >= 5)) tier = 1;  // jouable
+        if (state.maxBet <= bb) {
+          // pot non relancé : on ouvre avec les bonnes mains, on limpe parfois
+          if (tier === 3) return relance(bb * 3);
+          if (tier === 2) return alea < 0.6 ? relance(bb * (2 + alea * 2)) : suivre();
+          if (tier === 1) return suivre();
+          if (owe <= 0) return { t: 'check' };
+          return alea < 0.2 ? { t: 'call' } : { t: 'fold' };
+        }
+        // face à une relance : la poubelle passe, le premium sur-relance
+        if (tier === 3) return alea < 0.5 ? relance(pot) : suivre();
+        if (tier === 2) {
+          if (owe <= Math.max(bb * 6, p.chips * 0.15)) return suivre();
+          return alea < 0.35 ? suivre() : { t: 'fold' };
+        }
+        if (tier === 1 && owe <= bb * 3) return suivre();
+        return { t: 'fold' };
+      }
+
+      /* ---- post-flop : force réelle de la meilleure combinaison ---- */
+      var cartes = p.hole.concat(state.community);
+      var meilleur;
+      if (cartes.length === 5) meilleur = rank5(cartes);
+      else if (cartes.length === 6) {
+        meilleur = null;
+        for (var x = 0; x < 6; x++) {
+          var cinq = cartes.slice(0, x).concat(cartes.slice(x + 1));
+          var rx = rank5(cinq);
+          if (!meilleur || cmpRank(rx, meilleur) > 0) meilleur = rx;
+        }
+      } else meilleur = best7(cartes);
+
+      var cat = meilleur[0];
+      var boardMax = 0;
+      state.community.forEach(function (c) { boardMax = Math.max(boardMax, c >> 2); });
+      // la main compte-t-elle vraiment nos cartes, ou juste le tapis ?
+      var participe = r1 === meilleur[1] || r2 === meilleur[1];
+
+      var force; // 0..1 : envie de mettre des jetons
+      if (cat >= 5) force = 0.95;                              // couleur et mieux
+      else if (cat === 4) force = 0.9;                         // suite
+      else if (cat === 3) force = participe ? 0.85 : 0.45;     // brelan
+      else if (cat === 2) {                                    // deux paires
+        force = (participe || r1 === meilleur[2] || r2 === meilleur[2]) ? 0.75 : 0.4;
+      } else if (cat === 1) {                                  // paire
+        if (!participe) force = 0.3;                           // paire du tapis
+        else if (paire && meilleur[1] > boardMax) force = 0.75; // sur-paire
+        else if (meilleur[1] === boardMax) force = 0.65;       // top paire
+        else force = 0.45;                                     // paire moyenne
+      } else {
+        force = 0.15;                                          // carte haute
+        // tirage couleur (pas à la rivière : là, c'est raté)
+        if (state.community.length < 5) {
+          var fam = [0, 0, 0, 0];
+          cartes.forEach(function (c) { fam[c & 3]++; });
+          if (fam[p.hole[0] & 3] === 4 || fam[p.hole[1] & 3] === 4) force = 0.42;
+        }
+      }
+      force += (Math.random() - 0.5) * 0.08; // un brin d'humeur
+
+      if (owe <= 0) {
+        // personne n'a misé : mise de valeur, parole, ou bluff rare
+        if (force >= 0.7) return relance(pot * (0.5 + alea * 0.4));
+        if (force >= 0.45 && alea < 0.3) return relance(pot * 0.4);
+        if (force < 0.3 && alea < 0.08 && p.chips > bb * 4) return relance(pot * 0.5);
+        return { t: 'check' };
+      }
+      // face à une mise : on paie selon la force et le prix demandé
+      var cote = owe / (pot + owe);
+      if (force >= 0.78) return alea < 0.5 ? relance(pot * 0.7) : { t: 'call' };
+      if (force >= 0.55) {
+        if (cote <= 0.35 || owe <= bb * 3) return { t: 'call' };
+        return alea < 0.3 ? { t: 'call' } : { t: 'fold' };
+      }
+      if (force >= 0.38 && cote <= 0.22) return { t: 'call' };  // tirages
+      if (owe <= bb && alea < 0.3) return { t: 'call' };        // défense à bas prix
+      return { t: 'fold' };
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       var me = ctx.me;

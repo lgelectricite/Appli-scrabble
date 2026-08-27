@@ -185,6 +185,44 @@
       return { ok: false, error: 'Action inconnue.' };
     },
 
+    /* L'adversaire IA : il ne regarde JAMAIS state.secret. Comme un humain,
+       il repart de ses propres essais et de leurs couleurs, garde les mots
+       courants encore compatibles et en propose un au hasard — un choix
+       aléatoire parmi les compatibles est déjà faillible juste ce qu'il
+       faut pour rester battable. */
+    bot: function (state, me, ctx) {
+      if (state.phase !== 'play') return null; // niveau / révélation : à l'hôte
+      var p = state.players[me];
+      if (!p || p.found || p.failed) return null; // mot terminé, on attend les autres
+      if (!ctx || !ctx.dict) return null; // dictionnaire pas encore chargé
+
+      // même vivier que le tirage du secret : les mots courants de la
+      // bonne longueur (ou la liste de secours)
+      var pool = FALLBACK[state.length] || FALLBACK[5];
+      if (GG.MOTS_COURANTS) {
+        var courants = GG.MOTS_COURANTS.filter(function (w) {
+          return w.length === state.length;
+        });
+        if (courants.length > 30) pool = courants;
+      }
+      var ds = ctx.dict.set;
+      var tries = p.tries;
+      var cand = pool.filter(function (w) {
+        if (w.length !== state.length || !/^[A-Z]+$/.test(w)) return false;
+        if (ds && ds.size && !ds.has(w)) return false; // apply le refuserait
+        // compatible avec toutes les couleurs déjà reçues ?
+        for (var i = 0; i < tries.length; i++) {
+          var m = marks(w, tries[i].word);
+          for (var j = 0; j < m.length; j++) {
+            if (m[j] !== tries[i].marks[j]) return false;
+          }
+        }
+        return true;
+      });
+      if (!cand.length) return null; // on n'invente jamais un mot
+      return { t: 'guess', w: cand[Math.floor(Math.random() * cand.length)] };
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       var me = ctx.me;

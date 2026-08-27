@@ -213,6 +213,61 @@
       return { ok: false, error: 'Action inconnue.' };
     },
 
+    /* L'adversaire IA : riposte aux 2, pose de préférence dans sa couleur
+       la plus fournie, garde ses 8 pour se dépanner et attaque quand un
+       voisin est près de sortir. Il ne regarde que sa main, la défausse et
+       les tailles de mains — jamais le contenu des mains adverses. */
+    bot: function (state, me) {
+      if (state.finished) return null;           // l'hôte relance la manche
+      if (state.current !== me) return null;
+      var main = state.players[me].hand;
+
+      var jouables = [];
+      main.forEach(function (c, i) { if (playable(state, c)) jouables.push(i); });
+
+      if (!jouables.length) {
+        // rien à poser : on encaisse la pénalité, ou une pioche puis on passe
+        if (state.pending2 > 0 || !state.hasDrawn) return { t: 'draw' };
+        return { t: 'pass' };
+      }
+
+      // taille (publique) de la main du joueur suivant : menace de sortie ?
+      var n = state.players.length;
+      var suiv = state.players[((me + state.dir) % n + n) % n];
+      var menace = (suiv.hand ? suiv.hand.length : suiv.cards) <= 2;
+
+      // on note chaque carte jouable, avec un soupçon de fantaisie
+      var meilleur = jouables[0], note = -Infinity;
+      jouables.forEach(function (i) {
+        var c = main[i], sc = Math.random() * 2;
+        if (c.r === '8') {
+          sc -= 6; // le joker attend son heure (sauf s'il est seul jouable)
+        } else {
+          main.forEach(function (x, xi) { // rester dans sa couleur forte
+            if (xi !== i && x.r !== '8' && x.s === c.s) sc++;
+          });
+          sc += cardValue(c) / 12; // évacuer les cartes chères
+        }
+        if (c.r === '2') sc += menace ? 5 : 1; // faire piocher au bon moment
+        if (c.r === 'V') sc += menace ? 4 : 0; // sauter le joueur pressé
+        if (sc > note) { note = sc; meilleur = i; }
+      });
+
+      var carte = main[meilleur];
+      if (carte.r !== '8') return { t: 'play', i: meilleur };
+
+      // couleur annoncée pour le 8 : celle que la main contient le plus
+      var cnt = {};
+      main.forEach(function (x, xi) {
+        if (xi !== meilleur && x.r !== '8') cnt[x.s] = (cnt[x.s] || 0) + 1;
+      });
+      var couleur = SUITS[Math.floor(Math.random() * SUITS.length)];
+      SUITS.forEach(function (su) {
+        if ((cnt[su] || 0) > (cnt[couleur] || 0)) couleur = su;
+      });
+      return { t: 'play', i: meilleur, suit: couleur };
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       var me = ctx.me;
@@ -301,6 +356,7 @@
       if (ps) ps.addEventListener('click', function () { ctx.act({ t: 'pass' }); });
       el.querySelectorAll('.ha-hand .ha-card').forEach(function (b) {
         b.addEventListener('click', function () {
+          if (!mine) return; // pas son tour : la main est en lecture seule
           var i = parseInt(b.dataset.i, 10);
           var c = my.hand[i];
           if (!c) return;

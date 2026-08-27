@@ -168,6 +168,99 @@
       return { ok: false, error: 'Action inconnue.' };
     },
 
+    /* IA : garde les dés prometteurs, puis remplit la meilleure case ouverte. */
+    bot: function (state, me) {
+      if (state.finished || state.current !== me) return null;
+      var p = state.players[me];
+      var dice = state.dice;
+      var ouverte = function (id) { return p.sheet[id] === null; };
+
+      /* Meilleure case à remplir : écart au « par » de chaque case ouverte,
+         avec un brin de hasard pour départager les cas serrés. */
+      function meilleureCase() {
+        var par = {
+          un: 2, deux: 4, trois: 6, quatre: 8, cinq: 10, six: 12,
+          brelan: 15, carre: 12, full: 15, psuite: 22, gsuite: 18,
+          yams: 4, chance: 21
+        };
+        var best = null, bestV = -Infinity;
+        CATS.forEach(function (cat) {
+          if (!ouverte(cat.id)) return;
+          var sc = catScore(cat.id, dice);
+          var v = sc - par[cat.id];
+          var up = UPPER.indexOf(cat.id);
+          if (up !== -1 && sc >= (up + 1) * 3) v += 4; // vise le bonus du haut
+          v += (Math.random() - 0.5) * 3;
+          if (v > bestV) { bestV = v; best = cat.id; }
+        });
+        return best;
+      }
+
+      if (state.rolls === 3) return { t: 'roll' }; // premier lancer obligatoire
+      if (state.rolls === 0) return { t: 'score', cat: meilleureCase() };
+
+      /* Choix des dés à garder — déterministe : les « hold » convergent. */
+      var c = counts(dice);
+      var f, face = 1, poids = -1;
+      for (f = 1; f <= 6; f++) { // face la plus représentée (haut ouvert et
+        var w = c[f] * 100 + (ouverte(UPPER[f - 1]) ? 10 : 0) + f; // face élevée en prime)
+        if (w > poids) { poids = w; face = f; }
+      }
+      var suite = [], meilleure = [];
+      for (f = 1; f <= 6; f++) { // plus longue suite de faces consécutives
+        if (c[f]) { suite.push(f); if (suite.length > meilleure.length) meilleure = suite.slice(); }
+        else suite = [];
+      }
+      function gardeFace(fc) {
+        return dice.map(function (d) { return d === fc; });
+      }
+      function gardeSuite(faces) {
+        var manque = faces.slice(); // un seul dé par face de la suite
+        return dice.map(function (d) {
+          var k = manque.indexOf(d);
+          if (k !== -1) { manque.splice(k, 1); return true; }
+          return false;
+        });
+      }
+
+      var plan = null; // { score: case } ou { keep: [bool × 5] }
+      if (c[face] === 5) { // yams !
+        plan = ouverte('yams') ? { score: 'yams' } : { keep: [true, true, true, true, true] };
+      } else if (meilleure.length === 5) {
+        plan = ouverte('gsuite') ? { score: 'gsuite' } :
+          (ouverte('psuite') ? { score: 'psuite' } : null);
+      }
+      if (!plan && meilleure.length === 4) {
+        if (ouverte('gsuite')) plan = { keep: gardeSuite(meilleure) }; // on tente la grande,
+        else if (ouverte('psuite')) plan = { score: 'psuite' };        // la petite reste sûre
+      }
+      if (!plan && ouverte('full') && catScore('full', dice) === 25) plan = { score: 'full' };
+      if (!plan && c[face] === 4) { // carré : relancer le 5e ne risque rien (yams ?)
+        plan = (!ouverte('yams') && ouverte('carre')) ? { score: 'carre' } :
+          { keep: gardeFace(face) };
+      }
+      if (!plan && c[face] === 2 && ouverte('full')) {
+        var paires = dice.filter(function (d) { return c[d] === 2; });
+        if (paires.length === 4) { // double paire : on tente le full
+          plan = { keep: dice.map(function (d) { return c[d] === 2; }) };
+        }
+      }
+      if (!plan && c[face] === 1 && meilleure.length >= 3 &&
+        (ouverte('psuite') || ouverte('gsuite'))) {
+        plan = { keep: gardeSuite(meilleure) }; // que des faces isolées : la suite
+      }
+      if (!plan) plan = { keep: gardeFace(face) }; // paire/brelan (ou meilleur dé seul)
+
+      if (plan.score) return { t: 'score', cat: plan.score };
+      if (plan.keep.every(function (k) { return k; })) {
+        return { t: 'score', cat: meilleureCase() }; // tout gardé : autant marquer
+      }
+      for (var i = 0; i < 5; i++) {
+        if (state.held[i] !== plan.keep[i]) return { t: 'hold', i: i };
+      }
+      return { t: 'roll' };
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       var mine = ctx.me === s.current && !s.finished;

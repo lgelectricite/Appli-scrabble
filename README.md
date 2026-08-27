@@ -78,8 +78,24 @@ reconnecter un joueur en cours de partie avec le même prénom. Un
 copier/coller du code texte remplace le scan si besoin.
 
 La plupart des jeux se jouent aussi **sur un seul téléphone** (chacun son
-tour, écran masqué entre les tours quand il y a des infos cachées), et Mots,
-Pendu, Yams et Memory se jouent aussi **en solo**.
+tour, écran masqué entre les tours quand il y a des infos cachées).
+
+## 🤖 Jouer seul, contre l'ordinateur
+
+Presque tous les jeux se jouent **en solo** : les jeux de réflexion le sont
+par nature (Sudoku, Mots mêlés/croisés/fléchés, Solitaire, Blackjack,
+l'aventure Bonbons, la série Mot Mystère…), et **14 jeux embarquent des
+adversaires IA** — bouton « 🤖 Jouer seul contre l'ordinateur » sur l'écran
+du jeu, pastille 🤖 sur la boîte : Words, Puissance 4, Morpion, Bataille
+navale, Yams, Cochon, Memory, 8 américain, Poker, Le Plus Proche, Petit Bac,
+Quiz, Bonbons (course), Mot Mystère (duel) et même L'Imposteur. Les robots
+jouent avec un petit temps de réflexion, un vrai style (le Puissance 4
+bloque, la Bataille navale chasse en damier, le Poker relance ses paires…)
+et une part d'imprévu qui les rend **battables**. Fair-play garanti : une IA
+ne lit jamais une information cachée qu'un joueur humain à sa place ne
+verrait pas (ni votre main au 8 américain, ni votre flotte, ni le mot
+secret) — seule exception assumée, Le Plus Proche, où elle fabrique son
+estimation autour de la vraie réponse.
 
 ## Installation sur le téléphone (PWA)
 
@@ -109,7 +125,9 @@ Actions, dépôt public requis). Essai local : `python3 -m http.server 8080`.
 - `sw.js` — service worker : application 100 % hors ligne après la première visite.
 - `tests/` — suites de tests automatisés (logique des 23 jeux, moteur de Mots,
   IA, cagnotte, interface via Playwright) ; GitHub Actions les rejoue à chaque
-  push (`.github/workflows/tests.yml`).
+  push (`.github/workflows/tests.yml`). Les adversaires IA sont éprouvés par
+  des **parties entièrement jouées par les robots** (`tests/test_bots.js` +
+  `tests/botcfg/`) : aucune action refusée, aucun blocage, parties conclues.
 - `vendor/fonts/` — typographie Fraunces embarquée (licence OFL, libre y
   compris pour un usage commercial) : l'identité graphique fonctionne
   entièrement hors ligne.

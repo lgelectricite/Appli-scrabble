@@ -73,6 +73,27 @@
       return { ok: false, error: 'Action inconnue.' };
     },
 
+    /* L'adversaire IA : il lance jusqu'à un seuil tiré autour de 18–26,
+       banque plus tôt quand cela gagne ou creuse une belle avance, et
+       s'entête quand il est largué alors que la fin approche. */
+    bot: function (state, me) {
+      if (state.finished) return null;
+      if (state.current !== me) return null;
+      if (state.turnPoints === 0) return { t: 'roll' }; // rien à banquer : obligé de lancer
+      var moi = state.players[me].total;
+      // banquer donne la victoire : aucune hésitation
+      if (moi + state.turnPoints >= state.target) return { t: 'bank' };
+      var lui = 0; // meilleur score adverse
+      for (var i = 0; i < state.players.length; i++) {
+        if (i !== me && state.players[i].total > lui) lui = state.players[i].total;
+      }
+      // seuil retiré à chaque lancer : l'arrêt reste imprévisible
+      var seuil = 18 + Math.floor(Math.random() * 9);
+      if (moi + state.turnPoints >= lui + 20) seuil -= 6; // belle avance : on assure
+      if (lui >= 70 && lui - moi >= 25) seuil += 8; // largué en fin de partie : on ose
+      return state.turnPoints >= seuil ? { t: 'bank' } : { t: 'roll' };
+    },
+
     render: function (el, ctx) {
       var s = ctx.state;
       var mine = ctx.me === s.current && !s.finished;
