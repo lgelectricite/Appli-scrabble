@@ -1,4 +1,4 @@
-/* GGgames — Sudoku (1 à 4 joueurs en course, grilles générées, 3 niveaux). */
+/* GGgames — Sudoku (solo, grilles générées, 3 niveaux). */
 (function (root) {
   'use strict';
   var GG = root.GG;
@@ -93,9 +93,9 @@
     id: 'sudoku',
     nom: 'Sudoku',
     icone: '🔢',
-    desc: 'Grilles générées à volonté, 3 niveaux. En réseau : même grille, le plus rapide gagne !',
-    regles: '<p><strong>🎯 Le but :</strong> remplir la grille : chaque ligne, chaque colonne et chaque carré de 9 doit contenir les chiffres 1 à 9.</p><p><strong>Comment jouer :</strong> touchez une case vide puis un chiffre. Les erreurs sont comptées !</p><p><strong>En réseau :</strong> tout le monde a la même grille, le plus rapide gagne — sans voir la grille des autres. Records par niveau.</p>',
-    min: 1, max: 4,
+    desc: 'Grilles générées à volonté, 3 niveaux, records par niveau — le casse-tête du solitaire par excellence.',
+    regles: '<p><strong>🎯 Le but :</strong> remplir la grille : chaque ligne, chaque colonne et chaque carré de 9 doit contenir les chiffres 1 à 9.</p><p><strong>Comment jouer :</strong> touchez une case vide puis un chiffre. Les erreurs sont comptées !</p><p><strong>⏱️ En solo :</strong> chrono, erreurs comptées et records par niveau.</p>',
+    min: 1, max: 1,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
 
     create: function (names) {

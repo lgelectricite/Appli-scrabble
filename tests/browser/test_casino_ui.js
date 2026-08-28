@@ -32,6 +32,8 @@ function check(n, c, e) {
   check('Blackjack : solo sur ce téléphone', await p.locator('#mini-count .count-btn').count() === 1);
   await p.click('#btn-mini-start');
   await p.waitForSelector('.bj-mises', { timeout: 15000 });
+  check('salle de casino : fond immersif appliqué',
+    await p.evaluate(() => document.body.classList.contains('theme-casino')));
   check('table du croupier affichée', await p.locator('.bj-felt').count() === 1);
   check('jetons de casino affichés (5 valeurs)', await p.locator('.bj-chipbtn .bj-chip').count() === 5);
   check('rond de mise vide sur le tapis', await p.locator('.bj-spot').count() === 1);
@@ -64,13 +66,17 @@ function check(n, c, e) {
   check('fin de partie : classement', /🪙/.test(await p.textContent('#end-detail')));
   await p.click('#btn-end-home');
   await p.waitForTimeout(200);
+  check('retour à l’accueil : la salle de casino s’éteint',
+    await p.evaluate(() => !document.body.classList.contains('theme-casino')));
 
-  // ---------- Solitaire solo ----------
+  // ---------- Solitaire solo : lancement direct ----------
   console.log('--- Solitaire (solo) ---');
   await p.click('.game-tile[data-g="solitaire"]');
-  await p.click('#btn-mini-hotseat');
-  await p.click('#btn-mini-start');
   await p.waitForSelector('[data-lvl="facile"]', { timeout: 15000 });
+  check('Solitaire : lancement direct, sans écran de config',
+    await p.locator('#screen-mini.active').count() === 1);
+  check('salle de casino au solitaire aussi',
+    await p.evaluate(() => document.body.classList.contains('theme-casino')));
   await p.click('[data-lvl="facile"]');
   await p.waitForSelector('.sol-tab', { timeout: 15000 });
   check('7 colonnes affichées', await p.locator('.sol-col').count() === 7);

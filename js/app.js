@@ -802,6 +802,19 @@
           showScreen('screen-mots-home');
           return;
         }
+        // jeu de pur solitaire : on entre directement, sans écran de config
+        var mInfo = catInfo(id);
+        if (mInfo && mInfo.max === 1) {
+          pendingGame = id;
+          currentGame = id;
+          miniMod = window.GG.byId[id];
+          mode = 'local';
+          miniBots = 0;
+          miniState = miniMod.create(['Joueur 1'], { dict: dict });
+          miniMe = 0;
+          enterMini();
+          return;
+        }
         openMiniSetup(window.GG.byId[id]);
       });
     });
@@ -959,6 +972,9 @@
     if (!miniState || !miniMod) return;
     var mod = miniMod;
     document.body.classList.toggle('theme-manoir', currentGame === 'manoir');
+    // les jeux de table se jouent dans la salle de casino, lumière tamisée
+    document.body.classList.toggle('theme-casino',
+      currentGame === 'poker' || currentGame === 'blackjack' || currentGame === 'solitaire');
     var bar = $('mini-players');
     bar.classList.toggle('hidden', !!mod.noBadges);
     var t = mod.turnOf(miniState);
@@ -1693,6 +1709,7 @@
      'overlay-menu', 'overlay-end'].forEach(function (id) { showOverlay(id, false); });
     setNetBanner(false);
     document.body.classList.remove('theme-manoir');
+    document.body.classList.remove('theme-casino');
     showScreen('screen-home');
   }
 

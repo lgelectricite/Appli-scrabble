@@ -923,6 +923,44 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 .pk-modes .btn.big { margin: 6px 0; }
 .pk-modes .btn small { display: block; font-size: 12px; opacity: .8; font-weight: 400; }
 
+/* ================= SALLE DE CASINO — l'ambiance des jeux de table =================
+   Lumière tamisée, lustre doré au-dessus de la table, moquette sombre :
+   la table n'est plus posée sur du papier, elle vit dans sa salle. */
+body.theme-casino {
+  background-color: #0b1810;
+  background-image:
+    radial-gradient(120% 65% at 50% -8%, rgba(242, 205, 92, .17) 0%, transparent 55%),
+    radial-gradient(95% 45% at 50% 30%, rgba(46, 107, 79, .45) 0%, transparent 72%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .016) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, .05) 0 2px, transparent 2px 7px),
+    linear-gradient(180deg, #132619 0%, #0b1810 55%, #060d09 100%);
+  background-repeat: no-repeat, no-repeat, repeat, repeat, no-repeat;
+  background-attachment: fixed;
+  color: #e8e2cf;
+}
+body.theme-casino #mini-turn, body.theme-casino .mini-msg { color: #e8e2cf; }
+body.theme-casino .waiting { color: #9fb8a6; }
+body.theme-casino .hint { color: #a9c2b0; }
+body.theme-casino .qz-head { color: #e8e2cf; }
+body.theme-casino .icon-btn {
+  background: #ffffff12; border-color: #f2cd5c66; color: #e8e2cf; box-shadow: none;
+}
+body.theme-casino .player-badge { background: #ffffff0d; border-color: #ffffff14; }
+body.theme-casino .player-badge .p-name { color: #cfc7ab; }
+body.theme-casino .player-badge .p-score { color: #f2cd5c; }
+body.theme-casino .player-badge.turn { border-color: #f2cd5c; background: #f2cd5c1f; box-shadow: none; }
+body.theme-casino .pk-mode { color: #b8cbbc; }
+body.theme-casino .pk-mode small { color: #8fa896; }
+body.theme-casino .btn { box-shadow: none; }
+body.theme-casino .btn:not(.primary):not(.danger) {
+  background: #17281d; color: #e8e2cf; border-color: #3a5a45;
+}
+body.theme-casino .mem-stat { background: #ffffff10; border-color: #ffffff1c; color: #e8e2cf; }
+body.theme-casino .final-line { background: #ffffff10; border-color: #ffffff1c; color: #e8e2cf; }
+body.theme-casino .pk-oval,
+body.theme-casino .bj-rim { filter: drop-shadow(0 26px 26px rgba(0, 0, 0, .55)); }
+body.theme-casino .sol-felt { box-shadow: 0 20px 34px rgba(0, 0, 0, .55); }
+
 /* ================= LE MANOIR — ambiance (thème de nuit conservé) ================= */
 body.theme-manoir {
   background-color: #0e0b1a;

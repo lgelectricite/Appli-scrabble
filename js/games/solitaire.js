@@ -46,12 +46,12 @@
     id: 'solitaire',
     nom: 'Solitaire',
     icone: '♦️',
-    desc: 'Le Klondike classique : seul face aux cartes, ou en course avec la même donne pour tous.',
+    desc: 'Le Klondike classique : seul face aux cartes, tirage 1 ou 3, records par niveau.',
     regles: '<p><strong>🎯 Le but :</strong> Empiler les 52 cartes sur les 4 fondations, de l\'As au Roi, famille par famille.</p>' +
       '<p><strong>Comment jouer :</strong> Touche une carte puis sa destination. Sur les colonnes, les cartes descendent en alternant rouge et noir ; seul un Roi peut s\'installer sur une colonne vide. Touche la pioche pour tirer, et touche deux fois une carte pour l\'envoyer directement aux fondations.</p>' +
       '<p><strong>👥 À plusieurs :</strong> Tout le monde reçoit exactement la même donne. Le premier qui termine gagne la course ; si tout le monde cale, c\'est le plus avancé aux fondations qui l\'emporte.</p>',
     min: 1,
-    max: 4,
+    max: 1,
     hotseat: true,
     hotseatMax: 1,
     hidden: false,

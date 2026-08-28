@@ -11,13 +11,11 @@ function check(n, c, e) {
   p.on('pageerror', e => { failures++; console.log('  FAIL JS: ' + e.message); });
   await p.goto('http://localhost:8642/index.html');
 
-  // Sudoku solo : niveau facile, une case remplie
+  // Sudoku solo : lancement direct, niveau facile, une case remplie
   await p.click('.game-tile[data-g="sudoku"]');
-  await p.click('#btn-mini-hotseat');
-  check('Sudoku : solo uniquement sur ce téléphone',
-    await p.locator('#mini-count .count-btn').count() === 1);
-  await p.click('#btn-mini-start');
-  await p.waitForSelector('#screen-mini.active');
+  await p.waitForSelector('[data-lvl="facile"]', { timeout: 20000 });
+  check('Sudoku : lancement direct, sans écran de config',
+    await p.locator('#screen-mini.active').count() === 1);
   await p.click('[data-lvl="facile"]');
   await p.waitForSelector('.sdk-grid', { timeout: 20000 });
   check('grille 9×9', await p.locator('.sdk-cell').count() === 81);
@@ -163,12 +161,9 @@ function check(n, c, e) {
     }
   }
   await p.click('.game-tile[data-g="croises"]');
-  await p.click('#btn-mini-hotseat');
-  check('Mots croisés : solo uniquement sur ce téléphone',
-    await p.locator('#mini-count .count-btn').count() === 1);
-  await p.click('#btn-mini-start');
-  await p.waitForSelector('#screen-mini.active');
   await p.waitForSelector('[data-lvl="facile"]', { timeout: 20000 });
+  check('Mots croisés : lancement direct, sans écran de config',
+    await p.locator('#screen-mini.active').count() === 1);
   await p.click('[data-lvl="facile"]');
   await p.waitForSelector('.cr-grid', { timeout: 20000 });
   check('grille 9×9 affichée', await p.locator('.cr-cell').count() === 81);

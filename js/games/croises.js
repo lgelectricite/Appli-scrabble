@@ -419,9 +419,9 @@
     id: 'croises',
     nom: 'Mots croisés',
     icone: '✏️',
-    desc: 'Des centaines de définitions maison, des milliers de grilles possibles. En réseau : le plus rapide marque les points !',
-    regles: '<p><strong>🎯 Le but :</strong> remplir toute la grille de mots croisés à partir des définitions.</p><p><strong>Comment jouer :</strong> touchez une définition (ou une case), tapez votre réponse. Bonne réponse : le mot s’inscrit et rapporte sa longueur en points. Mauvaise : une erreur au compteur !</p><p><strong>En réseau :</strong> la grille est partagée, le plus rapide prend les mots — les croisements déjà trouvés vous aident.</p>',
-    min: 1, max: 4,
+    desc: 'Des centaines de définitions maison, des milliers de grilles possibles — un plaisir de solitaire, chrono en main.',
+    regles: '<p><strong>🎯 Le but :</strong> remplir toute la grille de mots croisés à partir des définitions.</p><p><strong>Comment jouer :</strong> touchez une définition (ou une case), tapez votre réponse. Bonne réponse : le mot s’inscrit et rapporte sa longueur en points. Mauvaise : une erreur au compteur !</p><p><strong>⏱️ En solo :</strong> chrono et records par niveau.</p>',
+    min: 1, max: 1,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
 
     create: function (names) {

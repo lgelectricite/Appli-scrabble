@@ -20,20 +20,20 @@ nécessaire pendant les parties.
 | 🎲 **Yams** | 1–4 | 5 dés, 3 lancers, feuille de score **calculée automatiquement** (bonus 35 compris). |
 | 🐷 **Cochon** | 2–4 | Le dé qui fait tout perdre sur un 1. Premier à 100. |
 | 🧠 **Memory** | 1–4 | Une paire = un point et on rejoue. |
-| 🍬 **Bonbons** | 1–4 | Match-3 en mode **aventure** : niveaux **sans fin** de difficulté croissante, **carte de progression** à travers 8 mondes acidulés, objectifs en étoiles ⭐⭐⭐, **progression et records enregistrés**. On **glisse** un bonbon vers son voisin (formes et couleurs bien distinctes, éclatements animés, cascades ×2 ×3, exclamations, indice après hésitation, vibration et petits sons). Bonbon rayé à 4 alignés, **bonbon enveloppé** (explose en 3×3) sur les liaisons en **L, T ou carré**, sucre magique à 5 — et des **combos** en échangeant deux spéciaux entre eux (croix géante, 3 lignes + 3 colonnes, déflagration 5×5…). Chaque **monde teinte la grille à ses couleurs**, la barre d'objectif est jalonnée ⭐⭐⭐. En réseau : course au score sur la même grille. |
+| 🍬 **Bonbons** | 1 | Match-3 en mode **aventure** : niveaux **sans fin** de difficulté croissante, **carte de progression** à travers 8 mondes acidulés, objectifs en étoiles ⭐⭐⭐, **progression et records enregistrés**. On **glisse** un bonbon vers son voisin (formes et couleurs bien distinctes, éclatements animés, cascades ×2 ×3, exclamations, indice après hésitation, vibration et petits sons). Bonbon rayé à 4 alignés, **bonbon enveloppé** (explose en 3×3) sur les liaisons en **L, T ou carré**, sucre magique à 5 — et des **combos** en échangeant deux spéciaux entre eux (croix géante, 3 lignes + 3 colonnes, déflagration 5×5…). Chaque **monde teinte la grille à ses couleurs**, la barre d'objectif est jalonnée ⭐⭐⭐. |
 | 🃏 **Poker** | 2–4 | Texas Hold'em sur une **vraie table ovale vue de dessus** : chacun assis à sa place (vous toujours en bas) avec sa plaque avatar/nom/tapis, dos de cartes des adversaires, pot et cartes communes au centre, mises en jetons devant les sièges, bouton du donneur. **Cash game** (blinds fixes, recave) ou **tournoi** (blinds montantes, élimination), tapis et pots secondaires, **mains évaluées par le jeu**, cartes adverses jamais transmises avant l'abattage. |
-| 🔢 **Sudoku** | 1–4 | Grilles générées à volonté (**solution unique garantie**), 3 niveaux, erreurs comptées, chrono. En réseau : même grille, le plus rapide gagne — sans voir la grille des autres. Record personnel par niveau. |
+| 🔢 **Sudoku** | 1 | Grilles générées à volonté (**solution unique garantie**), 3 niveaux, erreurs comptées, chrono. Record personnel par niveau. |
 | 🔎 **Mots mêlés** | 1–4 | Mots **courants** cachés, 3 niveaux : facile (horizontaux et verticaux), moyen (+ diagonales), difficile (8 sens, mots à l'envers) — l'équilibre des directions est garanti. En réseau, grille **partagée** : chaque mot trouvé prend la couleur de son découvreur. |
 | 🟩 **Mot Mystère** | 1–4 | Type Motus/Wordle **en série sans fin** et en **essais illimités**. À plusieurs, comme à la télé : le **même mot s'affiche chez tout le monde**, on propose **chacun son tour** sur un tableau commun (chaque essai porte la pastille de son auteur), le premier qui trouve marque le point et le tour de départ tourne. Le **clavier retient les couleurs** découvertes. Mots courants, propositions vérifiées au dictionnaire, 3 niveaux (5/6/7 lettres) — jouable à 2-4 sur un seul téléphone, en réseau, ou contre l'IA. |
-| ✏️ **Mots croisés** | 1–4 | Base de **près de 800 définitions écrites à la main** en 3 niveaux de vocabulaire ; le générateur croise les mots au hasard : des milliers de grilles possibles. Points à la longueur du mot, erreurs comptées, chrono et records. Les solutions **ne circulent jamais** sur le réseau. |
-| ➡️ **Mots fléchés** | 1–4 | De **VRAIS fléchés comme en kiosque** : grille pleine, **définitions écrites dans les cases** avec leurs flèches (droites ▸ ▾ et coudées ↳ ↴), réponses **tapées directement dans la grille** au clavier, mot juste = verrouillé. **200 grilles** (5 forces × 40) générées et vérifiées à l'avance (croisements, définitions, grille pleine), **progression enregistrée** et record par force. |
+| ✏️ **Mots croisés** | 1 | Base de **près de 800 définitions écrites à la main** en 3 niveaux de vocabulaire ; le générateur croise les mots au hasard : des milliers de grilles possibles. Points à la longueur du mot, erreurs comptées, chrono et records. |
+| ➡️ **Mots fléchés** | 1 | De **VRAIS fléchés comme en kiosque** : grille pleine, **définitions écrites dans les cases** avec leurs flèches (droites ▸ ▾ et coudées ↳ ↴), réponses **tapées directement dans la grille** au clavier, mot juste = verrouillé. **200 grilles** (5 forces × 40) générées et vérifiées à l'avance (croisements, définitions, grille pleine), **progression enregistrée** et record par force. |
 | 🕵️ **Le Manoir** | 1–12 | **Enquête collaborative** façon Cluedo/escape game : **3 décors d'affaires tirés au sort** (le manoir, l'opéra, le train de nuit), et **chaque joueur incarne un rôle** (Détective, Voyante, Cryptographe…) avec ses **informations confidentielles** à partager de vive voix et parfois un pouvoir spécial. Six pistes verrouillées par des énigmes, carnet de déduction automatique, deux accusations. La solution et les infos privées **ne quittent jamais le téléphone-serveur**. |
 | 🥸 **L'Imposteur** | 3–12 | Jeu de bluff : tout le monde reçoit le **même mot secret… sauf l'imposteur**, qui reçoit un mot voisin — et **personne ne connaît son propre camp** ! Un indice par joueur, puis un vote pour éliminer un suspect. Plus de 180 paires de mots, 1 à 3 imposteurs selon le nombre de joueurs, scores en série. Les mots **ne circulent jamais** entre téléphones. |
 | 💡 **Quiz** | 1–12 | **Près de 1 100 questions fact-checkées** et **9 thèmes au choix** (tout mélangé, culture générale, cinéma, séries TV, musique, sport, histoire-géo, sciences, France) : 10 questions par partie, chacun répond en secret, +10 par bonne réponse et **+5 au plus rapide**. Les bonnes réponses ne circulent jamais avant la révélation. Record personnel en solo. |
 | 🎯 **Le Plus Proche** | 2–12 | Jeu d'estimation : une question à réponse chiffrée, chacun propose un nombre **en secret** — le plus proche marque 3 points, la réponse exacte en vaut 5. Pas besoin de savoir, il suffit d'être moins loin que les autres ! |
 | 🎴 **8 américain** | 2–5 | Le jeu de cartes façon Uno : même couleur ou même valeur, le **8 est joker**, le Valet saute, l'As change de sens, les **2 se cumulent**. Mains adverses **jamais transmises**. Points de manche en manche. |
 | ♠️ **Blackjack** | 1–4 | Face au croupier, sur la table en demi-lune : misez vos **jetons de la cagnotte** (de 1 à 500), tirez, restez, doublez ou **séparez les paires** (deux mains jouées l'une après l'autre). À plusieurs, chacun a **sa place à la table** (plaque et cartes). Blackjack payé **3 pour 2**, le croupier tire jusqu'à 17. Chacun mise la cagnotte de **son** téléphone. |
-| ♦️ **Solitaire** | 1–4 | Le Klondike classique, tirage 1 ou 3 cartes. En réseau : **course sur la même donne** — le premier qui termine gagne. L'ordre de la pioche **ne circule jamais**. Records par niveau. |
+| ♦️ **Solitaire** | 1 | Le Klondike classique, tirage 1 ou 3 cartes, dans la **salle de casino**. Records par niveau. |
 
 ## La cagnotte de jetons 🪙
 
@@ -43,6 +43,10 @@ retournent en quittant la table. Si elle passe sous 10 000, elle **remonte
 automatiquement à 10 000 chaque semaine** ; au-dessus, les gains restent
 acquis. La **Boutique** (accueil → jauge de jetons) affichera des packs
 d'achat dans la version distribuée en magasin d'applications.
+
+Poker, Blackjack et Solitaire se jouent dans une **salle de casino plein
+écran** : lumière tamisée, lustre doré, moquette à croisillons — la table
+est posée dans son décor, comme sur les vraies applications de casino.
 
 ## Impossible de tricher
 
@@ -84,7 +88,10 @@ tour, écran masqué entre les tours quand il y a des infos cachées).
 
 Presque tous les jeux se jouent **en solo** : les jeux de réflexion le sont
 par nature (Sudoku, Mots mêlés/croisés/fléchés, Solitaire, Blackjack,
-l'aventure Bonbons, la série Mot Mystère…), et **13 jeux embarquent des
+l'aventure Bonbons, la série Mot Mystère…). Les jeux de **pur solitaire**
+— Sudoku, Mots croisés, Mots fléchés, Solitaire et Bonbons — s'ouvrent
+d'ailleurs **directement** au toucher de leur boîte, sans écran de
+configuration. Et **13 jeux embarquent des
 adversaires IA** — bouton « 🤖 Jouer seul contre l'ordinateur » sur l'écran
 du jeu, pastille 🤖 sur la boîte : Words, Puissance 4, Morpion, Bataille
 navale, Yams, Cochon, Memory, 8 américain, Poker, Le Plus Proche, Petit Bac,

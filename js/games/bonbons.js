@@ -1,9 +1,8 @@
 /*
- * GGgames — Bonbons (jeu d'alignements type match-3, 1 à 4 joueurs).
- * Alignez 3 bonbons pour les croquer. 4 alignés = bonbon rayé (raye toute
- * une ligne), 5 alignés = sucre magique (croque toute une couleur). En
- * réseau : même grille de départ pour tous, meilleur score au bout des
- * coups impartis.
+ * GGgames — Bonbons (l'aventure sucrée, en solo).
+ * Alignez 3 bonbons pour les croquer. 4 alignés = bonbon rayé, liaisons en
+ * L/T/carré = bonbon enveloppé, 5 alignés = sucre magique. Des niveaux sans
+ * fin, une carte de mondes, la progression enregistrée sur le téléphone.
  */
 (function (root) {
   'use strict';
@@ -392,9 +391,8 @@
     regles: '<p><strong>🎯 Le but :</strong> atteindre l’objectif de points du niveau avant d’épuiser vos coups — chaque niveau réussi (jusqu’à ⭐⭐⭐) débloque le suivant, la carte est sans fin et votre progression est enregistrée.</p>' +
       '<p><strong>Comment jouer :</strong> glissez un bonbon vers son voisin pour les échanger — l’échange doit former un alignement d’au moins 3 bonbons identiques, qui sont croqués. Les bonbons du dessus tombent, il en pleut de nouveaux : les cascades rapportent de plus en plus (×2, ×3…).</p>' +
       '<p><strong>🍭 Les spéciaux :</strong> 4 alignés = un <strong>bonbon rayé</strong> qui raye toute une ligne quand on le croque · liaison en <strong>L, en T ou en carré</strong> = un <strong>bonbon enveloppé</strong> 💥 qui explose tout autour de lui · 5 alignés = un <strong>sucre magique</strong> 🌟 : échangez-le avec n’importe quel bonbon pour croquer toute sa couleur !</p>' +
-      '<p><strong>💥 Les combos :</strong> échangez deux spéciaux <strong>entre eux</strong> ! Rayé + rayé = croix géante · rayé + enveloppé = trois lignes ET trois colonnes · enveloppé + enveloppé = déflagration 5×5 · sucre magique + spécial = toute la couleur croquée et ses jumeaux spéciaux réveillés.</p>' +
-      '<p><strong>👥 À plusieurs :</strong> course sur la même grille de départ, même nombre de coups — le meilleur score gagne.</p>',
-    min: 1, max: 4,
+      '<p><strong>💥 Les combos :</strong> échangez deux spéciaux <strong>entre eux</strong> ! Rayé + rayé = croix géante · rayé + enveloppé = trois lignes ET trois colonnes · enveloppé + enveloppé = déflagration 5×5 · sucre magique + spécial = toute la couleur croquée et ses jumeaux spéciaux réveillés.</p>',
+    min: 1, max: 1,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
 
     create: function (names) {

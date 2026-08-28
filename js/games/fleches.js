@@ -3,8 +3,8 @@
  * De VRAIS mots fléchés : la grille est pleine, les définitions sont écrites
  * DANS les cases, chaque flèche (droite ou coudée) pointe vers son mot, et
  * l'on écrit ses réponses directement dans la grille au clavier.
- * 5 forces × 40 grilles, progression enregistrée. En réseau : course sur la
- * même grille, le premier à compléter un mot l'emporte.
+ * 5 forces × 40 grilles, progression enregistrée — un jeu de solitaire,
+ * comme dans les vraies revues.
  */
 (function (root) {
   'use strict';
@@ -120,11 +120,11 @@
     nom: 'Mots fléchés',
     icone: '➡️',
     desc: 'De vrais mots fléchés : les définitions sont dans les cases, on écrit directement dans la grille. 200 grilles, 5 forces, progression enregistrée.',
-    min: 1, max: 4,
+    min: 1, max: 1,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
     regles: '<p><strong>🎯 Le but :</strong> remplir toute la grille. 200 grilles pleines vous attendent, de la force 1 (découverte) à la force 5 (expert), avec votre progression enregistrée.</p>' +
       '<p><strong>Comment jouer :</strong> comme dans les vrais fléchés, chaque définition est écrite <strong>dans sa case</strong> et sa flèche pointe vers son mot (les flèches coudées ↳ ↴ tournent au coin, comme dans les magazines). Touchez une définition ou une case, puis tapez votre réponse au clavier : les lettres s’écrivent dans la grille. Quand le mot est complet et juste, il se verrouille et rapporte sa longueur en points ; sinon il tremble — corrigez-le !</p>' +
-      '<p><strong>En réseau :</strong> tous sur la même grille, le premier à compléter un mot le gagne. En solo : chrono et record par force !</p>',
+      '<p><strong>⏱️ Le chrono tourne :</strong> battez votre record par force !</p>',
 
     create: function (names) {
       return {

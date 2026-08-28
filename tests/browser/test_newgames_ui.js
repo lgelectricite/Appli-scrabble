@@ -1,4 +1,3 @@
-const ROOT = require('path').join(__dirname, '../..');
 /* UI : Quiz (solo), Le Plus Proche (2 joueurs pass-device), 8 américain (2 joueurs). */
 const { chromium } = require('playwright');
 let failures = 0;
@@ -108,15 +107,13 @@ function check(n, c, e) {
   check('règles du 8 américain', /joker|couleur/i.test(await p.textContent('#rules-body')));
   await p.click('#btn-rules-close');
 
-  // ---------- Mots fléchés : solo, force 1, un mot résolu ----------
+  // ---------- Mots fléchés : pur solitaire, lancement direct ----------
   console.log('--- Mots fléchés (solo) ---');
   await quit();
   await p.click('.game-tile[data-g="fleches"]');
-  await p.click('#btn-mini-hotseat');
-  check('Mots fléchés : solo uniquement sur ce téléphone',
-    await p.locator('#mini-count .count-btn').count() === 1);
-  await p.click('#btn-mini-start');
   await p.waitForSelector('[data-f="1"]', { timeout: 15000 });
+  check('Mots fléchés : lancement direct, sans écran de config',
+    await p.locator('#screen-mini.active').count() === 1);
   check('5 forces proposées avec progression', await p.locator('[data-f]').count() === 5 &&
     /40 grilles/.test(await p.textContent('#mini-area')));
   await p.click('[data-f="1"]');
@@ -142,13 +139,13 @@ function check(n, c, e) {
   await p.waitForTimeout(150);
   check('case-définition → mot sélectionné', await p.locator('.fx-cell.selw').count() >= 2);
 
-  // ---------- Bonbons : solo, un échange gagnant ----------
+  // ---------- Bonbons : pur solitaire, lancement direct, un échange gagnant ----------
   console.log('--- Bonbons (solo) ---');
   await quit();
   await p.click('.game-tile[data-g="bonbons"]');
-  await p.click('#btn-mini-hotseat');
-  await p.click('#btn-mini-start');
   await p.waitForSelector('.bb-map', { timeout: 15000 });
+  check('Bonbons : lancement direct, sans écran de config',
+    await p.locator('#screen-mini.active').count() === 1);
   check('carte de l’aventure : niveau 1 prêt', await p.locator('.bb-node.cur').count() === 1);
   await p.click('.bb-node.cur');
   await p.waitForSelector('.bb-grid', { timeout: 15000 });
