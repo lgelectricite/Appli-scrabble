@@ -110,15 +110,6 @@ function check(n, c, e) {
 
   // ---------- Mots fléchés : solo, force 1, un mot résolu ----------
   console.log('--- Mots fléchés (solo) ---');
-  require(ROOT + '/js/games/registry.js');
-  const croises2 = require(ROOT + '/js/games/croises.js');
-  const defMap2 = {};
-  for (const lvl of ['facile', 'moyen', 'difficile']) {
-    for (const e of croises2._DB[lvl]) {
-      const i = e.indexOf('|');
-      defMap2[e.slice(i + 1)] = e.slice(0, i);
-    }
-  }
   await quit();
   await p.click('.game-tile[data-g="fleches"]');
   await p.click('#btn-mini-hotseat');
@@ -127,34 +118,29 @@ function check(n, c, e) {
   await p.click('#btn-mini-start');
   await p.waitForSelector('[data-f="1"]', { timeout: 15000 });
   check('5 forces proposées avec progression', await p.locator('[data-f]').count() === 5 &&
-    /200 grilles/.test(await p.textContent('#mini-area')));
+    /40 grilles/.test(await p.textContent('#mini-area')));
   await p.click('[data-f="1"]');
-  await p.waitForSelector('.cr-grid', { timeout: 15000 });
+  await p.waitForSelector('.fx-grid', { timeout: 15000 });
   check('grille n°1 force 1 affichée', /Grille n°1 · force 1/.test(await p.textContent('#mini-area')));
-  const nbClues = await p.locator('.fl-clue').count();
-  check('cases-flèches présentes (' + nbClues + ')', nbClues >= 3);
-  // répond à la 1re définition via la base
-  const defBtn2 = p.locator('.cr-def:not(.found)').first();
-  const defTxt2 = (await defBtn2.textContent()).replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\)$/, '');
-  const answer2 = defMap2[defTxt2];
-  check('définition retrouvée dans la base', !!answer2, defTxt2);
-  await defBtn2.click();
-  await p.waitForSelector('#fl-guess');
-  await p.fill('#fl-guess', answer2);
-  await p.click('[data-a="try"]');
-  await p.waitForTimeout(300);
-  check('mot inscrit dans la grille', await p.locator('.cr-def.found').count() === 1);
-  // une case-flèche sélectionne bien un mot (celle d'un mot déjà résolu
-  // ne fait volontairement plus rien : on essaie jusqu'à une sélection)
-  let selOk = false;
-  const nClues2 = await p.locator('.fl-clue').count();
-  for (let ci = 0; ci < nClues2 && !selOk; ci++) {
-    await p.locator('.fl-clue').nth(ci).click();
-    await p.waitForTimeout(150);
-    selOk = (await p.locator('.cr-cell.sel').count()) > 0;
-  }
-  check('case-flèche → mot sélectionné', selOk);
-
+  check('grille PLEINE : cases-lettres ET cases-définitions',
+    await p.locator('.fx-cell').count() >= 22 && await p.locator('.fx-def').count() >= 8);
+  check('les flèches sont dans les cases', await p.locator('.fx-ar').count() >= 10);
+  check('un mot proposé d’office, définition en grand',
+    await p.locator('.fx-defbar').count() === 1 &&
+    await p.locator('.fx-cell.selw').count() >= 2);
+  // résout le mot sélectionné en tapant sur le clavier à l'écran
+  const flAnswer = await p.evaluate(() => {
+    const el = document.getElementById('mini-area');
+    return GG.byId.fleches._loadGrid(1, 0).words[el._flSel].w;
+  });
+  for (const chF of flAnswer) await p.click('.fx-key[data-k="' + chF + '"]');
+  await p.waitForTimeout(400);
+  check('mot tapé dans la grille → validé et verrouillé',
+    await p.locator('.fx-cell.won').count() >= flAnswer.length);
+  // toucher une case-définition sélectionne bien son mot
+  await p.locator('.fx-def').first().click();
+  await p.waitForTimeout(150);
+  check('case-définition → mot sélectionné', await p.locator('.fx-cell.selw').count() >= 2);
 
   // ---------- Bonbons : solo, un échange gagnant ----------
   console.log('--- Bonbons (solo) ---');

@@ -1343,16 +1343,79 @@ body.theme-manoir .btn { box-shadow: none; }
 .ha-suit-btn.red { color: #cf3345; }
 .ha-scores { margin: 10px 0; }
 
-/* ===== Mots fléchés : cases-flèches ===== */
-.cr-cell.fl-clue {
-  background: var(--ink); border-color: var(--ink); cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 0;
+/* ===== Mots fléchés : la grille pleine, définitions DANS les cases ===== */
+.fx-grid {
+  display: grid; gap: 1.5px;
+  background: var(--ink); border: 2.5px solid var(--ink); border-radius: 6px;
+  max-width: min(96vw, 480px); margin: 6px auto; overflow: hidden;
+  user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
 }
-.cr-cell.fl-clue span {
-  color: var(--tile-new); font-size: clamp(8px, 2.2vw, 12px); font-weight: 800;
-  line-height: 1.15; letter-spacing: -0.5px;
+.fx-cell {
+  background: #fdf8ec; aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', Georgia, serif; font-weight: 700;
+  font-size: clamp(15px, 5vw, 26px); color: var(--ink); cursor: pointer;
+  position: relative;
 }
+.fx-cell.brouillon { color: #8a7a5e; } /* lettres pas encore validées */
+.fx-cell.selw { background: #f7e9bc; }
+.fx-cell.cur { background: #f2d98a; box-shadow: inset 0 0 0 2.5px var(--accent); }
+.fx-cell.won { color: #132018; }
+.fx-cell.fx-shake { animation: fx-shake .35s; }
+@keyframes fx-shake {
+  25% { transform: translateX(-3px); } 50% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+}
+.fx-def {
+  background: #e6d8b6; aspect-ratio: 1; cursor: pointer;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.fx-half {
+  flex: 1; position: relative; display: flex;
+  align-items: center; justify-content: center;
+  padding: 1px 5px 1px 2px; min-height: 0;
+}
+.fx-half + .fx-half { border-top: 1.5px solid rgba(44, 34, 24, .45); }
+.fx-half.selh { background: #f2d98a; }
+.fx-half.fini .fx-dt { opacity: .4; text-decoration: line-through; }
+.fx-dt {
+  color: var(--ink); font-weight: 700; text-align: center;
+  line-height: 1.12; letter-spacing: -0.2px; overflow: hidden;
+  overflow-wrap: break-word; hyphens: auto; -webkit-hyphens: auto;
+}
+.fx-dt.t1 { font-size: clamp(7px, 2.1vw, 10px); }
+.fx-dt.t2 { font-size: clamp(6px, 1.8vw, 9px); }
+.fx-dt.t3 { font-size: clamp(5.5px, 1.6vw, 8px); }
+/* les flèches : droites (▸ ▾) au bord, coudées (↳ ↴) au coin */
+.fx-ar { position: absolute; font-size: 9px; color: var(--accent); font-weight: 800; line-height: 1; }
+.fx-ar.hd { right: -1px; top: 50%; transform: translateY(-50%); }
+.fx-ar.vd { bottom: -1px; left: 50%; transform: translateX(-50%); }
+.fx-ar.hc { bottom: -1px; left: 2px; }
+.fx-ar.vc { right: -1px; top: 2px; }
+.fx-orn { /* case ornée, comme dans les grilles de magazine */
+  background: #4c3a22; aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(233, 205, 124, .5); font-size: 10px;
+}
+.fx-defbar {
+  max-width: min(96vw, 480px); margin: 8px auto 6px;
+  background: var(--card); border: 2px solid var(--ink); border-radius: 10px;
+  padding: 8px 12px; font-size: 15px; text-align: center;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.fx-defbar em { color: var(--ink-soft); font-size: 13px; }
+.fx-kb { max-width: min(96vw, 480px); margin: 4px auto; }
+.fx-krow { display: flex; gap: 4px; justify-content: center; margin-bottom: 4px; }
+.fx-key {
+  flex: 1; max-width: 42px; height: 44px;
+  border: 1.5px solid var(--ink); border-radius: 7px;
+  background: #fffdf6; color: var(--ink);
+  font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 2px 0 var(--ink); touch-action: manipulation; padding: 0;
+}
+.fx-key:active { transform: translateY(2px); box-shadow: 0 0 0 var(--ink); }
+.fx-key.large { max-width: 64px; background: #f3e4c2; }
+#fl-timer { font-weight: 600; margin-left: 8px; }
 
 .sol-wrap { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
 .sol-wrap .mem-stats { margin-bottom: 8px; }

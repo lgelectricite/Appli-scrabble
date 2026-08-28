@@ -1,13 +1,15 @@
 /*
- * GGgames — Mots fléchés (1 à 4 joueurs, 1000 grilles pré-générées).
- * 5 forces × 200 grilles numérotées, avec suivi de progression sur le
- * téléphone. Les cases-flèches pointent vers leur mot ; touchez une flèche
- * ou une définition pour répondre. En réseau : course sur la même grille.
+ * GGgames — Mots fléchés (1 à 4 joueurs, 200 grilles pré-générées).
+ * De VRAIS mots fléchés : la grille est pleine, les définitions sont écrites
+ * DANS les cases, chaque flèche (droite ou coudée) pointe vers son mot, et
+ * l'on écrit ses réponses directement dans la grille au clavier.
+ * 5 forces × 40 grilles, progression enregistrée. En réseau : course sur la
+ * même grille, le premier à compléter un mot l'emporte.
  */
 (function (root) {
   'use strict';
   var GG = root.GG;
-  var PAR_FORCE = 200;
+  var PAR_FORCE = 40;
   var FORCES = [
     { f: 1, nom: 'Force 1', desc: 'découverte' },
     { f: 2, nom: 'Force 2', desc: 'tranquille' },
@@ -15,10 +17,12 @@
     { f: 4, nom: 'Force 4', desc: 'exigeante' },
     { f: 5, nom: 'Force 5', desc: 'expert' }
   ];
-  var COLORS = ['#e2a33c', '#5aa7de', '#68b56b', '#c77bd6'];
+  var COLORS = ['#68b56b', '#5aa7de', '#e2a33c', '#c77bd6'];
+  var KB = ['AZERTYUIOP', 'QSDFGHJKLM', 'WXCVBN⌫'];
 
   var defMap = null;
   function defOf(word) {
+    if (GG.FLECHES_DEFS && GG.FLECHES_DEFS[word]) return GG.FLECHES_DEFS[word];
     if (!defMap) {
       defMap = {};
       var db = GG.byId && GG.byId.croises && GG.byId.croises._DB;
@@ -41,37 +45,31 @@
       .replace(/[^A-Z]/g, '');
   }
 
-  /* "taille|MOT,case,dir;..." → { size, words:[{w, def, cells, dir, num}] } */
+  /* "WxH|MOT,case,dir,att;..." → { w, h, words:[{w, def, cells, dir, defCell, fleche}] }
+     dir : 'h' → / 'v' ↓ · att 0 = flèche droite, 1 = flèche coudée.
+     Flèches : h+0 ▸ (déf à gauche) · h+1 ↳ (déf au-dessus) ·
+               v+0 ▾ (déf au-dessus) · v+1 ↴ (déf à gauche). */
   function loadGrid(force, gnum) {
     var idx = (force - 1) * PAR_FORCE + gnum;
     var raw = GG.FLECHES_GRILLES && GG.FLECHES_GRILLES[idx];
     if (!raw) return null;
     var parts = raw.split('|');
-    var size = parseInt(parts[0], 10);
+    var dims = parts[0].split('x');
+    var W = parseInt(dims[0], 10), H = parseInt(dims[1], 10);
     var words = parts[1].split(';').map(function (chunk) {
       var bits = chunk.split(',');
       var w = bits[0];
       var p = parseInt(bits[1], 10);
-      var d = parseInt(bits[2], 10); // 0 = →, 1 = ↓
+      var d = parseInt(bits[2], 10);   // 0 = →, 1 = ↓
+      var att = parseInt(bits[3] || '0', 10);
       var cells = [];
-      for (var k = 0; k < w.length; k++) {
-        cells.push(d === 1 ? p + k * size : p + k);
-      }
+      for (var k = 0; k < w.length; k++) cells.push(d === 1 ? p + k * W : p + k);
+      var defCell = d === 0 ? (att === 0 ? p - 1 : p - W) : (att === 0 ? p - W : p - 1);
+      var fleche = d === 0 ? (att === 0 ? 'hd' : 'hc') : (att === 0 ? 'vd' : 'vc');
       return { w: w, def: defOf(w), cells: cells, dir: d === 1 ? 'v' : 'h',
-        num: 0, foundBy: -1, lastWrong: '' };
+        defCell: defCell, fleche: fleche, foundBy: -1, lastWrong: '' };
     });
-    // numérotation par case de départ (ordre de lecture)
-    var starts = [];
-    var seen = {};
-    words.forEach(function (w) {
-      if (!seen[w.cells[0]]) { seen[w.cells[0]] = true; starts.push(w.cells[0]); }
-    });
-    starts.sort(function (a, b) { return a - b; });
-    var numOf = {};
-    starts.forEach(function (c, i) { numOf[c] = i + 1; });
-    words.forEach(function (w) { w.num = numOf[w.cells[0]]; });
-    words.sort(function (a, b) { return a.num - b.num || (a.dir < b.dir ? -1 : 1); });
-    return { size: size, words: words };
+    return { w: W, h: H, words: words };
   }
 
   /* progression locale : grilles terminées, par force */
@@ -92,6 +90,12 @@
       localStorage.setItem('gg-fleches-done', JSON.stringify(all));
     } catch (e) {}
   }
+  function doneCount(force) {
+    var n = 0;
+    var list = doneList(force);
+    for (var g = 0; g < PAR_FORCE; g++) if (list.indexOf(g) !== -1) n++;
+    return n;
+  }
   function nextGrid(force) {
     var done = doneList(force);
     for (var g = 0; g < PAR_FORCE; g++) {
@@ -105,14 +109,22 @@
     return (m ? m + ' min ' : '') + (sec % 60) + ' s';
   }
 
+  function tailleDef(txt) {
+    if (txt.length <= 14) return ' t1';
+    if (txt.length <= 26) return ' t2';
+    return ' t3';
+  }
+
   var mod = {
     id: 'fleches',
     nom: 'Mots fléchés',
     icone: '➡️',
-    desc: '1000 grilles intégrées, de la force 1 à la force 5, avec suivi de votre progression. Les flèches pointent vers leurs mots !',
+    desc: 'De vrais mots fléchés : les définitions sont dans les cases, on écrit directement dans la grille. 200 grilles, 5 forces, progression enregistrée.',
     min: 1, max: 4,
     hotseat: true, hotseatMax: 1, hidden: false, netOnly: false,
-    regles: '<p><strong>🎯 Le but :</strong> remplir toute la grille. 1000 grilles vous attendent, numérotées de la force 1 (découverte) à la force 5 (expert), avec votre progression enregistrée.</p><p><strong>Comment jouer :</strong> touchez une case-flèche (▶ ou ▼) ou une définition, puis tapez votre réponse. Bonne réponse : le mot s’inscrit et rapporte sa longueur en points ; mauvaise : une erreur au compteur.</p><p><strong>En réseau :</strong> tous sur la même grille, le plus rapide prend les mots. En solo : chrono et record par force !</p>',
+    regles: '<p><strong>🎯 Le but :</strong> remplir toute la grille. 200 grilles pleines vous attendent, de la force 1 (découverte) à la force 5 (expert), avec votre progression enregistrée.</p>' +
+      '<p><strong>Comment jouer :</strong> comme dans les vrais fléchés, chaque définition est écrite <strong>dans sa case</strong> et sa flèche pointe vers son mot (les flèches coudées ↳ ↴ tournent au coin, comme dans les magazines). Touchez une définition ou une case, puis tapez votre réponse au clavier : les lettres s’écrivent dans la grille. Quand le mot est complet et juste, il se verrouille et rapporte sa longueur en points ; sinon il tremble — corrigez-le !</p>' +
+      '<p><strong>En réseau :</strong> tous sur la même grille, le premier à compléter un mot le gagne. En solo : chrono et record par force !</p>',
 
     create: function (names) {
       return {
@@ -122,7 +134,8 @@
         phase: 'setup',
         force: 0,
         gnum: -1,
-        size: 0,
+        w: 0,
+        h: 0,
         words: [],
         startTs: 0,
         durationSec: 0,
@@ -148,9 +161,8 @@
       markDone(state.force, state.gnum);
       try {
         if (typeof localStorage !== 'undefined') {
-          var fini = doneList(state.force).length;
-          html += '<p>📈 Progression force ' + state.force + ' : ' + fini + ' / ' +
-            PAR_FORCE + ' grilles.</p>';
+          html += '<p>📈 Progression force ' + state.force + ' : ' + doneCount(state.force) +
+            ' / ' + PAR_FORCE + ' grilles.</p>';
           if (state.players.length === 1) {
             var key = 'gg-fleches-best-f' + state.force;
             var best = JSON.parse(localStorage.getItem(key) || 'null');
@@ -191,7 +203,8 @@
         if (!grid) return { ok: false, error: 'Grille introuvable.' };
         state.force = f;
         state.gnum = g;
-        state.size = grid.size;
+        state.w = grid.w;
+        state.h = grid.h;
         state.words = grid.words;
         state.phase = 'play';
         state.startTs = Date.now();
@@ -217,7 +230,7 @@
           }
         } else {
           state.players[player].errors++;
-          w.lastWrong = String(action.text).slice(0, 20);
+          w.lastWrong = guess;
         }
         return { ok: true };
       }
@@ -231,10 +244,10 @@
 
       if (s.phase === 'setup') {
         var html0 = '<p class="mini-msg big-msg">➡️ Mots fléchés</p>' +
-          '<p class="mini-msg">1000 grilles intégrées — votre progression est enregistrée.</p>';
+          '<p class="mini-msg">De vraies grilles pleines : les définitions sont dans les cases !</p>';
         if (me === 0) {
           html0 += '<div class="lvl-btns">' + FORCES.map(function (fc) {
-            var fini = doneList(fc.f).length;
+            var fini = doneCount(fc.f);
             return '<button class="btn big" data-f="' + fc.f + '">' +
               fc.nom + ' <small>' + fc.desc + ' · ' + '⭐'.repeat(fc.f) + ' · ' +
               fini + '/' + PAR_FORCE + ' grilles finies</small></button>';
@@ -251,132 +264,194 @@
         return;
       }
 
-      var N = s.size;
-      var letter = new Array(N * N).fill('');
-      var owner = new Array(N * N).fill(-1);
-      var active = new Array(N * N).fill(false);
-      var clues = {}; // case → [indices de mots fléchés depuis cette case]
+      var W = s.w, H = s.h, NC = W * H;
+      var letter = new Array(NC).fill('');
+      var owner = new Array(NC).fill(-1);
+      var isLetter = new Array(NC).fill(false);
+      var wordAt = {};  // case → mots qui la traversent
+      var defsAt = {};  // case-définition → mots qui en partent
       s.words.forEach(function (w, wi) {
         w.cells.forEach(function (idx, k) {
-          active[idx] = true;
-          if (w.foundBy !== -1) { letter[idx] = w.w[k]; owner[idx] = w.foundBy; }
+          isLetter[idx] = true;
+          (wordAt[idx] = wordAt[idx] || []).push(wi);
+          if (w.foundBy !== -1) {
+            letter[idx] = w.w[k];
+            if (owner[idx] === -1) owner[idx] = w.foundBy;
+          }
         });
-        var start = w.cells[0];
-        var prev = w.dir === 'h' ? start - 1 : start - N;
-        var okPrev = w.dir === 'h' ? (start % N > 0) : (start >= N);
-        if (okPrev && !active[prev]) {
-          // la case juste avant le mot est libre : elle devient case-flèche
-          if (!clues[prev]) clues[prev] = [];
-          clues[prev].push(wi);
-        }
+        (defsAt[w.defCell] = defsAt[w.defCell] || []).push(wi);
       });
-      // les cases-flèches ne doivent pas être écrasées par des lettres
-      Object.keys(clues).forEach(function (c) { active[c] = false; });
 
-      if (el._flGame !== s.startTs) { el._flGame = s.startTs; el._flSel = -1; }
-      var sel = el._flSel !== undefined ? el._flSel : -1;
-      if (sel !== -1 && (!s.words[sel] || s.words[sel].foundBy !== -1)) {
-        sel = -1; el._flSel = -1;
+      if (el._flGame !== s.startTs) {
+        el._flGame = s.startTs;
+        el._flSel = -1; el._flPos = 0; el._flTyped = {};
       }
-      var selCells = {};
-      if (sel !== -1) s.words[sel].cells.forEach(function (i) { selCells[i] = true; });
+      var typed = el._flTyped;
+      // les lettres validées remplacent les brouillons
+      Object.keys(typed).forEach(function (c) { if (letter[c]) delete typed[c]; });
 
-      var html = '<p class="qz-head">➡️ Grille n°' + (s.gnum + 1) + ' · force ' + s.force + '</p>';
-      html += '<div class="cr-grid" style="grid-template-columns:repeat(' + N + ',1fr)">';
-      for (var i = 0; i < N * N; i++) {
-        if (clues[i]) {
-          html += '<div class="cr-cell fl-clue" data-c="' + i + '">' +
-            clues[i].map(function (wi) {
-              return '<span>' + s.words[wi].num + (s.words[wi].dir === 'h' ? '▶' : '▼') + '</span>';
-            }).join('') + '</div>';
-          continue;
+      var sel = el._flSel !== undefined ? el._flSel : -1;
+      if (sel !== -1 && (!s.words[sel] || s.words[sel].foundBy !== -1)) { sel = -1; }
+      if (sel === -1) { // on propose d'office le premier mot restant
+        for (var w0 = 0; w0 < s.words.length; w0++) {
+          if (s.words[w0].foundBy === -1) { sel = w0; break; }
         }
-        if (!active[i]) { html += '<div class="cr-cell off"></div>'; continue; }
-        var st = owner[i] !== -1 ? ' style="background:' + COLORS[owner[i]] + ';color:#132018"' : '';
-        html += '<div class="cr-cell' + (selCells[i] ? ' sel' : '') + '" data-i="' + i + '"' + st + '>' +
-          (letter[i] || '') + '</div>';
+        el._flSel = sel; el._flPos = 0;
+      }
+      var selWord = sel !== -1 ? s.words[sel] : null;
+      var selCells = {};
+      if (selWord) selWord.cells.forEach(function (i, k) { selCells[i] = true; });
+      var pos = el._flPos || 0;
+      if (selWord && pos >= selWord.cells.length) { pos = 0; el._flPos = 0; }
+      var curCell = selWord ? selWord.cells[pos] : -1;
+
+      // le mot vient-il d'être refusé ? (petit tremblement, on garde les lettres)
+      var errSum = s.players.reduce(function (t, p) { return t + p.errors; }, 0);
+      var secoue = selWord && selWord.lastWrong && el._flShake !== s.startTs + ':' + errSum;
+      if (secoue) el._flShake = s.startTs + ':' + errSum;
+
+      var html = '<p class="qz-head">➡️ Grille n°' + (s.gnum + 1) + ' · force ' + s.force +
+        ' <span id="fl-timer">⏱️ ' + fmt(Math.max(0, Math.round((Date.now() - s.startTs) / 1000))) + '</span></p>';
+      html += '<div class="fx-grid" style="grid-template-columns:repeat(' + W + ',1fr)">';
+      for (var i = 0; i < NC; i++) {
+        if (isLetter[i]) {
+          var t2 = letter[i] || typed[i] || '';
+          var cls = 'fx-cell' + (selCells[i] ? ' selw' : '') + (i === curCell ? ' cur' : '') +
+            (letter[i] ? ' won' : (typed[i] ? ' brouillon' : '')) +
+            (secoue && selCells[i] ? ' fx-shake' : '');
+          var st = owner[i] !== -1 ? ' style="background:' + COLORS[owner[i] % COLORS.length] + '"' : '';
+          html += '<div class="' + cls + '" data-i="' + i + '"' + st + '>' + t2 + '</div>';
+        } else if (defsAt[i]) {
+          html += '<div class="fx-def" data-d="' + i + '">' +
+            defsAt[i].map(function (wi) {
+              var w2 = s.words[wi];
+              var fini = w2.foundBy !== -1;
+              return '<div class="fx-half' + (fini ? ' fini' : '') +
+                (wi === sel ? ' selh' : '') + '">' +
+                '<span class="fx-dt' + tailleDef(w2.def) + '">' + GG.esc(w2.def) + '</span>' +
+                '<span class="fx-ar ' + w2.fleche + '">' +
+                (w2.fleche === 'hd' ? '▸' : w2.fleche === 'vd' ? '▾' :
+                  w2.fleche === 'hc' ? '↳' : '↴') + '</span></div>';
+            }).join('') + '</div>';
+        } else {
+          html += '<div class="fx-orn">✦</div>'; // case ornée, comme en magazine
+        }
       }
       html += '</div>';
 
-      if (sel !== -1) {
-        var w0 = s.words[sel];
-        html += '<div class="cr-ask"><p class="mini-msg"><strong>' + w0.num +
-          (w0.dir === 'h' ? ' ▶' : ' ▼') + '</strong> ' + GG.esc(w0.def) +
-          ' <em>(' + w0.cells.length + ' lettres)</em></p>' +
-          (w0.lastWrong ? '<p class="cr-wrong">« ' + GG.esc(w0.lastWrong) + ' » ne convient pas…</p>' : '') +
-          '<div class="cr-answer-row">' +
-          '<input type="text" id="fl-guess" maxlength="' + (w0.cells.length + 4) +
-          '" placeholder="' + w0.cells.length + ' lettres…" autocomplete="off">' +
-          '<button class="btn primary" data-a="try">Proposer</button></div></div>';
+      // la définition du mot choisi, en grand au-dessus du clavier
+      if (selWord) {
+        html += '<div class="fx-defbar">' +
+          (selWord.dir === 'h' ? '➡️' : '⬇️') + ' <strong>' + GG.esc(selWord.def) +
+          '</strong> <em>(' + selWord.cells.length + ' lettres)</em></div>';
       } else {
-        html += '<p class="mini-msg">Touchez une case-flèche (ou une définition) pour répondre.</p>';
+        html += '<div class="fx-defbar">🎉 Tous les mots sont trouvés !</div>';
       }
-
-      ['h', 'v'].forEach(function (dir) {
-        var list = s.words.filter(function (w) { return w.dir === dir; });
-        if (!list.length) return;
-        html += '<h3 class="cr-h3">' + (dir === 'h' ? '▶ Horizontalement' : '▼ Verticalement') + '</h3>' +
-          '<div class="cr-defs">' + list.map(function (w) {
-            var i2 = s.words.indexOf(w);
-            var stl = w.foundBy !== -1 ? ' style="background:' + COLORS[w.foundBy] + ';color:#132018"' : '';
-            return '<button class="cr-def' + (w.foundBy !== -1 ? ' found' : '') +
-              (i2 === sel ? ' sel' : '') + '" data-w="' + i2 + '"' + stl + '>' +
-              '<strong>' + w.num + '.</strong> ' + GG.esc(w.def) +
-              (w.foundBy !== -1 ? ' = ' + w.w : ' (' + w.cells.length + ')') + '</button>';
-          }).join('') + '</div>';
-      });
+      // clavier à l'écran
+      html += '<div class="fx-kb">' + KB.map(function (row) {
+        return '<div class="fx-krow">' + row.split('').map(function (k) {
+          return '<button class="fx-key' + (k === '⌫' ? ' large' : '') +
+            '" data-k="' + k + '">' + k + '</button>';
+        }).join('') + '</div>';
+      }).join('') + '</div>';
 
       html += '<div class="mem-stats">' + s.players.map(function (p, pi) {
-        return '<span class="mem-stat" style="outline:2px solid ' + COLORS[pi] + '">' +
+        return '<span class="mem-stat" style="outline:2px solid ' + COLORS[pi % COLORS.length] + '">' +
           GG.esc(p.name) + ' : ' + p.points + (p.errors ? ' · ❌' + p.errors : '') + '</span>';
-      }).join('') +
-        '<span class="mem-stat" id="fl-timer">⏱️ ' +
-        fmt(Math.max(0, Math.round((Date.now() - s.startTs) / 1000))) + '</span></div>';
+      }).join('') + '</div>';
       el.innerHTML = html;
 
-      function select(i2) {
-        el._flSel = (el._flSel === i2) ? -1 : i2;
-        mod.render(el, ctx);
-        var inp2 = el.querySelector('#fl-guess');
-        if (inp2 && el._flSel !== -1) inp2.focus();
+      function rerender() { mod.render(el, ctx); }
+
+      function selectWord(wi, cellIdx) {
+        el._flSel = wi;
+        var k = cellIdx !== undefined ? s.words[wi].cells.indexOf(cellIdx) : 0;
+        el._flPos = k === -1 ? 0 : k;
+        rerender();
       }
-      el.querySelectorAll('.cr-def:not(.found)').forEach(function (b) {
-        b.addEventListener('click', function () { select(parseInt(b.dataset.w, 10)); });
-      });
-      el.querySelectorAll('.fl-clue').forEach(function (c) {
+
+      el.querySelectorAll('.fx-cell').forEach(function (c) {
         c.addEventListener('click', function () {
-          var here = clues[parseInt(c.dataset.c, 10)].filter(function (wi) {
+          var idx = parseInt(c.dataset.i, 10);
+          var here = (wordAt[idx] || []).filter(function (wi) {
             return s.words[wi].foundBy === -1;
           });
           if (!here.length) return;
-          var pos = here.indexOf(sel);
-          select(here[(pos + 1) % here.length]);
+          var nxt = here.indexOf(sel) !== -1 && here.length > 1
+            ? here[(here.indexOf(sel) + 1) % here.length]
+            : (here.indexOf(sel) !== -1 ? sel : here[0]);
+          selectWord(nxt, idx);
         });
       });
-      el.querySelectorAll('.cr-cell[data-i]').forEach(function (c) {
-        c.addEventListener('click', function () {
-          var idx2 = parseInt(c.dataset.i, 10);
-          var here = [];
-          s.words.forEach(function (w, wi) {
-            if (w.foundBy === -1 && w.cells.indexOf(idx2) !== -1) here.push(wi);
+      el.querySelectorAll('.fx-def').forEach(function (d) {
+        d.addEventListener('click', function () {
+          var here = (defsAt[parseInt(d.dataset.d, 10)] || []).filter(function (wi) {
+            return s.words[wi].foundBy === -1;
           });
           if (!here.length) return;
-          var pos = here.indexOf(sel);
-          select(here[(pos + 1) % here.length] === sel ? -1 : here[(pos + 1) % here.length]);
+          var posIn = here.indexOf(sel);
+          selectWord(here[(posIn + 1) % here.length]);
         });
       });
-      var tryBtn = el.querySelector('[data-a="try"]');
-      if (tryBtn) {
-        var send = function () {
-          var input = el.querySelector('#fl-guess');
-          if (input && input.value.trim() && el._flSel !== -1) {
-            ctx.act({ t: 'claim', i: el._flSel, text: input.value });
+
+      function avance(depuis) {
+        // prochaine case du mot encore libre (non validée)
+        var cs = selWord.cells;
+        for (var k = depuis + 1; k < cs.length; k++) {
+          if (!letter[cs[k]]) return k;
+        }
+        return cs.length;
+      }
+      function taper(chr) {
+        if (!selWord) return;
+        var cs = selWord.cells;
+        var p2 = el._flPos || 0;
+        // se cale sur une case libre
+        while (p2 < cs.length && letter[cs[p2]]) p2++;
+        if (p2 >= cs.length) p2 = 0;
+        if (!letter[cs[p2]]) typed[cs[p2]] = chr;
+        var suivant = avance(p2);
+        el._flPos = suivant >= cs.length ? p2 : suivant;
+        // mot complet → on tente la validation
+        var texte = '';
+        for (var k = 0; k < cs.length; k++) texte += letter[cs[k]] || typed[cs[k]] || '';
+        if (texte.length === cs.length) {
+          ctx.act({ t: 'claim', i: sel, text: texte });
+          return; // l'état revient, le rendu suivra
+        }
+        rerender();
+      }
+      function efface() {
+        if (!selWord) return;
+        var cs = selWord.cells;
+        var p2 = el._flPos || 0;
+        if (typed[cs[p2]]) delete typed[cs[p2]];
+        else {
+          for (var k = p2 - 1; k >= 0; k--) {
+            if (!letter[cs[k]]) { delete typed[cs[k]]; el._flPos = k; break; }
           }
-        };
-        tryBtn.addEventListener('click', send);
-        var inp = el.querySelector('#fl-guess');
-        if (inp) inp.addEventListener('keydown', function (ev) {
-          if (ev.key === 'Enter') send();
+        }
+        rerender();
+      }
+      el._flType = taper;
+      el._flBack = efface;
+      el.querySelectorAll('.fx-key').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var k = b.dataset.k;
+          if (k === '⌫') efface(); else taper(k);
+        });
+      });
+      // clavier physique (ordinateur) : un seul écouteur, gardé par l'état
+      if (!el._flKeysBound) {
+        el._flKeysBound = true;
+        document.addEventListener('keydown', function (ev) {
+          if (!document.body.contains(el) || !el.querySelector('.fx-grid')) return;
+          if (!el._flType) return;
+          if (ev.key === 'Backspace') { ev.preventDefault(); el._flBack(); }
+          else {
+            var chr = norm(ev.key);
+            if (chr.length === 1) el._flType(chr);
+          }
         });
       }
       if (!s.finished && s.startTs && !el._flTimer) {
