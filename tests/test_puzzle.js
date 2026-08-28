@@ -125,39 +125,43 @@ g = motus.create(['A', 'B']);
 motus.apply(g, 0, { t: 'level', l: 'facile' }, { dict });
 check('mot de 5 lettres choisi', g.secret.length === 5 && dict.set.has(g.secret));
 check('secret pris dans les mots courants', GG.MOTS_COURANTS.indexOf(g.secret) !== -1, g.secret);
-r = motus.apply(g, 1, { t: 'guess', w: 'ZZZZZ' }, { dict });
+// tableau COMMUN, chacun son tour : A commence
+check('A commence (tour par tour)', motus.turnOf(g) === 0);
+check('hors tour refusé', !motus.apply(g, 1, { t: 'guess', w: 'CHIEN' }, { dict }).ok);
+r = motus.apply(g, 0, { t: 'guess', w: 'ZZZZZ' }, { dict });
 check('mot hors dictionnaire refusé', !r.ok);
-r = motus.apply(g, 1, { t: 'guess', w: 'chien' }, { dict });
-check('essai valide accepté (minuscules OK)', r.ok && g.players[1].tries.length === 1);
-r = motus.apply(g, 1, { t: 'guess', w: g.secret }, { dict });
-check('secret trouvé', r.ok && g.players[1].found === true);
-// A épuise ses essais
-for (let k = 0; k < 6; k++) {
-  const guess = g.secret === 'CHIEN' ? 'PLAGE' : 'CHIEN';
-  motus.apply(g, 0, { t: 'guess', w: guess }, { dict });
+const g1 = g.secret === 'CHIEN' ? 'PLAGE' : 'CHIEN';
+r = motus.apply(g, 0, { t: 'guess', w: g1.toLowerCase() }, { dict });
+check('essai valide accepté (minuscules OK), essai PARTAGÉ avec auteur',
+  r.ok && g.tries.length === 1 && g.tries[0].by === 0 && g.tries[0].word === g1);
+check('le tour passe à B', motus.turnOf(g) === 1);
+check('mot déjà proposé refusé', !motus.apply(g, 1, { t: 'guess', w: g1 }, { dict }).ok);
+// essais ILLIMITÉS : bien plus de 6 propositions possibles
+const pool5 = GG.MOTS_COURANTS.filter(w => w.length === 5 && w !== g.secret && w !== g1);
+for (let k = 0; k < 9; k++) {
+  const rr = motus.apply(g, g.turn, { t: 'guess', w: pool5[k] }, { dict });
+  if (!rr.ok) { failures++; console.log('  FAIL essai illimité n°' + (k + 2) + ' refusé : ' + rr.error); break; }
 }
-check('essais épuisés → échec', g.players[0].failed === true);
-check('mot terminé → révélation, PAS de fin de partie', g.phase === 'reveal' && motus.over(g) === false);
-check('série : B marque, A retombe à zéro',
-  g.players[1].wins === 1 && g.players[1].streak === 1 &&
-  g.players[0].wins === 0 && g.players[0].streak === 0);
+check('essais illimités : 10 essais joués, la manche continue',
+  g.phase === 'play' && g.tries.length === 10, g.tries.length);
+// B trouve le secret à son tour
+if (g.turn !== 1) motus.apply(g, g.turn, { t: 'guess', w: pool5[10] }, { dict });
+r = motus.apply(g, 1, { t: 'guess', w: g.secret }, { dict });
+check('secret trouvé par B → révélation, point pour B, PAS de fin',
+  r.ok && g.phase === 'reveal' && g.foundBy === 1 && g.players[1].wins === 1 &&
+  motus.over(g) === false);
 check('secret visible à la révélation', motus.redact(g, 0).secret === g.secret);
 const sum = motus.summary(g);
 check('classement : B gagne', /🏆 B/.test(sum));
 check('mot suivant réservé à l’hôte', motus.apply(g, 1, { t: 'next' }, { dict }).ok === false);
 r = motus.apply(g, 0, { t: 'next' }, { dict });
-check('mot suivant : nouveau mot, essais vierges, série conservée',
-  r.ok && g.round === 2 && g.phase === 'play' && g.secret.length === 5 &&
-  g.players.every(p => p.tries.length === 0 && !p.found && !p.failed) &&
-  g.players[1].wins === 1);
-// redact : secret + lettres adverses cachés
-g = motus.create(['A', 'B']);
-motus.apply(g, 0, { t: 'level', l: 'moyen' }, { dict });
-motus.apply(g, 0, { t: 'guess', w: 'MAISON' }, { dict });
-const redM = motus.redact(g, 1);
-check('secret masqué (redact)', redM.secret === undefined);
-check('lettres adverses masquées, couleurs visibles',
-  redM.players[0].tries[0].word === '······' && redM.players[0].tries[0].marks.length === 6);
+check('mot suivant : tableau vierge, le tour de départ TOURNE (B commence)',
+  r.ok && g.round === 2 && g.phase === 'play' && g.tries.length === 0 &&
+  motus.turnOf(g) === 1 && g.players[1].wins === 1);
+// redact : seul le secret est caché (le tableau est public)
+const redM = motus.redact(g, 0);
+check('secret masqué (redact), tableau public', redM.secret === undefined &&
+  Array.isArray(redM.tries));
 
 /* ================= MOTS CROISÉS ================= */
 console.log('--- Mots croisés ---');

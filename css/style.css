@@ -1138,6 +1138,24 @@ body.theme-manoir .btn { box-shadow: none; }
 
 /* ===== Mot Mystère ===== */
 .mot-board { display: flex; flex-direction: column; gap: 5px; align-items: center; margin: 8px 0; }
+/* essais illimités : le tableau défile, les derniers essais sous les yeux */
+.mot-board.mot-scroll {
+  max-height: 46vh; overflow-y: auto; padding: 4px 2px;
+  border: 1.5px solid var(--ink-16); border-radius: 10px;
+}
+/* pastille de l'auteur d'un essai (mode à plusieurs) */
+.mot-who {
+  width: 20px; height: 20px; border-radius: 50%; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  align-self: center; margin-right: 4px;
+  color: #fff; font-size: 11px; font-weight: 800;
+  border: 1.5px solid var(--ink); text-shadow: 0 1px 1px rgba(0, 0, 0, .35);
+}
+.mot-who.cur { background: var(--card); }
+/* le clavier retient les couleurs découvertes */
+.mot-key.k2 { background: var(--green, #2e7d4f); color: #fff; }
+.mot-key.k1 { background: #d9a23c; color: #fff; }
+.mot-key.k0 { background: #b9ac93; color: #fffdf4; opacity: .75; }
 .mot-row { display: flex; gap: 5px; }
 .mot-cell {
   width: clamp(34px, 11vw, 48px); height: clamp(34px, 11vw, 48px);
