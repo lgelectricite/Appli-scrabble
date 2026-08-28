@@ -69,7 +69,7 @@
     icone: '🟩',
     desc: 'Devinez le mot grâce aux couleurs, en autant d’essais qu’il faut. À plusieurs : même mot pour tous, chacun son tour — le premier qui trouve gagne le point !',
     regles: '<p><strong>🎯 Le but :</strong> deviner le mot secret grâce aux couleurs — en <strong>autant d’essais qu’il faut</strong> — puis enchaîner le suivant, sans fin.</p>' +
-      '<p><strong>Comment jouer :</strong> proposez un vrai mot du dictionnaire. 🟩 vert : lettre bien placée · 🟨 jaune : présente ailleurs · gris : absente. Le clavier retient les couleurs déjà découvertes.</p>' +
+      '<p><strong>Comment jouer :</strong> proposez un vrai mot du dictionnaire. 🟩 vert : lettre bien placée · 🟨 jaune : présente ailleurs · gris : absente.</p>' +
       '<p><strong>👥 À plusieurs :</strong> le <strong>même mot s’affiche chez tout le monde</strong> et on propose <strong>chacun son tour</strong> — tout le monde voit tous les essais, le premier qui trouve marque le point, et le tour de départ tourne à chaque mot.</p>' +
       '<p><strong>En solo :</strong> enchaînez les mots et battez votre record du mot trouvé en le moins d’essais. On quitte la partie quand on veut, par le menu.</p>',
     min: 1, max: 4,
@@ -335,18 +335,11 @@
           GG.esc(s.players[s.turn].name) + '</strong>…</p>';
       }
 
-      // clavier : il retient les couleurs déjà découvertes par la table
+      // clavier neutre : les couleurs des essais restent sur le tableau
       if (monTour) {
-        var kcol = {};
-        s.tries.forEach(function (t) {
-          t.word.split('').forEach(function (ch, i) {
-            if (kcol[ch] === undefined || t.marks[i] > kcol[ch]) kcol[ch] = t.marks[i];
-          });
-        });
         html += '<div class="mot-kb">';
         'AZERTYUIOPQSDFGHJKLMWXCVBN'.split('').forEach(function (L) {
-          var k2 = kcol[L] !== undefined ? ' k' + kcol[L] : '';
-          html += '<button class="mot-key' + k2 + '" data-k="' + L + '">' + L + '</button>';
+          html += '<button class="mot-key" data-k="' + L + '">' + L + '</button>';
         });
         html += '<button class="mot-key wide" data-k="⌫">⌫</button>' +
           '<button class="mot-key wide go" data-k="OK">OK</button></div>';

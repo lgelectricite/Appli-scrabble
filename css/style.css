@@ -1284,10 +1284,6 @@ body.theme-manoir .btn { box-shadow: none; }
   border: 1.5px solid var(--ink); text-shadow: 0 1px 1px rgba(0, 0, 0, .35);
 }
 .mot-who.cur { background: var(--card); }
-/* le clavier retient les couleurs découvertes */
-.mot-key.k2 { background: var(--green, #2e7d4f); color: #fff; }
-.mot-key.k1 { background: #d9a23c; color: #fff; }
-.mot-key.k0 { background: #b9ac93; color: #fffdf4; opacity: .75; }
 .mot-row { display: flex; gap: 5px; }
 .mot-cell {
   width: clamp(34px, 11vw, 48px); height: clamp(34px, 11vw, 48px);

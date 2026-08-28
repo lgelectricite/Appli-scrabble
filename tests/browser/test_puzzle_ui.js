@@ -86,11 +86,12 @@ function check(n, c, e) {
     check('essai jugé et nouvelle ligne affichée', rows === 2, rows);
     const colored = await p.locator('.mot-cell.m0, .mot-cell.m1, .mot-cell.m2').count();
     check('couleurs attribuées aux 5 lettres', colored === 5, colored);
-    check('clavier à mémoire : des touches colorées', await p.locator('.mot-key.k0, .mot-key.k1, .mot-key.k2').count() >= 1);
+    check('clavier neutre : les couleurs restent sur le tableau, pas sur les touches',
+      await p.locator('.mot-key.k0, .mot-key.k1, .mot-key.k2').count() === 0);
   } else {
     check('essai jugé et nouvelle ligne affichée', true); // CHIEN était le secret !
     check('couleurs attribuées aux 5 lettres', true);
-    check('clavier à mémoire : des touches colorées', true);
+    check('clavier neutre : les couleurs restent sur le tableau, pas sur les touches', true);
   }
   // on résout par les couleurs (comme un joueur) : essais illimités
   for (let it = 0; it < 14; it++) {
