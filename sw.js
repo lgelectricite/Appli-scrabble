@@ -1,5 +1,5 @@
 /* Service worker : rend l'application utilisable entièrement hors ligne. */
-var CACHE = 'gggames-v36';
+var CACHE = 'gggames-v37';
 
 var ASSETS = [
   './',

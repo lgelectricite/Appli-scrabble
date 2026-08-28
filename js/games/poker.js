@@ -613,47 +613,61 @@
           r + su + '</span>';
       }
 
-      var html = '<div class="pk-table">';
-      html += '<div class="pk-mode">' +
+      /* ===== la table ovale vue de dessus : chacun assis à sa place =====
+         Les sièges tournent pour que le joueur qui regarde soit toujours
+         assis EN BAS, comme dans les vraies applications de poker. */
+      var n = s.players.length;
+      var POS = ({
+        2: ['sb', 'st'],
+        3: ['sb', 'stl', 'str'],
+        4: ['sb', 'sl', 'st', 'sr']
+      })[n] || ['sb', 'sl', 'st', 'sr'];
+
+      var html = '<div class="pk-mode">' +
         (s.mode === 'cash'
           ? '💵 Cash game — blinds ' + s.blinds[0] + '/' + s.blinds[1]
           : '🏆 Tournoi — blinds ' + s.blinds[0] + '/' + s.blinds[1] +
             ' <small>(doublent toutes les 6 mains)</small>') +
         '</div>';
-      // adversaires
-      html += '<div class="pk-players">';
+      html += '<div class="pk-oval">';
+      // le centre : le pot, puis les cartes communes
+      html += '<div class="pk-center">' +
+        '<div class="pk-pot">Pot : <b>' + potTotal(s) + '</b> 🪙</div>' +
+        '<div class="pk-community">' +
+        (s.community.length
+          ? s.community.map(function (c) { return cardHtml(c, true); }).join('')
+          : '<span class="pk-street">' + (s.handOver ? '· · ·' : 'Pré-flop') + '</span>') +
+        '</div></div>';
       s.players.forEach(function (p, i) {
-        var cls = 'pk-player';
+        var pos = POS[(i - me + n) % n];
+        var cls = 'pk-seat ' + pos;
         if (i === s.current && !s.handOver) cls += ' turn';
         if (p.folded && !p.out) cls += ' folded';
         if (p.out) cls += ' out';
+        var cartes = (p.out || p.folded) ? '' :
+          p.hole.map(function (c) { return cardHtml(i === me ? c : (p.show ? c : -1)); }).join('');
+        var robot = p.name.indexOf('🤖') === 0;
+        var nom = p.name.replace(/^🤖 /, '');
         html += '<div class="' + cls + '">' +
-          '<div class="pk-pname">' + (i === s.dealer ? 'Ⓓ ' : '') + GG.esc(p.name) +
-          (i === me ? ' ✦' : '') + '</div>' +
-          '<div class="pk-chips">' + p.chips + ' 🪙' +
-          (p.bet ? ' <span class="pk-bet">' + p.bet + '</span>' : '') + '</div>' +
-          '<div class="pk-cards">' +
-          (p.out ? '—' : p.folded ? '✕' :
-            p.hole.map(function (c) { return cardHtml(i === me ? c : (p.show ? c : -1)); }).join('')) +
+          '<div class="pk-scards' + (i === me ? ' mine' : '') + '">' + cartes + '</div>' +
+          '<div class="pk-plate">' +
+          '<span class="pk-avatar">' + (robot ? '🤖' : GG.esc(nom.charAt(0).toUpperCase())) + '</span>' +
+          '<span class="pk-pinfo"><span class="pk-pname">' + GG.esc(nom) + '</span>' +
+          '<span class="pk-pstack">' + (p.out ? 'éliminé' : p.chips + ' 🪙') + '</span></span>' +
           '</div>' +
-          (p.allin && !p.out ? '<div class="pk-tag">TAPIS</div>' : '') +
+          (p.allin && !p.out ? '<span class="pk-tag">TAPIS</span>' :
+            (p.folded && !p.out ? '<span class="pk-tag grey">couché</span>' : '')) +
           '</div>';
+        // la mise de la rue en jetons devant le siège, et le bouton du donneur
+        if (!p.out && (p.bet > 0 || i === s.dealer)) {
+          html += '<div class="pk-betspot ' + pos + '">' +
+            (p.bet > 0 ? '<span class="pk-chip"></span><span class="pk-betamt">' +
+              p.bet + '</span>' : '') +
+            (i === s.dealer ? '<span class="pk-dbtn">D</span>' : '') + '</div>';
+        }
       });
       html += '</div>';
-      // tapis central
-      html += '<div class="pk-board">' +
-        (s.community.length ? s.community.map(function (c) { return cardHtml(c, true); }).join('') :
-          '<span class="pk-street">' + (s.handOver ? '' : 'Pré-flop') + '</span>') +
-        '</div>' +
-        '<div class="pk-pot">Pot : ' + potTotal(s) + ' 🪙</div>';
-      if (s.handMsg) html += '<p class="mini-msg">' + s.handMsg + '</p>';
-      html += '</div>';
-
-      // mes cartes + actions
-      if (!my.out) {
-        html += '<div class="pk-mine">' +
-          my.hole.map(function (c) { return cardHtml(c, true); }).join('') + '</div>';
-      }
+      if (s.handMsg) html += '<p class="mini-msg pk-msg">' + s.handMsg + '</p>';
       if (my.chips === 0 && s.mode === 'cash' && !my.out) {
         html += '<button class="btn big" data-a=\'{"t":"rebuy"}\'>🪙 Recave (' + START_CHIPS +
           ' de la cagnotte)</button>';

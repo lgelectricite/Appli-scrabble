@@ -424,7 +424,7 @@
         else if (p.bet <= 0) st = 'passe';
         else if (s.phase === 'play') {
           var vt = valeurMain(p.hand).total;
-          st = (s.turn === i ? '👉 ' : '') + p.bet + ' 🪙 · ' + vt + (vt > 21 ? ' 💥' : '');
+          st = p.bet + ' 🪙 · ' + vt + (vt > 21 ? ' 💥' : '');
         } else {
           if (p.outcome === 'bj') st = 'Blackjack ! +' + p.net;
           else if (p.outcome === 'win') st = '+' + p.net + ' 🪙';
@@ -432,7 +432,21 @@
           else if (p.outcome === 'lose') st = p.net + ' 🪙';
           else st = 'a passé';
         }
-        autres += '<div class="bj-autre"><strong>' + GG.esc(p.name) + '</strong>' + st + '</div>';
+        // une vraie place à la table : mini-cartes, plaque avatar + nom + état
+        var minis = '';
+        if (s.phase !== 'bet' && p.bet > 0 && p.hand.length) {
+          minis = '<span class="bj-ocartes">' + p.hand.map(function () {
+            return '<span class="bj-mini"></span>';
+          }).join('') + '</span>';
+        }
+        var robot2 = p.name.indexOf('🤖') === 0;
+        var nom2 = p.name.replace(/^🤖 /, '');
+        autres += '<div class="bj-oplr' + (s.phase === 'play' && s.turn === i ? ' turn' : '') + '">' +
+          minis +
+          '<span class="pk-plate"><span class="pk-avatar">' +
+          (robot2 ? '🤖' : GG.esc(nom2.charAt(0).toUpperCase())) + '</span>' +
+          '<span class="pk-pinfo"><span class="pk-pname">' + GG.esc(nom2) + '</span>' +
+          '<span class="pk-pstack">' + st + '</span></span></span></div>';
       }
       if (autres) html += '<div class="bj-autres">' + autres + '</div>';
 
