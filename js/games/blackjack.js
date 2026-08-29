@@ -366,6 +366,22 @@
       // le même écran est réutilisé après « Rejouer »
       var rondCle = s.startTs + ':' + s.round;
 
+      // anti « ghost tap » : à chaque transition (nouvelle phase, changement
+      // de main au split), les boutons sont redessinés au même endroit avec
+      // un AUTRE sens — un doigt pressé jouerait la main 2 ou miserait sans
+      // le vouloir. On gèle donc brièvement la console à chaque transition
+      // (horodatage : un re-rendu pendant le gel le maintient), et on
+      // n'accepte qu'UNE action de jeu par rendu — l'écran d'un invité
+      // réseau ne se redessinant qu'au retour de l'hôte, cette garde y
+      // absorbe les doubles appuis que le gel ne peut pas voir.
+      var cleCtx = rondCle + ':' + s.phase + ':' + (moi && moi.split ? 'S' + moi.hi : 'N');
+      if (el._bjCtxCle !== undefined && el._bjCtxCle !== cleCtx) {
+        el._bjGelFin = Date.now() + 600;
+      }
+      el._bjCtxCle = cleCtx;
+      var gel = !!el._bjGelFin && Date.now() < el._bjGelFin;
+      el._bjActed = false;
+
       // Paiement local de MA cagnotte, une seule fois par manche (la mise a déjà été débitée)
       if (s.phase === 'result' && moi && el._bjPaid !== rondCle) {
         el._bjPaid = rondCle;
@@ -533,7 +549,8 @@
           var dblOk = mAct.length === 2 && !(moi.hi === 1 ? moi.doubled2 : moi.doubled);
           var splitOk = !moi.split && moi.hand.length === 2 &&
             (moi.hand[0] % 13) === (moi.hand[1] % 13);
-          html += (moi.split ? '<p class="hint mini-center">Main ' + (moi.hi + 1) + ' sur 2</p>' : '') +
+          html += (moi.split ? '<p class="hint mini-center">' +
+              (gel && moi.hi === 1 ? '✋ ' : '') + 'Main ' + (moi.hi + 1) + ' sur 2</p>' : '') +
             '<div class="bj-actions">' +
             '<button class="btn big" id="bj-hit">Tirer</button>' +
             '<button class="btn big" id="bj-stand">Rester</button>' +
@@ -559,6 +576,26 @@
 
       el.innerHTML = html;
 
+      // gel de transition : on fige les boutons de la console un instant,
+      // puis on ne réveille que ceux que le gel avait éteints
+      if (gel) {
+        var aGeler = el.querySelectorAll('.bj-console button');
+        for (i = 0; i < aGeler.length; i++) {
+          if (!aGeler[i].disabled) {
+            aGeler[i].disabled = true;
+            aGeler[i].setAttribute('data-gel', '1');
+          }
+        }
+        setTimeout(function () {
+          if (el._bjCtxCle !== cleCtx) return; // un autre contexte a pris la main
+          var reveil = el.querySelectorAll('.bj-console button[data-gel]');
+          for (var b2 = 0; b2 < reveil.length; b2++) {
+            reveil[b2].disabled = false;
+            reveil[b2].removeAttribute('data-gel');
+          }
+        }, Math.max(0, el._bjGelFin - Date.now()) + 20);
+      }
+
       function msg(txt) {
         var m = el.querySelector('#bj-msg');
         if (m) m.textContent = txt;
@@ -572,39 +609,58 @@
       for (i = 0; i < boutons.length; i++) {
         (function (btn) {
           btn.addEventListener('click', function () {
-            if (el._bjBet === rondCle) return; // anti double-débit
+            if (el._bjActed || el._bjBet === rondCle) return; // anti double-débit
             var v = parseInt(btn.getAttribute('data-v'), 10);
-            if (GG.wallet && !GG.wallet.spend(v)) { msg('Pas assez de jetons !'); return; }
+            if (GG.wallet && GG.wallet.get() < v) { msg('Pas assez de jetons !'); return; }
+            el._bjActed = true;
+            // la cagnotte n'est débitée que si l'action part vraiment
+            // (connexion tombée = rien envoyé, rien débité)
+            if (ctx.act({ t: 'bet', v: v }) === false) { el._bjActed = false; return; }
             el._bjBet = rondCle;
-            ctx.act({ t: 'bet', v: v });
+            if (GG.wallet) GG.wallet.spend(v);
           });
         })(boutons[i]);
       }
       on('bj-sit', function () { ctx.act({ t: 'sit' }); });
-      on('bj-hit', function () { ctx.act({ t: 'hit' }); });
-      on('bj-stand', function () { ctx.act({ t: 'stand' }); });
+      on('bj-hit', function () {
+        if (el._bjActed) return;
+        el._bjActed = true;
+        ctx.act({ t: 'hit' });
+      });
+      on('bj-stand', function () {
+        if (el._bjActed) return;
+        el._bjActed = true;
+        ctx.act({ t: 'stand' });
+      });
       on('bj-double', function () {
         var cle2 = rondCle + ':' + moi.hi;
-        if (el._bjDbl === cle2) return; // anti double-débit
+        if (el._bjActed || el._bjDbl === cle2) return; // anti double-débit
         var miseAct = moi.hi === 1 ? moi.bet2 : moi.bet;
-        if (GG.wallet && !GG.wallet.spend(miseAct)) { msg('Pas assez de jetons pour doubler !'); return; }
+        if (GG.wallet && GG.wallet.get() < miseAct) { msg('Pas assez de jetons pour doubler !'); return; }
+        el._bjActed = true;
+        if (ctx.act({ t: 'double' }) === false) { el._bjActed = false; return; }
         el._bjDbl = cle2;
-        ctx.act({ t: 'double' });
+        if (GG.wallet) GG.wallet.spend(miseAct);
       });
       on('bj-split', function () {
-        if (el._bjSplit === rondCle) return; // anti double-débit
-        if (GG.wallet && !GG.wallet.spend(moi.bet)) { msg('Pas assez de jetons pour séparer !'); return; }
+        if (el._bjActed || el._bjSplit === rondCle) return; // anti double-débit
+        if (GG.wallet && GG.wallet.get() < moi.bet) { msg('Pas assez de jetons pour séparer !'); return; }
+        el._bjActed = true;
+        if (ctx.act({ t: 'split' }) === false) { el._bjActed = false; return; }
         el._bjSplit = rondCle;
-        ctx.act({ t: 'split' });
+        if (GG.wallet) GG.wallet.spend(moi.bet);
       });
       on('bj-again', function () { el._bjEndArm = null; ctx.act({ t: 'again' }); });
       // quitter la table demande une confirmation (fini les départs par mégarde)
       on('bj-end', function () {
         if (el._bjEndArm === rondCle) {
+          // un double-appui ne doit pas confirmer ce qu'il vient d'armer
+          if (Date.now() - (el._bjEndT || 0) < 300) return;
           el._bjEndArm = null;
           ctx.act({ t: 'end' });
         } else {
           el._bjEndArm = rondCle;
+          el._bjEndT = Date.now();
           mod.render(el, ctx);
         }
       });

@@ -59,7 +59,7 @@ function check(n, c, e) {
   check('cagnotte réglée après la manche (perte, gain, égalité ou blackjack)',
     [9900, 10100, 10000, 10150].indexOf(solde) !== -1, solde);
   await p.click('#bj-end');
-  await p.waitForTimeout(250);
+  await p.waitForTimeout(450); // délai d'armement anti double-appui
   check('quitter la table demande confirmation', /Vraiment/.test(await p.textContent('#bj-end')));
   await p.click('#bj-end');
   await p.waitForSelector('#overlay-end:not(.hidden)', { timeout: 8000 });
@@ -68,6 +68,56 @@ function check(n, c, e) {
   await p.waitForTimeout(200);
   check('retour à l’accueil : la salle de casino s’éteint',
     await p.evaluate(() => !document.body.classList.contains('theme-casino')));
+
+  // ---------- Blackjack : paire séparée, chaque main jouée SÉPARÉMENT ----------
+  console.log('--- Blackjack (split : deux mains, deux doubles) ---');
+  await p.evaluate(() => localStorage.setItem('gg-jetons', JSON.stringify({ n: 10000, ts: Date.now() })));
+  await p.reload();
+  await p.waitForSelector('.game-tile[data-g="blackjack"]');
+  // donne truquée : paire de 3, croupier 5+9 (il sautera), A/A au split, puis 5 et 6
+  await p.evaluate(() => {
+    const bj = GG.byId.blackjack;
+    const junk = []; for (let i = 0; i < 60; i++) junk.push((i * 7) % 52);
+    const rig = junk.concat([5, 4, 13, 39, 47, 30, 15, 2]);
+    const orig = bj.create.bind(bj);
+    bj.create = function (n, c) { const s = orig(n, c); s.shoe = rig.slice(); return s; };
+  });
+  await p.click('.game-tile[data-g="blackjack"]');
+  await p.click('#btn-mini-hotseat');
+  await p.click('#btn-mini-start');
+  await p.waitForSelector('.bj-mises', { timeout: 15000 });
+  await p.click('.bj-bet[data-v="25"]');
+  await p.waitForSelector('#bj-split', { timeout: 8000 });
+  check('paire de 3 : bouton Séparer proposé', true);
+  await p.click('#bj-split');
+  await p.waitForSelector('.bj-mains2', { timeout: 8000 });
+  check('deux mains à l’écran, main 1 active',
+    await p.locator('.bj-main2').count() === 2 &&
+    /Main 1 sur 2/.test(await p.textContent('#mini-area')));
+  await p.waitForTimeout(700); // dégel après la séparation
+  // double-tap sur Doubler : le 2e appui (fantôme) ne doit PAS jouer la main 2
+  await p.click('#bj-double');
+  await p.evaluate(() => { const b = document.getElementById('bj-double'); if (b) b.click(); });
+  await p.waitForTimeout(200);
+  check('après le double de la main 1 : la main 2 reste à jouer (✋, boutons gelés)',
+    /Main 2 sur 2/.test(await p.textContent('#mini-area')) &&
+    await p.locator('.bj-result').count() === 0);
+  await p.waitForTimeout(650); // dégel
+  await p.click('#bj-double');
+  await p.waitForSelector('.bj-result', { timeout: 8000 });
+  check('les deux mains réglées chacune pour soi (2 résultats)',
+    await p.locator('.bj-result').count() === 2);
+  check('comptes exacts : 4 débits de 25, deux mains doublées gagnantes → 10 100',
+    (await p.evaluate(() => JSON.parse(localStorage.getItem('gg-jetons')).n)) === 10100);
+  await p.click('#bj-end');
+  await p.waitForTimeout(450); // délai d'armement anti double-appui
+  await p.click('#bj-end');
+  await p.waitForSelector('#overlay-end:not(.hidden)', { timeout: 8000 });
+  await p.click('#btn-end-home');
+  await p.waitForTimeout(200);
+  await p.evaluate(() => localStorage.setItem('gg-jetons', JSON.stringify({ n: 10000, ts: Date.now() })));
+  await p.reload();
+  await p.waitForSelector('.game-tile[data-g="solitaire"]');
 
   // ---------- Solitaire solo : lancement direct ----------
   console.log('--- Solitaire (solo) ---');
@@ -89,7 +139,7 @@ function check(n, c, e) {
   check('chrono en route', /⏱️/.test(await p.textContent('#sol-timer')));
   // abandon en deux temps
   await p.click('[data-giveup]');
-  await p.waitForTimeout(200);
+  await p.waitForTimeout(450); // délai d'armement anti double-appui
   check('confirmation d’abandon demandée', /Vraiment/.test(await p.textContent('[data-giveup]')));
   await p.click('[data-giveup]');
   await p.waitForSelector('#overlay-end:not(.hidden)', { timeout: 8000 });

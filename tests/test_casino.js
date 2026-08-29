@@ -196,6 +196,20 @@ check('fin de partie : summary avec 🏆', /🏆/.test(blackjack.summary(s9)));
     sd.players[0].bet2 === 200 && sd.players[0].doubled2 === true, sd.players[0]);
   check('manche résolue après le double', sd.phase === 'result');
 
+  // doubler la MAIN 1 : la main 2 doit rester à jouer, séparément
+  let s1 = forced([[C(0, 2), C(1, 2)]], [C(2, 4), C(3, 8)], [C(2, 5), C(3, 4), C(1, 0), C(0, 0)]);
+  blackjack.apply(s1, 0, { t: 'split' }); // 3/3 → (3,A) et (3,A), comme la capture
+  check('doubler la main 1 accepté', blackjack.apply(s1, 0, { t: 'double' }).ok === true);
+  check('après le double de la main 1, la MAIN 2 reste à jouer',
+    s1.phase === 'play' && s1.players[0].hi === 1 && s1.players[0].done === false &&
+    s1.players[0].doubled === true && s1.players[0].bet === 200 && s1.players[0].bet2 === 100,
+    { phase: s1.phase, hi: s1.players[0].hi });
+  check('la main 2 se joue bien séparément (tirer)',
+    blackjack.apply(s1, 0, { t: 'hit' }).ok === true);
+  if (s1.phase === 'play') blackjack.apply(s1, 0, { t: 'stand' });
+  check('les deux mains réglées chacune pour soi',
+    s1.phase === 'result' && s1.players[0].outcome !== null && s1.players[0].outcome2 !== null);
+
   // quitter en pleine manche avec un split : les DEUX mises reviennent
   const avantQ = wallet.get();
   let sq = forced([[C(0, 7), C(1, 7)]], [C(2, 9), C(3, 6)], [C(2, 5), C(1, 3), C(0, 3)]);

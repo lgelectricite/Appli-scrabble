@@ -216,10 +216,20 @@
           (mine ? 'À vous de jouer !' : 'Au tour de ' + GG.esc(s.players[s.current].name) + '…') + '</p>';
       }
       el.innerHTML = html;
+      // pass-device : le pion posé redessine l'écran pour l'adversaire sans
+      // que la grille bouge — un double-appui jouerait le pion de l'AUTRE
+      // dans la même colonne. On ignore donc cette colonne un court instant.
+      if (ctx.mode === 'local' && el._p4Cur !== undefined && el._p4Cur !== s.current) {
+        el._p4Gel = { fin: Date.now() + 450, col: el._p4Col };
+      }
+      el._p4Cur = s.current;
       el.querySelectorAll('.p4-cell').forEach(function (cell) {
         cell.addEventListener('click', function () {
+          var col = parseInt(cell.dataset.col, 10);
+          if (el._p4Gel && Date.now() < el._p4Gel.fin && col === el._p4Gel.col) return;
           if (!s.roundOver && ctx.me === s.current) {
-            ctx.act({ t: 'drop', col: parseInt(cell.dataset.col, 10) });
+            el._p4Col = col;
+            ctx.act({ t: 'drop', col: col });
           }
         });
       });

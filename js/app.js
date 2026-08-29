@@ -1025,15 +1025,17 @@
     });
   }
 
+  /* Renvoie false quand l'action n'est certainement PAS partie (lien coupé,
+     coup refusé en local) : les jeux à jetons ne débitent alors rien. */
   function miniAct(action) {
-    if (!miniState || !miniMod) return;
+    if (!miniState || !miniMod) return false;
     if (mode === 'guest') {
-      if (!guestNet || !guestNet.isOpen()) { toast('Connexion perdue.'); return; }
+      if (!guestNet || !guestNet.isOpen()) { toast('Connexion perdue.'); return false; }
       guestNet.send({ t: 'ga', a: action });
-      return;
+      return true;
     }
     var player = mode === 'local' ? miniViewer() : 0;
-    miniApplyAuthority(player, action, null);
+    return miniApplyAuthority(player, action, null);
   }
 
   function miniApplyAuthority(player, action, peer) {
@@ -1041,7 +1043,7 @@
     if (!res.ok) {
       if (peer) peer.net.send({ t: 'err', msg: res.error });
       else toast(res.error);
-      return;
+      return false;
     }
     if (res.timer) {
       clearTimeout(miniTimer);
@@ -1050,6 +1052,7 @@
       }, res.timer.ms);
     }
     miniAfterChange();
+    return true;
   }
 
   function miniAfterChange() {

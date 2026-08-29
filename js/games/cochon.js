@@ -109,10 +109,19 @@
         '</div>' +
         '<p class="hint">Un 1 fait perdre les points du tour. Premier à ' + s.target + ' points.</p>';
       el.innerHTML = html;
+      // un 1 au dé passe le tour SANS que les boutons bougent d'un pixel :
+      // au changement de joueur, on ignore les boutons un court instant
+      // pour qu'un double-appui ne lance pas le dé du joueur suivant
+      if (ctx.mode === 'local' && el._pigCur !== undefined && el._pigCur !== s.current) {
+        el._pigGel = Date.now() + 450;
+      }
+      el._pigCur = s.current;
       el.querySelector('[data-a="roll"]').addEventListener('click', function () {
+        if (el._pigGel && Date.now() < el._pigGel) return;
         ctx.act({ t: 'roll' });
       });
       el.querySelector('[data-a="bank"]').addEventListener('click', function () {
+        if (el._pigGel && Date.now() < el._pigGel) return;
         ctx.act({ t: 'bank' });
       });
     }

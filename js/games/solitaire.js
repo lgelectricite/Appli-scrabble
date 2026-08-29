@@ -526,11 +526,14 @@
 
         if (kind === 'giveup') {
           if (el._confirmGiveup) {
+            // un double-appui ne doit pas confirmer ce qu'il vient d'armer
+            if (Date.now() - (el._solConfT || 0) < 300) return;
             el._confirmGiveup = false;
             el._sel = null;
             ctx.act({ t: 'giveup' });
           } else {
             el._confirmGiveup = true;
+            el._solConfT = Date.now();
             mod.render(el, ctx);
           }
           return;

@@ -164,9 +164,21 @@
           : mine ? 'À vous de jouer !' : 'Au tour de ' + GG.esc(s.players[s.current].name) + '…') +
         '</p>';
       el.innerHTML = html;
+      // au raté, les deux cartes se rabattent et le tour passe sans que la
+      // grille bouge : on ignore un instant la dernière carte touchée pour
+      // qu'un double-appui ne retourne pas une carte du joueur suivant
+      if (ctx.mode === 'local' && el._memCur !== undefined && el._memCur !== s.current) {
+        el._memGel = { fin: Date.now() + 450, i: el._memTap };
+      }
+      el._memCur = s.current;
       el.querySelectorAll('.mem-card').forEach(function (card) {
         card.addEventListener('click', function () {
-          if (mine) ctx.act({ t: 'flip', i: parseInt(card.dataset.i, 10) });
+          var idx = parseInt(card.dataset.i, 10);
+          if (el._memGel && Date.now() < el._memGel.fin && idx === el._memGel.i) return;
+          if (mine) {
+            el._memTap = idx;
+            ctx.act({ t: 'flip', i: idx });
+          }
         });
       });
       // chrono vivant

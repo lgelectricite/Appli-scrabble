@@ -354,9 +354,18 @@
       if (d) d.addEventListener('click', function () { ctx.act({ t: 'draw' }); });
       var ps = el.querySelector('[data-a="pass"]');
       if (ps) ps.addEventListener('click', function () { ctx.act({ t: 'pass' }); });
+      // Valet ou As à 2 joueurs : on rejoue aussitôt et la main se décale
+      // d'un cran sous le doigt — on gèle la main un court instant pour
+      // qu'un double-appui ne joue pas la carte voisine
+      var haLen = my ? my.hand.length : 0;
+      if (mine && el._haLen !== undefined && haLen < el._haLen) {
+        el._haGel = Date.now() + 400;
+      }
+      el._haLen = haLen;
       el.querySelectorAll('.ha-hand .ha-card').forEach(function (b) {
         b.addEventListener('click', function () {
           if (!mine) return; // pas son tour : la main est en lecture seule
+          if (el._haGel && Date.now() < el._haGel) return;
           var i = parseInt(b.dataset.i, 10);
           var c = my.hand[i];
           if (!c) return;
