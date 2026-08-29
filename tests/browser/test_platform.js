@@ -21,11 +21,11 @@ function check(n, c, e) {
   check('titre GGgames', (await p.title()) === 'GGgames');
   check('h1 GGgames', (await p.textContent('#screen-home h1')) === 'GGgames');
   const tiles = await p.locator('#catalog .game-tile').count();
-  check('catalogue : 23 jeux', tiles === 23, tiles);
+  check('catalogue : 24 jeux', tiles === 24, tiles);
   const names = await p.textContent('#catalog');
   ['Words', 'Puissance 4', 'Morpion', 'Pendu', 'Petit Bac', 'Bataille navale',
    'Yams', 'Cochon', 'Memory', 'Poker', 'Le Manoir', 'Sudoku', 'Mots mêlés', 'Mot Mystère',
-   'Mots croisés', 'Mots fléchés', 'L’Imposteur', 'Quiz', 'Le Plus Proche', '8 américain'].forEach(n => {
+   'Mots croisés', 'Mots fléchés', 'L’Imposteur', 'Quiz', 'Le Plus Proche', '8 américain', 'Discussion'].forEach(n => {
     check('jeu présent : ' + n, names.includes(n));
   });
 

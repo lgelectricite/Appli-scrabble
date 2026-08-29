@@ -1,9 +1,10 @@
 const ROOT = require('path').join(__dirname, '..');
-/* Tests : Quiz, Le Plus Proche, 8 américain. */
+/* Tests : Quiz, Le Plus Proche, 8 américain, Discussion. */
 require(ROOT + '/js/games/registry.js');
 const quiz = require(ROOT + '/js/games/quiz.js');
 const proche = require(ROOT + '/js/games/proche.js');
 const huit = require(ROOT + '/js/games/huit.js');
+const chat = require(ROOT + '/js/games/chat.js');
 
 let failures = 0;
 function check(n, c, e) {
@@ -608,5 +609,33 @@ check('échange non voisin refusé', bonbons.apply(bg, 0, { t: 'swap', a: 0, b: 
   dead[0].s = 1; dead[1].s = 3;
   check('deux spéciaux voisins : un coup existe', bonbons._hasMove(dead) === true);
 }
+
+/* ================= DISCUSSION ================= */
+console.log('--- Discussion ---');
+{
+  check('réseau uniquement, 2 à 12 téléphones',
+    chat.netOnly === true && chat.hotseat === false && chat.min === 2 && chat.max === 12);
+  const c = chat.create(['Léa', 'Marc', 'Nina']);
+  check('salon créé, aucun message', c.messages.length === 0 && c.players.length === 3);
+  check('pas de tour de parole', chat.turnOf(c) === -1);
+  check('une discussion ne se termine jamais', chat.over(c) === false);
+  let r = chat.apply(c, 0, { t: 'msg', txt: '  Coucou   tout le monde ! ' });
+  check('message accepté et rangé', r.ok && c.messages.length === 1);
+  check('espaces superflus nettoyés', c.messages[0].txt === 'Coucou tout le monde !');
+  check("l'auteur et l'heure sont notés",
+    c.messages[0].p === 0 && /^\d\d:\d\d$/.test(c.messages[0].h));
+  r = chat.apply(c, 1, { t: 'msg', txt: '   ' });
+  check('message vide refusé', !r.ok && c.messages.length === 1);
+  r = chat.apply(c, 7, { t: 'msg', txt: 'fantôme' });
+  check('expéditeur inconnu refusé', !r.ok);
+  r = chat.apply(c, 2, { t: 'msg', txt: 'x'.repeat(900) });
+  check('message trop long tronqué à 300 caractères',
+    r.ok && c.messages[1].txt.length === 300);
+  for (let i = 0; i < 600; i++) chat.apply(c, i % 3, { t: 'msg', txt: 'm' + i });
+  check('la conversation garde les 500 derniers messages',
+    c.messages.length === 500 && c.messages[499].txt === 'm599');
+  check('pas de fuite : aucune censure nécessaire (tout est public)', !chat.redact);
+}
+
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests nouveaux jeux OK.');
 process.exit(failures ? 1 : 0);

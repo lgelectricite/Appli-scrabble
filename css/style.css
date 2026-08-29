@@ -2059,3 +2059,51 @@ body.theme-manoir .btn { box-shadow: none; }
 .bj-main2 .bj-card { width: 40px; height: 56px; }
 .bj-mains2 + .bj-result, .bj-result + .bj-result { margin-top: 2px; }
 .bj-result { font-size: 1.1rem; }
+
+/* ===== Discussion (messagerie locale) ===== */
+.ch-wrap {
+  display: flex; flex-direction: column;
+  height: calc(100dvh - 172px); min-height: 320px;
+}
+.ch-who {
+  display: flex; flex-wrap: wrap; gap: 4px 12px;
+  padding: 2px 2px 8px; font-size: 13px; color: var(--ink-soft);
+}
+.ch-who b { color: var(--ink); }
+.ch-dot {
+  display: inline-block; width: 9px; height: 9px;
+  border-radius: 50%; margin-right: 4px;
+}
+.ch-log {
+  flex: 1; overflow-y: auto; padding: 6px 2px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+/* comme une vraie messagerie : la conversation s'accroche en bas */
+.ch-log > :first-child { margin-top: auto; }
+.ch-none { text-align: center; color: var(--ink-soft); margin: auto; line-height: 1.6; }
+.ch-row { display: flex; }
+.ch-row.mine { justify-content: flex-end; }
+.ch-bub {
+  max-width: 80%; background: var(--card);
+  border: 2px solid var(--line, #d8cdb4);
+  border-radius: 14px 14px 14px 4px;
+  padding: 7px 11px 4px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .07);
+}
+.ch-row.mine .ch-bub {
+  background: #e3eed6; border-color: #b5c99c;
+  border-radius: 14px 14px 4px 14px;
+}
+.ch-name { font-size: 12px; font-weight: 800; margin-bottom: 1px; }
+.ch-txt { font-size: 16px; line-height: 1.3; word-break: break-word; }
+.ch-h { font-size: 10px; opacity: .55; text-align: right; margin-top: 1px; }
+.ch-quick { display: flex; gap: 6px; padding: 8px 0 6px; justify-content: center; flex-wrap: wrap; }
+.ch-q {
+  font-size: 19px; line-height: 1; background: var(--card);
+  border: 2px solid var(--line, #d8cdb4); border-radius: 10px;
+  padding: 5px 10px; cursor: pointer; touch-action: manipulation;
+}
+.ch-q:active { transform: translateY(1px); }
+.ch-bar { display: flex; gap: 8px; align-items: stretch; }
+.ch-bar input[type=text] { flex: 1; width: auto; margin-top: 0; border-radius: 12px; }
+.ch-send { width: 56px; flex: none; font-size: 18px; padding: 10px 0; }

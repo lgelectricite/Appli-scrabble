@@ -34,6 +34,7 @@ nécessaire pendant les parties.
 | 🎴 **8 américain** | 2–5 | Le jeu de cartes façon Uno : même couleur ou même valeur, le **8 est joker**, le Valet saute, l'As change de sens, les **2 se cumulent**. Mains adverses **jamais transmises**. Points de manche en manche. |
 | ♠️ **Blackjack** | 1–4 | Face au croupier, sur la table en demi-lune : misez vos **jetons de la cagnotte** (de 1 à 500), tirez, restez, doublez ou **séparez les paires** (deux mains jouées l'une après l'autre). À plusieurs, chacun a **sa place à la table** (plaque et cartes). Blackjack payé **3 pour 2**, le croupier tire jusqu'à 17. Chacun mise la cagnotte de **son** téléphone. |
 | ♦️ **Solitaire** | 1 | Le Klondike classique, tirage 1 ou 3 cartes, dans la **salle de casino**. Records par niveau. |
+| 💬 **Discussion** | 2–12 | La **messagerie du salon** : discutez entre téléphones sur le réseau local, **sans Internet** — dans l'avion, le train, au fond des bois. Bulles par participant, heure d'envoi, emojis à envoi rapide, vibration à la réception, le clavier reste ouvert pour enchaîner. Les messages passent de téléphone à téléphone via l'hôte et **ne sont enregistrés nulle part** : le salon fermé, la conversation disparaît. |
 
 ## La cagnotte de jetons 🪙
 
@@ -131,7 +132,7 @@ Actions, dépôt public requis). Essai local : `python3 -m http.server 8080`.
   est compressée et transportée dans une **URL encodée en QR code**, la
   réponse par QR ou copier/coller.
 - `sw.js` — service worker : application 100 % hors ligne après la première visite.
-- `tests/` — suites de tests automatisés (logique des 23 jeux, moteur de Mots,
+- `tests/` — suites de tests automatisés (logique des 24 jeux, moteur de Mots,
   IA, cagnotte, interface via Playwright) ; GitHub Actions les rejoue à chaque
   push (`.github/workflows/tests.yml`). Les adversaires IA sont éprouvés par
   des **parties entièrement jouées par les robots** (`tests/test_bots.js` +
