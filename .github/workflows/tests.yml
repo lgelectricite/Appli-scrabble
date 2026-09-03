@@ -12,6 +12,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Syntaxe de tous les fichiers JavaScript
+        run: node tests/test_syntaxe.js
       - name: Moteur du jeu de lettres
         run: node tests/test_engine.js
       - name: IA de Words
