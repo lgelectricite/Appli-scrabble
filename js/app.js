@@ -1866,9 +1866,9 @@
   function showRelaisSettings() {
     $('relais-url').value = window.GG.Online.serveur();
     $('relais-etat').textContent = window.GG.Online.disponible()
-      ? '✅ Un serveur est enregistré.'
-      : '⚠️ Aucun serveur enregistré : le jeu à distance est indisponible tant ' +
-        'qu’une adresse n’est pas collée ici. (Le jeu sur place, par QR code, ' +
+      ? '✅ Serveur en service — vous n’avez rien à faire ici.'
+      : '⚠️ Aucun serveur : le jeu à distance est indisponible tant qu’une ' +
+        'adresse n’est pas collée ici. (Le jeu sur place, par QR code, ' +
         'fonctionne sans.)';
     showScreen('screen-relais');
   }

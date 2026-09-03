@@ -15,9 +15,10 @@
   'use strict';
   var GG = root.GG || (root.GG = {});
 
-  /* Adresse du relais déployé. Vide = l'application demandera à l'utilisateur
-     de coller la sienne (écran « En ligne → Réglages du serveur »). */
-  var RELAIS_PAR_DEFAUT = '';
+  /* Le relais de GGgames : rien à configurer pour jouer en ligne. Chacun peut
+     lui préférer le sien (écran « En ligne → Réglages du serveur ») ; le code
+     du relais est fourni dans le dossier relay/ du projet. */
+  var RELAIS_PAR_DEFAUT = 'https://gggames-relais.contact-a7e.workers.dev';
   var CLE_RELAIS = 'gg-relais';
 
   /* Sans I, O, 0 ni 1 : un code se dicte au téléphone sans confusion. */

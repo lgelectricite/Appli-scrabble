@@ -108,18 +108,18 @@ fait que **transmettre des messages scellés** — il ne connaît ni les règles
 ni les scores, ni vos cartes, et **ne stocke rien**. Un invité ne peut
 d'ailleurs parler qu'à l'hôte : impossible de se faire passer pour l'arbitre.
 
-### Installer le serveur de rendez-vous (une seule fois)
+### Le serveur de rendez-vous
 
-Le mode en ligne a besoin d'un tout petit serveur, à déployer **une fois**
-sur un compte Cloudflare gratuit (pas de carte bancaire) : voir
-**[`relay/README.md`](relay/README.md)** — bouton « Deploy to Cloudflare »,
-puis collez l'adresse obtenue dans l'application (**« 🌍 Rejoindre avec un
-code » → ⚙️ Réglages du serveur**). Le plan gratuit couvre 100 000 échanges
-par jour et une partie en attente ne consomme rien : un usage familial en
-utilise de l'ordre de 1 %.
+**Rien à installer ni à régler** : le serveur de GGgames est intégré à
+l'application. Il est minuscule (une centaine de lignes), tourne sur
+Cloudflare et ne fait que transmettre.
 
-Tant qu'aucune adresse n'est enregistrée, le mode en ligne est simplement
-indisponible — **tout le reste de l'application fonctionne normalement**.
+Qui préfère **son propre serveur** trouve son code complet dans
+**[`relay/`](relay/README.md)** : un bouton « Deploy to Cloudflare » le
+déploie sur un compte gratuit (pas de carte bancaire), et l'adresse obtenue
+se colle dans **« 🌍 Rejoindre avec un code » → ⚙️ Réglages du serveur**.
+Le plan gratuit couvre 100 000 échanges par jour et une partie en attente ne
+consomme rien : un usage familial en utilise de l'ordre de 1 %.
 
 ### Sur place, sans Internet : le mode QR
 

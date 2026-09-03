@@ -125,20 +125,35 @@ function check(n, c, e) {
     /Aucune partie/.test(await perdu.textContent('#online-error')));
   await ctxE.close();
 
-  console.log('--- Sans serveur configuré, l’application le dit ---');
+  console.log('--- Un serveur est fourni d’office ---');
   const ctxS = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const sans = await ctxS.newPage();
   await sans.goto(URL_APP);
   await sans.evaluate(() => localStorage.removeItem('gg-relais'));
   await sans.reload();
+  await sans.waitForSelector('#catalog .game-tile');
+  check('sans rien régler, le jeu en ligne est disponible',
+    await sans.evaluate(() => GG.Online.disponible()) === true);
+  check('le serveur par défaut est une adresse sécurisée (wss)',
+    /^wss:\/\/[a-z0-9.\-]+$/i.test(await sans.evaluate(() => GG.Online.serveur())),
+    await sans.evaluate(() => GG.Online.serveur()));
   await sans.click('#btn-home-online');
-  await sans.waitForSelector('#screen-relais.active', { timeout: 10000 });
-  check('écran de réglage du serveur proposé',
-    /Aucun serveur/.test(await sans.textContent('#relais-etat')));
+  await sans.waitForSelector('#screen-online.active', { timeout: 10000 });
+  check('on arrive directement sur la saisie du code', true);
+  // chacun peut préférer son propre serveur
+  await sans.click('#btn-online-settings');
+  await sans.waitForSelector('#screen-relais.active');
+  check('les réglages annoncent un serveur en service',
+    /en service/.test(await sans.textContent('#relais-etat')));
   await sans.fill('#relais-url', relais.url.replace('ws://', 'http://'));
   await sans.click('#btn-relais-save');
-  check('adresse normalisée et enregistrée',
-    (await sans.evaluate(() => localStorage.getItem('gg-relais'))) === relais.url);
+  check('un serveur personnel remplace celui d’origine',
+    (await sans.evaluate(() => GG.Online.serveur())) === relais.url);
+  await sans.fill('#relais-url', '');
+  await sans.click('#btn-relais-save');
+  check('en l’effaçant, on retrouve le serveur d’origine',
+    (await sans.evaluate(() => GG.Online.disponible())) === true &&
+    (await sans.evaluate(() => GG.Online.serveur())) !== relais.url);
   await ctxS.close();
 
   console.log('--- Le hors-ligne n’est pas touché ---');
