@@ -57,6 +57,13 @@
       10 000, elle remonte automatiquement à 10 000 chaque semaine — et les
       packs de la boutique arriveront avec la version vendue en magasin
       d’applications.</p>
+    <hr class="sep">
+    <p class="hint">Un souci d’affichage après une mise à jour ? Ce bouton
+      retélécharge l’application entière (gardez Internet le temps du
+      rechargement) — vos parties enregistrées et votre cagnotte sont
+      conservées.</p>
+    <button class="btn" id="btn-forcer-maj">🔄 Recharger l’application</button>
+    <p class="hint" id="version-appli"></p>
     <button class="btn link" data-back>← Retour</button>
   </section>
 
@@ -505,5 +512,63 @@
   <script src="js/games/manoir.js"></script>
   <script src="js/games/chat.js"></script>
   <script src="js/app.js"></script>
+  <script>
+  /* Filet ultime, volontairement placé DANS la page : si l'application ne
+     démarre pas du tout (fichier abîmé par une mise à jour interrompue),
+     mieux vaut une explication et un bouton que l'écran figé. Ce script ne
+     dépend d'aucun autre fichier. */
+  (function () {
+    var souci = false;
+    window.addEventListener('error', function (e) {
+      if (e && (e.filename || e.message)) souci = true;
+    }, true);
+
+    function rechargerTout() {
+      var fini = function () {
+        try { location.replace(location.pathname + '?maj=' + Date.now()); }
+        catch (e) { location.reload(); }
+      };
+      var p = Promise.resolve();
+      try {
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          p = navigator.serviceWorker.getRegistrations().then(function (rs) {
+            return Promise.all(rs.map(function (r) { return r.unregister(); }));
+          });
+        }
+        p = p.then(function () {
+          if (!window.caches || !caches.keys) return null;
+          return caches.keys().then(function (ks) {
+            return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+          });
+        });
+      } catch (e) {}
+      p.then(fini, fini);
+      setTimeout(fini, 4000);
+    }
+
+    function verifier() {
+      var cat = document.getElementById('catalog');
+      if (cat && (cat.querySelector('.game-tile') || cat.querySelector('.ecran-secours'))) return;
+      if (!souci && cat && cat.children.length) return;
+      var boite = cat || document.body;
+      var bloc = document.createElement('div');
+      bloc.className = 'ecran-secours';
+      bloc.innerHTML = '<h3>😕 L\u2019application n\u2019a pas pu démarrer</h3>' +
+        '<p>Une mise à jour s\u2019est probablement interrompue. Un appui suffit ' +
+        'à tout retélécharger : gardez Internet le temps du rechargement. ' +
+        'Vos parties enregistrées et votre cagnotte sont conservées.</p>';
+      var b = document.createElement('button');
+      b.id = 'btn-secours';
+      b.className = 'btn big primary';
+      b.textContent = '\uD83D\uDD04 Recharger l\u2019application';
+      b.addEventListener('click', rechargerTout);
+      bloc.appendChild(b);
+      boite.appendChild(bloc);
+    }
+
+    if (document.readyState === 'complete') setTimeout(verifier, 2000);
+    else window.addEventListener('load', function () { setTimeout(verifier, 2000); });
+  })();
+  </script>
 </body>
 </html>

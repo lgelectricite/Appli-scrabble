@@ -712,9 +712,25 @@
     $('bank-refill').textContent = msg;
   }
 
+  /* Quelle version est réellement installée sur ce téléphone ? (utile pour
+     diagnostiquer une mise à jour qui n'est pas passée) */
+  function afficheVersion() {
+    var el = $('version-appli');
+    if (!el) return;
+    el.textContent = '';
+    try {
+      if (!window.caches || !caches.keys) return;
+      caches.keys().then(function (ks) {
+        var v = ks.filter(function (k) { return /^gggames-v/.test(k); }).sort().pop();
+        el.textContent = v ? 'Version installée : ' + v.replace('gggames-', '') : '';
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
   function openBoutique() {
     renderBoutique();
     showScreen('screen-boutique');
+    afficheVersion();
   }
 
   /* Vérifie qu'on a de quoi s'asseoir à une table à jetons. */
@@ -774,6 +790,32 @@
       '<span class="bx-gg">GG</span></button>';
   }
 
+  /* Issue de secours : vide le cache hors ligne, désinscrit le service
+     worker et recharge tout depuis le site. À n'utiliser qu'avec Internet —
+     c'est le seul moyen de sortir d'une mise à jour abîmée. */
+  function rechargerPropre() {
+    var fini = function () {
+      try { location.replace(location.pathname + '?maj=' + Date.now()); }
+      catch (e) { location.reload(); }
+    };
+    var etapes = Promise.resolve();
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        etapes = navigator.serviceWorker.getRegistrations().then(function (rs) {
+          return Promise.all(rs.map(function (r) { return r.unregister(); }));
+        });
+      }
+      etapes = etapes.then(function () {
+        if (!window.caches || !caches.keys) return null;
+        return caches.keys().then(function (ks) {
+          return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+        });
+      });
+    } catch (e) { /* on rechargera quand même */ }
+    etapes.then(fini, fini);
+    setTimeout(fini, 4000); // filet : on ne reste jamais bloqué
+  }
+
   function renderCatalog() {
     var cat = $('catalog');
     // La pièce : un mur peint, la bibliothèque en bois, la plinthe et le
@@ -782,22 +824,52 @@
     var html = '<div class="room">' +
       '<div class="room-clock"><span class="rc-h"></span><span class="rc-m"></span></div>' +
       '<div class="bookcase"><span class="room-plant">🪴</span><div class="case-inner">';
+    // Un jeu dont le fichier n'a pas pu être chargé (mise à jour interrompue,
+    // fichier abîmé…) est simplement absent de l'étagère : JAMAIS il ne doit
+    // emporter les autres avec lui.
+    var manquants = [];
+    var poses = 0;
     SHELVES.forEach(function (sh) {
+      var jeux = sh.jeux.filter(function (id) {
+        if (id === 'mots' || window.GG.byId[id]) return true;
+        manquants.push(id);
+        return false;
+      });
+      if (!jeux.length) return;
       html += '<div class="case-label">' + sh.titre + '</div>';
       // planches équilibrées : 5 jeux font 3 + 2, jamais une boîte esseulée
-      var n = sh.jeux.length;
+      var n = jeux.length;
       var planches = Math.ceil(n / 4);
       var parPlanche = Math.ceil(n / planches);
       for (var o = 0; o < n; o += parPlanche) {
         html += '<div class="shelf-books">';
-        sh.jeux.slice(o, o + parPlanche).forEach(function (id, i) {
-          html += boxHtml(catInfo(id), i + o, false);
+        jeux.slice(o, o + parPlanche).forEach(function (id, i) {
+          try {
+            html += boxHtml(catInfo(id), i + o, false);
+            poses++;
+          } catch (e) {
+            manquants.push(id);
+          }
         });
         html += '</div><div class="shelf-board"></div>';
       }
     });
     html += '</div></div><div class="room-floor"></div></div>';
+    // filet de sécurité : plus rien à afficher, ou des jeux à la traîne
+    if (!poses) {
+      html = '<div class="ecran-secours"><h3>😕 Les jeux ne se sont pas chargés</h3>' +
+        '<p>Une mise à jour s’est probablement interrompue. Un appui suffit à ' +
+        'tout retélécharger (gardez Internet le temps du rechargement).</p>' +
+        '<button class="btn big primary" id="btn-secours">🔄 Recharger l’application</button></div>';
+    } else if (manquants.length) {
+      html += '<div class="maj-note">⚠️ ' + manquants.length + ' jeu' +
+        (manquants.length > 1 ? 'x n’ont' : ' n’a') + ' pas pu être chargé' +
+        (manquants.length > 1 ? 's' : '') + '. ' +
+        '<button class="btn small" id="btn-secours">🔄 Recharger l’application</button></div>';
+    }
     cat.innerHTML = html;
+    var secours = cat.querySelector('#btn-secours');
+    if (secours) secours.addEventListener('click', rechargerPropre);
     cat.querySelectorAll('.game-tile').forEach(function (t) {
       t.addEventListener('click', function () {
         var id = t.dataset.g;
@@ -2160,6 +2232,7 @@
       toast(n ? 'Serveur enregistré.' : 'Serveur effacé.');
     });
     $('btn-relais-test').addEventListener('click', testerRelais);
+    $('btn-forcer-maj').addEventListener('click', rechargerPropre);
 
     // Discussion pendant la partie
     $('btn-mini-chat').addEventListener('click', chatOuvre);
