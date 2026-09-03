@@ -85,25 +85,48 @@ En cas de coupure, le menu de l'hôte (« Inviter / reconnecter ») permet de
 reconnecter un joueur en cours de partie avec le même prénom. Un
 copier/coller du code texte remplace le scan si besoin.
 
-## 🌍 Jouer à distance (chacun chez soi)
+## 🌍 Jouer à distance : le mode « En ligne »
 
-Les mêmes jeux se jouent **entre deux villes**, sans compte ni serveur de
-jeu : seule la mise en relation passe par Internet, puis les téléphones se
-parlent **directement**, de l'un à l'autre.
+Les mêmes jeux se jouent **entre deux villes**, avec un simple **code de
+partie à 6 caractères** — comme dans les jeux en ligne du commerce, sans
+compte, sans inscription et sans rien scanner.
 
-1. L'hôte choisit un jeu → **« Créer une partie »** → **« Inviter un
-   joueur »** → **« 📤 Envoyer le lien d'invitation »** : le lien part par
-   SMS, WhatsApp, e-mail…
-2. L'ami **ouvre le lien reçu** (l'application s'ouvre sur l'écran
-   « Rejoindre »), entre son prénom, et touche **« 📤 Envoyer ma
-   réponse »** : il vous renvoie son code par message.
-3. L'hôte touche **« Étape 2 : recevoir sa réponse »**, **colle** le code
-   reçu, et la partie démarre. Répétez pour chaque joueur.
+1. L'hôte choisit un jeu → **« 🌍 En ligne (chacun chez soi) »** → entre son
+   prénom → **« Créer la partie »**. Un code s'affiche en grand, par exemple
+   `PLUME7`, avec un bouton **« 📤 Envoyer le code et le lien »**.
+2. Chaque ami touche **« 🌍 Rejoindre avec un code »** sur l'accueil, tape le
+   code (ou ouvre simplement le lien reçu, qui le pré-remplit) et apparaît
+   aussitôt dans le **salon des joueurs connectés**.
+3. Quand tout le monde est là, l'hôte touche **« Commencer la partie »**.
 
-Les deux téléphones doivent avoir Internet au moment de la mise en relation
-(ensuite, la partie tient toute seule). Selon les opérateurs mobiles, la
-liaison directe peut échouer : en Wi-Fi de chaque côté, elle aboutit dans la
-très grande majorité des cas.
+Ça marche en 4G comme en Wi-Fi, de n'importe où. Les codes ne se confondent
+pas à l'oral : ni O ni 0, ni I ni 1.
+
+**Rien ne change pour l'anti-triche** : le téléphone de l'hôte reste
+l'arbitre, comme en Wi-Fi. Le serveur de rendez-vous (dossier `relay/`) ne
+fait que **transmettre des messages scellés** — il ne connaît ni les règles,
+ni les scores, ni vos cartes, et **ne stocke rien**. Un invité ne peut
+d'ailleurs parler qu'à l'hôte : impossible de se faire passer pour l'arbitre.
+
+### Installer le serveur de rendez-vous (une seule fois)
+
+Le mode en ligne a besoin d'un tout petit serveur, à déployer **une fois**
+sur un compte Cloudflare gratuit (pas de carte bancaire) : voir
+**[`relay/README.md`](relay/README.md)** — bouton « Deploy to Cloudflare »,
+puis collez l'adresse obtenue dans l'application (**« 🌍 Rejoindre avec un
+code » → ⚙️ Réglages du serveur**). Le plan gratuit couvre 100 000 échanges
+par jour et une partie en attente ne consomme rien : un usage familial en
+utilise de l'ordre de 1 %.
+
+Tant qu'aucune adresse n'est enregistrée, le mode en ligne est simplement
+indisponible — **tout le reste de l'application fonctionne normalement**.
+
+### Sur place, sans Internet : le mode QR
+
+Le mode historique reste disponible et **ne demande aucun serveur** :
+l'invité scanne un QR code, puis renvoie un code de réponse. Il fonctionne
+en avion, en camping, partout où il n'y a pas de réseau — c'est le seul qui
+marche vraiment **hors ligne**.
 
 La plupart des jeux se jouent aussi **sur un seul téléphone** (chacun son
 tour, écran masqué entre les tours quand il y a des infos cachées).
@@ -155,6 +178,7 @@ Actions, dépôt public requis). Essai local : `python3 -m http.server 8080`.
   est compressée et transportée dans une **URL encodée en QR code**, la
   réponse par QR ou copier/coller.
 - `sw.js` — service worker : application 100 % hors ligne après la première visite.
+- `relay/` — le petit serveur de rendez-vous des parties en ligne (facultatif)
 - `tests/` — suites de tests automatisés (logique des 24 jeux, moteur de Mots,
   IA, cagnotte, interface via Playwright) ; GitHub Actions les rejoue à chaque
   push (`.github/workflows/tests.yml`). Les adversaires IA sont éprouvés par

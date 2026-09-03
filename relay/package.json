@@ -1,0 +1,14 @@
+{
+  "name": "gggames-relais",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Relais des parties en ligne de GGgames : il transmet, il ne comprend rien au jeu.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

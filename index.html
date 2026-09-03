@@ -26,10 +26,11 @@
       <button id="btn-wallet" class="wallet-chip">🪙 <b id="wallet-amount">10 000</b> jetons
         <span class="wallet-more">Boutique ›</span></button>
       <div id="catalog"></div>
-      <button class="btn big" id="btn-home-join">🔗 Rejoindre une partie</button>
-      <p class="hint">Mode plusieurs téléphones : celui qui crée la partie sert de serveur
-        (Internet inutile). L’invité scanne 2 QR codes avec son appareil photo :
-        le 1ᵉʳ le connecte au réseau de l’hôte, le 2ᵉ à la partie.</p>
+      <button class="btn big" id="btn-home-online">🌍 Rejoindre avec un code</button>
+      <button class="btn big" id="btn-home-join">🔗 Rejoindre une partie (QR)</button>
+      <p class="hint">Sur place, sans Internet : celui qui crée la partie sert de serveur
+        et l’invité scanne un QR code. À distance : l’hôte annonce un
+        <strong>code de 6 caractères</strong>, chacun le tape ici.</p>
     </div>
   </section>
 
@@ -66,7 +67,8 @@
     <div class="home-buttons">
       <button class="btn big" id="btn-mode-solo">🤖 Jouer seul contre l’IA</button>
       <button class="btn big" id="btn-mode-local">📱 Jouer sur ce téléphone (2-4)</button>
-      <button class="btn big" id="btn-mode-host">📶 Créer une partie (plusieurs téléphones)</button>
+      <button class="btn big" id="btn-mode-online">🌍 En ligne (chacun chez soi)</button>
+      <button class="btn big" id="btn-mode-host">📶 Sur place, sans Internet (QR)</button>
     </div>
     <button class="btn link" data-back>← Retour</button>
   </section>
@@ -122,7 +124,8 @@
     <div class="home-buttons" id="mini-setup-modes">
       <button class="btn big" id="btn-mini-solo">🤖 Jouer seul contre l’ordinateur</button>
       <button class="btn big" id="btn-mini-hotseat">📱 Sur ce téléphone</button>
-      <button class="btn big" id="btn-mini-host">📶 Créer une partie (plusieurs téléphones)</button>
+      <button class="btn big" id="btn-mini-online">🌍 En ligne (chacun chez soi)</button>
+      <button class="btn big" id="btn-mini-host">📶 Sur place, sans Internet (QR)</button>
     </div>
     <div id="mini-solo-config" class="hidden">
       <label>Votre prénom
@@ -161,18 +164,27 @@
         <input type="text" id="host-name" maxlength="14" placeholder="Prénom" value="Joueur 1">
       </label>
       <button class="btn big primary" id="btn-host-create">Créer la partie</button>
-      <p class="hint">Votre téléphone servira de serveur. Tous les téléphones doivent être sur
-        le même Wi-Fi, ou connectés à votre partage de connexion (pas besoin d’Internet).</p>
+      <p class="hint" id="host-name-hint">Votre téléphone servira de serveur. Tous les téléphones
+        doivent être sur le même Wi-Fi, ou connectés à votre partage de connexion
+        (pas besoin d’Internet).</p>
     </div>
 
     <div class="net-step hidden" id="host-step-lobby">
+      <div id="host-online-box" class="hidden">
+        <p class="code-label">Code de la partie</p>
+        <div class="code-big" id="host-code-big">······</div>
+        <button class="btn big" id="btn-host-share-code">📤 Envoyer le code et le lien</button>
+        <p class="hint">Vos amis touchent « 🌍 Rejoindre avec un code » sur l’accueil
+          et tapent ce code — de n’importe où. Il reste valable tant que vous
+          gardez cet écran ou la partie ouverts.</p>
+      </div>
       <h3>Joueurs</h3>
       <div id="lobby-list"></div>
       <button class="btn big" id="btn-host-wifi">📶 QR Wi-Fi : connecter un téléphone à mon réseau</button>
       <button class="btn big" id="btn-host-invite">➕ Inviter un joueur</button>
       <button class="btn big primary" id="btn-host-start" disabled>Commencer la partie</button>
       <button class="btn big hidden" id="btn-host-back-game">← Retour au jeu</button>
-      <p class="hint">Invitez chaque joueur l’un après l’autre.</p>
+      <p class="hint" id="host-lobby-hint">Invitez chaque joueur l’un après l’autre.</p>
     </div>
 
     <div class="net-step hidden" id="host-step-wifi">
@@ -272,6 +284,54 @@
     </div>
     <p class="error hidden" id="join-error"></p>
     <button class="btn link" data-back>← Annuler</button>
+  </section>
+
+  <!-- ============ EN LIGNE : REJOINDRE AVEC UN CODE ============ -->
+  <section id="screen-online" class="screen">
+    <h2>🌍 Rejoindre avec un code</h2>
+    <div class="net-step" id="online-step-code">
+      <label>Votre prénom
+        <input type="text" id="online-name" maxlength="14" placeholder="Prénom" value="Joueur 2">
+      </label>
+      <label>Code de la partie
+        <input type="text" id="online-code" class="code-input" maxlength="7"
+          autocomplete="off" autocapitalize="characters" spellcheck="false"
+          placeholder="PLUME7">
+      </label>
+      <button class="btn big primary" id="btn-online-go">Rejoindre la partie</button>
+      <p class="hint">L’hôte vous donne ce code (ou vous envoie un lien qui ouvre
+        directement l’application). Chacun a besoin d’Internet, mais vous pouvez
+        être à l’autre bout du monde.</p>
+      <button class="btn link" id="btn-online-settings">⚙️ Réglages du serveur</button>
+    </div>
+    <div class="net-step hidden" id="online-step-lobby">
+      <p class="waiting" id="online-waiting">⏳ Connexion à la partie…</p>
+      <div id="online-lobby" class="hidden">
+        <h3>Joueurs connectés</h3>
+        <div id="online-lobby-list"></div>
+        <p class="hint">L’hôte lance la partie quand tout le monde est là.</p>
+      </div>
+    </div>
+    <p class="error hidden" id="online-error"></p>
+    <button class="btn link" data-back>← Annuler</button>
+  </section>
+
+  <!-- ============ EN LIGNE : RÉGLAGES DU SERVEUR ============ -->
+  <section id="screen-relais" class="screen">
+    <h2>⚙️ Serveur des parties en ligne</h2>
+    <p class="hint">Pour jouer <strong>à distance</strong>, GGgames a besoin d’un petit
+      serveur de rendez-vous : il met les téléphones en relation, sans jamais
+      connaître le jeu. Il s’installe gratuitement en quelques clics (voir le
+      dossier <code>relay/</code> du projet), puis vous collez ici l’adresse
+      obtenue — <strong>une seule fois</strong>, l’application s’en souvient.</p>
+    <label>Adresse du serveur
+      <input type="text" id="relais-url" autocomplete="off" spellcheck="false"
+        placeholder="https://gggames-relais.mon-compte.workers.dev">
+    </label>
+    <p class="hint" id="relais-etat"></p>
+    <button class="btn big primary" id="btn-relais-save">Enregistrer</button>
+    <button class="btn big" id="btn-relais-test">Tester la connexion</button>
+    <button class="btn link" data-back>← Retour</button>
   </section>
 
   <!-- ============ JEU : MOTS ============ -->
@@ -396,6 +456,7 @@
   <script src="js/ai.js"></script>
   <script src="js/net.js"></script>
   <script src="js/games/registry.js"></script>
+  <script src="js/online.js"></script>
   <script src="js/wallet.js"></script>
   <script src="js/games/motscourants.js"></script>
   <script src="js/games/p4.js"></script>

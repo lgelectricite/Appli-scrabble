@@ -55,6 +55,11 @@
   var hostPeers = [];        // [{net, name, playerIndex, connected}]
   var invitePeer = null;     // pair en cours d'invitation
   var guestNet = null;       // connexion de l'invité vers l'hôte
+  /* Deux façons de se relier, pour la même partie : 'qr' (WebRTC direct,
+     sur place, sans Internet) ou 'online' (code de partie via le relais). */
+  var netKind = 'qr';
+  var onlineLien = null;     // lien vers le relais (hôte ou invité)
+  var onlineCode = '';       // code de la partie en cours
 
   function $(id) { return document.getElementById(id); }
 
@@ -1172,8 +1177,18 @@
     $('btn-host-start').disabled = connectedGuests().length < minGuests();
     $('btn-host-start').classList.toggle('hidden', gameStarted());
     $('btn-host-back-game').classList.toggle('hidden', !gameStarted());
-    $('btn-host-invite').classList.toggle('hidden',
-      gameStarted() ? false : hostPeers.length >= maxGuests());
+
+    // En ligne : le code remplace les invitations une par une ; tout le monde
+    // rejoint quand il veut, sans QR ni Wi-Fi commun.
+    var enLigne = netKind === 'online';
+    $('host-online-box').classList.toggle('hidden', !enLigne);
+    $('btn-host-invite').classList.toggle('hidden', enLigne ||
+      (gameStarted() ? false : hostPeers.length >= maxGuests()));
+    $('btn-host-wifi').classList.toggle('hidden', enLigne);
+    $('host-lobby-hint').textContent = enLigne
+      ? 'Chacun peut rejoindre quand il veut, tant que la partie n’est pas lancée.'
+      : 'Invitez chaque joueur l’un après l’autre.';
+    if (enLigne) $('host-code-big').textContent = onlineCode || '······';
   }
 
   /* Affiche/masque le bandeau « connexion perdue » sur les deux écrans de jeu. */
@@ -1329,7 +1344,8 @@
   function hostShowLobby() {
     clearTimeout(pairingTimer);
     showScreen('screen-host');
-    $('host-title').textContent = 'Créer une partie — ' + gameLabel();
+    $('host-title').textContent = (netKind === 'online' ? '🌍 Partie en ligne — ' :
+      'Créer une partie — ') + gameLabel();
     $('host-step-name').classList.add('hidden');
     $('host-step-lobby').classList.remove('hidden');
     $('host-step-offer').classList.add('hidden');
@@ -1477,12 +1493,16 @@
 
   function guestHandleMessage(msg) {
     if (msg.t === 'lobby') {
-      var box = $('join-lobby');
+      // le salon s'affiche là où l'invité se trouve : écran QR ou écran « code »
+      var enLigne = netKind === 'online';
+      var box = $(enLigne ? 'online-lobby' : 'join-lobby');
       box.classList.remove('hidden');
-      $('join-lobby-list').innerHTML = (msg.names || []).map(function (n, i) {
-        return '<div class="lobby-row">' + (i === 0 ? '👑 ' : '🟢 ') + esc(n) + '</div>';
-      }).join('');
-      $('join-waiting').textContent = '⏳ Connecté ! En attente du début de la partie…';
+      $(enLigne ? 'online-lobby-list' : 'join-lobby-list').innerHTML =
+        (msg.names || []).map(function (n, i) {
+          return '<div class="lobby-row">' + (i === 0 ? '👑 ' : '🟢 ') + esc(n) + '</div>';
+        }).join('');
+      $(enLigne ? 'online-waiting' : 'join-waiting').textContent =
+        '⏳ Connecté ! En attente du début de la partie…';
       return;
     }
     if (msg.t === 'init') {
@@ -1713,9 +1733,172 @@
     ['overlay-pass', 'overlay-joker', 'overlay-confirm', 'overlay-history',
      'overlay-menu', 'overlay-end'].forEach(function (id) { showOverlay(id, false); });
     setNetBanner(false);
+    onlineFerme();
+    netKind = 'qr';
     document.body.classList.remove('theme-manoir');
     document.body.classList.remove('theme-casino');
     showScreen('screen-home');
+  }
+
+  /* =================================================================
+   *  MODE EN LIGNE — un code de partie, chacun chez soi
+   *
+   *  Le relais (dossier relay/) ne fait que transmettre : l'hôte reste
+   *  l'arbitre et les pairs qu'il voit ici présentent exactement la même
+   *  interface que le WebRTC du mode QR. Tout le reste de l'application
+   *  (salon, reconnexion, jeux) est donc partagé, sans une ligne en double.
+   * ================================================================= */
+
+  function onlineFerme() {
+    if (onlineLien) { try { onlineLien.close(); } catch (e) {} }
+    onlineLien = null;
+    onlineCode = '';
+  }
+
+  function lienDePartie(code) {
+    return appBaseUrl() + '#c=' + code;
+  }
+
+  /* L'hôte ouvre un salon en ligne : le code s'affiche, les invités arrivent. */
+  function hostOnlineCreate() {
+    hostName = ($('host-name').value.trim() || 'Joueur 1').slice(0, 14);
+    netKind = 'online';
+    mode = 'host';
+    hostPeers = [];
+    invitePeer = null;
+    onlineFerme();
+    $('host-step-name').classList.add('hidden');
+    $('host-step-wait').classList.remove('hidden');
+    $('host-error').classList.add('hidden');
+    $('host-step-wait').querySelector('.waiting').textContent = '⏳ Ouverture de la partie…';
+
+    onlineLien = window.GG.Online.heberger({
+      onPret: function (code) {
+        onlineCode = code;
+        hostShowLobby();
+      },
+      onPair: function (pair) {
+        // nouveau téléphone dans le salon : on attend son « bonjour »,
+        // exactement comme avec un QR code
+        var peer = { net: pair, name: null, playerIndex: null, connected: false };
+        attachPeerHandlers(peer);
+      },
+      onEtat: function (txt) {
+        if (txt) setNetBanner(true, txt); else setNetBanner(false);
+      },
+      onErreur: function (txt, definitif) {
+        if (definitif) {
+          showError('host-error', txt);
+          $('host-step-wait').classList.add('hidden');
+          $('host-step-name').classList.remove('hidden');
+          onlineFerme();
+        } else {
+          toast(txt);
+        }
+      }
+    });
+  }
+
+  /* Un invité rejoint avec le code annoncé. */
+  function guestOnlineJoin() {
+    var code = ($('online-code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    var nom = ($('online-name').value.trim() || 'Joueur').slice(0, 14);
+    if (code.length < 4) {
+      showError('online-error', 'Entrez le code de la partie (6 caractères).');
+      return;
+    }
+    if (!window.GG.Online.disponible()) { showRelaisSettings(); return; }
+
+    netKind = 'online';
+    mode = 'guest';
+    if (guestNet) { try { guestNet.close(); } catch (e) {} }
+    guestNet = null;
+    onlineFerme();
+
+    $('online-step-code').classList.add('hidden');
+    $('online-step-lobby').classList.remove('hidden');
+    $('online-error').classList.add('hidden');
+    $('online-lobby').classList.add('hidden');
+    $('online-waiting').textContent = '⏳ Connexion à la partie…';
+
+    onlineLien = window.GG.Online.rejoindre({
+      code: code,
+      onPair: function (pair) {
+        guestNet = pair;
+        pair.onMessage = guestHandleMessage;
+        pair.onClose = function () {
+          if (gameStarted()) {
+            setNetBanner(true, 'Connexion perdue.');
+            waitingHost = false;
+            clearTimeout(waitingTimer);
+            if (currentGame === 'mots') render();
+          }
+        };
+        pair.onOpen = function () { pair.send({ t: 'hello', name: nom }); };
+        // le lien est déjà ouvert quand le pair naît
+        pair.onOpen();
+      },
+      onEtat: function (txt) {
+        if (txt) $('online-waiting').textContent = '⏳ ' + txt;
+      },
+      onErreur: function (txt, definitif) {
+        if (!definitif) { toast(txt); return; }
+        if (gameStarted()) { setNetBanner(true, txt); return; }
+        showError('online-error', txt);
+        $('online-step-lobby').classList.add('hidden');
+        $('online-step-code').classList.remove('hidden');
+        onlineFerme();
+      }
+    });
+  }
+
+  function showOnlineJoin(codePreRempli) {
+    netKind = 'online';
+    $('online-step-code').classList.remove('hidden');
+    $('online-step-lobby').classList.add('hidden');
+    $('online-error').classList.add('hidden');
+    $('online-lobby').classList.add('hidden');
+    if (codePreRempli) $('online-code').value = codePreRempli;
+    showScreen('screen-online');
+    if (!window.GG.Online.disponible()) showRelaisSettings();
+  }
+
+  function showRelaisSettings() {
+    $('relais-url').value = window.GG.Online.serveur();
+    $('relais-etat').textContent = window.GG.Online.disponible()
+      ? '✅ Un serveur est enregistré.'
+      : '⚠️ Aucun serveur enregistré : le jeu à distance est indisponible tant ' +
+        'qu’une adresse n’est pas collée ici. (Le jeu sur place, par QR code, ' +
+        'fonctionne sans.)';
+    showScreen('screen-relais');
+  }
+
+  function testerRelais() {
+    var url = window.GG.Online.normaliser($('relais-url').value);
+    if (!url) { $('relais-etat').textContent = '⚠️ Entrez d’abord une adresse.'; return; }
+    $('relais-etat').textContent = '⏳ Test en cours…';
+    var ws;
+    var fini = false;
+    var stop = function (txt) {
+      if (fini) return;
+      fini = true;
+      $('relais-etat').textContent = txt;
+      if (ws) { try { ws.close(); } catch (e) {} }
+    };
+    setTimeout(function () { stop('❌ Pas de réponse : vérifiez l’adresse.'); }, 8000);
+    try {
+      ws = new WebSocket(url + '/salon/TEST00?r=h');
+    } catch (e) {
+      stop('❌ Adresse invalide.');
+      return;
+    }
+    ws.onmessage = function (ev) {
+      var m;
+      try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.sys === 'bienvenue') stop('✅ Le serveur répond : tout est prêt !');
+      else if (m.sys === 'refus') stop('✅ Le serveur répond (salon d’essai occupé, c’est bon signe).');
+    };
+    ws.onerror = function () { stop('❌ Connexion impossible : vérifiez l’adresse.'); };
   }
 
   /* ---------- partage par message (jouer à distance) ----------
@@ -1770,13 +1953,22 @@
       updateWallet();
     }
 
-    function openHostScreen() {
+    function openHostScreen(kind) {
+      netKind = kind || 'qr';
+      onlineFerme();
       showScreen('screen-host');
-      $('host-title').textContent = 'Créer une partie — ' + gameLabel();
+      $('host-title').textContent = (netKind === 'online' ? '🌍 Partie en ligne — ' :
+        'Créer une partie — ') + gameLabel();
       $('host-step-name').classList.remove('hidden');
       ['host-step-lobby', 'host-step-offer', 'host-step-scan', 'host-step-wait', 'host-step-wifi']
         .forEach(function (id) { $(id).classList.add('hidden'); });
       $('host-error').classList.add('hidden');
+      $('host-name-hint').textContent = netKind === 'online'
+        ? 'Votre téléphone reste l’arbitre de la partie. Un code de 6 caractères ' +
+          'sera affiché : donnez-le à vos amis, où qu’ils soient.'
+        : 'Votre téléphone servira de serveur. Tous les téléphones doivent être sur ' +
+          'le même Wi-Fi, ou connectés à votre partage de connexion (pas besoin d’Internet).';
+      if (netKind === 'online' && !window.GG.Online.disponible()) showRelaisSettings();
     }
 
     function openJoinScreen() {
@@ -1807,7 +1999,44 @@
     });
     $('btn-mini-start').addEventListener('click', miniStartLocal);
     $('btn-msolo-start').addEventListener('click', miniStartSolo);
-    $('btn-mini-host').addEventListener('click', openHostScreen);
+    $('btn-mini-host').addEventListener('click', function () { openHostScreen('qr'); });
+    $('btn-mini-online').addEventListener('click', function () { openHostScreen('online'); });
+    $('btn-mode-online').addEventListener('click', function () {
+      pendingGame = 'mots';
+      openHostScreen('online');
+    });
+    $('btn-home-online').addEventListener('click', function () { showOnlineJoin(''); });
+    $('btn-online-go').addEventListener('click', guestOnlineJoin);
+    $('online-code').addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') guestOnlineJoin();
+    });
+    $('btn-online-settings').addEventListener('click', showRelaisSettings);
+    $('btn-relais-save').addEventListener('click', function () {
+      var n = window.GG.Online.setServeur($('relais-url').value);
+      $('relais-url').value = n;
+      $('relais-etat').textContent = n
+        ? '✅ Enregistré : ' + n
+        : 'Adresse effacée : le jeu à distance est de nouveau indisponible.';
+      toast(n ? 'Serveur enregistré.' : 'Serveur effacé.');
+    });
+    $('btn-relais-test').addEventListener('click', testerRelais);
+    $('btn-host-share-code').addEventListener('click', function () {
+      var texte = 'Je t’invite à jouer sur GGgames !\n\n' +
+        'Code de la partie : ' + onlineCode + '\n' +
+        'Ou touche simplement ce lien : ' + lienDePartie(onlineCode);
+      if (navigator.share) {
+        navigator.share({ title: 'GGgames — partie en ligne', text: texte })
+          .catch(function () {});
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texte)
+          .then(function () { toast('Code et lien copiés.'); })
+          .catch(function () { toast('Code : ' + onlineCode); });
+      } else {
+        toast('Code : ' + onlineCode);
+      }
+    });
     $('btn-mini-menu').addEventListener('click', function () { showOverlay('overlay-menu', true); });
     $('btn-mini-reconnect').addEventListener('click', reconnect);
 
@@ -1912,11 +2141,12 @@
 
     // Hôte
     $('btn-host-create').addEventListener('click', function () {
+      myFixedIndex = 0;
+      loadDict().catch(function () {}); // en tâche de fond pendant l'appairage
+      if (netKind === 'online') { hostOnlineCreate(); return; }
       hostName = ($('host-name').value.trim() || 'Joueur 1').slice(0, 14);
       mode = 'host';
-      myFixedIndex = 0;
       hostPeers = [];
-      loadDict().catch(function () {}); // en tâche de fond pendant l'appairage
       hostShowLobby();
     });
     $('btn-host-invite').addEventListener('click', hostInvite);
@@ -2017,6 +2247,14 @@
     // l'URL contient le code (#j=...) → on ouvre directement l'écran « rejoindre ».
     // (au chargement, mais aussi si l'app était déjà ouverte : hashchange)
     function handleInviteHash() {
+      // lien d'une partie EN LIGNE : #c=PLUME7 → écran « rejoindre avec un code »
+      if (location.hash && location.hash.indexOf('#c=') === 0) {
+        var court = location.hash.slice(3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        history.replaceState(null, '', location.pathname + location.search);
+        if (gameStarted() || !court) return;
+        showOnlineJoin(court);
+        return;
+      }
       if (!(location.hash && location.hash.indexOf('#j=') === 0)) return;
       var code = extractCode(location.hash);
       history.replaceState(null, '', location.pathname + location.search);
