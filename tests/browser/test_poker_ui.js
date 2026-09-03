@@ -65,6 +65,38 @@ function check(n, c, e) {
   check('les cartes de l’adversaire restent face cachée',
     await hote.locator('.pk-seat.st .jc.dos').count() === 2);
 
+  console.log('--- Choisir librement sa relance ---');
+  const zone = await hote.locator('.pk-raise').count();
+  check('un curseur de relance est proposé', zone === 1);
+  const bornes = await hote.evaluate(() => {
+    const z = document.querySelector('.pk-raise');
+    const sl = document.querySelector('#pk-slider');
+    return z ? { min: +z.dataset.min, max: +z.dataset.max, val: +sl.value, pas: sl.step } : null;
+  });
+  check('on peut choisir au jeton près entre le minimum et le tapis',
+    bornes && bornes.pas === '1' && bornes.min < bornes.max &&
+    bornes.val >= bornes.min && bornes.val <= bornes.max, bornes);
+  // on choisit un montant « libre » que les anciens boutons ne proposaient pas
+  const vise = Math.min(bornes.max - 1, Math.max(bornes.min, 37));
+  await hote.evaluate(v => {
+    const sl = document.querySelector('#pk-slider');
+    sl.value = v;
+    sl.dispatchEvent(new Event('input', { bubbles: true }));
+  }, vise);
+  check('le montant choisi s’affiche en grand',
+    (await hote.textContent('#pk-mise')) === String(vise) &&
+    /Relancer à/.test(await hote.textContent('#pk-raise-go')));
+  await hote.click('#pk-raise-go');
+  await inv.waitForFunction(n => /Relance|TAPIS/.test(document.querySelector('#mini-area').textContent),
+    null, { timeout: 10000 });
+  const mise = await inv.evaluate(() => {
+    const s = GG.byId.poker;
+    void s;
+    return document.querySelector('#mini-area').textContent;
+  });
+  check('la relance exacte part vraiment à la table',
+    new RegExp('Relance ' + vise + '|TAPIS ' + vise).test(mise), mise.slice(0, 120));
+
   console.log('--- Les annonces restent affichées ---');
   check('blinds annoncées sous les sièges',
     await hote.locator('.pk-annonce').count() >= 1,

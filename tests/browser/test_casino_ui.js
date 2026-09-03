@@ -37,7 +37,14 @@ function check(n, c, e) {
   check('table du croupier affichée', await p.locator('.bj-felt').count() === 1);
   check('jetons de casino affichés (5 valeurs)', await p.locator('.bj-chipbtn .bj-chip').count() === 5);
   check('rond de mise vide sur le tapis', await p.locator('.bj-spot').count() === 1);
+  // la mise se compose jeton par jeton, puis se valide
+  await p.click('.bj-bet[data-v="25"]');
+  await p.click('.bj-bet[data-v="25"]');
+  check('deux jetons de 25 font une mise de 50', /50/.test(await p.textContent('#bj-compo-n')));
+  await p.click('#bj-effacer');
+  check('« Effacer » remet la mise à zéro', (await p.textContent('#bj-compo-n')) === '0');
   await p.click('.bj-bet[data-v="100"]');
+  await p.click('#bj-valider');
   await p.waitForSelector('.bj-cartes-moi .bj-card', { timeout: 8000 });
   check('2 cartes distribuées', await p.locator('.bj-cartes-moi .bj-card').count() === 2);
   check('mise débitée de la cagnotte',
@@ -87,6 +94,7 @@ function check(n, c, e) {
   await p.click('#btn-mini-start');
   await p.waitForSelector('.bj-mises', { timeout: 15000 });
   await p.click('.bj-bet[data-v="25"]');
+  await p.click('#bj-valider');
   await p.waitForSelector('#bj-split', { timeout: 8000 });
   check('paire de 3 : bouton Séparer proposé', true);
   await p.click('#bj-split');

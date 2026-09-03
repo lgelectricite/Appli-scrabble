@@ -188,7 +188,7 @@
     icone: '♠️',
     desc: 'Défiez le croupier : approchez 21 sans le dépasser et repartez avec les jetons !',
     regles: '<p><strong>🎯 Le but :</strong> battre le croupier en vous approchant de 21 sans jamais le dépasser.</p>' +
-      '<p><strong>Comment jouer :</strong> misez vos jetons (de 1 à 500), recevez deux cartes, puis à votre tour : tirez, restez, ou doublez (uniquement avec deux cartes : mise doublée, une seule carte de plus). L\'as vaut 1 ou 11.</p>' +
+      '<p><strong>Comment jouer :</strong> composez votre mise en empilant les jetons (1, 5, 25, 100, 500 — n\'importe quel montant), validez, recevez deux cartes, puis à votre tour : tirez, restez, ou doublez (uniquement avec deux cartes : mise doublée, une seule carte de plus). L\'as vaut 1 ou 11.</p>' +
       '<p><strong>Le croupier :</strong> il révèle sa carte cachée après vous et tire jusqu\'à 17 — il reste sur tous les 17.</p>' +
       '<p><strong>Séparer (split) :</strong> deux cartes de même valeur ? Séparez-les en deux mains, chacune avec sa mise — les as séparés ne reçoivent qu\'une carte chacun.</p>' +
       '<p><strong>Les gains :</strong> victoire 1 pour 1, blackjack naturel 3 pour 2, égalité : mise rendue.</p>',
@@ -532,13 +532,23 @@
         } else {
           html += (GG.wallet ? '<div class="bj-wallet">Votre cagnotte : 🪙 ' +
             GG.wallet.fmt(GG.wallet.get()) + '</div>' : '');
+          // on empile les jetons comme au casino : n'importe quel montant
+          var enCours = el._bjMise || 0;
           html += '<div class="bj-mises">';
           for (i = 0; i < MISES.length; i++) {
             html += '<button class="bj-chipbtn bj-bet" data-v="' + MISES[i] + '"' +
-              (GG.wallet && solde < MISES[i] ? ' disabled' : '') + '>' +
+              (GG.wallet && solde < enCours + MISES[i] ? ' disabled' : '') + '>' +
               chipHtml(MISES[i], false) + '</button>';
           }
-          html += '</div><button class="bj-passe" id="bj-sit">Je passe cette manche</button>' +
+          html += '</div>';
+          html += '<div class="bj-compo">' +
+            '<span class="bj-compo-l">Votre mise</span>' +
+            '<b id="bj-compo-n">' + enCours + '</b> 🪙' +
+            '<button class="btn small" id="bj-effacer"' + (enCours ? '' : ' disabled') +
+            '>Effacer</button></div>';
+          html += '<button class="btn big primary" id="bj-valider"' +
+            (enCours > 0 ? '' : ' disabled') + '>Miser ' + enCours + ' 🪙</button>';
+          html += '<button class="bj-passe" id="bj-sit">Je passe cette manche</button>' +
             '<p class="mini-msg" id="bj-msg"></p>';
         }
       } else if (moi && s.phase === 'bet' && moi.bet > 0) {
@@ -605,22 +615,55 @@
         if (b) b.addEventListener('click', fn);
       }
 
+      /* Composer sa mise : chaque jeton s'ajoute, on valide quand le compte
+         y est. Rien n'est débité tant qu'on n'a pas validé. */
+      function majCompo() {
+        var n = el._bjMise || 0;
+        var lbl = el.querySelector('#bj-compo-n');
+        var val = el.querySelector('#bj-valider');
+        var eff = el.querySelector('#bj-effacer');
+        var dispo = GG.wallet ? GG.wallet.get() : Infinity;
+        if (lbl) lbl.textContent = n;
+        if (val) { val.textContent = 'Miser ' + n + ' 🪙'; val.disabled = n <= 0; }
+        if (eff) eff.disabled = n <= 0;
+        el.querySelectorAll('.bj-bet').forEach(function (b) {
+          b.disabled = dispo < n + parseInt(b.getAttribute('data-v'), 10);
+        });
+        var spot = el.querySelector('.bj-spot');
+        if (spot && s.phase === 'bet') {
+          spot.className = 'bj-spot' + (n > 0 ? ' filled' : '');
+          spot.innerHTML = n > 0
+            ? chipStack(n) + '<span class="bj-spot-amt">' + n + '</span>'
+            : '<span class="bj-spot-lbl">MISE</span>';
+        }
+      }
+
       var boutons = el.querySelectorAll('.bj-bet');
       for (i = 0; i < boutons.length; i++) {
         (function (btn) {
           btn.addEventListener('click', function () {
-            if (el._bjActed || el._bjBet === rondCle) return; // anti double-débit
+            if (el._bjBet === rondCle) return;
             var v = parseInt(btn.getAttribute('data-v'), 10);
-            if (GG.wallet && GG.wallet.get() < v) { msg('Pas assez de jetons !'); return; }
-            el._bjActed = true;
-            // la cagnotte n'est débitée que si l'action part vraiment
-            // (connexion tombée = rien envoyé, rien débité)
-            if (ctx.act({ t: 'bet', v: v }) === false) { el._bjActed = false; return; }
-            el._bjBet = rondCle;
-            if (GG.wallet) GG.wallet.spend(v);
+            var dispo = GG.wallet ? GG.wallet.get() : Infinity;
+            if (dispo < (el._bjMise || 0) + v) { msg('Pas assez de jetons !'); return; }
+            el._bjMise = (el._bjMise || 0) + v;
+            majCompo();
           });
         })(boutons[i]);
       }
+      on('bj-effacer', function () { el._bjMise = 0; majCompo(); });
+      on('bj-valider', function () {
+        var n = el._bjMise || 0;
+        if (n <= 0 || el._bjActed || el._bjBet === rondCle) return;
+        if (GG.wallet && GG.wallet.get() < n) { msg('Pas assez de jetons !'); return; }
+        el._bjActed = true;
+        // la cagnotte n'est débitée que si l'action part vraiment
+        // (connexion tombée = rien envoyé, rien débité)
+        if (ctx.act({ t: 'bet', v: n }) === false) { el._bjActed = false; return; }
+        el._bjBet = rondCle;
+        el._bjMise = 0;
+        if (GG.wallet) GG.wallet.spend(n);
+      });
       on('bj-sit', function () { ctx.act({ t: 'sit' }); });
       on('bj-hit', function () {
         if (el._bjActed) return;

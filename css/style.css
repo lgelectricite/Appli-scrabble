@@ -2323,3 +2323,38 @@ body.theme-casino .pk-fil-l { background: rgba(0, 0, 0, .3); border-color: #4a3f
 }
 .maj-note .btn { margin-left: 6px; }
 hr.sep { border: none; border-top: 1px solid var(--line, #d8cdb4); margin: 18px 0 12px; }
+
+/* ===== Poker : choisir librement sa relance ===== */
+.pk-raise {
+  margin-top: 10px; padding: 10px 12px 12px; border-radius: 14px;
+  background: rgba(0, 0, 0, .28); border: 1px solid rgba(212, 175, 55, .45);
+}
+.pk-raise-head { display: flex; align-items: center; gap: 10px; }
+.pk-raise-val { flex: 1; text-align: center; color: #f4ead2; font-size: 15px; }
+.pk-raise-val b { color: #f7e39b; font-size: 22px; }
+.pk-adj {
+  width: 44px; height: 40px; flex: none; border-radius: 12px;
+  background: var(--card); border: 2px solid var(--ink); color: var(--ink);
+  font-size: 24px; font-weight: 800; line-height: 1; cursor: pointer;
+  touch-action: manipulation;
+}
+.pk-adj:active { transform: translateY(2px); }
+#pk-slider {
+  width: 100%; margin: 10px 0 8px; accent-color: #d4af37; height: 26px;
+}
+.pk-raise-quick { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.pk-quick {
+  flex: 1 1 22%; padding: 7px 4px; border-radius: 10px; cursor: pointer;
+  background: var(--card); border: 2px solid var(--ink); color: var(--ink);
+  font-size: 13px; font-weight: 700; touch-action: manipulation;
+}
+.pk-quick:active { transform: translateY(1px); }
+.pk-raise .pk-raise-go { display: block; width: 100%; max-width: none; margin: 9px 0 0; }
+
+/* ===== Blackjack : composer sa mise jeton par jeton ===== */
+.bj-compo {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 8px 0 4px; color: #f4ead2; font-size: 15px;
+}
+.bj-compo-l { opacity: .85; }
+.bj-compo b { color: #f2cd5c; font-size: 22px; }

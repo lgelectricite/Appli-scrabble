@@ -778,13 +778,37 @@
         } else {
           html += '<button class="btn action" data-a=\'{"t":"call"}\'>Suivre ' + Math.min(owe, my.chips) + '</button>';
         }
-        [s.minRaise, s.minRaise * 2, s.minRaise * 5].forEach(function (by) {
-          if (owe + by < my.chips) {
-            html += '<button class="btn action" data-a=\'{"t":"raise","by":' + by + '}\'>+' + by + '</button>';
-          }
-        });
         html += '<button class="btn action primary" data-a=\'{"t":"allin"}\'>Tapis (' + my.chips + ')</button>';
         html += '</div>';
+
+        /* Choisir SON montant : on raisonne comme à une vraie table, en
+           « relancer à N » (le total posé sur la rue), pas en « +N ». */
+        var miseMin = s.maxBet + s.minRaise;      // relance minimale légale
+        var miseMax = my.bet + my.chips;          // tapis
+        if (miseMax > miseMin) {
+          var potMtn = potTotal(s);
+          var depart = Math.min(miseMax, Math.max(miseMin, s.maxBet + Math.max(s.minRaise, Math.round(potMtn / 2))));
+          html += '<div class="pk-raise" data-min="' + miseMin + '" data-max="' + miseMax + '">' +
+            '<div class="pk-raise-head">' +
+            '<button class="pk-adj" data-adj="-1">−</button>' +
+            '<div class="pk-raise-val">Relancer à <b id="pk-mise">' + depart + '</b> 🪙</div>' +
+            '<button class="pk-adj" data-adj="1">+</button>' +
+            '</div>' +
+            '<input type="range" id="pk-slider" min="' + miseMin + '" max="' + miseMax +
+            '" step="1" value="' + depart + '">' +
+            '<div class="pk-raise-quick">' +
+            '<button class="pk-quick" data-set="' + miseMin + '">Min ' + miseMin + '</button>' +
+            (s.maxBet + Math.round(potMtn / 2) > miseMin &&
+             s.maxBet + Math.round(potMtn / 2) < miseMax
+              ? '<button class="pk-quick" data-set="' + (s.maxBet + Math.round(potMtn / 2)) + '">½ pot</button>' : '') +
+            (s.maxBet + potMtn > miseMin && s.maxBet + potMtn < miseMax
+              ? '<button class="pk-quick" data-set="' + (s.maxBet + potMtn) + '">Pot</button>' : '') +
+            '<button class="pk-quick" data-set="' + miseMax + '">Tapis ' + miseMax + '</button>' +
+            '</div>' +
+            '<button class="btn action primary pk-raise-go" id="pk-raise-go">Relancer à ' +
+            '<b>' + depart + '</b> 🪙</button>' +
+            '</div>';
+        }
       } else if (!s.handOver && !my.out) {
         html += '<p class="mini-msg">Au tour de ' + GG.esc(s.players[s.current].name) + '…</p>';
       }
@@ -825,6 +849,36 @@
         }
       } else if (!s.handOver) {
         el._pkAnim = null;
+      }
+
+      /* Le curseur de relance : on ajuste librement, puis on valide. */
+      var zone = el.querySelector('.pk-raise');
+      if (zone) {
+        var slider = el.querySelector('#pk-slider');
+        var etiq = el.querySelector('#pk-mise');
+        var valider = el.querySelector('#pk-raise-go');
+        var mn = parseInt(zone.dataset.min, 10);
+        var mx = parseInt(zone.dataset.max, 10);
+        var poser = function (v) {
+          v = Math.max(mn, Math.min(mx, Math.round(v) || mn));
+          slider.value = v;
+          etiq.textContent = v;
+          valider.querySelector('b').textContent = v;
+        };
+        slider.addEventListener('input', function () { poser(+slider.value); });
+        el.querySelectorAll('.pk-adj').forEach(function (b) {
+          b.addEventListener('click', function () {
+            poser(+slider.value + parseInt(b.dataset.adj, 10));
+          });
+        });
+        el.querySelectorAll('.pk-quick').forEach(function (b) {
+          b.addEventListener('click', function () { poser(parseInt(b.dataset.set, 10)); });
+        });
+        valider.addEventListener('click', function () {
+          var cible = Math.max(mn, Math.min(mx, +slider.value));
+          // aller jusqu'au tapis, c'est un tapis : le jeu le sait mieux que nous
+          ctx.act(cible >= mx ? { t: 'allin' } : { t: 'raise', by: cible - s.maxBet });
+        });
       }
 
       el.querySelectorAll('[data-a]').forEach(function (b) {
