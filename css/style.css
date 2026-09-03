@@ -222,6 +222,15 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   background: #000;
 }
 .video-box video { display: block; width: 100%; }
+/* encadré « jouer à distance » sur les écrans d'invitation */
+.loin-box {
+  margin: 12px 0; padding: 10px 12px;
+  border: 2px dashed var(--line, #d8cdb4); border-radius: 12px;
+  background: var(--card);
+}
+.loin-box p { margin: 0 0 8px; font-size: 14px; line-height: 1.45; }
+.loin-box .btn { width: 100%; }
+
 .code-details { margin: 10px 0; font-size: 14px; }
 .code-details summary { cursor: pointer; color: var(--ink-soft); margin-bottom: 8px; }
 .waiting { text-align: center; font-size: 15px; color: var(--ink-soft); }
@@ -736,7 +745,13 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 .bac-vote-row.auto-bad { opacity: .55; }
 .bac-cat { color: var(--ink-soft); flex: 0 0 38%; }
 .bac-ans { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
-.bac-flag { font-weight: 700; }
+.bac-flag { font-weight: 700; white-space: nowrap; }
+/* pourquoi un mot ne marque pas : refusé, mauvaise lettre, même mot */
+.bac-why {
+  display: block; font-size: 11px; font-weight: 400;
+  font-style: normal; color: var(--ink-soft); opacity: .85;
+}
+.bac-flag .bac-why { text-align: right; }
 .bac-toggle {
   border: none; border-radius: 8px; font-size: 16px; padding: 4px 10px; cursor: pointer;
 }

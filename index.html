@@ -200,22 +200,27 @@
         <strong>l’appareil photo</strong> de son téléphone : l’application s’ouvre toute
         seule, prête à se connecter.</p>
       <div class="qr-box" id="host-qr"></div>
+      <div class="loin-box">
+        <p><strong>🌍 Votre ami n’est pas à côté de vous ?</strong> Envoyez-lui ce lien
+          d’invitation par message : il l’ouvre, entre son prénom, et vous renvoie
+          le code de réponse qu’il obtient. (Chacun doit avoir Internet.)</p>
+        <button class="btn small" id="btn-host-share">📤 Envoyer le lien d’invitation</button>
+      </div>
       <details class="code-details">
         <summary>Le scan ne marche pas ? Code texte</summary>
         <textarea id="host-code" readonly rows="4"></textarea>
         <button class="btn small" id="btn-host-copy">Copier le code</button>
       </details>
-      <button class="btn big primary" id="btn-host-scan-answer">Étape 2 : scanner la réponse →</button>
+      <button class="btn big primary" id="btn-host-scan-answer">Étape 2 : recevoir sa réponse →</button>
     </div>
 
     <div class="net-step hidden" id="host-step-scan">
-      <p><strong>Étape 2&nbsp;/&nbsp;2</strong> — Scannez le QR code affiché sur l’autre téléphone :</p>
+      <p><strong>Étape 2&nbsp;/&nbsp;2</strong> — Côte à côte : scannez le QR code affiché sur l’autre téléphone.</p>
       <div class="video-box"><video id="host-video" muted playsinline></video></div>
-      <details class="code-details">
-        <summary>Le scan ne marche pas ? Coller le code</summary>
-        <textarea id="host-paste" rows="4" placeholder="Collez le code de réponse ici"></textarea>
-        <button class="btn small" id="btn-host-paste-ok">Valider le code</button>
-      </details>
+      <p class="hint">🌍 <strong>À distance :</strong> collez ci-dessous le code de réponse
+        que votre ami vous a envoyé par message.</p>
+      <textarea id="host-paste" rows="4" placeholder="Collez le code de réponse ici"></textarea>
+      <button class="btn small" id="btn-host-paste-ok">Valider le code</button>
     </div>
 
     <div class="net-step hidden" id="host-step-wait">
@@ -248,8 +253,14 @@
       <p>Faites maintenant scanner ce QR code de réponse par le téléphone qui a créé la partie
         (depuis l’application, bouton « Scanner la réponse ») :</p>
       <div class="qr-box" id="join-qr"></div>
+      <div class="loin-box">
+        <p><strong>🌍 Vous jouez à distance ?</strong> Renvoyez ce code de réponse
+          par message à celui qui a créé la partie : il le colle chez lui et
+          la partie démarre.</p>
+        <button class="btn small" id="btn-join-share">📤 Envoyer ma réponse</button>
+      </div>
       <details class="code-details">
-        <summary>Le scan ne marche pas ? Code texte</summary>
+        <summary>Code texte de la réponse</summary>
         <textarea id="join-code" readonly rows="4"></textarea>
         <button class="btn small" id="btn-join-copy">Copier le code</button>
       </details>

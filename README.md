@@ -15,7 +15,7 @@ nécessaire pendant les parties.
 | 🔴 **Puissance 4** | 2 | Alignements vérifiés par le jeu, série de manches. |
 | ⭕ **Morpion** | 2 | Tic-tac-toe en série, victoires comptées automatiquement. |
 | 🪢 **Pendu** | 1–4 | Mots **courants** choisis par le jeu (fini les formes introuvables), **3 niveaux** (longueur du mot et nombre de vies) et **indice payant** : révéler une lettre coûte un cœur. +1 pt par lettre, +3 pour qui termine le mot, 5 manches. |
-| 📝 **Petit Bac** | 2–4 | Lettre au sort, 6 catégories, 60 s. Première lettre **contrôlée automatiquement**, réponses validées par le **vote des autres joueurs**, doublons à demi-points. |
+| 📝 **Petit Bac** | 2–4 | Lettre au sort, 6 catégories, 60 s. Première lettre **contrôlée automatiquement**, réponses validées par le **vote des autres joueurs**, doublons à demi-points. Contre l'ordinateur, l'arbitrage s'appuie sur un **lexique de près de 2 000 mots rangés par catégorie** (et non sur le dictionnaire général) : une « mer » n'est pas un animal, un mot inventé ne passe pas — et chaque refus est expliqué à l'écran. |
 | 🚢 **Bataille navale** | 2 | Flottes placées par le jeu, **grilles adverses jamais transmises** à l'autre téléphone. Touché = on rejoue. Série de manches avec revanche, victoires comptées. |
 | 🎲 **Yams** | 1–4 | 5 dés, 3 lancers, feuille de score **calculée automatiquement** (bonus 35 compris). |
 | 🐷 **Cochon** | 2–4 | Le dé qui fait tout perdre sur un 1. Premier à 100. |
@@ -63,7 +63,10 @@ est posée dans son décor, comme sur les vraies applications de casino.
   le dictionnaire intégré, sinon le coup est refusé avec le mot fautif affiché.
 - **Petit Bac** : la seule part de jugement humain (une ville existe-t-elle ?)
   est tranchée par le vote des autres joueurs, comme dans la vraie vie — mais
-  la lettre initiale, les doublons et le décompte sont automatiques.
+  la lettre initiale, les doublons et le décompte sont automatiques. Contre
+  l'ordinateur, l'arbitre est un **lexique par catégorie** (près de 2 000 mots,
+  vérifiés un à un par les tests) : le verdict ne dépend **jamais du hasard**,
+  et un mot juste dans la mauvaise catégorie est refusé.
 
 ## Jouer à plusieurs téléphones (sans Internet)
 
@@ -81,6 +84,26 @@ est posée dans son décor, comme sur les vraies applications de casino.
 En cas de coupure, le menu de l'hôte (« Inviter / reconnecter ») permet de
 reconnecter un joueur en cours de partie avec le même prénom. Un
 copier/coller du code texte remplace le scan si besoin.
+
+## 🌍 Jouer à distance (chacun chez soi)
+
+Les mêmes jeux se jouent **entre deux villes**, sans compte ni serveur de
+jeu : seule la mise en relation passe par Internet, puis les téléphones se
+parlent **directement**, de l'un à l'autre.
+
+1. L'hôte choisit un jeu → **« Créer une partie »** → **« Inviter un
+   joueur »** → **« 📤 Envoyer le lien d'invitation »** : le lien part par
+   SMS, WhatsApp, e-mail…
+2. L'ami **ouvre le lien reçu** (l'application s'ouvre sur l'écran
+   « Rejoindre »), entre son prénom, et touche **« 📤 Envoyer ma
+   réponse »** : il vous renvoie son code par message.
+3. L'hôte touche **« Étape 2 : recevoir sa réponse »**, **colle** le code
+   reçu, et la partie démarre. Répétez pour chaque joueur.
+
+Les deux téléphones doivent avoir Internet au moment de la mise en relation
+(ensuite, la partie tient toute seule). Selon les opérateurs mobiles, la
+liaison directe peut échouer : en Wi-Fi de chaque côté, elle aboutit dans la
+très grande majorité des cas.
 
 La plupart des jeux se jouent aussi **sur un seul téléphone** (chacun son
 tour, écran masqué entre les tours quand il y a des infos cachées).

@@ -138,6 +138,9 @@
         var t = String(txt || '').trim();
         if (!t) return;
         el._chDraft = '';
+        // le champ se vide TOUT DE SUITE : en réseau, l'écran n'est redessiné
+        // qu'au retour du message et le texte semblerait rester collé
+        input.value = '';
         ctx.act({ t: 'msg', txt: t });
       }
       var btn = el.querySelector('.ch-send');

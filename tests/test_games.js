@@ -591,5 +591,62 @@ check('viewerOf : premier joueur sans mot vu', imposteur.viewerOf(g) === 0);
 imposteur.apply(g, 0, { t: 'seen' });
 check('viewerOf passe au suivant', imposteur.viewerOf(g) === 1);
 
+
+/* ===== Petit Bac : le juge de l'IA connaît ses catégories ===== */
+{
+  const LEX = bac._BOT_LEX, LTR = 'ABCDEFGHIJLMNOPRSTV'.split('');
+  const norm = w => String(w).trim().toUpperCase().replace(/\u0152/g, 'OE')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  check('lexique du juge : 6 catégories', LEX.length === 6);
+  let mots = 0, mauvaises = 0, doublons = 0;
+  LEX.forEach((cat) => {
+    LTR.forEach(L => {
+      const vus = new Set();
+      (cat[L] || []).forEach(m => {
+        mots++;
+        if (norm(m)[0] !== L) mauvaises++;
+        if (vus.has(norm(m))) doublons++;
+        vus.add(norm(m));
+      });
+    });
+  });
+  check('lexique : au moins 1500 mots', mots >= 1500, mots);
+  check('lexique : chaque mot est rangé sous SA lettre', mauvaises === 0, mauvaises);
+  check('lexique : aucun doublon', doublons === 0, doublons);
+  check('lexique : chaque catégorie sert chaque lettre',
+    LEX.every(cat => LTR.every(L => (cat[L] || []).length > 0)));
+
+  // les mots inventés ou hors catégorie de la partie signalée sont refusés
+  check('« Mer » n\'est pas un animal', bac._botJuge('Mer', 1) === false);
+  check('« Manane » n\'est pas un fruit', bac._botJuge('Manane', 4) === false);
+  check('« Meulier » n\'est pas un métier', bac._botJuge('Meulier', 3) === false);
+  check('« Meule » n\'est pas un objet du jeu', bac._botJuge('Meule', 5) === false);
+  check('« Moise » n\'est pas une ville', bac._botJuge('Moise', 2) === false);
+  check('« maison » n\'est pas un objet', bac._botJuge('maison', 5) === false);
+  check('charabia refusé', bac._botJuge('xyzzy', 5) === false);
+  // les vraies réponses passent, quelle que soit la casse ou les accents
+  [['Monique', 0], ['mouton', 1], ['Madrid', 2], ['maçon', 3], ['melon', 4], ['marteau', 5],
+   ['MERLE', 1], ['Metz', 2], ['médecin', 3], ['mure', 4], ['montre', 5]].forEach(pair => {
+    check('« ' + pair[0] + ' » accepté dans sa catégorie', bac._botJuge(pair[0], pair[1]) === true);
+  });
+  // le jugement ne dépend plus du hasard : deux appels donnent le même verdict
+  check('jugement stable (aucun hasard)',
+    [0, 1, 2, 3, 4, 5].every(c => bac._botJuge('Zzz', c) === bac._botJuge('Zzz', c)));
+  // l'IA remplit sa feuille sans tricher sur la lettre
+  let cases = 0, remplies = 0, horsLettre = 0;
+  LTR.forEach(L => {
+    for (let k = 0; k < 30; k++) {
+      bac._botSheet(L).forEach(m => {
+        cases++;
+        if (m) { remplies++; if (norm(m)[0] !== L) horsLettre++; }
+      });
+    }
+  });
+  check('feuilles de l\'IA : entre 60 % et 85 % de cases remplies',
+    remplies / cases > 0.6 && remplies / cases < 0.85, Math.round(remplies / cases * 100));
+  check('étourderies de l\'IA : rares (moins de 5 %)',
+    horsLettre / remplies < 0.05, Math.round(horsLettre / remplies * 100));
+}
+
 console.log(failures ? `\n${failures} ÉCHEC(S)` : '\nTous les tests de jeux passent.');
 process.exit(failures ? 1 : 0);

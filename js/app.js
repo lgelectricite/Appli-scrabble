@@ -1416,7 +1416,9 @@
     }, function () {
       showError('host-error',
         'Caméra indisponible. Utilisez le champ « coller le code » ci-dessous.');
-      $('host-step-scan').querySelector('details').open = true;
+      // le champ de collage est désormais toujours visible (jeu à distance)
+      var det = $('host-step-scan').querySelector('details');
+      if (det) det.open = true;
     });
   }
 
@@ -1716,6 +1718,21 @@
     showScreen('screen-home');
   }
 
+  /* ---------- partage par message (jouer à distance) ----------
+     Le téléphone ouvre son propre menu de partage (Messages, WhatsApp,
+     e-mail…) ; s'il ne sait pas faire, on se rabat sur la copie. */
+  function shareText(textareaId, titre, intro) {
+    var el = $(textareaId);
+    var texte = intro + '\n\n' + el.value;
+    if (navigator.share) {
+      navigator.share({ title: titre, text: texte })
+        .catch(function () { /* partage annulé : rien à signaler */ });
+      return;
+    }
+    copyText(textareaId);
+    toast('Copié : collez-le dans votre messagerie.');
+  }
+
   /* ---------- copie dans le presse-papiers ---------- */
   function copyText(textareaId) {
     var el = $(textareaId);
@@ -1910,6 +1927,11 @@
     $('btn-host-back-game').addEventListener('click', hostBackToGame);
     $('btn-host-scan-answer').addEventListener('click', hostScanAnswer);
     $('btn-host-copy').addEventListener('click', function () { copyText('host-code'); });
+    $('btn-host-share').addEventListener('click', function () {
+      shareText('host-code', 'GGgames — invitation',
+        'Je t’invite à jouer sur GGgames ! Ouvre ce lien, entre ton prénom, ' +
+        'puis renvoie-moi le code de réponse que tu obtiens :');
+    });
     $('btn-host-paste-ok').addEventListener('click', function () {
       hostAcceptAnswer($('host-paste').value);
     });
@@ -1917,6 +1939,11 @@
     // Invité
     $('btn-join-scan').addEventListener('click', guestStart);
     $('btn-join-copy').addEventListener('click', function () { copyText('join-code'); });
+    $('btn-join-share').addEventListener('click', function () {
+      shareText('join-code', 'GGgames — ma réponse',
+        'Voici mon code de réponse : colle-le dans GGgames ' +
+        '(bouton « Scanner la réponse ») et la partie démarre !');
+    });
     $('btn-join-paste-ok').addEventListener('click', function () {
       guestGotOffer($('join-paste').value);
     });
