@@ -79,6 +79,22 @@
 
   function canPlay(p) { return !p.folded && !p.allin; }
 
+  /* Ce que chacun vient de faire reste affiché sous son siège, et le fil de
+     la main garde tout : on ne rate plus une parole ni une relance. */
+  function noter(state, idx, badge, phrase) {
+    var p = state.players[idx];
+    if (p) p.lastAct = badge;
+    if (!state.log) state.log = [];
+    state.log.push((p ? GG.esc(p.name) + ' ' : '') + phrase);
+    if (state.log.length > 80) state.log.shift();
+  }
+
+  function noterTable(state, phrase) {
+    if (!state.log) state.log = [];
+    state.log.push('— ' + phrase + ' —');
+    if (state.log.length > 80) state.log.shift();
+  }
+
   function post(state, idx, amount) {
     var p = state.players[idx];
     var a = Math.min(amount, p.chips);
@@ -117,7 +133,11 @@
     state.handOver = false;
     state.handMsg = '';
     state.showdownInfo = null;
+    state.resultat = null;
+    state.log = [];
+    noterTable(state, 'Main n°' + state.handNum);
     state.players.forEach(function (p) {
+      p.lastAct = '';
       // sans jetons (cash game) : on saute la main en attendant une recave
       p.folded = p.out || p.chips === 0;
       p.bet = 0; p.cont = 0; p.allin = false; p.show = false;
@@ -133,7 +153,9 @@
       bb = nextIdx(state, sb, hasChips);
     }
     post(state, sb, state.blinds[0]);
+    noter(state, sb, 'Petite blind', 'pose la petite blind (' + state.blinds[0] + ')');
     post(state, bb, state.blinds[1]);
+    noter(state, bb, 'Grosse blind', 'pose la grosse blind (' + state.blinds[1] + ')');
     state.maxBet = state.blinds[1];
     state.minRaise = state.blinds[1];
     state.street = 'pre';
@@ -149,6 +171,12 @@
     state.players[winner].chips += pot;
     state.players.forEach(function (p) { p.cont = 0; p.bet = 0; });
     state.handMsg = GG.esc(state.players[winner].name) + ' remporte ' + pot + ' 🪙 (tout le monde s’est couché).';
+    state.resultat = {
+      gagnants: [winner], pot: pot, sansAbattage: true,
+      lignes: [GG.esc(state.players[winner].name) + ' remporte ' + pot + ' 🪙'],
+      mains: []
+    };
+    noterTable(state, GG.esc(state.players[winner].name) + ' rafle le pot (' + pot + ')');
     endHand(state);
   }
 
@@ -178,6 +206,8 @@
     }
     // pots (principal + secondaires) selon les contributions
     var msgs = [];
+    var tousGagnants = [];
+    var potInitial = state.players.reduce(function (a, p) { return a + p.cont; }, 0);
     var guard = 0;
     while (guard++ < 10) {
       var level = Infinity;
@@ -206,11 +236,22 @@
       var rest = pot - share * winners.length;
       winners.forEach(function (i, k) {
         state.players[i].chips += share + (k === 0 ? rest : 0);
+        if (tousGagnants.indexOf(i) === -1) tousGagnants.push(i);
       });
       msgs.push(winners.map(function (i) { return GG.esc(state.players[i].name); }).join(' & ') +
         ' : ' + pot + ' 🪙 (' + CAT_NAMES[bestR[0]] + ')');
     }
     state.handMsg = msgs.join(' · ');
+    state.resultat = {
+      gagnants: tousGagnants,
+      pot: potInitial,
+      sansAbattage: false,
+      lignes: msgs,
+      mains: contenders.map(function (i) {
+        return { i: i, cat: CAT_NAMES[state.players[i].rank[0]] };
+      })
+    };
+    noterTable(state, 'Abattage : ' + msgs.join(' · '));
     endHand(state);
   }
 
@@ -240,19 +281,23 @@
 
   function advanceStreet(state) {
     if (actives(state) <= 1) { settleFold(state); return; }
-    state.players.forEach(function (p) { p.bet = 0; });
+    // les annonces de la rue précédente s'effacent avec les mises
+    state.players.forEach(function (p) { p.bet = 0; p.lastAct = ''; });
     state.maxBet = 0;
     state.minRaise = state.blinds[1];
     var playable = state.players.filter(function (p) { return canPlay(p) && !p.out; }).length;
     if (state.street === 'pre') {
       state.community = [state.deck.pop(), state.deck.pop(), state.deck.pop()];
       state.street = 'flop';
+      noterTable(state, 'Flop');
     } else if (state.street === 'flop') {
       state.community.push(state.deck.pop());
       state.street = 'turn';
+      noterTable(state, 'Turn');
     } else if (state.street === 'turn') {
       state.community.push(state.deck.pop());
       state.street = 'river';
+      noterTable(state, 'River');
     } else {
       showdown(state);
       return;
@@ -287,7 +332,7 @@
     nom: 'Poker',
     icone: '🃏',
     desc: 'Texas Hold’em, au choix : cash game (recaves) ou tournoi (blinds montantes).',
-    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p><p><strong>🪙 La cagnotte :</strong> la cave (100) et chaque recave sortent de la cagnotte de votre téléphone ; votre pile y retourne quand vous quittez la table. Recharge automatique chaque semaine.</p>',
+    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p><p><strong>🪙 La cagnotte :</strong> la cave (100) et chaque recave sortent de la cagnotte de votre téléphone ; votre pile y retourne quand vous quittez la table. Recharge automatique chaque semaine.</p><p><strong>♻️ Se recaver :</strong> en cash game, entre deux mains, un bouton remet votre tapis à 100 — que vous soyez à sec ou simplement entamé. On ne peut pas se recaver au milieu d'une main que l'on joue.</p><p><strong>👀 Suivre la partie :</strong> l'annonce de chacun (parole, suivi, relance, tapis) reste affichée sous son siège jusqu'à la rue suivante, et le <strong>déroulé de la main</strong> garde tout. En fin de main, l'abattage montre les cartes de chacun avec le nom de sa combinaison, et le pot s'envole vers le gagnant.</p>',
     min: 2, max: 4,
     hotseat: false, hidden: true, netOnly: true,
 
@@ -372,12 +417,18 @@
       if (action.t === 'rebuy') {
         if (state.mode !== 'cash') return { ok: false, error: 'Recave possible en cash game uniquement.' };
         var rp = state.players[player];
-        if (rp.chips > 0) return { ok: false, error: 'Vous avez encore des jetons.' };
+        if (rp.chips >= START_CHIPS) {
+          return { ok: false, error: 'Votre tapis est déjà au maximum (' + START_CHIPS + ').' };
+        }
+        // on peut se recaver (ou compléter son tapis) entre deux mains, ou
+        // pendant une main à laquelle on ne participe pas
         if (!state.handOver && rp.hole && rp.hole.length && !rp.folded) {
           return { ok: false, error: 'Recave possible à la fin de la main.' };
         }
+        var ajout = START_CHIPS - rp.chips;
         rp.chips = START_CHIPS;
-        state.handMsg = GG.esc(rp.name) + ' recave ' + START_CHIPS + ' 🪙.';
+        state.handMsg = GG.esc(rp.name) + ' recave ' + ajout + ' 🪙 (tapis à ' + START_CHIPS + ').';
+        noterTable(state, GG.esc(rp.name) + ' recave ' + ajout);
         return { ok: true };
       }
       if (action.t === 'next') {
@@ -392,19 +443,23 @@
 
       if (action.t === 'fold') {
         p.folded = true;
+        noter(state, player, 'Couché', 'se couche');
         state.need[player] = false;
         afterAction(state);
         return { ok: true };
       }
       if (action.t === 'check') {
         if (owe > 0) return { ok: false, error: 'Il faut suivre (' + owe + ') ou se coucher.' };
+        noter(state, player, 'Parole', 'fait parole');
         state.need[player] = false;
         afterAction(state);
         return { ok: true };
       }
       if (action.t === 'call') {
         if (owe <= 0) return { ok: false, error: 'Rien à suivre : parole.' };
-        post(state, player, owe);
+        var mis = post(state, player, owe);
+        noter(state, player, (p.allin ? 'Tapis ' : 'Suit ') + mis,
+          (p.allin ? 'suit à tapis (' + mis + ')' : 'suit ' + mis));
         state.need[player] = false;
         afterAction(state);
         return { ok: true };
@@ -419,7 +474,12 @@
           if (owe + by > p.chips) return { ok: false, error: 'Pas assez de jetons (utilisez Tapis).' };
         }
         var fullRaise = by >= state.minRaise;
-        post(state, player, owe + Math.max(by, 0));
+        var verse = post(state, player, owe + Math.max(by, 0));
+        noter(state, player,
+          (p.allin ? 'TAPIS ' : (state.maxBet > 0 ? 'Relance ' : 'Mise ')) + p.bet,
+          (p.allin ? 'fait tapis à ' + p.bet
+            : (state.maxBet > 0 ? 'relance à ' + p.bet : 'mise ' + p.bet)) +
+          ' (' + verse + ' versés)');
         if (p.bet > state.maxBet) {
           var raised = p.bet - state.maxBet;
           state.maxBet = p.bet;
@@ -605,12 +665,11 @@
         return;
       }
 
-      function cardHtml(c, big) {
-        if (c === -1 || c === undefined) return '<span class="pk-card back' + (big ? ' big' : '') + '">🂠</span>';
-        var r = RANKS[c >> 2], su = SUITS[c & 3];
-        var red = (c & 3) === 1 || (c & 3) === 2;
-        return '<span class="pk-card' + (red ? ' red' : '') + (big ? ' big' : '') + '">' +
-          r + su + '</span>';
+      /* de vraies cartes à jouer (js/games/cartes.js) */
+      function cardHtml(c, taille, classe) {
+        var o = { taille: taille || '', classe: classe || '' };
+        if (c === -1 || c === undefined) return GG.carteDos(o);
+        return GG.carte(c >> 2, c & 3, o);
       }
 
       /* ===== la table ovale vue de dessus : chacun assis à sa place =====
@@ -635,7 +694,7 @@
         '<div class="pk-pot">Pot : <b>' + potTotal(s) + '</b> 🪙</div>' +
         '<div class="pk-community">' +
         (s.community.length
-          ? s.community.map(function (c) { return cardHtml(c, true); }).join('')
+          ? s.community.map(function (c) { return cardHtml(c, 'grande'); }).join('')
           : '<span class="pk-street">' + (s.handOver ? '· · ·' : 'Pré-flop') + '</span>') +
         '</div></div>';
       s.players.forEach(function (p, i) {
@@ -644,8 +703,13 @@
         if (i === s.current && !s.handOver) cls += ' turn';
         if (p.folded && !p.out) cls += ' folded';
         if (p.out) cls += ' out';
+        if (gagnant && s.handOver) cls += ' gagne';
+        var gagnant = s.resultat && s.resultat.gagnants.indexOf(i) !== -1;
         var cartes = (p.out || p.folded) ? '' :
-          p.hole.map(function (c) { return cardHtml(i === me ? c : (p.show ? c : -1)); }).join('');
+          p.hole.map(function (c) {
+            return cardHtml(i === me ? c : (p.show ? c : -1),
+              i === me ? '' : 'mini', gagnant && s.handOver ? 'gagnante' : '');
+          }).join('');
         var robot = p.name.indexOf('🤖') === 0;
         var nom = p.name.replace(/^🤖 /, '');
         html += '<div class="' + cls + '">' +
@@ -657,6 +721,9 @@
           '</div>' +
           (p.allin && !p.out ? '<span class="pk-tag">TAPIS</span>' :
             (p.folded && !p.out ? '<span class="pk-tag grey">couché</span>' : '')) +
+          (p.lastAct && !s.handOver
+            ? '<span class="pk-annonce">' + GG.esc(p.lastAct) + '</span>' : '') +
+          (gagnant && s.handOver ? '<span class="pk-trophee">🏆</span>' : '') +
           '</div>';
         // la mise de la rue en jetons devant le siège, et le bouton du donneur
         if (!p.out && (p.bet > 0 || i === s.dealer)) {
@@ -667,10 +734,37 @@
         }
       });
       html += '</div>';
-      if (s.handMsg) html += '<p class="mini-msg pk-msg">' + s.handMsg + '</p>';
-      if (my.chips === 0 && s.mode === 'cash' && !my.out) {
-        html += '<button class="btn big" data-a=\'{"t":"rebuy"}\'>🪙 Recave (' + START_CHIPS +
-          ' de la cagnotte)</button>';
+      // fin de main : un vrai panneau d'abattage, qui reste à l'écran
+      if (s.handOver && s.resultat) {
+        var r = s.resultat;
+        html += '<div class="pk-fin">';
+        html += '<div class="pk-fin-titre">' +
+          (r.sansAbattage ? '🏆 ' + r.lignes.join(' · ')
+            : '🏆 ' + r.lignes.join('<br>')) + '</div>';
+        if (r.mains && r.mains.length) {
+          html += '<div class="pk-abat">';
+          r.mains.forEach(function (m) {
+            var pj = s.players[m.i];
+            var win = r.gagnants.indexOf(m.i) !== -1;
+            html += '<div class="pk-abat-l' + (win ? ' win' : '') + '">' +
+              '<span class="pk-abat-n">' + (win ? '🏆 ' : '') + GG.esc(pj.name) + '</span>' +
+              '<span class="pk-abat-c">' +
+              (pj.hole || []).map(function (c) { return cardHtml(c, 'mini'); }).join('') +
+              '</span><span class="pk-abat-m">' + m.cat + '</span></div>';
+          });
+          html += '</div>';
+        }
+        html += '</div>';
+      } else if (s.handMsg) {
+        html += '<p class="mini-msg pk-msg">' + s.handMsg + '</p>';
+      }
+
+      var peutRecaver = s.mode === 'cash' && !my.out && my.chips < START_CHIPS &&
+        (s.handOver || my.folded || !my.hole || !my.hole.length);
+      if (peutRecaver) {
+        html += '<button class="btn big" data-a=\'{"t":"rebuy"}\'>🪙 ' +
+          (my.chips === 0 ? 'Recaver' : 'Compléter mon tapis') + ' — ' +
+          (START_CHIPS - my.chips) + ' de la cagnotte</button>';
       }
       if (s.handOver && !s.finished) {
         html += '<button class="btn big primary" data-a=\'{"t":"next"}\'>' +
@@ -695,20 +789,60 @@
         html += '<p class="mini-msg">Au tour de ' + GG.esc(s.players[s.current].name) + '…</p>';
       }
 
+      // le fil de la main : plus rien ne passe inaperçu
+      if (s.log && s.log.length) {
+        html += '<details class="pk-fil"' + (s.handOver ? ' open' : '') + '>' +
+          '<summary>📜 Déroulé de la main <b>' +
+          GG.esc(s.log[s.log.length - 1].replace(/^— | —$/g, '')) + '</b></summary>' +
+          '<div class="pk-fil-l">' +
+          s.log.slice(-14).map(function (l) {
+            return '<div' + (/^—/.test(l) ? ' class="rue"' : '') + '>' + l + '</div>';
+          }).join('') + '</div></details>';
+      }
+
       el.innerHTML = html;
+
+      /* Le pot s'envole vers le gagnant — une seule fois par main. */
+      if (s.handOver && s.resultat && s.resultat.gagnants.length) {
+        var cleMain = s.gameId + ':' + s.handNum;
+        if (el._pkAnim !== cleMain) {
+          el._pkAnim = cleMain;
+          var oval = el.querySelector('.pk-oval');
+          if (oval) {
+            s.resultat.gagnants.forEach(function (gi) {
+              var vers = POS[(gi - me + n) % n];
+              for (var k = 0; k < 5; k++) {
+                var jeton = document.createElement('span');
+                jeton.className = 'pk-vol vers-' + vers;
+                jeton.style.animationDelay = (k * 90) + 'ms';
+                oval.appendChild(jeton);
+              }
+            });
+            setTimeout(function () {
+              oval.querySelectorAll('.pk-vol').forEach(function (j) { j.remove(); });
+            }, 1600);
+          }
+        }
+      } else if (!s.handOver) {
+        el._pkAnim = null;
+      }
+
       el.querySelectorAll('[data-a]').forEach(function (b) {
         b.addEventListener('click', function () {
           var a = JSON.parse(b.dataset.a);
-          // la recave sort de la cagnotte du téléphone AVANT d'être demandée
+          // la recave sort de la cagnotte du téléphone AVANT d'être demandée,
+          // et on ne prend que ce qui manque pour revenir au tapis complet
           if (a.t === 'rebuy' && GG.wallet) {
-            if (!GG.wallet.spend(START_CHIPS)) {
+            var manque = START_CHIPS - my.chips;
+            if (manque <= 0) return;
+            if (!GG.wallet.spend(manque)) {
               b.textContent = '🪙 Pas assez de jetons — Boutique sur l’accueil';
               b.disabled = true;
               return;
             }
             var mk2 = mod._marker();
             if (mk2 && mk2.gameId === s.gameId) {
-              mk2.invested += START_CHIPS;
+              mk2.invested += manque;
               mod._marker(mk2);
             }
           }

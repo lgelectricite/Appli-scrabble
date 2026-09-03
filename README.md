@@ -21,7 +21,7 @@ nécessaire pendant les parties.
 | 🐷 **Cochon** | 2–4 | Le dé qui fait tout perdre sur un 1. Premier à 100. |
 | 🧠 **Memory** | 1–4 | Une paire = un point et on rejoue. |
 | 🍬 **Bonbons** | 1 | Match-3 en mode **aventure** : niveaux **sans fin** de difficulté croissante, **carte de progression** à travers 8 mondes acidulés, objectifs en étoiles ⭐⭐⭐, **progression et records enregistrés**. On **glisse** un bonbon vers son voisin (formes et couleurs bien distinctes, éclatements animés, cascades ×2 ×3, exclamations, indice après hésitation, vibration et petits sons). Bonbon rayé à 4 alignés, **bonbon enveloppé** (explose en 3×3) sur les liaisons en **L, T ou carré**, sucre magique à 5 — et des **combos** en échangeant deux spéciaux entre eux (croix géante, 3 lignes + 3 colonnes, déflagration 5×5…). Chaque **monde teinte la grille à ses couleurs**, la barre d'objectif est jalonnée ⭐⭐⭐. |
-| 🃏 **Poker** | 2–4 | Texas Hold'em sur une **vraie table ovale vue de dessus** : chacun assis à sa place (vous toujours en bas) avec sa plaque avatar/nom/tapis, dos de cartes des adversaires, pot et cartes communes au centre, mises en jetons devant les sièges, bouton du donneur. **Cash game** (blinds fixes, recave) ou **tournoi** (blinds montantes, élimination), tapis et pots secondaires, **mains évaluées par le jeu**, cartes adverses jamais transmises avant l'abattage. |
+| 🃏 **Poker** | 2–4 | Texas Hold'em sur une **vraie table ovale vue de dessus**, avec de **vraies cartes à jouer** (format 5/7, index dans les coins, figures et symboles dessinés) : chacun assis à sa place (vous toujours en bas) avec sa plaque avatar/nom/tapis, dos de cartes des adversaires, pot et cartes communes au centre, mises en jetons devant les sièges, bouton du donneur. **On suit tout** : l'annonce de chacun (parole, suivi, relance, tapis) reste sous son siège, le **déroulé de la main** garde l'historique, l'**abattage** montre les mains avec le nom de la combinaison, et le **pot s'envole vers le gagnant**. **Recave** ou complément de tapis entre deux mains. **Cash game** (blinds fixes, recave) ou **tournoi** (blinds montantes, élimination), tapis et pots secondaires, **mains évaluées par le jeu**, cartes adverses jamais transmises avant l'abattage. |
 | 🔢 **Sudoku** | 1 | Grilles générées à volonté (**solution unique garantie**), 3 niveaux, erreurs comptées, chrono. Record personnel par niveau. |
 | 🔎 **Mots mêlés** | 1–4 | Mots **courants** cachés, 3 niveaux : facile (horizontaux et verticaux), moyen (+ diagonales), difficile (8 sens, mots à l'envers) — l'équilibre des directions est garanti. En réseau, grille **partagée** : chaque mot trouvé prend la couleur de son découvreur. |
 | 🟩 **Mot Mystère** | 1–4 | Type Motus/Wordle **en série sans fin** et en **essais illimités**. À plusieurs, comme à la télé : le **même mot s'affiche chez tout le monde**, on propose **chacun son tour** sur un tableau commun (chaque essai porte la pastille de son auteur), le premier qui trouve marque le point et le tour de départ tourne. Mots courants, propositions vérifiées au dictionnaire, 3 niveaux (5/6/7 lettres) — jouable à 2-4 sur un seul téléphone, en réseau, ou contre l'IA. |
@@ -84,6 +84,15 @@ est posée dans son décor, comme sur les vraies applications de casino.
 En cas de coupure, le menu de l'hôte (« Inviter / reconnecter ») permet de
 reconnecter un joueur en cours de partie avec le même prénom. Un
 copier/coller du code texte remplace le scan si besoin.
+
+## 💬 Se parler pendant la partie
+
+Dès qu'une partie se joue à **plusieurs téléphones** (en ligne ou par QR),
+un bouton **💬** apparaît dans l'en-tête : il ouvre une **discussion commune**
+à tous les joueurs, avec des emojis à envoi rapide et une pastille de
+messages non lus. Les messages suivent le même chemin que les coups — par le
+téléphone de l'hôte — et **ne sont enregistrés nulle part** : la conversation
+disparaît avec la partie.
 
 ## 🌍 Jouer à distance : le mode « En ligne »
 

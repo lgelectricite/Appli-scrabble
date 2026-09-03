@@ -958,6 +958,7 @@
     stopScanner();
     showScreen('screen-mini');
     $('btn-menu-invite').classList.toggle('hidden', mode !== 'host');
+    chatBadges(); // la discussion n'existe qu'entre téléphones
     miniLastViewer = -1;
     miniRender();
     pumpBots();
@@ -1306,6 +1307,12 @@
       return;
     }
 
+    // Message de discussion d'un invité : l'hôte le range et le rediffuse
+    if (msg.t === 'chat') {
+      chatAjoute(peer.name || 'Invité', msg.txt);
+      return;
+    }
+
     // Action d'un invité dans un mini-jeu : l'hôte applique et valide
     if (msg.t === 'ga' && miniState && currentGame !== 'mots' && peer.playerIndex) {
       miniApplyAuthority(peer.playerIndex, msg.a || {}, peer);
@@ -1492,6 +1499,12 @@
    * ================================================================= */
 
   function guestHandleMessage(msg) {
+    if (msg.t === 'chat') {
+      var avant = chatLog.length;
+      chatLog = (msg.msgs || []).slice(-CHAT_MAX);
+      if (chatLog.length > avant) chatRecu(); else chatRender();
+      return;
+    }
     if (msg.t === 'lobby') {
       // le salon s'affiche là où l'invité se trouve : écran QR ou écran « code »
       var enLigne = netKind === 'online';
@@ -1697,6 +1710,7 @@
     stopScanner();
     showScreen('screen-game');
     $('btn-menu-invite').classList.toggle('hidden', mode !== 'host');
+    chatBadges();
     render();
   }
 
@@ -1733,11 +1747,137 @@
     ['overlay-pass', 'overlay-joker', 'overlay-confirm', 'overlay-history',
      'overlay-menu', 'overlay-end'].forEach(function (id) { showOverlay(id, false); });
     setNetBanner(false);
+    chatReset();
     onlineFerme();
     netKind = 'qr';
     document.body.classList.remove('theme-manoir');
     document.body.classList.remove('theme-casino');
     showScreen('screen-home');
+  }
+
+  /* =================================================================
+   *  DISCUSSION EN PARTIE — un chat commun à tous les jeux en réseau
+   *
+   *  Les messages suivent le même chemin que les coups : l'invité envoie à
+   *  l'hôte, l'hôte tient la conversation et la renvoie à tout le monde.
+   *  Rien n'est enregistré : elle vit le temps de la partie.
+   * ================================================================= */
+
+  var chatLog = [];          // [{n: prénom, t: texte, h: heure}]
+  var chatNonLus = 0;
+  var chatOuvert = false;
+  var CHAT_MAX = 200;
+  var CHAT_EMOJIS = ['👍', '😂', '😮', '😭', '🔥', '🍀', '👏', '🤔'];
+
+  function heureCourte() {
+    var d = new Date();
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  }
+
+  function chatDispo() {
+    return (mode === 'host' || mode === 'guest') &&
+      (gameStarted() || document.querySelector('#screen-mini.active'));
+  }
+
+  /* Hôte : range un message et le renvoie à tous. */
+  function chatAjoute(nom, texte) {
+    var t = String(texte || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+    if (!t) return;
+    chatLog.push({ n: nom, t: t, h: heureCourte() });
+    if (chatLog.length > CHAT_MAX) chatLog.shift();
+    if (mode === 'host') {
+      hostPeers.forEach(function (peer) {
+        if (peer.connected) peer.net.send({ t: 'chat', msgs: chatLog.slice(-40) });
+      });
+    }
+    chatRecu();
+  }
+
+  function chatEnvoyer(texte) {
+    var t = String(texte || '').trim();
+    if (!t) return;
+    if (mode === 'host') { chatAjoute(hostName || 'Hôte', t); return; }
+    if (mode === 'guest' && guestNet && guestNet.isOpen()) {
+      guestNet.send({ t: 'chat', txt: t });
+    }
+  }
+
+  /* Un message est arrivé : la conversation se met à jour même fermée
+     (elle s'ouvre alors instantanément), et une pastille prévient. */
+  function chatRecu() {
+    chatRender();
+    if (chatOuvert) return;
+    chatNonLus++;
+    chatBadges();
+  }
+
+  function chatBadges() {
+    ['mini-chat-badge', 'game-chat-badge'].forEach(function (id) {
+      var b = $(id);
+      if (!b) return;
+      b.textContent = chatNonLus > 9 ? '9+' : String(chatNonLus);
+      b.classList.toggle('hidden', chatNonLus === 0);
+    });
+    var visible = chatDispo();
+    ['btn-mini-chat', 'btn-game-chat'].forEach(function (id) {
+      var b = $(id);
+      if (b) b.classList.toggle('hidden', !visible);
+    });
+  }
+
+  function chatRender() {
+    var log = $('chat-log');
+    if (!log) return;
+    var moi = mode === 'host' ? (hostName || 'Hôte')
+      : (miniState && miniState.players && miniState.players[miniMe]
+        ? miniState.players[miniMe].name
+        : (state && state.players && state.players[myFixedIndex]
+          ? state.players[myFixedIndex].name : ''));
+    log.innerHTML = chatLog.length
+      ? chatLog.map(function (m) {
+        var mine = m.n === moi;
+        return '<div class="chat-row' + (mine ? ' mine' : '') + '">' +
+          '<div class="chat-bub">' +
+          (mine ? '' : '<div class="chat-nom">' + esc(m.n) + '</div>') +
+          '<div class="chat-txt">' + esc(m.t) + '</div>' +
+          '<div class="chat-h">' + esc(m.h) + '</div></div></div>';
+      }).join('')
+      : '<p class="chat-vide">💬 Personne n’a encore parlé.<br>Lancez la conversation !</p>';
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function chatOuvre() {
+    chatOuvert = true;
+    chatNonLus = 0;
+    chatBadges();
+    var q = $('chat-quick');
+    if (q && !q.childElementCount) {
+      q.innerHTML = CHAT_EMOJIS.map(function (e) {
+        return '<button class="chat-q" data-e="' + e + '">' + e + '</button>';
+      }).join('');
+      q.querySelectorAll('.chat-q').forEach(function (b) {
+        b.addEventListener('pointerdown', function (ev) { ev.preventDefault(); });
+        b.addEventListener('click', function () { chatEnvoyer(b.dataset.e); });
+      });
+    }
+    chatRender();
+    showOverlay('overlay-chat', true);
+    var inp = $('chat-in');
+    if (inp) setTimeout(function () { inp.focus(); }, 60);
+  }
+
+  function chatFerme() {
+    chatOuvert = false;
+    showOverlay('overlay-chat', false);
+    chatBadges();
+  }
+
+  function chatReset() {
+    chatLog = [];
+    chatNonLus = 0;
+    chatOuvert = false;
+    showOverlay('overlay-chat', false);
+    chatBadges();
   }
 
   /* =================================================================
@@ -2020,6 +2160,23 @@
       toast(n ? 'Serveur enregistré.' : 'Serveur effacé.');
     });
     $('btn-relais-test').addEventListener('click', testerRelais);
+
+    // Discussion pendant la partie
+    $('btn-mini-chat').addEventListener('click', chatOuvre);
+    $('btn-game-chat').addEventListener('click', chatOuvre);
+    $('btn-chat-close').addEventListener('click', chatFerme);
+    $('btn-chat-send').addEventListener('pointerdown', function (ev) { ev.preventDefault(); });
+    $('btn-chat-send').addEventListener('click', function () {
+      var inp = $('chat-in');
+      chatEnvoyer(inp.value);
+      inp.value = '';
+      inp.focus();
+    });
+    $('chat-in').addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter') return;
+      chatEnvoyer(ev.target.value);
+      ev.target.value = '';
+    });
     $('btn-host-share-code').addEventListener('click', function () {
       var texte = 'Je t’invite à jouer sur GGgames !\n\n' +
         'Code de la partie : ' + onlineCode + '\n' +

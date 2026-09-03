@@ -344,6 +344,8 @@
       <div class="info-row">
         <span id="bag-count" title="Lettres restantes dans le sac">🎒 86</span>
         <div id="turn-banner"></div>
+        <button class="icon-btn hidden" id="btn-game-chat" title="Discussion">💬<span
+          class="chat-pastille hidden" id="game-chat-badge"></span></button>
         <button class="icon-btn" id="btn-rules" title="Règles du jeu">❓</button>
         <button class="icon-btn" id="btn-history" title="Historique">📜</button>
         <button class="icon-btn" id="btn-menu" title="Menu">☰</button>
@@ -380,6 +382,8 @@
       <div class="info-row">
         <span id="mini-icon"></span>
         <div id="mini-turn"></div>
+        <button class="icon-btn hidden" id="btn-mini-chat" title="Discussion">💬<span
+          class="chat-pastille hidden" id="mini-chat-badge"></span></button>
         <button class="icon-btn" id="btn-mini-rules" title="Règles du jeu">❓</button>
         <button class="icon-btn" id="btn-mini-menu" title="Menu">☰</button>
       </div>
@@ -390,6 +394,19 @@
   </section>
 
   <!-- ============ SUPERPOSITIONS ============ -->
+  <div id="overlay-chat" class="overlay hidden">
+    <div class="overlay-card chat-sheet">
+      <h3>💬 Discussion</h3>
+      <div id="chat-log" class="chat-log"></div>
+      <div class="chat-quick" id="chat-quick"></div>
+      <div class="chat-bar">
+        <input type="text" id="chat-in" maxlength="200" autocomplete="off"
+          placeholder="Votre message…">
+        <button class="btn primary chat-send" id="btn-chat-send" title="Envoyer">➤</button>
+      </div>
+      <button class="btn big" id="btn-chat-close">Retour au jeu</button>
+    </div>
+  </div>
   <div id="overlay-pass" class="overlay hidden">
     <div class="overlay-card">
       <h2>Passez le téléphone</h2>
@@ -459,6 +476,7 @@
   <script src="js/ai.js"></script>
   <script src="js/net.js"></script>
   <script src="js/games/registry.js"></script>
+  <script src="js/games/cartes.js"></script>
   <script src="js/online.js"></script>
   <script src="js/wallet.js"></script>
   <script src="js/games/motscourants.js"></script>
