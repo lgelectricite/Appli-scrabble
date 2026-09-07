@@ -104,6 +104,24 @@ function check(n, c, e) {
   check('le déroulé de la main est consultable',
     await hote.locator('.pk-fil').count() === 1);
 
+  console.log('--- Ma main, nommée en direct ---');
+  const vive = await hote.evaluate(() => {
+    const g = sel => { const e = document.querySelector(sel); return e && e.getBoundingClientRect(); };
+    const m = g('.pk-seat.sb .pk-mamain'), c = g('.pk-scards.mine'), p = g('.pk-seat.sb .pk-plate');
+    const a = g('.pk-seat.sb .pk-annonce');
+    return m && {
+      txt: document.querySelector('.pk-seat.sb .pk-mamain').textContent,
+      sousCartes: m.top >= c.bottom - 1, surPlaque: m.bottom <= p.top + 1,
+      annonce: a ? Math.round(a.top - p.bottom) : null
+    };
+  });
+  check('ma main est nommée dès la donne (« Paire de … » ou « Hauteur … »)',
+    vive && /^(Paire d|Hauteur )/.test(vive.txt), vive);
+  check('l’étiquette se place entre mes cartes et ma plaque',
+    vive && vive.sousCartes && vive.surPlaque, vive);
+  check('mon annonce (blind, relance…) ne mord plus sur ma plaque ni sur mon tapis',
+    vive && vive.annonce !== null && vive.annonce >= 0, vive);
+
   // on déroule la main jusqu'à l'abattage
   const agir = async (p) => {
     for (const t of ['check', 'call']) {
@@ -132,6 +150,13 @@ function check(n, c, e) {
   const montrees = await hote.locator('.pk-abat-c .jc:not(.dos)').count();
   check('les mains sont retournées et nommées à l’abattage',
     montrees === 0 || montrees >= 2, montrees);
+  const nomsAbat = await hote.locator('.pk-abat-m').allTextContents();
+  const NOM = /^(Paire d|Hauteur |Deux paires, |Brelan d|Suite |Couleur |Full aux |Carré d|Quinte flush)/;
+  check('à l’abattage, chaque main porte son nom complet (« Paire de dix », « Hauteur as »…)',
+    nomsAbat.length === 0 || nomsAbat.every(t => NOM.test(t)), nomsAbat);
+  const viveFin = await hote.locator('.pk-seat.sb .pk-mamain').allTextContents();
+  check('ma main suit le tapis jusqu’à la river',
+    viveFin.length === 0 || NOM.test(viveFin[0]), viveFin);
 
   console.log('--- Les jetons filent vers le gagnant ---');
   // l'animation est éphémère : on la surprend juste après le rendu

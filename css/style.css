@@ -817,7 +817,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   position: relative;
   max-width: min(88vw, 420px);
   aspect-ratio: 1.22;
-  margin: 58px auto 64px;
+  margin: 58px auto 78px; /* en bas : mes cartes, ma main, ma plaque, mon annonce */
   border-radius: 50%;
   background: radial-gradient(85% 80% at 50% 38%, #3d7a58 0%, var(--felt) 55%, var(--felt-dark) 100%);
   box-shadow:
@@ -850,7 +850,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   position: absolute; display: flex; flex-direction: column;
   align-items: center; gap: 3px; z-index: 2; width: 112px;
 }
-.pk-seat.sb { left: 50%; bottom: -48px; transform: translateX(-50%); }
+.pk-seat.sb { left: 50%; bottom: -56px; transform: translateX(-50%); }
 .pk-seat.st { left: 50%; top: -46px; transform: translateX(-50%); flex-direction: column-reverse; }
 .pk-seat.stl { left: 0; top: -44px; flex-direction: column-reverse; }
 .pk-seat.str { right: 0; top: -44px; flex-direction: column-reverse; }
@@ -902,7 +902,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   color: #fff; font-size: 12px; font-weight: 800;
   text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
 }
-.pk-betspot.sb { left: 50%; bottom: 20%; transform: translateX(-50%); }
+.pk-betspot.sb { left: 50%; bottom: 24%; transform: translateX(-50%); }
 .pk-betspot.st { left: 50%; top: 20%; transform: translateX(-50%); }
 .pk-betspot.stl { left: 21%; top: 23%; }
 .pk-betspot.str { right: 21%; top: 23%; }
@@ -2212,6 +2212,16 @@ body.theme-manoir .btn { box-shadow: none; }
   animation: pkPop .25s ease-out;
 }
 @keyframes pkPop { from { transform: translateX(-50%) scale(.6); opacity: 0; } }
+/* en bas, la plaque est le dernier élément : l'annonce passe SOUS elle,
+   sans jamais mordre sur le nom ni sur le tapis */
+.pk-seat.sb .pk-annonce { bottom: -18px; }
+/* ma main nommée en direct, entre mes cartes et ma plaque */
+.pk-mamain {
+  font-size: 10px; font-weight: 800; letter-spacing: .2px; white-space: nowrap;
+  color: #2b2118; background: linear-gradient(180deg, #f7e39b, #d9b545);
+  border: 1px solid #a8862a; border-radius: 999px; padding: 1px 9px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .45); margin: -1px 0 1px;
+}
 .pk-seat.gagne .pk-plate {
   box-shadow: 0 0 0 2px #d4af37, 0 0 16px rgba(212, 175, 55, .85);
 }

@@ -335,5 +335,29 @@ check('cashout : marqueur libéré', store['gg-poker-open'] === undefined);
 poker.cashout(pk, 0);
 check('cashout : jamais deux fois', wallet.get() === 6750);
 
+/* ================= POKER : la main nommée comme à une vraie table ================= */
+console.log('--- Poker : nom de la main en direct ---');
+const K = (r, s) => (r << 2) | s; // rang 0..12 (2..As), couleur 0..3
+const nomme = (hole, board) => poker._nomMainVive(hole, board);
+check('donne : paire de six', nomme([K(4, 2), K(4, 0)], []) === 'Paire de six');
+check('donne : paire d’as', nomme([K(12, 2), K(12, 0)], []) === 'Paire d’as');
+check('donne : hauteur as, assortis', nomme([K(12, 0), K(5, 0)], []) === 'Hauteur as, assortis');
+check('donne : hauteur dame (dépareillés)', nomme([K(10, 0), K(5, 1)], []) === 'Hauteur dame');
+check('flop : deux paires, as et six',
+  nomme([K(4, 2), K(4, 0)], [K(12, 0), K(12, 1), K(2, 3)]) === 'Deux paires, as et six');
+check('flop : brelan de quatre', nomme([K(2, 1), K(2, 2)], [K(2, 3), K(7, 3), K(6, 0)]) === 'Brelan de quatre');
+check('flop : suite à la dame', nomme([K(10, 1), K(9, 2)], [K(8, 1), K(7, 3), K(6, 0)]) === 'Suite à la dame');
+check('flop : full aux as par les rois',
+  nomme([K(12, 2), K(12, 0)], [K(12, 1), K(11, 1), K(11, 3)]) === 'Full aux as par les rois');
+check('turn (6 cartes) : carré de dix',
+  nomme([K(8, 1), K(8, 2)], [K(8, 3), K(8, 0), K(6, 0), K(1, 1)]) === 'Carré de dix');
+check('turn (6 cartes) : quinte flush au cinq (roue)',
+  nomme([K(12, 0), K(0, 0)], [K(1, 0), K(2, 0), K(3, 0), K(9, 1)]) === 'Quinte flush au cinq');
+check('river (7 cartes) : couleur à l’as',
+  nomme([K(12, 1), K(11, 1)], [K(3, 1), K(9, 1), K(1, 1), K(0, 0), K(0, 2)]) === 'Couleur à l’as');
+check('quinte flush royale', nomme([K(12, 0), K(11, 0)], [K(10, 0), K(9, 0), K(8, 0)]) === 'Quinte flush royale');
+check('rien : hauteur valet', nomme([K(9, 1), K(2, 2)], [K(0, 3), K(7, 3), K(5, 0)]) === 'Hauteur valet');
+check('sans cartes : rien à dire', nomme([], []) === '');
+
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests casino/cagnotte OK.');
 process.exit(failures ? 1 : 0);

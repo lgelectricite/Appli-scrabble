@@ -6,8 +6,6 @@
   var BLINDS = [1, 2];
   var RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R', 'A'];
   var SUITS = ['♠', '♥', '♦', '♣'];
-  var CAT_NAMES = ['Carte haute', 'Paire', 'Deux paires', 'Brelan', 'Suite',
-    'Couleur', 'Full', 'Carré', 'Quinte flush'];
 
   /* ---------- évaluation des mains ---------- */
 
@@ -59,6 +57,56 @@
       }
     }
     return best;
+  }
+
+  /* meilleure main parmi 5, 6 ou 7 cartes (flop, turn, river) */
+  function meilleure(cards) {
+    if (cards.length === 5) return rank5(cards);
+    if (cards.length === 7) return best7(cards);
+    var best = null;
+    for (var x = 0; x < cards.length; x++) {
+      var r = rank5(cards.slice(0, x).concat(cards.slice(x + 1)));
+      if (!best || cmpRank(r, best) > 0) best = r;
+    }
+    return best;
+  }
+
+  /* ---------- le nom de la main, comme on le dit à une vraie table ---------- */
+  var PLURIEL = ['deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
+    'dix', 'valets', 'dames', 'rois', 'as'];
+  var SINGULIER = ['deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
+    'dix', 'valet', 'dame', 'roi', 'as'];
+  function deRang(r) { return (r === 12 ? 'd’' : 'de ') + PLURIEL[r]; }
+  function auRang(r) {
+    return (r === 12 ? 'à l’' : r === 10 ? 'à la ' : 'au ') + SINGULIER[r];
+  }
+  /* « Paire de six », « Full aux as par les rois », « Couleur à l’as »… */
+  function nomMain(r) {
+    switch (r[0]) {
+      case 8: return r[1] === 12 ? 'Quinte flush royale' : 'Quinte flush ' + auRang(r[1]);
+      case 7: return 'Carré ' + deRang(r[1]);
+      case 6: return 'Full aux ' + PLURIEL[r[1]] + ' par les ' + PLURIEL[r[2]];
+      case 5: return 'Couleur ' + auRang(r[1]);
+      case 4: return 'Suite ' + auRang(r[1]);
+      case 3: return 'Brelan ' + deRang(r[1]);
+      case 2: return 'Deux paires, ' + PLURIEL[r[1]] + ' et ' + PLURIEL[r[2]];
+      case 1: return 'Paire ' + deRang(r[1]);
+      default: return 'Hauteur ' + SINGULIER[r[1]];
+    }
+  }
+  /* la main que l'on tient EN DIRECT : dès la donne (2 cartes), puis avec
+     le tapis (flop, turn, river) */
+  function nomMainVive(hole, community) {
+    if (!hole || hole.length < 2) return '';
+    var cartes = hole.concat(community || []);
+    if (cartes.length < 5) {
+      var a = hole[0] >> 2, b = hole[1] >> 2;
+      if (a === b) return 'Paire ' + deRang(a);
+      var txt = 'Hauteur ' + SINGULIER[Math.max(a, b)];
+      if ((hole[0] & 3) === (hole[1] & 3)) txt += ', assortis';
+      return txt;
+    }
+    return nomMain(meilleure(cartes));
   }
 
   /* ---------- déroulement ---------- */
@@ -239,7 +287,7 @@
         if (tousGagnants.indexOf(i) === -1) tousGagnants.push(i);
       });
       msgs.push(winners.map(function (i) { return GG.esc(state.players[i].name); }).join(' & ') +
-        ' : ' + pot + ' 🪙 (' + CAT_NAMES[bestR[0]] + ')');
+        ' : ' + pot + ' 🪙 (' + nomMain(bestR) + ')');
     }
     state.handMsg = msgs.join(' · ');
     state.resultat = {
@@ -248,7 +296,7 @@
       sansAbattage: false,
       lignes: msgs,
       mains: contenders.map(function (i) {
-        return { i: i, cat: CAT_NAMES[state.players[i].rank[0]] };
+        return { i: i, cat: nomMain(state.players[i].rank) };
       })
     };
     noterTable(state, 'Abattage : ' + msgs.join(' · '));
@@ -332,7 +380,7 @@
     nom: 'Poker',
     icone: '🃏',
     desc: 'Texas Hold’em, au choix : cash game (recaves) ou tournoi (blinds montantes).',
-    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p><p><strong>🪙 La cagnotte :</strong> la cave (100) et chaque recave sortent de la cagnotte de votre téléphone ; votre pile y retourne quand vous quittez la table. Recharge automatique chaque semaine.</p><p><strong>♻️ Se recaver :</strong> en cash game, entre deux mains, un bouton remet votre tapis à 100 — que vous soyez à sec ou simplement entamé. On ne peut pas se recaver au milieu d’une main que l’on joue.</p><p><strong>👀 Suivre la partie :</strong> l’annonce de chacun (parole, suivi, relance, tapis) reste affichée sous son siège jusqu’à la rue suivante, et le <strong>déroulé de la main</strong> garde tout. En fin de main, l’abattage montre les cartes de chacun avec le nom de sa combinaison, et le pot s’envole vers le gagnant.</p>',
+    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p><p><strong>🪙 La cagnotte :</strong> la cave (100) et chaque recave sortent de la cagnotte de votre téléphone ; votre pile y retourne quand vous quittez la table. Recharge automatique chaque semaine.</p><p><strong>♻️ Se recaver :</strong> en cash game, entre deux mains, un bouton remet votre tapis à 100 — que vous soyez à sec ou simplement entamé. On ne peut pas se recaver au milieu d’une main que l’on joue.</p><p><strong>👀 Suivre la partie :</strong> l’annonce de chacun (parole, suivi, relance, tapis) reste affichée sous son siège jusqu’à la rue suivante, et le <strong>déroulé de la main</strong> garde tout. En fin de main, l’abattage montre les cartes de chacun avec le nom de sa combinaison, et le pot s’envole vers le gagnant.</p><p><strong>🃏 Votre main en direct :</strong> sous vos cartes, le jeu nomme à tout moment la meilleure combinaison que vous tenez (« Paire de six », « Deux paires, as et six », « Couleur à l’as »…), dès la donne puis à chaque carte retournée.</p>',
     min: 2, max: 4,
     hotseat: false, hidden: true, netOnly: true,
 
@@ -564,16 +612,7 @@
 
       /* ---- post-flop : force réelle de la meilleure combinaison ---- */
       var cartes = p.hole.concat(state.community);
-      var meilleur;
-      if (cartes.length === 5) meilleur = rank5(cartes);
-      else if (cartes.length === 6) {
-        meilleur = null;
-        for (var x = 0; x < 6; x++) {
-          var cinq = cartes.slice(0, x).concat(cartes.slice(x + 1));
-          var rx = rank5(cinq);
-          if (!meilleur || cmpRank(rx, meilleur) > 0) meilleur = rx;
-        }
-      } else meilleur = best7(cartes);
+      var meilleur = meilleure(cartes);
 
       var cat = meilleur[0];
       var boardMax = 0;
@@ -712,8 +751,11 @@
           }).join('');
         var robot = p.name.indexOf('🤖') === 0;
         var nom = p.name.replace(/^🤖 /, '');
+        // ma main, nommée en direct sous mes cartes : « Paire de six »…
+        var maMain = (i === me && cartes) ? nomMainVive(p.hole, s.community) : '';
         html += '<div class="' + cls + '">' +
           '<div class="pk-scards' + (i === me ? ' mine' : '') + '">' + cartes + '</div>' +
+          (maMain ? '<div class="pk-mamain">' + maMain + '</div>' : '') +
           '<div class="pk-plate">' +
           '<span class="pk-avatar">' + (robot ? '🤖' : GG.esc(nom.charAt(0).toUpperCase())) + '</span>' +
           '<span class="pk-pinfo"><span class="pk-pname">' + GG.esc(nom) + '</span>' +
@@ -905,7 +947,8 @@
       });
     },
 
-    _rank5: rank5, _best7: best7, _cmp: cmpRank // exposés pour les tests
+    _rank5: rank5, _best7: best7, _cmp: cmpRank, // exposés pour les tests
+    _nomMain: nomMain, _nomMainVive: nomMainVive, _meilleure: meilleure
   };
 
   GG.register(mod);
