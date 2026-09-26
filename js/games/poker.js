@@ -822,6 +822,13 @@
         var depart = libre
           ? Math.min(miseMax, Math.max(miseMin, s.maxBet + Math.max(s.minRaise, Math.round(potMtn / 2))))
           : miseMax;
+        /* Un ré-affichage sans changement de donne (recave d'un tiers,
+           reconnexion, état renvoyé) ne doit pas effacer le montant que le
+           joueur était en train de régler : on le garde sur l'élément. */
+        var cleCurseur = s.gameId + ':' + s.handNum + ':' + s.street + ':' + s.maxBet + ':' + me;
+        if (libre && el._pkCurseur && el._pkCurseur.cle === cleCurseur) {
+          depart = Math.max(miseMin, Math.min(miseMax, el._pkCurseur.val));
+        }
         /* Le libellé du bouton qui VALIDE : il dit toujours ce qui va partir. */
         var libelle = function (v) {
           var quoi = v >= miseMax ? 'Tapis' : (s.maxBet > 0 ? 'Relancer à' : 'Miser');
@@ -837,7 +844,8 @@
         if (libre) {
           // le bouton qui envoie la relance vit DANS la rangée d'actions,
           // juste sous la table : visible sans défiler, quel que soit l'écran
-          html += '<button class="btn action primary pk-raise-go" id="pk-raise-go">' +
+          html += '<button class="btn action primary pk-raise-go' +
+            (depart >= miseMax ? ' tapis' : '') + '" id="pk-raise-go">' +
             libelle(depart) + '</button>';
         } else {
           html += '<button class="btn action primary" data-a=\'{"t":"allin"}\'>Tapis (' + my.chips + ')</button>';
@@ -918,6 +926,7 @@
           slider.value = v;
           valider.innerHTML = libelle(v);
           valider.classList.toggle('tapis', v >= mx);
+          el._pkCurseur = { cle: cleCurseur, val: v };
         };
         slider.addEventListener('input', function () { poser(+slider.value); });
         el.querySelectorAll('.pk-adj').forEach(function (b) {

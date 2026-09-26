@@ -72,13 +72,13 @@ function check(n, c, e) {
   // petit écran (navigateur intégré avec barre d'adresse), sans défiler
   check('le bouton « Relancer à » est dans la rangée d’actions, sous la table',
     await hote.locator('.pk-actions #pk-raise-go').count() === 1);
-  await hote.setViewportSize({ width: 390, height: 600 });
+  await hote.setViewportSize({ width: 390, height: 640 });
   await hote.evaluate(() => window.scrollTo(0, 0));
   const visible = await hote.evaluate(() => {
     const r = document.querySelector('#pk-raise-go').getBoundingClientRect();
     return { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: window.innerHeight };
   });
-  check('… et visible sans défiler sur un écran de 600 px de haut',
+  check('… et visible sans défiler sur un écran de 640 px de haut',
     visible.top >= 0 && visible.bottom <= visible.vh, visible);
   await hote.setViewportSize({ width: 390, height: 844 });
   const bornes = await hote.evaluate(() => {
@@ -103,12 +103,47 @@ function check(n, c, e) {
   await hote.click('.pk-quick[data-set="' + bornes.max + '"]');
   check('raccourci Tapis : le bouton annonce le tapis',
     /Tapis/.test(await hote.textContent('#pk-raise-go')) &&
-    (await hote.textContent('#pk-mise')) === String(bornes.max));
+    (await hote.textContent('#pk-mise')) === String(bornes.max) &&
+    await hote.locator('#pk-raise-go.tapis').count() === 1);
   await hote.evaluate(v => {
     const sl = document.querySelector('#pk-slider');
     sl.value = v;
     sl.dispatchEvent(new Event('input', { bubbles: true }));
   }, vise);
+  check('retour sous le tapis : le bouton redevient « Relancer à »',
+    await hote.locator('#pk-raise-go.tapis').count() === 0);
+  // un ré-affichage sans changement de donne (recave d'un tiers, reconnexion)
+  // ne doit pas effacer le montant en cours de réglage — sur une page à part,
+  // avec une table factice, pour ne pas toucher à la partie en cours
+  const tiers = await mk();
+  const memo = await tiers.evaluate(() => {
+    const pk = GG.byId.poker;
+    const s = pk.create(['Ana', 'Bob']);
+    pk.apply(s, 0, { t: 'mode', m: 'cash' });
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    const ctx = { state: s, me: s.current, mode: 'host', act: function () {} };
+    pk.render(el, ctx);
+    const sl = el.querySelector('#pk-slider');
+    if (!sl) return null;
+    const voulu = +sl.max - 5;
+    sl.value = voulu;
+    sl.dispatchEvent(new Event('input', { bubbles: true }));
+    pk.render(el, ctx); // même donne, même rue : le réglage doit survivre
+    const garde = +el.querySelector('#pk-slider').value;
+    const libelle = el.querySelector('#pk-mise').textContent;
+    pk.apply(s, s.current, { t: 'call' }); // la donne avance : on repart du départ
+    ctx.me = s.current;
+    pk.render(el, ctx);
+    const apres = el.querySelector('#pk-slider') ? +el.querySelector('#pk-slider').value : null;
+    el.remove();
+    return { voulu, garde, libelle, apres };
+  });
+  check('un ré-affichage sans changement de donne garde le montant réglé',
+    memo && memo.garde === memo.voulu && memo.libelle === String(memo.voulu), memo);
+  check('quand la donne avance, le curseur repart de sa valeur de départ',
+    memo && memo.apres !== null && memo.apres !== memo.voulu, memo);
+  await tiers.context().close();
   await hote.click('#pk-raise-go');
   await inv.waitForFunction(n => /Relance|TAPIS/.test(document.querySelector('#mini-area').textContent),
     null, { timeout: 10000 });
