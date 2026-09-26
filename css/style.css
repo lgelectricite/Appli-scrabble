@@ -817,7 +817,8 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   position: relative;
   max-width: min(88vw, 420px);
   aspect-ratio: 1.22;
-  margin: 58px auto 70px; /* en bas : mes cartes à cheval sur le rail, ma plaque */
+  /* en bas : mes cartes à cheval sur le rail (moitié dehors), ma main dessous */
+  margin: 58px auto calc(var(--moi-h) / 2 + 27px);
   border-radius: 50%;
   /* largeur des cartes : le tapis, les miennes (plus grandes), les adverses */
   --com-w: clamp(34px, 12.6vw, 54px);
@@ -870,30 +871,38 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 /* MOI, en bas : mes cartes en grand, en éventail, à cheval sur le rail ;
    ma plaque à côté ; ma main nommée et mon annonce juste dessous */
 .pk-seat.sb {
-  /* trois colonnes : vide | MES CARTES (pile au centre) | ma plaque */
-  left: -12px; right: -12px; width: auto; top: calc(100% - var(--moi-h) / 2);
-  display: grid; grid-template-columns: 1fr auto 1fr;
-  column-gap: 10px; row-gap: 4px; align-items: end; justify-items: start;
+  /* trois colonnes égales autour de MES CARTES, pile au centre de la table :
+     vide | mes cartes | ma plaque (minmax(0, …) : rien ne les décentre) */
+  left: -14px; right: -14px; width: auto; top: calc(100% - var(--moi-h) / 2);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  column-gap: 6px; row-gap: 4px; align-items: end; justify-items: start;
 }
 .pk-seat.sb .pk-scards {
-  grid-column: 2; grid-row: 1; min-height: var(--moi-h); margin: 0;
-  align-items: flex-end; gap: 0;
+  grid-column: 2; grid-row: 1; justify-self: center; min-height: var(--moi-h);
+  margin: 0; align-items: flex-end; gap: 0;
 }
-.pk-seat.sb .pk-mamain {
-  grid-column: 2; grid-row: 2; margin: 0; justify-self: center;
-  /* un nom long (« Full aux dames par les valets ») passe sur deux lignes
-     plutôt que d'élargir la colonne et de décentrer mes cartes */
-  max-width: calc(var(--moi-w) * 2.2); white-space: normal; text-align: center;
-  line-height: 1.2;
+/* ma main nommée, sur UNE ligne, sous mes cartes : elle prend toute la
+   largeur de la table pour ne jamais passer à la ligne ni décentrer */
+.pk-seat.sb .pk-mamain { grid-column: 1 / -1; grid-row: 2; justify-self: center; margin: 0; }
+.pk-seat.sb .pk-plate { grid-column: 3; grid-row: 1; min-width: 0; padding-right: 8px; }
+/* mon annonce (et TAPIS / couché) : au-dessus de ma plaque, à côté de mes cartes */
+.pk-seat.sb .pk-tag, .pk-seat.sb .pk-annonce {
+  grid-column: 3; grid-row: 1; align-self: start; margin: 4px 0 0 12px;
 }
-.pk-seat.sb .pk-plate { grid-column: 3; grid-row: 1; }
-.pk-seat.sb .pk-tag, .pk-seat.sb .pk-annonce { grid-column: 3; grid-row: 2; margin-left: 14px; }
 .pk-seat.sb .pk-scards .jc { --jcw: var(--moi-w); transform-origin: 50% 100%; }
 .pk-seat.sb .pk-scards .jc:first-child { --jc-rot: -4deg; }
 .pk-seat.sb .pk-scards .jc + .jc { --jc-rot: 4deg; margin-left: calc(var(--moi-w) * -.12); }
 /* les cartes adverses : petites (des dos), un peu plus grandes une fois montrées */
 .pk-seat .pk-scards .jc { --jcw: var(--adv-w); }
 .pk-seat .pk-scards.montre .jc { --jcw: calc(var(--adv-w) * 1.3); }
+/* chez un adversaire, la carte gagnante s'avance vers la table (en montant,
+   elle passerait sous sa plaque) */
+.pk-seat:not(.sb) .jc.gagnante { --jc-lift: 3px; }
+/* TAPIS / couché d'un adversaire : un badge au-dessus de la plaque, qui ne
+   pousse pas le siège vers la table (il cacherait sa mise) */
+.pk-seat:not(.sb) .pk-tag {
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 2;
+}
 .pk-seat.folded .pk-plate, .pk-seat.folded .pk-scards { opacity: .55; }
 .pk-seat.out { opacity: .35; }
 .pk-plate {
@@ -943,8 +952,8 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 .pk-betspot.st { left: 50%; top: 20%; transform: translateX(-50%); }
 .pk-betspot.stl { left: 21%; top: 23%; }
 .pk-betspot.str { right: 21%; top: 23%; }
-.pk-betspot.sl { left: 29%; top: 27%; }
-.pk-betspot.sr { right: 29%; top: 27%; }
+.pk-betspot.sl { left: 32%; top: 27%; }
+.pk-betspot.sr { right: 32%; top: 27%; }
 .pk-chip {
   width: 16px; height: 16px; border-radius: 50%; flex: none;
   background: radial-gradient(circle at 50% 50%, #b8302c 0 44%, #7e1f1c 46% 100%);
@@ -2204,7 +2213,11 @@ body.theme-manoir .btn { box-shadow: none; }
     'Helvetica Neue', Roboto, 'Segoe UI', Arial, sans-serif;
 }
 /* « 10 » : deux chiffres dans la place d'un seul */
-.jc-i b.dix { font-size: calc(var(--jcw) * .46); letter-spacing: -.09em; margin-left: -.09em; }
+.jc-i b.dix {
+  font-size: calc(var(--jcw) * .46); letter-spacing: -.05em; margin-left: -.05em;
+  /* même hauteur de ligne que les autres rangs : le symbole reste aligné */
+  padding-top: calc(var(--jcw) * .04); margin-bottom: calc(var(--jcw) * .035);
+}
 .jc-p {
   display: block; width: calc(var(--jcw) * .3); height: calc(var(--jcw) * .3);
   margin-top: calc(var(--jcw) * .03); fill: currentColor;
@@ -2221,7 +2234,7 @@ body.theme-manoir .btn { box-shadow: none; }
   position: absolute; inset: 7%; border-radius: calc(var(--jcw) * .05);
   border: 1.5px solid rgba(255, 255, 255, .75);
   background:
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .28) 0 22%, transparent 23%),
+    radial-gradient(circle at 50% 50%, transparent 0 17%, rgba(255, 255, 255, .5) 18% 22%, transparent 23%),
     repeating-linear-gradient(45deg, rgba(255, 255, 255, .2) 0 2px, transparent 2px 6px),
     repeating-linear-gradient(-45deg, rgba(255, 255, 255, .2) 0 2px, transparent 2px 6px);
 }
@@ -2230,6 +2243,8 @@ body.theme-manoir .btn { box-shadow: none; }
   --jc-lift: -4px;
   box-shadow: 0 0 0 2px #d4af37, 0 0 14px rgba(212, 175, 55, .85);
 }
+/* à l'abattage, les cartes qui ne jouent pas s'estompent */
+.jc.terne { filter: brightness(.62) saturate(.6); }
 
 /* ===== Poker : annonces, abattage, fil de la main, animation ===== */
 .pk-annonce {
@@ -2253,10 +2268,11 @@ body.theme-manoir .btn { box-shadow: none; }
 .pk-seat.gagne .pk-plate {
   box-shadow: 0 0 0 2px #d4af37, 0 0 16px rgba(212, 175, 55, .85);
 }
-.pk-trophee {
-  position: absolute; top: -12px; right: -6px; font-size: 20px;
-  animation: pkTroph .6s ease-out;
+.pk-trophee { /* posé sur le coin de la plaque du gagnant */
+  position: absolute; top: -14px; right: -9px; font-size: 18px; z-index: 3;
+  line-height: 1; animation: pkTroph .6s ease-out;
 }
+.pk-seat.sr .pk-trophee, .pk-seat.str .pk-trophee { right: auto; left: -9px; }
 @keyframes pkTroph { from { transform: scale(0) rotate(-40deg); } }
 
 .pk-fin {
@@ -2299,8 +2315,8 @@ body.theme-casino .pk-fil-l { background: rgba(0, 0, 0, .3); border-color: #4a3f
 }
 @keyframes pkVolSb { to { transform: translate(0, 150px) scale(.5); opacity: 0; } }
 @keyframes pkVolSt { to { transform: translate(0, -150px) scale(.5); opacity: 0; } }
-@keyframes pkVolSl { to { transform: translate(-120px, 0) scale(.5); opacity: 0; } }
-@keyframes pkVolSr { to { transform: translate(120px, 0) scale(.5); opacity: 0; } }
+@keyframes pkVolSl { to { transform: translate(-120px, -48px) scale(.5); opacity: 0; } }
+@keyframes pkVolSr { to { transform: translate(120px, -48px) scale(.5); opacity: 0; } }
 @keyframes pkVolStl { to { transform: translate(-105px, -105px) scale(.5); opacity: 0; } }
 @keyframes pkVolStr { to { transform: translate(105px, -105px) scale(.5); opacity: 0; } }
 .pk-vol.vers-sb { animation-name: pkVolSb; }

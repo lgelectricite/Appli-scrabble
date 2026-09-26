@@ -188,15 +188,15 @@ function check(n, c, e) {
       sousCartes: m.top >= c.bottom - 1,
       centree: Math.abs((m.left + m.right) / 2 - (c.left + c.right) / 2) <= 3,
       plaqueLibre: !touche(m, p),
-      annonce: a ? Math.round(a.top - p.bottom) : null
+      annonce: a ? !touche(a, p) && !touche(a, c) : null
     };
   });
   check('ma main est nommée dès la donne (« Paire de … » ou « Hauteur … »)',
     vive && /^(Paire d|Hauteur )/.test(vive.txt), vive);
   check('l’étiquette se place juste sous mes cartes, centrée, sans toucher ma plaque',
     vive && vive.sousCartes && vive.centree && vive.plaqueLibre, vive);
-  check('mon annonce (blind, relance…) ne mord plus sur ma plaque ni sur mon tapis',
-    vive && vive.annonce !== null && vive.annonce >= 0, vive);
+  check('mon annonce (blind, relance…) ne mord ni sur ma plaque ni sur mes cartes',
+    vive && vive.annonce === true, vive);
 
   // on déroule la main jusqu'à l'abattage
   const agir = async (p) => {
@@ -226,6 +226,17 @@ function check(n, c, e) {
   const montrees = await hote.locator('.pk-abat-c .jc:not(.dos)').count();
   check('les mains sont retournées et nommées à l’abattage',
     montrees === 0 || montrees >= 2, montrees);
+  if (await hote.locator('.pk-abat-l').count() >= 2) {
+    const eclat = await hote.evaluate(() => ({
+      brillent: document.querySelectorAll('.pk-oval .jc.gagnante').length,
+      ternes: document.querySelectorAll('.pk-oval .jc.terne').length
+    }));
+    check('à l’abattage, les 5 cartes qui gagnent brillent sur la table, les autres s’estompent',
+      eclat.brillent >= 5 && eclat.brillent <= 9 && eclat.ternes >= 1, eclat);
+  } else {
+    check('main gagnée sans abattage : aucune carte ne brille à tort',
+      await hote.locator('.pk-oval .jc.gagnante').count() === 0);
+  }
   const nomsAbat = await hote.locator('.pk-abat-m').allTextContents();
   const NOM = /^(Paire d|Hauteur |Deux paires, |Brelan d|Suite |Couleur |Full aux |Carré d|Quinte flush)/;
   check('à l’abattage, chaque main porte son nom complet (« Paire de dix », « Hauteur as »…)',
@@ -274,6 +285,51 @@ function check(n, c, e) {
   });
   const dejaFini = await hote.locator('[data-a=\'{"t":"next"}\']').count();
   check('bouton « Main suivante » proposé en fin de main', dejaFini === 1);
+
+  console.log('--- Un nom de main long ne gêne rien, sur tous les écrans ---');
+  for (const [w, h] of [[320, 640], [390, 640], [412, 770]]) {
+    const ctxL = await browser.newContext({ viewport: { width: w, height: h } });
+    const pg = await ctxL.newPage();
+    pg.on('pageerror', e => { failures++; console.log('  FAIL JS: ' + e.message); });
+    await pg.goto(URL_APP);
+    await pg.waitForSelector('#catalog .game-tile');
+    const g = await pg.evaluate(() => {
+      const pk = GG.byId.poker;
+      const K = (r, c) => (r << 2) | c;
+      const s = pk.create(['Ana', 'Bob']);
+      pk.apply(s, 0, { t: 'mode', m: 'cash' });
+      const me = s.current;
+      s.players[me].hole = [K(10, 0), K(10, 1)];          // D♠ D♥
+      s.community = [K(10, 2), K(9, 3), K(9, 1)];         // D♦ V♣ V♥
+      s.players[me].lastAct = 'Petite blind';
+      document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
+      document.getElementById('screen-mini').classList.add('active');
+      const el = document.getElementById('mini-area');
+      pk.render(el, { state: s, me, mode: 'host', act() {} });
+      window.scrollTo(0, 0);
+      const R = sel => el.querySelector(sel).getBoundingClientRect();
+      const touche = (x, y) => Math.min(x.right, y.right) > Math.max(x.left, y.left) &&
+        Math.min(x.bottom, y.bottom) > Math.max(x.top, y.top);
+      const m = R('.pk-seat.sb .pk-mamain'), a = R('.pk-actions'), cs = R('.pk-scards.mine');
+      const o = R('.pk-oval'), pl = R('.pk-seat.sb .pk-plate'), an = R('.pk-seat.sb .pk-annonce');
+      return {
+        txt: el.querySelector('.pk-mamain').textContent, h: Math.round(m.height),
+        ecart: Math.round(a.top - m.bottom),
+        decal: Math.round(Math.abs((cs.left + cs.right) / 2 - (o.left + o.right) / 2)),
+        annoncePlaque: touche(an, pl), annonceCartes: touche(an, cs),
+        actionsVisibles: a.bottom <= innerHeight,
+        debord: document.documentElement.scrollWidth > innerWidth
+      };
+    });
+    check(w + '×' + h + ' : « ' + g.txt + ' » tient sur une ligne, au-dessus des boutons',
+      g.txt === 'Full aux dames par les valets' && g.h <= 18 && g.ecart >= 2, g);
+    check(w + '×' + h + ' : mes cartes restent pile au centre de la table', g.decal <= 3, g);
+    check(w + '×' + h + ' : mon annonce ne touche ni ma plaque ni mes cartes',
+      !g.annoncePlaque && !g.annonceCartes, g);
+    check(w + '×' + h + ' : boutons visibles sans défiler, rien ne déborde sur le côté',
+      g.actionsVisibles && !g.debord, g);
+    await ctxL.close();
+  }
 
   await browser.close();
   await relais.arreter();

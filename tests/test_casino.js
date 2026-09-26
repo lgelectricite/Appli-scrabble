@@ -383,5 +383,43 @@ check('quinte flush royale', nomme([K(12, 0), K(11, 0)], [K(10, 0), K(9, 0), K(8
 check('rien : hauteur valet', nomme([K(9, 1), K(2, 2)], [K(0, 3), K(7, 3), K(5, 0)]) === 'Hauteur valet');
 check('sans cartes : rien à dire', nomme([], []) === '');
 
+/* ================= POKER : les 5 cartes qui gagnent brillent ================= */
+console.log('--- Poker : cartes gagnantes à l’abattage ---');
+function abattageTruque(mainA, mainB, tapis) {
+  const s = poker.create(['Ana', 'Bob']);
+  poker.apply(s, 0, { t: 'mode', m: 'cash' });
+  s.players[0].hole = mainA.slice();
+  s.players[1].hole = mainB.slice();
+  // le paquet se dépile par la fin : flop (3), turn, river
+  s.deck = [tapis[4], tapis[3], tapis[2], tapis[1], tapis[0]];
+  for (let k = 0; k < 30 && !s.handOver; k++) {
+    const p = s.players[s.current];
+    poker.apply(s, s.current, s.maxBet > p.bet ? { t: 'call' } : { t: 'check' });
+  }
+  return s;
+}
+const trie = a => a.slice().sort((x, y) => x - y).join(',');
+let sd = abattageTruque([K(12, 0), K(11, 0)], [K(0, 1), K(1, 2)],
+  [K(10, 0), K(9, 0), K(8, 0), K(2, 3), K(3, 1)]);
+check('quinte flush royale : A♠ R♠ D♠ V♠ 10♠ brillent, le 4♣ et le 5♥ non',
+  sd.resultat && trie(sd.resultat.cinq) === trie([K(12, 0), K(11, 0), K(10, 0), K(9, 0), K(8, 0)]),
+  sd.resultat && sd.resultat.cinq);
+sd = abattageTruque([K(12, 1), K(5, 2)], [K(11, 1), K(6, 3)],
+  [K(12, 3), K(7, 0), K(3, 2), K(2, 1), K(1, 3)]);
+check('paire d’as : les deux as et les trois meilleures cartes d’accompagnement (9, 7, 5)',
+  sd.resultat && trie(sd.resultat.cinq) === trie([K(12, 1), K(12, 3), K(7, 0), K(5, 2), K(3, 2)]),
+  sd.resultat && sd.resultat.cinq);
+sd = abattageTruque([K(0, 0), K(1, 1)], [K(0, 2), K(1, 3)],
+  [K(12, 0), K(11, 1), K(10, 2), K(9, 3), K(8, 0)]);
+check('le tapis joue pour les deux (partage) : ses 5 cartes brillent, pas les mains',
+  sd.resultat && sd.resultat.gagnants.length === 2 &&
+  trie(sd.resultat.cinq) === trie([K(12, 0), K(11, 1), K(10, 2), K(9, 3), K(8, 0)]),
+  sd.resultat);
+const tout = abattageTruque([K(4, 2), K(4, 0)], [K(6, 1), K(6, 3)],
+  [K(2, 0), K(9, 1), K(11, 3), K(0, 2), K(7, 0)]);
+check('l’état expurgé pour l’adversaire ne révèle rien de plus que l’abattage',
+  poker.redact(tout, 1).resultat.cinq.every(c =>
+    tout.community.indexOf(c) !== -1 || tout.players.some(p => p.show && p.hole.indexOf(c) !== -1)));
+
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests casino/cagnotte OK.');
 process.exit(failures ? 1 : 0);

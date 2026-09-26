@@ -71,6 +71,20 @@
     return best;
   }
 
+  /* les CINQ cartes qui jouent vraiment (celles qu'on fait briller à
+     l'abattage) : la meilleure combinaison de 5 parmi 5, 6 ou 7 cartes */
+  function cinqQuiJouent(cards) {
+    var n = cards.length, best = null, jeu = [];
+    for (var a = 0; a < n; a++) for (var b = a + 1; b < n; b++)
+      for (var c = b + 1; c < n; c++) for (var d = c + 1; d < n; d++)
+        for (var e = d + 1; e < n; e++) {
+          var cinq = [cards[a], cards[b], cards[c], cards[d], cards[e]];
+          var r = rank5(cinq);
+          if (!best || cmpRank(r, best) > 0) { best = r; jeu = cinq; }
+        }
+    return jeu;
+  }
+
   /* ---------- le nom de la main, comme on le dit à une vraie table ---------- */
   var PLURIEL = ['deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
     'dix', 'valets', 'dames', 'rois', 'as'];
@@ -290,11 +304,19 @@
         ' : ' + pot + ' 🪙 (' + nomMain(bestR) + ')');
     }
     state.handMsg = msgs.join(' · ');
+    // les cartes qui font gagner : les 5 de chaque gagnant (tapis compris)
+    var brillent = [];
+    tousGagnants.forEach(function (i) {
+      cinqQuiJouent(state.players[i].hole.concat(board)).forEach(function (c) {
+        if (brillent.indexOf(c) === -1) brillent.push(c);
+      });
+    });
     state.resultat = {
       gagnants: tousGagnants,
       pot: potInitial,
       sansAbattage: false,
       lignes: msgs,
+      cinq: brillent,
       mains: contenders.map(function (i) {
         return { i: i, cat: nomMain(state.players[i].rank) };
       })
@@ -380,7 +402,7 @@
     nom: 'Poker',
     icone: '🃏',
     desc: 'Texas Hold’em, au choix : cash game (recaves) ou tournoi (blinds montantes).',
-    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p><p><strong>🪙 La cagnotte :</strong> la cave (100) et chaque recave sortent de la cagnotte de votre téléphone ; votre pile y retourne quand vous quittez la table. Recharge automatique chaque semaine.</p><p><strong>♻️ Se recaver :</strong> en cash game, entre deux mains, un bouton remet votre tapis à 100 — que vous soyez à sec ou simplement entamé. On ne peut pas se recaver au milieu d’une main que l’on joue.</p><p><strong>👀 Suivre la partie :</strong> l’annonce de chacun (parole, suivi, relance, tapis) reste affichée sous son siège jusqu’à la rue suivante, et le <strong>déroulé de la main</strong> garde tout. En fin de main, l’abattage montre les cartes de chacun avec le nom de sa combinaison, et le pot s’envole vers le gagnant.</p><p><strong>💰 Miser ce que vous voulez :</strong> le bouton « Relancer à N » (ou « Miser N ») est dans la rangée d’actions, sous la table. Réglez le montant juste dessous, avec − / + ou le curseur, ou les raccourcis Min, ½ pot, Pot et Tapis : le bouton affiche toujours ce qui va partir, et c’est lui qui envoie la mise.</p><p><strong>🃏 Votre main en direct :</strong> sous vos cartes, le jeu nomme à tout moment la meilleure combinaison que vous tenez (« Paire de six », « Deux paires, as et six », « Couleur à l’as »…), dès la donne puis à chaque carte retournée.</p>',
+    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p><p><strong>🪙 La cagnotte :</strong> la cave (100) et chaque recave sortent de la cagnotte de votre téléphone ; votre pile y retourne quand vous quittez la table. Recharge automatique chaque semaine.</p><p><strong>♻️ Se recaver :</strong> en cash game, entre deux mains, un bouton remet votre tapis à 100 — que vous soyez à sec ou simplement entamé. On ne peut pas se recaver au milieu d’une main que l’on joue.</p><p><strong>👀 Suivre la partie :</strong> l’annonce de chacun (parole, suivi, relance, tapis) reste affichée sous son siège jusqu’à la rue suivante, et le <strong>déroulé de la main</strong> garde tout. En fin de main, l’abattage montre les cartes de chacun avec le nom de sa combinaison, les 5 cartes qui gagnent brillent (les autres s’estompent), et le pot s’envole vers le gagnant.</p><p><strong>💰 Miser ce que vous voulez :</strong> le bouton « Relancer à N » (ou « Miser N ») est dans la rangée d’actions, sous la table. Réglez le montant juste dessous, avec − / + ou le curseur, ou les raccourcis Min, ½ pot, Pot et Tapis : le bouton affiche toujours ce qui va partir, et c’est lui qui envoie la mise.</p><p><strong>🃏 Votre main en direct :</strong> sous vos cartes, le jeu nomme à tout moment la meilleure combinaison que vous tenez (« Paire de six », « Deux paires, as et six », « Couleur à l’as »…), dès la donne puis à chaque carte retournée.</p>',
     min: 2, max: 4,
     hotseat: false, hidden: true, netOnly: true,
 
@@ -721,6 +743,15 @@
         4: ['sb', 'sl', 'st', 'sr']
       })[n] || ['sb', 'sl', 'st', 'sr'];
 
+      /* À l'abattage, les 5 cartes qui font gagner brillent ; les autres
+         cartes du tapis et du gagnant s'estompent (comme dans les applis). */
+      var brillent = s.handOver && s.resultat && s.resultat.cinq;
+      function eclat(c, concerne) {
+        if (!brillent) return '';
+        if (brillent.indexOf(c) !== -1) return 'gagnante';
+        return concerne ? 'terne' : '';
+      }
+
       var html = '<div class="pk-mode">' +
         (s.mode === 'cash'
           ? '💵 Cash game — blinds ' + s.blinds[0] + '/' + s.blinds[1]
@@ -733,7 +764,7 @@
         '<div class="pk-pot">Pot : <b>' + potTotal(s) + '</b> 🪙</div>' +
         '<div class="pk-community">' +
         (s.community.length
-          ? s.community.map(function (c) { return cardHtml(c); }).join('')
+          ? s.community.map(function (c) { return cardHtml(c, '', eclat(c, true)); }).join('')
           : '<span class="pk-street">' + (s.handOver ? '· · ·' : 'Pré-flop') + '</span>') +
         '</div></div>';
       s.players.forEach(function (p, i) {
@@ -748,14 +779,16 @@
         var montre = i !== me && p.show;
         var cartes = (p.out || p.folded) ? '' :
           p.hole.map(function (c) {
-            return cardHtml(i === me ? c : (p.show ? c : -1),
-              '', gagnant && s.handOver ? 'gagnante' : '');
+            var vue = i === me ? c : (p.show ? c : -1);
+            return cardHtml(vue, '', vue === -1 ? '' : eclat(c, gagnant));
           }).join('');
         var robot = p.name.indexOf('🤖') === 0;
         var nom = p.name.replace(/^🤖 /, '');
         // ma main, nommée en direct sous mes cartes : « Paire de six »…
         var maMain = (i === me && cartes) ? nomMainVive(p.hole, s.community) : '';
         var annonce = p.lastAct && !s.handOver;
+        // l'annonce « Tapis 98 » / « Couché » dit déjà ce que dirait l'étiquette
+        var redite = annonce && /^(tapis|couché)/i.test(p.lastAct);
         html += '<div class="' + cls + '">' +
           '<div class="pk-scards' + (i === me ? ' mine' : '') + (montre && cartes ? ' montre' : '') + '">' +
           cartes + '</div>' +
@@ -764,13 +797,13 @@
           '<span class="pk-avatar">' + (robot ? '🤖' : GG.esc(nom.charAt(0).toUpperCase())) + '</span>' +
           '<span class="pk-pinfo"><span class="pk-pname">' + GG.esc(nom) + '</span>' +
           '<span class="pk-pstack">' + (p.out ? 'éliminé' : p.chips + ' 🪙') + '</span></span>' +
+          // le trophée se pose sur la plaque du gagnant
+          (gagnant && s.handOver ? '<span class="pk-trophee">🏆</span>' : '') +
           '</div>' +
-          // sous MA plaque, l'annonce (« Tapis 98 », « Couché ») dit déjà tout
-          ((i === me && annonce) ? '' :
+          (redite ? '' :
             (p.allin && !p.out ? '<span class="pk-tag">TAPIS</span>' :
               (p.folded && !p.out ? '<span class="pk-tag grey">couché</span>' : ''))) +
           (annonce ? '<span class="pk-annonce">' + GG.esc(p.lastAct) + '</span>' : '') +
-          (gagnant && s.handOver ? '<span class="pk-trophee">🏆</span>' : '') +
           '</div>';
         // la mise de la rue en jetons devant le siège, et le bouton du donneur
         if (!p.out && (p.bet > 0 || i === s.dealer)) {
@@ -796,7 +829,9 @@
             html += '<div class="pk-abat-l' + (win ? ' win' : '') + '">' +
               '<span class="pk-abat-n">' + (win ? '🏆 ' : '') + GG.esc(pj.name) + '</span>' +
               '<span class="pk-abat-c">' +
-              (pj.hole || []).map(function (c) { return cardHtml(c); }).join('') +
+              (pj.hole || []).map(function (c) {
+                return cardHtml(c, '', c === -1 ? '' : eclat(c, win));
+              }).join('') +
               '</span><span class="pk-abat-m">' + m.cat + '</span></div>';
           });
           html += '</div>';
@@ -974,7 +1009,8 @@
     },
 
     _rank5: rank5, _best7: best7, _cmp: cmpRank, // exposés pour les tests
-    _nomMain: nomMain, _nomMainVive: nomMainVive, _meilleure: meilleure
+    _nomMain: nomMain, _nomMainVive: nomMainVive, _meilleure: meilleure,
+    _cinqQuiJouent: cinqQuiJouent
   };
 
   GG.register(mod);
