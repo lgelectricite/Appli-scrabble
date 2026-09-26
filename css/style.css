@@ -889,6 +889,15 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 .pk-seat.sb .pk-tag, .pk-seat.sb .pk-annonce {
   grid-column: 3; grid-row: 1; align-self: start; margin: 4px 0 0 12px;
 }
+/* badge ET annonce à la fois (tapis sur une blind) : le badge à gauche */
+.pk-seat.sb .pk-tag.gauche { grid-column: 1; justify-self: end; margin: 4px 12px 0 0; }
+.pk-seat.sb .pk-trophee { right: -3px; }
+/* très petits écrans : mises à 4 chiffres et annonces longues tiennent */
+@media (max-width: 340px) {
+  .pk-betspot.sl, .pk-betspot.sr { gap: 2px; font-size: 11px; }
+  .pk-seat.sb .pk-annonce, .pk-seat.sb .pk-tag { margin-left: 4px; }
+  .pk-seat.sb .pk-tag.gauche { margin: 4px 4px 0 0; }
+}
 .pk-seat.sb .pk-scards .jc { --jcw: var(--moi-w); transform-origin: 50% 100%; }
 .pk-seat.sb .pk-scards .jc:first-child { --jc-rot: -4deg; }
 .pk-seat.sb .pk-scards .jc + .jc { --jc-rot: 4deg; margin-left: calc(var(--moi-w) * -.12); }

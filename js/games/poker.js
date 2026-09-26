@@ -800,9 +800,11 @@
           // le trophée se pose sur la plaque du gagnant
           (gagnant && s.handOver ? '<span class="pk-trophee">🏆</span>' : '') +
           '</div>' +
+          // (à tapis sur une blind : « Grosse blind » ET le badge TAPIS ; chez
+          // moi, le badge passe alors à gauche de mes cartes)
           (redite ? '' :
-            (p.allin && !p.out ? '<span class="pk-tag">TAPIS</span>' :
-              (p.folded && !p.out ? '<span class="pk-tag grey">couché</span>' : ''))) +
+            (p.allin && !p.out ? '<span class="pk-tag' + (annonce ? ' gauche' : '') + '">TAPIS</span>' :
+              (p.folded && !p.out ? '<span class="pk-tag grey' + (annonce ? ' gauche' : '') + '">couché</span>' : ''))) +
           (annonce ? '<span class="pk-annonce">' + GG.esc(p.lastAct) + '</span>' : '') +
           '</div>';
         // la mise de la rue en jetons devant le siège, et le bouton du donneur

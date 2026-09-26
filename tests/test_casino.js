@@ -415,11 +415,34 @@ check('le tapis joue pour les deux (partage) : ses 5 cartes brillent, pas les ma
   sd.resultat && sd.resultat.gagnants.length === 2 &&
   trie(sd.resultat.cinq) === trie([K(12, 0), K(11, 1), K(10, 2), K(9, 3), K(8, 0)]),
   sd.resultat);
-const tout = abattageTruque([K(4, 2), K(4, 0)], [K(6, 1), K(6, 3)],
-  [K(2, 0), K(9, 1), K(11, 3), K(0, 2), K(7, 0)]);
-check('l’état expurgé pour l’adversaire ne révèle rien de plus que l’abattage',
-  poker.redact(tout, 1).resultat.cinq.every(c =>
-    tout.community.indexOf(c) !== -1 || tout.players.some(p => p.show && p.hole.indexOf(c) !== -1)));
+// à trois : Carla se couche d'entrée, ses cartes ne doivent jamais briller
+{
+  const s = poker.create(['Ana', 'Bob', 'Carla']);
+  poker.apply(s, 0, { t: 'mode', m: 'cash' });
+  s.players[0].hole = [K(4, 2), K(4, 0)];
+  s.players[1].hole = [K(6, 1), K(6, 3)];
+  s.players[2].hole = [K(12, 0), K(12, 1)];
+  s.deck = [K(7, 0), K(0, 2), K(11, 3), K(9, 1), K(2, 0)];
+  for (let k = 0; k < 40 && !s.handOver; k++) {
+    const p = s.players[s.current];
+    const a = s.current === 2 ? { t: 'fold' } : (s.maxBet > p.bet ? { t: 'call' } : { t: 'check' });
+    poker.apply(s, s.current, a);
+  }
+  const vue = poker.redact(s, 2);
+  check('la joueuse couchée : ses cartes restent secrètes et ne brillent jamais',
+    s.handOver && vue.resultat.cinq.length === 5 &&
+    vue.resultat.cinq.every(c => s.players[2].hole.indexOf(c) === -1) &&
+    vue.resultat.cinq.every(c => s.community.indexOf(c) !== -1 ||
+      s.players.some(p => p.show && p.hole.indexOf(c) !== -1)),
+    vue.resultat);
+}
+{
+  const s = poker.create(['Ana', 'Bob']);
+  poker.apply(s, 0, { t: 'mode', m: 'cash' });
+  poker.apply(s, s.current, { t: 'fold' });
+  check('main gagnée sans abattage : aucune carte à faire briller (rien n’est montré)',
+    s.handOver && s.resultat && s.resultat.sansAbattage && !s.resultat.cinq, s.resultat);
+}
 
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests casino/cagnotte OK.');
 process.exit(failures ? 1 : 0);
