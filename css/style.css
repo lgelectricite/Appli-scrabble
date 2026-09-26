@@ -2334,14 +2334,20 @@ body.theme-casino .pk-fil-l { background: rgba(0, 0, 0, .3); border-color: #4a3f
 .maj-note .btn { margin-left: 6px; }
 hr.sep { border: none; border-top: 1px solid var(--line, #d8cdb4); margin: 18px 0 12px; }
 
-/* ===== Poker : choisir librement sa relance ===== */
+/* ===== Poker : choisir librement sa relance =====
+   Le bouton qui VALIDE (« Relancer à N ») est dans la rangée d'actions, sous la
+   table : toujours visible. Dessous, le réglage : − curseur +, puis raccourcis. */
+.pk-actions .btn.action { min-height: 50px; padding: 5px 4px; line-height: 1.15; }
+.pk-actions .pk-raise-go small {
+  display: block; font-size: 11px; font-weight: 600; letter-spacing: .2px; opacity: .92;
+}
+.pk-actions .pk-raise-go b { font-size: 19px; }
+.pk-actions .pk-raise-go.tapis { background: #b8302c; color: #fff; }
 .pk-raise {
-  margin-top: 10px; padding: 10px 12px 12px; border-radius: 14px;
+  margin-top: 8px; padding: 8px 10px 10px; border-radius: 14px;
   background: rgba(0, 0, 0, .28); border: 1px solid rgba(212, 175, 55, .45);
 }
-.pk-raise-head { display: flex; align-items: center; gap: 10px; }
-.pk-raise-val { flex: 1; text-align: center; color: #f4ead2; font-size: 15px; }
-.pk-raise-val b { color: #f7e39b; font-size: 22px; }
+.pk-raise-head { display: flex; align-items: center; gap: 8px; }
 .pk-adj {
   width: 44px; height: 40px; flex: none; border-radius: 12px;
   background: var(--card); border: 2px solid var(--ink); color: var(--ink);
@@ -2350,16 +2356,15 @@ hr.sep { border: none; border-top: 1px solid var(--line, #d8cdb4); margin: 18px 
 }
 .pk-adj:active { transform: translateY(2px); }
 #pk-slider {
-  width: 100%; margin: 10px 0 8px; accent-color: #d4af37; height: 26px;
+  flex: 1; min-width: 0; margin: 0; accent-color: #d4af37; height: 40px;
 }
-.pk-raise-quick { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.pk-raise-quick { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
 .pk-quick {
   flex: 1 1 22%; padding: 7px 4px; border-radius: 10px; cursor: pointer;
   background: var(--card); border: 2px solid var(--ink); color: var(--ink);
   font-size: 13px; font-weight: 700; touch-action: manipulation;
 }
 .pk-quick:active { transform: translateY(1px); }
-.pk-raise .pk-raise-go { display: block; width: 100%; max-width: none; margin: 9px 0 0; }
 
 /* ===== Blackjack : composer sa mise jeton par jeton ===== */
 .bj-compo {

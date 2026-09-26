@@ -68,6 +68,19 @@ function check(n, c, e) {
   console.log('--- Choisir librement sa relance ---');
   const zone = await hote.locator('.pk-raise').count();
   check('un curseur de relance est proposé', zone === 1);
+  // le bouton qui VALIDE est dans la rangée d'actions : visible même sur un
+  // petit écran (navigateur intégré avec barre d'adresse), sans défiler
+  check('le bouton « Relancer à » est dans la rangée d’actions, sous la table',
+    await hote.locator('.pk-actions #pk-raise-go').count() === 1);
+  await hote.setViewportSize({ width: 390, height: 600 });
+  await hote.evaluate(() => window.scrollTo(0, 0));
+  const visible = await hote.evaluate(() => {
+    const r = document.querySelector('#pk-raise-go').getBoundingClientRect();
+    return { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: window.innerHeight };
+  });
+  check('… et visible sans défiler sur un écran de 600 px de haut',
+    visible.top >= 0 && visible.bottom <= visible.vh, visible);
+  await hote.setViewportSize({ width: 390, height: 844 });
   const bornes = await hote.evaluate(() => {
     const z = document.querySelector('.pk-raise');
     const sl = document.querySelector('#pk-slider');
@@ -83,9 +96,19 @@ function check(n, c, e) {
     sl.value = v;
     sl.dispatchEvent(new Event('input', { bubbles: true }));
   }, vise);
-  check('le montant choisi s’affiche en grand',
+  check('le montant choisi s’affiche en grand sur le bouton',
     (await hote.textContent('#pk-mise')) === String(vise) &&
-    /Relancer à/.test(await hote.textContent('#pk-raise-go')));
+    /Relancer à|Miser/.test(await hote.textContent('#pk-raise-go')));
+  // le raccourci Tapis transforme le bouton en « Tapis N », puis on revient
+  await hote.click('.pk-quick[data-set="' + bornes.max + '"]');
+  check('raccourci Tapis : le bouton annonce le tapis',
+    /Tapis/.test(await hote.textContent('#pk-raise-go')) &&
+    (await hote.textContent('#pk-mise')) === String(bornes.max));
+  await hote.evaluate(v => {
+    const sl = document.querySelector('#pk-slider');
+    sl.value = v;
+    sl.dispatchEvent(new Event('input', { bubbles: true }));
+  }, vise);
   await hote.click('#pk-raise-go');
   await inv.waitForFunction(n => /Relance|TAPIS/.test(document.querySelector('#mini-area').textContent),
     null, { timeout: 10000 });

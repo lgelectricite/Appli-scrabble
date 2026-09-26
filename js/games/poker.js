@@ -380,7 +380,7 @@
     nom: 'Poker',
     icone: '🃏',
     desc: 'Texas Hold’em, au choix : cash game (recaves) ou tournoi (blinds montantes).',
-    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p><p><strong>🪙 La cagnotte :</strong> la cave (100) et chaque recave sortent de la cagnotte de votre téléphone ; votre pile y retourne quand vous quittez la table. Recharge automatique chaque semaine.</p><p><strong>♻️ Se recaver :</strong> en cash game, entre deux mains, un bouton remet votre tapis à 100 — que vous soyez à sec ou simplement entamé. On ne peut pas se recaver au milieu d’une main que l’on joue.</p><p><strong>👀 Suivre la partie :</strong> l’annonce de chacun (parole, suivi, relance, tapis) reste affichée sous son siège jusqu’à la rue suivante, et le <strong>déroulé de la main</strong> garde tout. En fin de main, l’abattage montre les cartes de chacun avec le nom de sa combinaison, et le pot s’envole vers le gagnant.</p><p><strong>🃏 Votre main en direct :</strong> sous vos cartes, le jeu nomme à tout moment la meilleure combinaison que vous tenez (« Paire de six », « Deux paires, as et six », « Couleur à l’as »…), dès la donne puis à chaque carte retournée.</p>',
+    regles: '<p><strong>🎯 Le but :</strong> gagner les jetons des autres au Texas Hold’em.</p><p><strong>Comment jouer :</strong> 2 cartes secrètes en main, 5 cartes communes au centre : la meilleure main de 5 cartes gagne le pot. Misez, suivez, relancez… ou bluffez et couchez tout le monde !</p><p><strong>Deux modes :</strong> cash game (blinds fixes, recave possible) ou tournoi (blinds montantes, le dernier survivant rafle tout).</p><p><strong>🪙 La cagnotte :</strong> la cave (100) et chaque recave sortent de la cagnotte de votre téléphone ; votre pile y retourne quand vous quittez la table. Recharge automatique chaque semaine.</p><p><strong>♻️ Se recaver :</strong> en cash game, entre deux mains, un bouton remet votre tapis à 100 — que vous soyez à sec ou simplement entamé. On ne peut pas se recaver au milieu d’une main que l’on joue.</p><p><strong>👀 Suivre la partie :</strong> l’annonce de chacun (parole, suivi, relance, tapis) reste affichée sous son siège jusqu’à la rue suivante, et le <strong>déroulé de la main</strong> garde tout. En fin de main, l’abattage montre les cartes de chacun avec le nom de sa combinaison, et le pot s’envole vers le gagnant.</p><p><strong>💰 Miser ce que vous voulez :</strong> le bouton « Relancer à N » (ou « Miser N ») est dans la rangée d’actions, sous la table. Réglez le montant juste dessous, avec − / + ou le curseur, ou les raccourcis Min, ½ pot, Pot et Tapis : le bouton affiche toujours ce qui va partir, et c’est lui qui envoie la mise.</p><p><strong>🃏 Votre main en direct :</strong> sous vos cartes, le jeu nomme à tout moment la meilleure combinaison que vous tenez (« Paire de six », « Deux paires, as et six », « Couleur à l’as »…), dès la donne puis à chaque carte retournée.</p>',
     min: 2, max: 4,
     hotseat: false, hidden: true, netOnly: true,
 
@@ -813,6 +813,20 @@
           (s.handNum === 0 ? 'Distribuer' : 'Main suivante') + '</button>';
       } else if (me === s.current && !s.handOver) {
         var owe = s.maxBet - my.bet;
+        /* Choisir SON montant : on raisonne comme à une vraie table, en
+           « relancer à N » (le total posé sur la rue), pas en « +N ». */
+        var miseMin = s.maxBet + s.minRaise;      // relance minimale légale
+        var miseMax = my.bet + my.chips;          // tapis
+        var libre = miseMax > miseMin;            // un vrai choix de montant ?
+        var potMtn = potTotal(s);
+        var depart = libre
+          ? Math.min(miseMax, Math.max(miseMin, s.maxBet + Math.max(s.minRaise, Math.round(potMtn / 2))))
+          : miseMax;
+        /* Le libellé du bouton qui VALIDE : il dit toujours ce qui va partir. */
+        var libelle = function (v) {
+          var quoi = v >= miseMax ? 'Tapis' : (s.maxBet > 0 ? 'Relancer à' : 'Miser');
+          return '<small>' + quoi + '</small><b id="pk-mise">' + v + '</b> 🪙';
+        };
         html += '<div class="pk-actions">';
         html += '<button class="btn action danger" data-a=\'{"t":"fold"}\'>Se coucher</button>';
         if (owe <= 0) {
@@ -820,35 +834,33 @@
         } else {
           html += '<button class="btn action" data-a=\'{"t":"call"}\'>Suivre ' + Math.min(owe, my.chips) + '</button>';
         }
-        html += '<button class="btn action primary" data-a=\'{"t":"allin"}\'>Tapis (' + my.chips + ')</button>';
+        if (libre) {
+          // le bouton qui envoie la relance vit DANS la rangée d'actions,
+          // juste sous la table : visible sans défiler, quel que soit l'écran
+          html += '<button class="btn action primary pk-raise-go" id="pk-raise-go">' +
+            libelle(depart) + '</button>';
+        } else {
+          html += '<button class="btn action primary" data-a=\'{"t":"allin"}\'>Tapis (' + my.chips + ')</button>';
+        }
         html += '</div>';
 
-        /* Choisir SON montant : on raisonne comme à une vraie table, en
-           « relancer à N » (le total posé sur la rue), pas en « +N ». */
-        var miseMin = s.maxBet + s.minRaise;      // relance minimale légale
-        var miseMax = my.bet + my.chips;          // tapis
-        if (miseMax > miseMin) {
-          var potMtn = potTotal(s);
-          var depart = Math.min(miseMax, Math.max(miseMin, s.maxBet + Math.max(s.minRaise, Math.round(potMtn / 2))));
+        if (libre) {
           html += '<div class="pk-raise" data-min="' + miseMin + '" data-max="' + miseMax + '">' +
             '<div class="pk-raise-head">' +
-            '<button class="pk-adj" data-adj="-1">−</button>' +
-            '<div class="pk-raise-val">Relancer à <b id="pk-mise">' + depart + '</b> 🪙</div>' +
-            '<button class="pk-adj" data-adj="1">+</button>' +
-            '</div>' +
+            '<button class="pk-adj" data-adj="-1" aria-label="Moins">−</button>' +
             '<input type="range" id="pk-slider" min="' + miseMin + '" max="' + miseMax +
-            '" step="1" value="' + depart + '">' +
+            '" step="1" value="' + depart + '" aria-label="Montant de la relance">' +
+            '<button class="pk-adj" data-adj="1" aria-label="Plus">+</button>' +
+            '</div>' +
             '<div class="pk-raise-quick">' +
             '<button class="pk-quick" data-set="' + miseMin + '">Min ' + miseMin + '</button>' +
             (s.maxBet + Math.round(potMtn / 2) > miseMin &&
              s.maxBet + Math.round(potMtn / 2) < miseMax
               ? '<button class="pk-quick" data-set="' + (s.maxBet + Math.round(potMtn / 2)) + '">½ pot</button>' : '') +
             (s.maxBet + potMtn > miseMin && s.maxBet + potMtn < miseMax
-              ? '<button class="pk-quick" data-set="' + (s.maxBet + potMtn) + '">Pot</button>' : '') +
+              ? '<button class="pk-quick" data-set="' + (s.maxBet + potMtn) + '">Pot ' + (s.maxBet + potMtn) + '</button>' : '') +
             '<button class="pk-quick" data-set="' + miseMax + '">Tapis ' + miseMax + '</button>' +
             '</div>' +
-            '<button class="btn action primary pk-raise-go" id="pk-raise-go">Relancer à ' +
-            '<b>' + depart + '</b> 🪙</button>' +
             '</div>';
         }
       } else if (!s.handOver && !my.out) {
@@ -893,19 +905,19 @@
         el._pkAnim = null;
       }
 
-      /* Le curseur de relance : on ajuste librement, puis on valide. */
+      /* Le curseur de relance : on ajuste librement, puis on valide avec le
+         bouton de la rangée d'actions, dont le libellé suit le montant. */
       var zone = el.querySelector('.pk-raise');
-      if (zone) {
+      var valider = el.querySelector('#pk-raise-go');
+      if (zone && valider) {
         var slider = el.querySelector('#pk-slider');
-        var etiq = el.querySelector('#pk-mise');
-        var valider = el.querySelector('#pk-raise-go');
         var mn = parseInt(zone.dataset.min, 10);
         var mx = parseInt(zone.dataset.max, 10);
         var poser = function (v) {
           v = Math.max(mn, Math.min(mx, Math.round(v) || mn));
           slider.value = v;
-          etiq.textContent = v;
-          valider.querySelector('b').textContent = v;
+          valider.innerHTML = libelle(v);
+          valider.classList.toggle('tapis', v >= mx);
         };
         slider.addEventListener('input', function () { poser(+slider.value); });
         el.querySelectorAll('.pk-adj').forEach(function (b) {
