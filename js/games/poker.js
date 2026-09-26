@@ -727,13 +727,13 @@
           : '🏆 Tournoi — blinds ' + s.blinds[0] + '/' + s.blinds[1] +
             ' <small>(doublent toutes les 6 mains)</small>') +
         '</div>';
-      html += '<div class="pk-oval">';
+      html += '<div class="pk-oval n' + n + '">';
       // le centre : le pot, puis les cartes communes
       html += '<div class="pk-center">' +
         '<div class="pk-pot">Pot : <b>' + potTotal(s) + '</b> 🪙</div>' +
         '<div class="pk-community">' +
         (s.community.length
-          ? s.community.map(function (c) { return cardHtml(c, 'grande'); }).join('')
+          ? s.community.map(function (c) { return cardHtml(c); }).join('')
           : '<span class="pk-street">' + (s.handOver ? '· · ·' : 'Pré-flop') + '</span>') +
         '</div></div>';
       s.players.forEach(function (p, i) {
@@ -742,29 +742,34 @@
         if (i === s.current && !s.handOver) cls += ' turn';
         if (p.folded && !p.out) cls += ' folded';
         if (p.out) cls += ' out';
-        if (gagnant && s.handOver) cls += ' gagne';
         var gagnant = s.resultat && s.resultat.gagnants.indexOf(i) !== -1;
+        if (gagnant && s.handOver) cls += ' gagne';
+        // les tailles viennent du CSS de la table (--moi-w, --adv-w)
+        var montre = i !== me && p.show;
         var cartes = (p.out || p.folded) ? '' :
           p.hole.map(function (c) {
             return cardHtml(i === me ? c : (p.show ? c : -1),
-              i === me ? '' : 'mini', gagnant && s.handOver ? 'gagnante' : '');
+              '', gagnant && s.handOver ? 'gagnante' : '');
           }).join('');
         var robot = p.name.indexOf('🤖') === 0;
         var nom = p.name.replace(/^🤖 /, '');
         // ma main, nommée en direct sous mes cartes : « Paire de six »…
         var maMain = (i === me && cartes) ? nomMainVive(p.hole, s.community) : '';
+        var annonce = p.lastAct && !s.handOver;
         html += '<div class="' + cls + '">' +
-          '<div class="pk-scards' + (i === me ? ' mine' : '') + '">' + cartes + '</div>' +
+          '<div class="pk-scards' + (i === me ? ' mine' : '') + (montre && cartes ? ' montre' : '') + '">' +
+          cartes + '</div>' +
           (maMain ? '<div class="pk-mamain">' + maMain + '</div>' : '') +
           '<div class="pk-plate">' +
           '<span class="pk-avatar">' + (robot ? '🤖' : GG.esc(nom.charAt(0).toUpperCase())) + '</span>' +
           '<span class="pk-pinfo"><span class="pk-pname">' + GG.esc(nom) + '</span>' +
           '<span class="pk-pstack">' + (p.out ? 'éliminé' : p.chips + ' 🪙') + '</span></span>' +
           '</div>' +
-          (p.allin && !p.out ? '<span class="pk-tag">TAPIS</span>' :
-            (p.folded && !p.out ? '<span class="pk-tag grey">couché</span>' : '')) +
-          (p.lastAct && !s.handOver
-            ? '<span class="pk-annonce">' + GG.esc(p.lastAct) + '</span>' : '') +
+          // sous MA plaque, l'annonce (« Tapis 98 », « Couché ») dit déjà tout
+          ((i === me && annonce) ? '' :
+            (p.allin && !p.out ? '<span class="pk-tag">TAPIS</span>' :
+              (p.folded && !p.out ? '<span class="pk-tag grey">couché</span>' : ''))) +
+          (annonce ? '<span class="pk-annonce">' + GG.esc(p.lastAct) + '</span>' : '') +
           (gagnant && s.handOver ? '<span class="pk-trophee">🏆</span>' : '') +
           '</div>';
         // la mise de la rue en jetons devant le siège, et le bouton du donneur
@@ -791,7 +796,7 @@
             html += '<div class="pk-abat-l' + (win ? ' win' : '') + '">' +
               '<span class="pk-abat-n">' + (win ? '🏆 ' : '') + GG.esc(pj.name) + '</span>' +
               '<span class="pk-abat-c">' +
-              (pj.hole || []).map(function (c) { return cardHtml(c, 'mini'); }).join('') +
+              (pj.hole || []).map(function (c) { return cardHtml(c); }).join('') +
               '</span><span class="pk-abat-m">' + m.cat + '</span></div>';
           });
           html += '</div>';

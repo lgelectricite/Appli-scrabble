@@ -1,87 +1,69 @@
 /*
- * GGgames — de vraies cartes à jouer, dessinées en CSS.
+ * GGgames — des cartes à jouer lisibles d'un coup d'œil, comme dans les
+ * applications de poker.
  *
- * Une carte, ce n'est pas un carré avec « A♠ » écrit dedans : c'est un
- * rectangle au format 5/7, avec ses index dans deux coins opposés (celui du
- * bas retourné, comme sur les vraies) et ses figures au centre — la bonne
- * disposition de symboles pour chaque valeur, dont la moitié à l'envers.
+ * Sur un téléphone, une carte fait 30 à 65 pixels de large : les dispositions
+ * de symboles des cartes papier (dix petits ♠ pour un 10) y deviennent une
+ * bouillie illisible. On fait comme les applications de poker (« grand
+ * index ») : le RANG en très gros dans le coin, la COULEUR juste dessous, et
+ * un grand symbole qui occupe le reste de la carte. Les symboles sont dessinés
+ * en SVG : nets à toutes les tailles, identiques sur tous les téléphones.
  *
  *   GG.carte(rang, couleur, options)   rang 0..12 (2 → As), couleur 0..3
- *   GG.carteDos(options)               le dos rouge quadrillé
+ *   GG.carteDos(options)               le dos rouge
  *
  * options : { taille: 'mini'|'grande', classe: '…' }
+ * La largeur se règle en CSS par la variable --jcw ; tout le reste suit.
  */
 (function (root) {
   'use strict';
   var GG = root.GG || (root.GG = {});
 
   var RANGS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R', 'A'];
+  var NOMS = ['Deux', 'Trois', 'Quatre', 'Cinq', 'Six', 'Sept', 'Huit', 'Neuf',
+    'Dix', 'Valet', 'Dame', 'Roi', 'As'];
   var SYMBOLES = ['♠', '♥', '♦', '♣'];
+  var COULEURS = ['pique', 'cœur', 'carreau', 'trèfle'];
 
-  /* Disposition officielle des symboles, en colonnes (gauche, centre, droite).
-     Chaque valeur est une position verticale de 0 (haut) à 1 (bas) ; au-delà
-     de 0.5, le symbole est retourné, comme sur une vraie carte. */
-  var PIPS = {
-    2:  { c: [0, 1] },
-    3:  { c: [0, 0.5, 1] },
-    4:  { g: [0, 1], d: [0, 1] },
-    5:  { g: [0, 1], d: [0, 1], c: [0.5] },
-    6:  { g: [0, 0.5, 1], d: [0, 0.5, 1] },
-    7:  { g: [0, 0.5, 1], d: [0, 0.5, 1], c: [0.25] },
-    8:  { g: [0, 0.5, 1], d: [0, 0.5, 1], c: [0.25, 0.75] },
-    9:  { g: [0, 0.34, 0.67, 1], d: [0, 0.34, 0.67, 1], c: [0.5] },
-    10: { g: [0, 0.34, 0.67, 1], d: [0, 0.34, 0.67, 1], c: [0.17, 0.83] }
-  };
+  /* Les quatre symboles, dessinés dans un carré 100 × 100. */
+  var DESSINS = [
+    // pique : un cœur renversé et son pied
+    '<path d="M50 4C60 20 95 38 95 61c0 14-10 22-21 22-9 0-16-5-19-11 1 11 5 19 13 24H32' +
+      'c8-5 12-13 13-24-3 6-10 11-19 11C15 83 5 75 5 61 5 38 40 20 50 4z"/>',
+    // cœur
+    '<path d="M50 91C21 67 4 50 4 31 4 16 15 6 28 6c10 0 18 6 22 15 4-9 12-15 22-15 13 0 24 10' +
+      ' 24 25 0 19-17 36-46 60z"/>',
+    // carreau : un losange aux côtés légèrement creusés
+    '<path d="M50 3Q66 30 89 50 66 70 50 97 34 70 11 50 34 30 50 3z"/>',
+    // trèfle : trois feuilles rondes et un pied
+    '<circle cx="50" cy="27" r="20"/><circle cx="26" cy="58" r="20"/>' +
+      '<circle cx="74" cy="58" r="20"/><path d="M40 44h20l-4 18h-12z"/>' +
+      '<path d="M47 60c0 16-5 28-14 36h34c-9-8-14-20-14-36z"/>'
+  ];
 
-  /* Les figures : une initiale ornée, dans les deux sens comme au jeu. */
-  var FIGURES = { 9: 'V', 10: 'D', 11: 'R' };
-
-  function pipsHtml(n, sym) {
-    var plan = PIPS[n];
-    if (!plan) return '';
-    var out = '';
-    ['g', 'c', 'd'].forEach(function (col) {
-      if (!plan[col]) return;
-      out += '<span class="jc-col jc-' + col + '">';
-      plan[col].forEach(function (y) {
-        out += '<span class="jc-pip' + (y > 0.5 ? ' bas' : '') +
-          '" style="top:' + (y * 100) + '%">' + sym + '</span>';
-      });
-      out += '</span>';
-    });
-    return out;
-  }
-
-  function centre(rang, sym) {
-    if (rang === 12) return '<span class="jc-as">' + sym + '</span>';       // As
-    if (FIGURES[rang]) {
-      return '<span class="jc-fig">' +
-        '<span class="jc-fig-l">' + FIGURES[rang] + '</span>' +
-        '<span class="jc-fig-s">' + sym + '</span>' +
-        '</span>';
-    }
-    return pipsHtml(parseInt(RANGS[rang], 10), sym);
+  function symbole(couleur, classe) {
+    return '<svg class="' + classe + '" viewBox="0 0 100 100" aria-hidden="true" ' +
+      'focusable="false">' + (DESSINS[couleur] || DESSINS[0]) + '</svg>';
   }
 
   GG.carte = function (rang, couleur, o) {
     o = o || {};
     var r = RANGS[rang] || '?';
-    var sym = SYMBOLES[couleur] || '♠';
     var rouge = couleur === 1 || couleur === 2;
-    return '<span class="jc' + (rouge ? ' rouge' : '') +
+    var figure = rang >= 9 && rang <= 11; // valet, dame, roi
+    return '<span class="jc' + (rouge ? ' rouge' : '') + (figure ? ' fig' : '') +
       (o.taille ? ' ' + o.taille : '') + (o.classe ? ' ' + o.classe : '') +
-      '" aria-label="' + r + ' de ' +
-      ['pique', 'cœur', 'carreau', 'trèfle'][couleur] + '">' +
-      '<span class="jc-coin haut"><b>' + r + '</b><i>' + sym + '</i></span>' +
-      '<span class="jc-centre">' + centre(rang, sym) + '</span>' +
-      '<span class="jc-coin bas"><b>' + r + '</b><i>' + sym + '</i></span>' +
+      '" role="img" aria-label="' + (NOMS[rang] || r) + ' de ' + (COULEURS[couleur] || '') + '">' +
+      '<span class="jc-i"><b' + (r === '10' ? ' class="dix"' : '') + '>' + r + '</b>' +
+      symbole(couleur, 'jc-p') + '</span>' +
+      symbole(couleur, 'jc-g') +
       '</span>';
   };
 
   GG.carteDos = function (o) {
     o = o || {};
     return '<span class="jc dos' + (o.taille ? ' ' + o.taille : '') +
-      (o.classe ? ' ' + o.classe : '') + '" aria-label="carte face cachée">' +
+      (o.classe ? ' ' + o.classe : '') + '" role="img" aria-label="carte face cachée">' +
       '<span class="jc-dos-motif"></span></span>';
   };
 

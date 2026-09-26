@@ -817,8 +817,13 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   position: relative;
   max-width: min(88vw, 420px);
   aspect-ratio: 1.22;
-  margin: 58px auto 78px; /* en bas : mes cartes, ma main, ma plaque, mon annonce */
+  margin: 58px auto 70px; /* en bas : mes cartes à cheval sur le rail, ma plaque */
   border-radius: 50%;
+  /* largeur des cartes : le tapis, les miennes (plus grandes), les adverses */
+  --com-w: clamp(34px, 12.6vw, 54px);
+  --moi-w: clamp(50px, 16vw, 66px);
+  --moi-h: calc(var(--moi-w) * 1.4);
+  --adv-w: clamp(24px, 7.4vw, 30px);
   background: radial-gradient(85% 80% at 50% 38%, #3d7a58 0%, var(--felt) 55%, var(--felt-dark) 100%);
   box-shadow:
     0 0 0 8px #4a3018,
@@ -842,7 +847,14 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   border-radius: 999px; padding: 3px 12px; font-size: 13px; margin-bottom: 6px;
 }
 .pk-pot b { color: #f2cd5c; }
-.pk-community { min-height: 54px; display: flex; justify-content: center; gap: 3px; }
+.pk-community {
+  min-height: calc(var(--com-w) * 1.4); display: flex; justify-content: center;
+  align-items: center; gap: calc(var(--com-w) * .08);
+}
+/* à quatre, les sièges des côtés prennent de la place : tapis un peu plus
+   petit et un peu plus bas, sièges latéraux remontés */
+.pk-oval.n4 { --com-w: clamp(30px, 10.4vw, 44px); }
+.pk-oval.n4 .pk-center { top: 55%; }
 .pk-street { opacity: .7; font-size: 13px; color: var(--paper); }
 
 /* un siège : ses cartes, puis la plaque avatar + nom + tapis */
@@ -850,12 +862,38 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   position: absolute; display: flex; flex-direction: column;
   align-items: center; gap: 3px; z-index: 2; width: 112px;
 }
-.pk-seat.sb { left: 50%; bottom: -56px; transform: translateX(-50%); }
 .pk-seat.st { left: 50%; top: -46px; transform: translateX(-50%); flex-direction: column-reverse; }
 .pk-seat.stl { left: 0; top: -44px; flex-direction: column-reverse; }
 .pk-seat.str { right: 0; top: -44px; flex-direction: column-reverse; }
-.pk-seat.sl { left: -14px; top: 44%; transform: translateY(-50%); flex-direction: column-reverse; }
-.pk-seat.sr { right: -14px; top: 44%; transform: translateY(-50%); flex-direction: column-reverse; }
+.pk-seat.sl { left: -16px; top: 29%; transform: translateY(-50%); flex-direction: column-reverse; }
+.pk-seat.sr { right: -16px; top: 29%; transform: translateY(-50%); flex-direction: column-reverse; }
+/* MOI, en bas : mes cartes en grand, en éventail, à cheval sur le rail ;
+   ma plaque à côté ; ma main nommée et mon annonce juste dessous */
+.pk-seat.sb {
+  /* trois colonnes : vide | MES CARTES (pile au centre) | ma plaque */
+  left: -12px; right: -12px; width: auto; top: calc(100% - var(--moi-h) / 2);
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  column-gap: 10px; row-gap: 4px; align-items: end; justify-items: start;
+}
+.pk-seat.sb .pk-scards {
+  grid-column: 2; grid-row: 1; min-height: var(--moi-h); margin: 0;
+  align-items: flex-end; gap: 0;
+}
+.pk-seat.sb .pk-mamain {
+  grid-column: 2; grid-row: 2; margin: 0; justify-self: center;
+  /* un nom long (« Full aux dames par les valets ») passe sur deux lignes
+     plutôt que d'élargir la colonne et de décentrer mes cartes */
+  max-width: calc(var(--moi-w) * 2.2); white-space: normal; text-align: center;
+  line-height: 1.2;
+}
+.pk-seat.sb .pk-plate { grid-column: 3; grid-row: 1; }
+.pk-seat.sb .pk-tag, .pk-seat.sb .pk-annonce { grid-column: 3; grid-row: 2; margin-left: 14px; }
+.pk-seat.sb .pk-scards .jc { --jcw: var(--moi-w); transform-origin: 50% 100%; }
+.pk-seat.sb .pk-scards .jc:first-child { --jc-rot: -4deg; }
+.pk-seat.sb .pk-scards .jc + .jc { --jc-rot: 4deg; margin-left: calc(var(--moi-w) * -.12); }
+/* les cartes adverses : petites (des dos), un peu plus grandes une fois montrées */
+.pk-seat .pk-scards .jc { --jcw: var(--adv-w); }
+.pk-seat .pk-scards.montre .jc { --jcw: calc(var(--adv-w) * 1.3); }
 .pk-seat.folded .pk-plate, .pk-seat.folded .pk-scards { opacity: .55; }
 .pk-seat.out { opacity: .35; }
 .pk-plate {
@@ -888,8 +926,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
 }
 .pk-pstack { color: #f2cd5c; font-size: 11px; font-weight: 800; }
 .pk-scards { display: flex; gap: 3px; min-height: 26px; margin-bottom: 2px; }
-.pk-scards .jc { --jcw: 23px; }
-.pk-scards.mine .jc { --jcw: 40px; }
+.pk-plate { position: relative; z-index: 1; } /* toujours au-dessus des cartes */
 .pk-tag {
   background: var(--accent); color: #fff; font-size: 9px; font-weight: 800;
   padding: 1px 8px; border-radius: 999px; letter-spacing: 1px;
@@ -902,12 +939,12 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   color: #fff; font-size: 12px; font-weight: 800;
   text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
 }
-.pk-betspot.sb { left: 50%; bottom: 24%; transform: translateX(-50%); }
+.pk-betspot.sb { left: 50%; bottom: calc(var(--moi-h) / 2 + 7px); transform: translateX(-50%); }
 .pk-betspot.st { left: 50%; top: 20%; transform: translateX(-50%); }
 .pk-betspot.stl { left: 21%; top: 23%; }
 .pk-betspot.str { right: 21%; top: 23%; }
-.pk-betspot.sl { left: 16%; top: 30%; }
-.pk-betspot.sr { right: 16%; top: 30%; }
+.pk-betspot.sl { left: 29%; top: 27%; }
+.pk-betspot.sr { right: 29%; top: 27%; }
 .pk-chip {
   width: 16px; height: 16px; border-radius: 50%; flex: none;
   background: radial-gradient(circle at 50% 50%, #b8302c 0 44%, #7e1f1c 46% 100%);
@@ -921,7 +958,7 @@ textarea { font-size: 11px; font-family: monospace; word-break: break-all; }
   border: 1.5px solid var(--ink); box-shadow: 0 2px 3px rgba(0, 0, 0, .5);
 }
 .pk-msg { font-weight: 600; }
-.pk-oval .pk-community .jc.grande { --jcw: clamp(26px, 7.6vw, 36px); }
+.pk-oval .pk-community .jc { --jcw: var(--com-w); }
 .pk-actions { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 8px; }
 .pk-actions .btn.action { flex: 1 1 28%; max-width: none; }
 .pk-modes .btn.big { margin: 6px 0; }
@@ -2136,71 +2173,62 @@ body.theme-manoir .btn { box-shadow: none; }
   border-radius: 5px; padding: 1px 5px; font-size: 13px;
 }
 
-/* ===== De vraies cartes à jouer ===== */
+/* ===== Cartes à jouer « grand index », lisibles sur téléphone =====
+   Le rang en très gros dans le coin, la couleur dessous, un grand symbole
+   pour le reste. Tout est proportionnel à --jcw (largeur de la carte). */
 .jc {
-  position: relative; display: inline-block; vertical-align: middle;
-  width: var(--jcw, 46px); aspect-ratio: 5 / 7;
-  background: linear-gradient(#fff, #fbf8f2);
-  border: 1px solid #b9ab8f; border-radius: calc(var(--jcw, 46px) * .1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .28), inset 0 0 0 1px #fff;
-  color: #1d1a16; font-weight: 700; overflow: hidden;
-  font-family: "Iowan Old Style", Georgia, "Times New Roman", serif;
-  user-select: none; flex: none;
+  --jcw: 46px;
+  position: relative; display: inline-block; vertical-align: middle; flex: none;
+  width: var(--jcw); aspect-ratio: 5 / 7; overflow: hidden;
+  border-radius: calc(var(--jcw) * .1);
+  background: linear-gradient(165deg, #ffffff 0%, #fbfaf6 60%, #f1ede3 100%);
+  border: 1px solid #bdb3a1;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .3), 0 3px 7px rgba(0, 0, 0, .28);
+  color: #16171b; user-select: none;
+  transform: rotate(var(--jc-rot, 0deg)) translateY(var(--jc-lift, 0px));
 }
-.jc.rouge { color: #c0392b; }
+.jc.rouge { color: #d3202a; }
+/* valet, dame, roi : un fond doré pâle, pour les repérer d'un coup d'œil */
+.jc.fig { background: linear-gradient(165deg, #fffdf4 0%, #fbf1d6 60%, #f1dfae 100%); }
 .jc.mini { --jcw: 34px; }
 .jc.grande { --jcw: 58px; }
 
-.jc-coin {
-  position: absolute; left: 5.5%; display: flex; flex-direction: column;
-  align-items: center; line-height: .92;
+.jc-i {
+  position: absolute; left: 4%; top: 2%; width: 50%;
+  display: flex; flex-direction: column; align-items: center;
 }
-.jc-coin.haut { top: 3.5%; }
-.jc-coin.bas { bottom: 3.5%; right: 5.5%; left: auto; transform: rotate(180deg); }
-.jc-coin b { font-size: calc(var(--jcw, 46px) * .30); letter-spacing: -.04em; }
-.jc-coin i { font-style: normal; font-size: calc(var(--jcw, 46px) * .26); margin-top: -.08em; }
-
-.jc-centre {
-  position: absolute; inset: 20% 20% 20% 20%;
-  display: flex; justify-content: space-between; align-items: stretch;
+.jc-i b {
+  display: block; line-height: .94; font-weight: 800; letter-spacing: -.02em;
+  font-size: calc(var(--jcw) * .54);
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif-condensed,
+    'Helvetica Neue', Roboto, 'Segoe UI', Arial, sans-serif;
 }
-.jc-col { position: relative; flex: 1; }
-.jc-col.jc-c { flex: 1.05; }
-.jc-pip {
-  position: absolute; left: 50%; font-size: calc(var(--jcw, 46px) * .26);
-  line-height: 1; transform: translate(-50%, -50%);
+/* « 10 » : deux chiffres dans la place d'un seul */
+.jc-i b.dix { font-size: calc(var(--jcw) * .46); letter-spacing: -.09em; margin-left: -.09em; }
+.jc-p {
+  display: block; width: calc(var(--jcw) * .3); height: calc(var(--jcw) * .3);
+  margin-top: calc(var(--jcw) * .03); fill: currentColor;
 }
-.jc-pip.bas { transform: translate(-50%, -50%) rotate(180deg); }
-.jc-as {
-  position: absolute; inset: 0; display: flex; align-items: center;
-  justify-content: center; font-size: calc(var(--jcw, 46px) * .72);
+.jc-g {
+  position: absolute; right: 4%; bottom: 3%;
+  width: calc(var(--jcw) * .56); height: calc(var(--jcw) * .56); fill: currentColor;
 }
-.jc-fig {
-  position: absolute; inset: -4% -2%; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: .02em;
-  border: 1.5px solid currentColor; border-radius: 4px;
-  background:
-    repeating-linear-gradient(45deg, rgba(0, 0, 0, .05) 0 2px, transparent 2px 6px),
-    linear-gradient(#fffdf7, #f6eee0);
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .85);
-}
-.jc-fig-l { font-size: calc(var(--jcw, 46px) * .46); line-height: .95; }
-.jc-fig-s { font-size: calc(var(--jcw, 46px) * .24); line-height: 1; }
 
 .jc.dos {
-  background: #a8342b; border-color: #7d241d;
+  background: #b0302a; border-color: #7b1f1a;
 }
 .jc-dos-motif {
-  position: absolute; inset: 7%; border-radius: 2px;
-  border: 1px solid rgba(255, 255, 255, .5);
+  position: absolute; inset: 7%; border-radius: calc(var(--jcw) * .05);
+  border: 1.5px solid rgba(255, 255, 255, .75);
   background:
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, .22) 0 2px, transparent 2px 5px),
-    repeating-linear-gradient(-45deg, rgba(255, 255, 255, .22) 0 2px, transparent 2px 5px);
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .28) 0 22%, transparent 23%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .2) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, .2) 0 2px, transparent 2px 6px);
 }
 /* la carte gagnante se détache */
 .jc.gagnante {
-  box-shadow: 0 0 0 2px #d4af37, 0 0 12px rgba(212, 175, 55, .8);
-  transform: translateY(-3px);
+  --jc-lift: -4px;
+  box-shadow: 0 0 0 2px #d4af37, 0 0 14px rgba(212, 175, 55, .85);
 }
 
 /* ===== Poker : annonces, abattage, fil de la main, animation ===== */
@@ -2212,9 +2240,9 @@ body.theme-manoir .btn { box-shadow: none; }
   animation: pkPop .25s ease-out;
 }
 @keyframes pkPop { from { transform: translateX(-50%) scale(.6); opacity: 0; } }
-/* en bas, la plaque est le dernier élément : l'annonce passe SOUS elle,
-   sans jamais mordre sur le nom ni sur le tapis */
-.pk-seat.sb .pk-annonce { bottom: -18px; }
+/* en bas, l'annonce se range sous ma plaque, sans mordre sur le nom ni le tapis */
+.pk-seat.sb .pk-annonce { position: static; transform: none; animation-name: pkPopBas; }
+@keyframes pkPopBas { from { transform: scale(.6); opacity: 0; } }
 /* ma main nommée en direct, entre mes cartes et ma plaque */
 .pk-mamain {
   font-size: 10px; font-weight: 800; letter-spacing: .2px; white-space: nowrap;
@@ -2244,7 +2272,8 @@ body.theme-manoir .btn { box-shadow: none; }
 }
 .pk-abat-l.win { background: rgba(212, 175, 55, .22); }
 .pk-abat-n { font-weight: 800; flex: 1; text-align: left; }
-.pk-abat-c { display: flex; gap: 2px; }
+.pk-abat-c { display: flex; gap: 3px; }
+.pk-abat-c .jc { --jcw: 38px; }
 .pk-abat-m { font-weight: 700; opacity: .9; }
 
 .pk-fil { margin: 6px 0; font-size: 13px; }

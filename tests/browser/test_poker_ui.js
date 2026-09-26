@@ -47,21 +47,35 @@ function check(n, c, e) {
   await hote.locator('.pk-modes .btn').first().click(); // cash game
   await hote.waitForSelector('.pk-oval .jc', { timeout: 15000 });
 
-  console.log('--- De vraies cartes ---');
+  console.log('--- Des cartes lisibles d’un coup d’œil ---');
   const carte = await hote.evaluate(() => {
     const c = document.querySelector('.pk-scards.mine .jc');
     if (!c) return null;
-    const r = c.getBoundingClientRect();
+    // largeur « à plat » (la carte est légèrement inclinée dans l'éventail)
+    const w = c.offsetWidth, h = c.offsetHeight;
+    const rang = c.querySelector('.jc-i b');
+    const oval = document.querySelector('.pk-oval').getBoundingClientRect();
+    const mains = document.querySelector('.pk-scards.mine').getBoundingClientRect();
     return {
-      ratio: +(r.height / r.width).toFixed(2),
-      coins: c.querySelectorAll('.jc-coin').length,
-      centre: !!c.querySelector('.jc-centre').children.length
+      w, ratio: +(h / w).toFixed(2),
+      rangPx: rang ? parseFloat(getComputedStyle(rang).fontSize) : 0,
+      svg: c.querySelectorAll('svg.jc-p, svg.jc-g').length,
+      nom: c.getAttribute('aria-label'),
+      decentrage: Math.round(Math.abs((mains.left + mains.right) / 2 - (oval.left + oval.right) / 2))
     };
   });
   check('mes cartes ont le format d’une vraie carte (≈ 1,4)',
     carte && carte.ratio >= 1.3 && carte.ratio <= 1.5, carte);
-  check('index dans deux coins opposés', carte && carte.coins === 2, carte);
-  check('symboles dessinés au centre', carte && carte.centre === true, carte);
+  check('mes cartes sont grandes (≥ 50 px de large sur un écran de 390 px)',
+    carte && carte.w >= 50, carte);
+  check('le rang s’écrit en très gros (≥ 45 % de la largeur, ≥ 22 px)',
+    carte && carte.rangPx >= carte.w * .45 && carte.rangPx >= 22, carte);
+  check('la couleur est dessinée en vectoriel : petit symbole + grand symbole',
+    carte && carte.svg === 2, carte);
+  check('chaque carte porte son nom en toutes lettres (« Roi de cœur »…)',
+    carte && /^(Deux|Trois|Quatre|Cinq|Six|Sept|Huit|Neuf|Dix|Valet|Dame|Roi|As) de (pique|cœur|carreau|trèfle)$/.test(carte.nom), carte);
+  check('mes cartes sont centrées sous la table',
+    carte && carte.decentrage <= 14, carte);
   check('les cartes de l’adversaire restent face cachée',
     await hote.locator('.pk-seat.st .jc.dos').count() === 2);
 
@@ -167,16 +181,20 @@ function check(n, c, e) {
     const g = sel => { const e = document.querySelector(sel); return e && e.getBoundingClientRect(); };
     const m = g('.pk-seat.sb .pk-mamain'), c = g('.pk-scards.mine'), p = g('.pk-seat.sb .pk-plate');
     const a = g('.pk-seat.sb .pk-annonce');
+    const touche = (x, y) => Math.min(x.right, y.right) > Math.max(x.left, y.left) &&
+      Math.min(x.bottom, y.bottom) > Math.max(x.top, y.top);
     return m && {
       txt: document.querySelector('.pk-seat.sb .pk-mamain').textContent,
-      sousCartes: m.top >= c.bottom - 1, surPlaque: m.bottom <= p.top + 1,
+      sousCartes: m.top >= c.bottom - 1,
+      centree: Math.abs((m.left + m.right) / 2 - (c.left + c.right) / 2) <= 3,
+      plaqueLibre: !touche(m, p),
       annonce: a ? Math.round(a.top - p.bottom) : null
     };
   });
   check('ma main est nommée dès la donne (« Paire de … » ou « Hauteur … »)',
     vive && /^(Paire d|Hauteur )/.test(vive.txt), vive);
-  check('l’étiquette se place entre mes cartes et ma plaque',
-    vive && vive.sousCartes && vive.surPlaque, vive);
+  check('l’étiquette se place juste sous mes cartes, centrée, sans toucher ma plaque',
+    vive && vive.sousCartes && vive.centree && vive.plaqueLibre, vive);
   check('mon annonce (blind, relance…) ne mord plus sur ma plaque ni sur mon tapis',
     vive && vive.annonce !== null && vive.annonce >= 0, vive);
 

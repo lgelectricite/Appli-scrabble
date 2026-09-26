@@ -32,6 +32,30 @@ const wallet = require(ROOT + '/js/wallet.js');
 const blackjack = require(ROOT + '/js/games/blackjack.js');
 const solitaire = require(ROOT + '/js/games/solitaire.js');
 const poker = require(ROOT + '/js/games/poker.js');
+const cartes = require(ROOT + '/js/games/cartes.js');
+
+/* ================= CARTES À JOUER (dessin « grand index ») ================= */
+console.log('--- Cartes à jouer ---');
+{
+  const NOMS = ['Deux', 'Trois', 'Quatre', 'Cinq', 'Six', 'Sept', 'Huit', 'Neuf',
+    'Dix', 'Valet', 'Dame', 'Roi', 'As'];
+  const COUL = ['pique', 'cœur', 'carreau', 'trèfle'];
+  let bons = 0;
+  for (let r = 0; r < 13; r++) for (let c = 0; c < 4; c++) {
+    const h = cartes.carte(r, c, {});
+    const svg = (h.match(/<svg /g) || []).length;
+    const rouge = / rouge/.test(h.slice(0, 40));
+    if (h.indexOf('aria-label="' + NOMS[r] + ' de ' + COUL[c] + '"') !== -1 &&
+        svg === 2 && rouge === (c === 1 || c === 2) &&
+        /<span class="jc-i"><b[^>]*>(10|[2-9VDRA])<\/b>/.test(h)) bons++;
+  }
+  check('les 52 cartes : nom complet, rang, 2 symboles vectoriels, bonne couleur', bons === 52, bons);
+  check('« 10 » resserré pour tenir dans le coin', /<b class="dix">10<\/b>/.test(cartes.carte(8, 0)));
+  check('valet, dame, roi marqués comme figures (fond doré)',
+    [9, 10, 11].every(r => / fig/.test(cartes.carte(r, 0))) && !/ fig/.test(cartes.carte(12, 0)));
+  check('dos de carte sans rien révéler',
+    /jc dos/.test(cartes.carteDos({})) && !/<svg/.test(cartes.carteDos({})));
+}
 
 /* ================= CAGNOTTE ================= */
 console.log('--- Cagnotte de jetons ---');
