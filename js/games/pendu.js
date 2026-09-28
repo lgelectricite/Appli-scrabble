@@ -1,7 +1,7 @@
 /* GGgames — Pendu (1 à 4 joueurs). V2 : la montgolfière.
 
    Le dessin du pendu devient une montgolfière au-dessus de la mer : à
-   chaque erreur, une rustine, un « pfff » d’air, le ballon se dégonfle et
+   chaque erreur, une rustine, un « pfff » d’air, le ballon se dégonfle et
    descend vers les vagues (et l’aileron du requin qui rôde…). Plus d’erreurs
    permises : plouf ! Le nombre d’erreurs restantes est toujours écrit en
    toutes lettres, avec des pastilles.
@@ -9,7 +9,7 @@
    Deux façons de jouer :
    - 🎲 le jeu choisit le mot (mots courants rangés par thème ; la catégorie
      sert d’indice ; 3 niveaux calibrés sur la fréquence des mots) ;
-   - ✍️ « je choisis le mot, tu devines » (à partir de 2 joueurs) : chacun à
+   - ✍️ « je choisis le mot, tu devines » (à partir de 2 joueurs) : chacun à
      son tour écrit un mot secret pour les autres.
    Contre l’ordinateur : 3 niveaux d’IA qui devinent comme un joueur (elles
    ne voient jamais le mot secret).
@@ -39,7 +39,7 @@
      - vocab : ce qu’elle connaît (0 = mots des thèmes très courants,
        1 = + courants, 2 = tout, plus la liste des mots courants) ;
      - hasard : probabilité d’une lettre prise un peu au hasard ;
-     - top : elle hésite entre les « top » meilleures lettres.
+     - top : elle hésite entre les « top » meilleures lettres.
      Mesures (tests/test_v2_mots.js, parties de 5 manches contre un joueur
      moyen simulé) : l’IA gagne ≈ 21 % en facile, ≈ 50 % en moyen, ≈ 76 % en
      difficile. */
@@ -216,7 +216,7 @@
     return libres[Math.floor(rnd() * Math.min(P.top + 2, libres.length))];
   }
 
-  /* mot secret choisi par l’IA (mode « je choisis le mot ») */
+  /* mot secret choisi par l’IA (mode « je choisis le mot ») */
   function motIA(niveau, rnd) {
     rnd = rnd || Math.random;
     var lv = niveau === 'facile' ? 'facile' : (niveau === 'difficile' ? 'difficile' : 'moyen');
@@ -243,7 +243,7 @@
     nom: 'Pendu',
     icone: '🎈',
     niveaux: ['facile', 'moyen', 'difficile'],
-    desc: 'Devinez le mot lettre par lettre avant que la montgolfière ne tombe à l’eau ! La catégorie en indice, ou « je choisis le mot, tu devines » entre amis.',
+    desc: 'Devinez le mot lettre par lettre avant que la montgolfière ne tombe à l’eau ! La catégorie en indice, ou « je choisis le mot, tu devines » entre amis.',
     regles: '<p><strong>🎯 Le but :</strong> deviner le mot caché lettre par lettre. La <strong>catégorie</strong> (Animaux, Cuisine…) est donnée en indice.</p>' +
       '<p><strong>🎈 La montgolfière :</strong> chaque lettre absente la dégonfle un peu et la rapproche des vagues. Le nombre d’<strong>erreurs encore permises</strong> est toujours affiché. Plus d’erreur permise : plouf !</p>' +
       '<p><strong>Comment jouer :</strong> à votre tour, touchez une lettre. Trouvée : +1 point par lettre révélée et vous rejouez. Absente : le tour passe. <strong>+3</strong> à qui termine le mot. 💡 Révéler une lettre coûte une erreur (et ne rapporte rien).</p>' +
@@ -688,7 +688,7 @@
     }
   }
 
-  /* ================= « je choisis le mot » ================= */
+  /* ================= « je choisis le mot » ================= */
 
   function renderChoix(el, ctx) {
     var s = ctx.state;
@@ -706,10 +706,10 @@
       .filter(function (x) { return x; }).join(', ');
     var cats = themes();
     var catSel = el._pduCat || '';
-    html += '<p class="pdu-choix-t">✍️ ' + GG.esc(nomJoueur(s, ch)) + ', écris un mot secret</p>' +
+    html += '<p class="pdu-choix-t">✍️ ' + GG.esc(nomJoueur(s, ch)) + ', écrivez un mot secret</p>' +
       '<p class="pdu-cache">🙈 ' + autres + ' : ne regardez pas l’écran !</p>' +
       '<div class="pdu-saisie"><input id="pdu-mot" type="password" maxlength="14" autocomplete="off" autocorrect="off" ' +
-      'autocapitalize="characters" spellcheck="false" placeholder="Ton mot (3 à 14 lettres)" aria-label="Mot secret">' +
+      'autocapitalize="characters" spellcheck="false" placeholder="Votre mot (3 à 14 lettres)" aria-label="Mot secret">' +
       '<button class="pdu-oeil-btn" data-a="voir" aria-label="Afficher le mot">👁️</button></div>' +
       '<p class="pdu-titre-choix">Catégorie donnée en indice</p><div class="pdu-cats">' +
       '<button class="pdu-cat' + (catSel === '' ? ' actif' : '') + '" data-cat="">❔ Sans indice</button>' +
@@ -841,7 +841,7 @@
       html += '</div>';
     } else {
       html += '<p class="pdu-msg">' + (mine ? (multi ? 'À vous : touchez une lettre !' : 'Touchez une lettre !')
-        : (/^🤖/.test(nomJoueur(s, s.current)) ? '' : '⏳ ') + 'Au tour de <strong>' + GG.esc(nomJoueur(s, s.current)) + '</strong>…') + '</p>';
+        : (/^🤖/.test(nomJoueur(s, s.current)) ? '' : '⏳ ') + 'Au tour ' + GG.de(GG.esc(nomJoueur(s, s.current))) + '<strong>' + GG.esc(nomJoueur(s, s.current)) + '</strong>…') + '</p>';
       // en duel, l’auteur du mot (sur son propre téléphone) le voit et regarde les autres chercher
       if (s.mode === 'duel' && ctx.me === s.chooser && typeof s.secret === 'string') {
         html += '<p class="pdu-monmot">🔒 Votre mot : <strong>' + GG.esc(s.secret.replace(/[^A-Z]/g, '')) + '</strong></p>';
@@ -916,7 +916,7 @@
     el.querySelectorAll('.pdu-key').forEach(function (k) {
       k.addEventListener('click', function () {
         if (!mine || k.disabled) return;
-        if (Date.now() < (v.arme || 0)) return; // anti double-appui (bouton « Mot suivant » au même endroit)
+        if (Date.now() < (v.arme || 0)) return; // anti double-appui (bouton « Mot suivant » au même endroit)
         if (v.envoi && Date.now() - v.envoi < 250) return;
         v.envoi = Date.now();
         var r = k.getBoundingClientRect();

@@ -57,7 +57,7 @@ function check(n, c, e) {
 
   await host.waitForSelector('.ch-log');
   await guest.waitForSelector('.ch-log');
-  check('pas de tour de parole affiché', !/Au tour de/.test(await host.textContent('#mini-turn')));
+  check('pas de tour de parole affiché', !/Au tour d/.test(await host.textContent('#mini-turn')));
   check('pas de badges de score', await host.locator('#mini-players.hidden').count() === 1);
   check('les deux prénoms sont présentés', /Hugo/.test(await guest.textContent('.ch-who')) &&
     /Nina/.test(await guest.textContent('.ch-who')));

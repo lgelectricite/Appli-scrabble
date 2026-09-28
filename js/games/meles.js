@@ -35,9 +35,9 @@
   var TEINTES = ['#ff5c8a', '#2fd4ff', '#ffc23d', '#8b5cff', '#2fd67b', '#ff8a3d', '#5b86e5', '#e05cff',
     '#1ad7a0', '#ff4d5e', '#b8e62e', '#3dd9ff', '#ffb0d0', '#a78bfa', '#fb923c', '#34d399', '#f472b6', '#60a5fa'];
   var PCOLORS = ['#2fd4ff', '#ff5cb0', '#ffc23d', '#b28cff'];
-  /* IA (contre l’ordinateur) : nombre de « battements » (≈ 1 s chacun) pour
+  /* IA (contre l’ordinateur) : nombre de « battements » (≈ 1 s chacun) pour
      trouver un mot moyen ; un mot long, en diagonale ou à l’envers prend
-     plus de temps. Elle ne lit pas les positions : elle « cherche » le temps
+     plus de temps. Elle ne lit pas les positions : elle « cherche » le temps
      qu’il faut, comme un joueur. */
   var NIVEAUX_IA = { facile: { tics: 24 }, moyen: { tics: 14 }, difficile: { tics: 8 } };
 
@@ -509,7 +509,7 @@
       }
       if (state.phase !== 'play') return { ok: false, error: 'La partie n’a pas commencé.' };
       if (action.t === 'attente') {
-        // le « battement » de l’ordinateur (≈ 1 par seconde) : le temps passe pour lui
+        // le « battement » de l’ordinateur (≈ 1 par seconde) : le temps passe pour lui
         if (player === 0 && !estIA(state, 0)) return { ok: false, error: 'Action réservée à l’ordinateur.' };
         state.tic = (state.tic || 0) + 1;
         return { ok: true };
@@ -519,7 +519,7 @@
         if (!state.mystere) return { ok: false, error: 'Pas de mot mystère dans cette grille.' };
         if (state.mystereTrouve !== -1) return { ok: false, error: 'Le mot mystère a déjà été trouvé.' };
         var g = String(action.w || '').toUpperCase().replace(/[^A-Z]/g, '');
-        if (g !== state.mystere) return { ok: false, error: '« ' + g + ' » n’est pas le mot mystère.' };
+        if (g !== state.mystere) return { ok: false, error: '« ' + g + ' » n’est pas le mot mystère.' };
         state.mystereTrouve = player;
         state.players[player].bonus = (state.players[player].bonus || 0) + 3;
         return { ok: true };
@@ -553,19 +553,19 @@
           var word2 = state.words[w2];
           if (word2.foundBy !== -1 && (word2.w === text || word2.w === reversed)) {
             return {
-              ok: false, error: '« ' + text + ' » a déjà été trouvé par ' +
+              ok: false, error: '« ' + text + ' » a déjà été trouvé par ' +
                 state.players[word2.foundBy].name + ' !'
             };
           }
         }
-        return { ok: false, error: '« ' + text + ' » n’est pas dans la liste.' };
+        return { ok: false, error: '« ' + text + ' » n’est pas dans la liste.' };
       }
       return { ok: false, error: 'Action inconnue.' };
     },
 
     /* l’ordinateur cherche lui aussi : il trouve un mot quand son temps de
        recherche (selon le niveau et la difficulté du mot) est écoulé ; en
-       attendant, il fait battre l’horloge (une action « attente »). */
+       attendant, il fait battre l’horloge (une action « attente »). */
     bot: function (state, me, ctx) {
       if (state.phase !== 'play' || state.tourParTour) return null;
       var niveau = (ctx && ctx.niveau) || state.niveauIA || 'moyen';
@@ -785,7 +785,7 @@
     var msg = el.querySelector('#mel-msg');
     if (s.phase === 'play') {
       var monTour = !s.tourParTour || s.tour === ctx.me;
-      msg.innerHTML = !monTour ? '⏳ Au tour de <strong>' + GG.esc(nomJoueur(s, s.tour)) + '</strong>…'
+      msg.innerHTML = !monTour ? '⏳ Au tour ' + GG.de(GG.esc(nomJoueur(s, s.tour))) + '<strong>' + GG.esc(nomJoueur(s, s.tour)) + '</strong>…'
         : (m.ancre >= 0 ? 'Touchez maintenant la dernière lettre du mot.'
           : (nbTrouves === 0 ? '👆 Glissez le doigt sur un mot de la liste.' : ''));
       el.querySelector('.mel-jeu').classList.toggle('attente', !monTour);

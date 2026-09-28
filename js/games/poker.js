@@ -9,7 +9,7 @@
  *  - la cagnotte suit l'état de la table (achats, pile) : appli tuée,
  *    rechargée, reprise, abandonnée — on retrouve exactement sa pile ;
  *  - en ligne, un délai de parole (25 s, anneau autour de la plaque) puis
- *    « parole » ou « se couche » d'office : un absent ne fige plus la table ;
+ *    « parole » ou « se couche » d'office : un absent ne fige plus la table ;
  *  - seul contre les robots, une vitesse de jeu (normale / rapide) mémorisée ;
  *  - les pots annexes ne se dédoublent plus à l'abattage ;
  *  - la table vit : cartes distribuées et retournées, jetons qui glissent au
@@ -188,7 +188,7 @@
   function auRang(r) {
     return (r === 12 ? 'à l’' : r === 10 ? 'à la ' : 'au ') + SINGULIER[r];
   }
-  /* « Paire de six », « Full aux as par les rois », « Couleur à l’as »… */
+  /* « Paire de six », « Full aux as par les rois », « Couleur à l’as »… */
   function nomMain(r) {
     switch (r[0]) {
       case 8: return r[1] === 12 ? 'Quinte flush royale' : 'Quinte flush ' + auRang(r[1]);
@@ -269,7 +269,7 @@
 
   function hasChips(p) { return p.chips > 0; }
 
-  /* ---- observations publiques (les robots « difficile » s'en servent) ---- */
+  /* ---- observations publiques (les robots « difficile » s'en servent) ---- */
   function obs(state, i) {
     if (!state.obs) state.obs = [];
     if (!state.obs[i]) state.obs[i] = { mains: 0, vpip: 0, pfr: 0, tapis: 0, agr: 0, pas: 0, couche: 0, face: 0 };
@@ -642,7 +642,7 @@
     var q = s.players[i], h = q.h || {};
     var o = (s.obs && s.obs[i]) || { mains: 0, vpip: 0, pfr: 0, tapis: 0, agr: 0, pas: 0 };
     var n = o.mains || 0;
-    var k = N.apriori; // poids de l'a priori, en « mains » (petit = on s'adapte vite)
+    var k = N.apriori; // poids de l'a priori, en « mains » (petit = on s'adapte vite)
     function freq(x, prior) { return (x + prior * k) / (n + k); }
     var largeur = 1;
     if (h.tapisPre) {
@@ -690,7 +690,7 @@
           essais++;
           var ok = forcePreflop([c1, c2]) >= F[a].seuil;
           if (ok && F[a].bluffe < 1 && board.length) {
-            // après une mise : une main « faite » (paire utile au moins) ou un bluff
+            // après une mise : une main « faite » (paire utile au moins) ou un bluff
             ADV7[0] = c1; ADV7[1] = c2;
             for (k = 0; k < board.length; k++) ADV7[2 + k] = board[k];
             var v = eval7(ADV7, 2 + board.length);
@@ -726,7 +726,7 @@
     if (!adv.length) return owe > 0 ? { t: 'call' } : { t: 'check' };
 
     function relance(montantTotal) {
-      // « relancer à » montantTotal (mise totale de la rue)
+      // « relancer à » montantTotal (mise totale de la rue)
       var by = Math.round(montantTotal - s.maxBet);
       var maxBy = p.chips - owe;
       if (maxBy <= 0) return owe > 0 ? { t: 'call' } : { t: 'check' };
@@ -784,7 +784,7 @@
 
     /* ---- sinon : l'équité fait foi ---- */
     var E = equite(s, me, adv, N, N.iters);
-    // un robot « difficile » ajuste contre ce qu'il observe
+    // un robot « difficile » ajuste contre ce qu'il observe
     /* en tournoi, le gagnant rafle tout : contre un adversaire qui se
        jette à tapis sans arrêt, inutile de jouer son tournoi sur un
        pile-ou-face — on attend une main nettement devant (plus les blinds
@@ -849,9 +849,9 @@
   }
 
   /* ---------- la cagnotte du téléphone ----------
-     Le marqueur gg-poker-open dit : « ce téléphone est assis à la table
+     Le marqueur gg-poker-open dit : « ce téléphone est assis à la table
      gameId ; il a payé ses achats (cave + recaves) ; s'il disparaît, il faut
-     lui rendre `invested` » — c'est-à-dire sa PILE du moment, pas sa mise de
+     lui rendre `invested` » — c'est-à-dire sa PILE du moment, pas sa mise de
      départ. La coque rembourse `invested` d'un marqueur orphelin. */
   function marqueur(m) {
     try {
@@ -904,9 +904,9 @@
       '<p><strong>🤖 Seul contre les robots :</strong> trois niveaux. Le robot facile joue large et passif ; le moyen lit les mises ; le difficile calcule ses chances, déduit vos mains de vos actions, repère qui fait tapis à tout va ou suit tout, et bluffe à bon escient. En cash game, un robot se recave deux fois, puis quitte la table ruiné. Réglez la vitesse (⏩ normale ou rapide) en haut de la table.</p>' +
       '<p><strong>🪙 La cagnotte :</strong> votre pile (100 au départ) et chaque recave sortent de la cagnotte du téléphone ; votre pile y retourne quand vous quittez la table. Appli fermée ou rechargée : vous retrouvez la partie et exactement votre pile. Quitter en pleine main, c’est se coucher : les jetons déjà misés restent dans le pot.</p>' +
       '<p><strong>♻️ Se recaver :</strong> en cash game, entre deux mains, un bouton remet votre tapis à 100.</p>' +
-      '<p><strong>⏱️ En ligne :</strong> chacun a 25 secondes pour parler (l’anneau autour de sa plaque se vide) ; passé ce délai, il fait « parole » s’il le peut, sinon il se couche. La main suivante part toute seule après 15 secondes.</p>' +
-      '<p><strong>💰 Miser ce que vous voulez :</strong> le bouton « Relancer à N » (ou « Miser N ») envoie la mise ; réglez le montant juste dessous avec − / +, le curseur, ou les raccourcis Min, ½ pot, Pot et Tapis.</p>' +
-      '<p><strong>🃏 Votre main en direct :</strong> sous vos cartes, le jeu nomme la meilleure combinaison que vous tenez (« Paire de six », « Couleur à l’as »…). À l’abattage, les 5 cartes gagnantes brillent et le pot file vers le gagnant.</p>',
+      '<p><strong>⏱️ En ligne :</strong> chacun a 25 secondes pour parler (l’anneau autour de sa plaque se vide) ; passé ce délai, il fait « parole » s’il le peut, sinon il se couche. La main suivante part toute seule après 15 secondes.</p>' +
+      '<p><strong>💰 Miser ce que vous voulez :</strong> le bouton « Relancer à N » (ou « Miser N ») envoie la mise ; réglez le montant juste dessous avec − / +, le curseur, ou les raccourcis Min, ½ pot, Pot et Tapis.</p>' +
+      '<p><strong>🃏 Votre main en direct :</strong> sous vos cartes, le jeu nomme la meilleure combinaison que vous tenez (« Paire de six », « Couleur à l’as »…). À l’abattage, les 5 cartes gagnantes brillent et le pot file vers le gagnant.</p>',
     min: 2, max: 4,
     hotseat: false, hidden: true, netOnly: true,
     niveaux: ['facile', 'moyen', 'difficile'],
@@ -1154,7 +1154,7 @@
           state.maxBet = p.bet;
           state.relances = (state.relances || 0) + 1;
           // toute augmentation rouvre la parole : chacun doit suivre ou se
-          // coucher, même face à un tapis « incomplet » ; seule une VRAIE
+          // coucher, même face à un tapis « incomplet » ; seule une VRAIE
           // relance remonte le minimum de sur-relance
           if (fullRaise) state.minRaise = raised;
           state.players.forEach(function (q, i) {
@@ -1214,7 +1214,7 @@
 
   /* L'état affiché chez un invité vient de l'hôte, qui peut être
      malveillant : chaque nombre qui finit dans le HTML est d'abord ramené à
-     un vrai nombre (une « pile » qui contiendrait du HTML devient 0). */
+     un vrai nombre (une « pile » qui contiendrait du HTML devient 0). */
   function nb(x) { return typeof x === 'number' && isFinite(x) ? x : 0; }
   function assainir(s) {
     ['handNum', 'maxBet', 'minRaise', 'delaiMs', 'echeance', 'tourId', 'dealer', 'current'].forEach(function (k) { s[k] = nb(s[k]); });
@@ -1430,10 +1430,10 @@
         }).join('');
       var robot = p.name.indexOf('🤖') === 0;
       var nom = p.name.replace(/^🤖 /, '');
-      // ma main, nommée en direct sous mes cartes : « Paire de six »…
+      // ma main, nommée en direct sous mes cartes : « Paire de six »…
       var maMain = (i === me && cartes) ? nomMainVive(p.hole, s.community) : '';
       var annonce = p.lastAct && !s.handOver;
-      // l'annonce « Tapis 98 » / « Couché » dit déjà ce que dirait l'étiquette
+      // l'annonce « Tapis 98 » / « Couché » dit déjà ce que dirait l'étiquette
       var redite = annonce && /^(tapis|couché)/i.test(p.lastAct);
       var anneau = '';
       if (tour && i === s.current && tour.total > 0 && (!s.solo || i !== me)) {
@@ -1510,7 +1510,7 @@
     } else if (my && me === s.current && !s.handOver) {
       var owe = s.maxBet - my.bet;
       /* Choisir SON montant : on raisonne comme à une vraie table, en
-         « relancer à N » (le total posé sur la rue), pas en « +N ». */
+         « relancer à N » (le total posé sur la rue), pas en « +N ». */
       miseMin = s.maxBet + s.minRaise;      // relance minimale légale
       miseMax = my.bet + my.chips;          // tapis
       var libre = miseMax > miseMin;            // un vrai choix de montant ?

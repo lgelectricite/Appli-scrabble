@@ -37,14 +37,14 @@
   /* Niveaux de l’adversaire IA. Aucun ne regarde le mot secret : l’IA part
      des couleurs affichées, comme un humain, avec SON vocabulaire (les formes
      les plus parlées du français, conjugaisons et pluriels compris : elle ne
-     connaît pas la liste des mots secrets, sauf en « difficile »).
+     connaît pas la liste des mots secrets, sauf en « difficile »).
      - vocab : taille du vocabulaire (mots les plus courants d’abord) ;
      - jaunes / gris : probabilité de tenir compte des lettres mal placées /
        absentes d’un essai (les étourderies d’un joueur pressé) ;
      - rappel : part de son vocabulaire qui lui vient à l’esprit à chaque tour ;
      - memoire : nombre d’essais récents dont elle se souvient ;
-     - flair : elle devine que le mot secret est un mot « de base » (nom,
-       adjectif, verbe à l’infinitif) et le préfère (en « difficile », elle
+     - flair : elle devine que le mot secret est un mot « de base » (nom,
+       adjectif, verbe à l’infinitif) et le préfère (en « difficile », elle
        connaît la liste des mots secrets) ;
      - glouton : elle propose le mot le plus vraisemblable (en duel, tester
        des lettres aiderait aussi l’adversaire, qui voit le même tableau) ;
@@ -265,7 +265,7 @@
       }
       return null;
     }
-    // poids : les mots courants viennent plus vite à l’esprit ; le « flair »
+    // poids : les mots courants viennent plus vite à l’esprit ; le « flair »
     // fait préférer les mots de base (ceux qu’on choisit comme mots secrets)
     function poids(i) {
       var p = 1 / (1 + i / 400);
@@ -484,7 +484,7 @@
       '<p><strong>Les indices :</strong> <strong>case verte pleine</strong> = lettre bien placée · <strong>rond jaune</strong> = lettre présente ailleurs · case sombre = lettre absente. Proposez de vrais mots du dictionnaire.</p>' +
       '<p><strong>Trois façons de jouer :</strong> 📅 <strong>Défi du jour</strong> (le même mot pour tout le monde, un par jour, avec statistiques et partage) · 🎯 <strong>6 essais</strong> (partie en 5 mots) · ♾️ <strong>Illimité</strong> (série sans fin, essais illimités).</p>' +
       '<p><strong>👥 À plusieurs :</strong> le même mot s’affiche chez tout le monde et on propose chacun son tour — le premier qui trouve marque le point.</p>' +
-      '<p><strong>🤖 Contre l’ordinateur :</strong> il raisonne sur les couleurs comme vous, avec son propre vocabulaire. En « facile » il est distrait, en « difficile » il vous fera transpirer.</p>',
+      '<p><strong>🤖 Contre l’ordinateur :</strong> il raisonne sur les couleurs comme vous, avec son propre vocabulaire. En « facile » il est distrait, en « difficile » il vous fera transpirer.</p>',
     min: 1, max: 4,
     hotseat: true, hotseatMax: 4, hidden: false, netOnly: false,
 
@@ -609,17 +609,17 @@
         }
         if (!/^[A-Z]+$/.test(word)) return { ok: false, error: 'Lettres uniquement.' };
         if (state.first && word.charAt(0) !== state.first) {
-          return { ok: false, error: 'Le mot commence par « ' + state.first + ' ».' };
+          return { ok: false, error: 'Le mot commence par « ' + state.first + ' ».' };
         }
         if (state.tries.some(function (t) { return t.word === word; })) {
-          return { ok: false, error: '« ' + word + ' » a déjà été proposé.' };
+          return { ok: false, error: '« ' + word + ' » a déjà été proposé.' };
         }
         var dicoOk = dicoPret(ctx);
         state.dicoOk = dicoOk;
         if (dicoOk ? !ctx.dict.set.has(word) : !motDuJeu(state.length, word)) {
           return {
-            ok: false, error: dicoOk ? '« ' + word + ' » n’est pas dans le dictionnaire.'
-              : '« ' + word + ' » n’est pas dans la liste de mots du jeu (dictionnaire indisponible).'
+            ok: false, error: dicoOk ? '« ' + word + ' » n’est pas dans le dictionnaire.'
+              : '« ' + word + ' » n’est pas dans la liste de mots du jeu (dictionnaire indisponible).'
           };
         }
         var mk = marks(state.secret, word);
@@ -880,7 +880,7 @@
     // la ligne de message
     var msg = '';
     if (jeu && !monTour) {
-      msg = '⏳ Au tour de <strong>' + GG.esc(nomJoueur(s, s.turn)) + '</strong>…';
+      msg = '⏳ Au tour ' + GG.de(GG.esc(nomJoueur(s, s.turn))) + '<strong>' + GG.esc(nomJoueur(s, s.turn)) + '</strong>…';
     } else if (jeu && mm.msg && mm.msgCle === tries.length) {
       msg = mm.msg;
     } else if (jeu && tries.length === 0) {
@@ -938,7 +938,7 @@
       try { enregistre(s); } catch (e) {}
     }
     brancheJeu(el, ctx, mm, L, first, monTour);
-    // petit écran : la suite (« Mot suivant ») vient sous les yeux après l’animation
+    // petit écran : la suite (« Mot suivant ») vient sous les yeux après l’animation
     if (s.phase === 'reveal' && mm.defile !== cle) {
       mm.defile = cle;
       setTimeout(function () {
@@ -1085,7 +1085,7 @@
           return;
         }
         if ((s.tries || []).some(function (t) { return t.word === mm.typed; })) {
-          message('« ' + GG.esc(mm.typed) + ' » a déjà été proposé.', true);
+          message('« ' + GG.esc(mm.typed) + ' » a déjà été proposé.', true);
           tremble();
           return;
         }
@@ -1094,7 +1094,7 @@
         var res = ctx.act({ t: 'guess', w: mm.typed });
         if (res === false) {
           mm.envoi = 0;
-          message('« ' + GG.esc(mm.typed) + ' » : mot refusé.', true);
+          message('« ' + GG.esc(mm.typed) + ' » : mot refusé.', true);
           tremble();
         }
         return;

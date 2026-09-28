@@ -8,7 +8,7 @@
  *  - annulation illimitée, indice, pioche 1 ou 3 (les trois cartes en
  *    éventail), donne gagnable garantie (choisie parmi des donnes que le
  *    solveur a gagnées) et défi du jour (la même donne pour tout le monde) ;
- *  - détection « plus aucun coup utile », fin automatique en cascade, et la
+ *  - détection « plus aucun coup utile », fin automatique en cascade, et la
  *    célèbre cascade de cartes qui rebondissent à la victoire ;
  *  - colonnes qui se resserrent pour tenir à l'écran, index lisibles même
  *    recouverts.
@@ -190,7 +190,7 @@
     return false;
   }
 
-  /* tous les coups « utiles » du moment (indice, tapotement, blocage) */
+  /* tous les coups « utiles » du moment (indice, tapotement, blocage) */
   function coupsUtiles(b, pioche, talonConnu) {
     var coups = [], i, j, c;
     function ajoute(prio, src, dst) { coups.push({ p: prio, src: src, dst: dst }); }
@@ -329,7 +329,7 @@
     }
   }
 
-  /* la carte, en « grand index » sur une ligne (rang + couleur en haut) */
+  /* la carte, en « grand index » sur une ligne (rang + couleur en haut) */
   function carteHtml(c, classe, data) {
     return GG.carteStd(c, { classe: 'sol-card' + (classe ? ' ' + classe : ''), attrs: data || '' });
   }
@@ -374,7 +374,7 @@
       return foundCount(p) + '/52';
     },
 
-    /* seul : gagné (0), ou perdu (défaite « collective ») */
+    /* seul : gagné (0), ou perdu (défaite « collective ») */
     gagnants: function (state) {
       var ps = state.players, i, g = [];
       for (i = 0; i < ps.length; i++) if (ps[i].done && ps[i].order === 0) g.push(i);
@@ -465,8 +465,8 @@
   /* un coup, une fois la partie lancée */
   function jouerCoup(state, player, action) {
       var p = state.players[player];
-      if (p.done) return { ok: false, error: 'Tu as déjà terminé !' };
-      if (p.gaveUp) return { ok: false, error: 'Tu as abandonné cette donne.' };
+      if (p.done) return { ok: false, error: 'Vous avez déjà terminé !' };
+      if (p.gaveUp) return { ok: false, error: 'Vous avez abandonné cette donne.' };
       var b = p.board;
       if (!p.histo) p.histo = [];
 
@@ -620,7 +620,7 @@
         var f = rows[0].found;
         html += '<h1>' + (f >= 40 ? '😮 Si près du but !' : (f >= 20 ? '💪 Belle bataille' : '🃏 Pas cette fois')) + '</h1>' +
           '<p class="mini-msg">' + f + ' cartes rangées sur 52. Une nouvelle donne ?' +
-          (state.mode === 'libre' ? ' Essayez l’option « donne gagnable ».' : '') + '</p>';
+          (state.mode === 'libre' ? ' Essayez l’option « donne gagnable ».' : '') + '</p>';
       }
       for (i = 0; i < rows.length; i++) {
         var r = rows[i], res;
@@ -671,7 +671,7 @@
         var r1 = lireRecord('gg-solitaire-best-facile'), r3 = lireRecord('gg-solitaire-best-difficile');
         html0 += '<div class="sol-accueil-cartes">' + GG.carteStd(0, { classe: 'sol-deco' }) + GG.carteStd(13, { classe: 'sol-deco' }) +
           GG.carteStd(26, { classe: 'sol-deco' }) + GG.carteStd(39, { classe: 'sol-deco' }) + '</div>' +
-          '<p class="mini-msg">♦️ Choisis ta façon de piocher :</p>' +
+          '<p class="mini-msg">♦️ Choisissez votre façon de piocher :</p>' +
           '<div class="lvl-btns">' +
           '<button class="btn big" data-lvl="facile">🙂 Pioche 1 carte<small>' + (r1 ? 'Record ' + fmt(r1.sec) : 'La plus douce') + '</small></button>' +
           '<button class="btn big" data-lvl="difficile">😤 Pioche 3 cartes<small>' + (r3 ? 'Record ' + fmt(r3.sec) : 'La version classique, corsée') + '</small></button>' +
@@ -775,7 +775,7 @@
     html += '</div></div>';
 
     if (p.done && s.phase !== 'victoire') html += '<p class="mini-msg">🎉 Bravo, Solitaire réussi en ' + fmt(p.sec) + ' !</p>';
-    else if (p.gaveUp && s.phase === 'play') html += '<p class="waiting">🏳️ Tu as abandonné… on attend les autres.</p>';
+    else if (p.gaveUp && s.phase === 'play') html += '<p class="waiting">🏳️ Vous avez abandonné… on attend les autres.</p>';
 
     if (bloque) {
       html += '<div class="sol-bloque"><b>😕 Plus aucun coup utile.</b> Annulez quelques coups pour tenter une autre voie, ou abandonnez cette donne.</div>';
@@ -1211,7 +1211,7 @@
       }
     }
     cv.addEventListener('pointerdown', function () { stop(); fini(); });
-    // le bandeau « Bravo ! » passe au-dessus de la cascade
+    // le bandeau « Bravo ! » passe au-dessus de la cascade
     var ban = document.createElement('div');
     ban.className = 'sol-victoire';
     ban.innerHTML = banniereHtml || '';

@@ -342,7 +342,7 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
       check('≈ 1,2 s plus tard, passage du téléphone à Marc', /Marc/.test(await p.textContent('#pass-name')));
       await p.click('#btn-pass-ready');
       const msgMarc = await p.textContent('.bn-msg');
-      check('Marc lit QUI a tiré et le résultat', /Léa a tiré en [A-J]\d+ : à l’eau/.test(msgMarc) && /À toi de tirer, Marc/.test(msgMarc), msgMarc);
+      check('Marc lit QUI a tiré et le résultat', /Léa a tiré en [A-J]\d+ : à l’eau/.test(msgMarc) && /À vous de tirer, Marc/.test(msgMarc), msgMarc);
       check('le tir de Léa est encadré sur la flotte de Marc', await p.locator('.bn-grid.mienne .bn-cell.last.miss').count() === 1);
       await capture(p, 'bataille_' + w + '_marc');
       if (w === 412) {

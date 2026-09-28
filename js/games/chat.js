@@ -6,7 +6,7 @@
  * disparaît quand le salon ferme.
  *
  * V2 : bulles modernes regroupées, avatars et couleurs, réactions emoji
- * (appui long sur une bulle), « … est en train d'écrire », signal discret à
+ * (appui long sur une bulle), « … est en train d'écrire », signal discret à
  * l'arrivée d'un message. Tout ce qui vient des autres est échappé ; les
  * réactions ne passent que par une liste blanche.
  */
@@ -19,7 +19,7 @@
   var QUICK = ['👍', '❤️', '😂', '😮', '👋', '🎲'];
   var REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
   var TEINTES = [150, 205, 330, 35, 265, 10, 180, 290, 55, 230, 100, 310];
-  var ECRIT_MS = 6000;   // durée d'affichage de « … écrit » sans nouvelle frappe
+  var ECRIT_MS = 6000;   // durée d'affichage de « … écrit » sans nouvelle frappe
 
   function heure() {
     var d = new Date();
@@ -30,7 +30,7 @@
     id: 'chat',
     nom: 'Discussion',
     icone: '💬',
-    desc: 'La messagerie du salon : discutez entre téléphones, sans Internet. Réactions, emoji et « en train d’écrire » !',
+    desc: 'La messagerie du salon : discutez entre téléphones, sans Internet. Réactions, emoji et « en train d’écrire » !',
     regles: '<p><strong>Le but :</strong> se parler ! Un salon de discussion ' +
       'entre les téléphones réunis, qui fonctionne comme les jeux : sur le ' +
       'réseau local, <strong>sans aucun accès Internet</strong>.</p>' +
@@ -56,7 +56,7 @@
     },
 
     turnOf: function () { return -1; }, // tout le monde parle quand il veut
-    over: function () { return false; }, // une discussion ne « finit » pas
+    over: function () { return false; }, // une discussion ne « finit » pas
     scoreOf: function () { return 0; },
     summary: function () { return ''; },
     gagnants: function () { return null; },
@@ -254,7 +254,7 @@
     }
   }
 
-  /* « Nina est en train d'écrire… » : le compteur de frappe change à chaque
+  /* « Nina est en train d'écrire… » : le compteur de frappe change à chaque
      signal ; on l'affiche quelques secondes après sa réception (horloge
      locale : aucun souci de décalage entre téléphones). */
   function majFrappe(R, s, ctx) {

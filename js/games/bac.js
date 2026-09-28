@@ -74,7 +74,7 @@
     s = s.replace(/[̀-ͯ]/g, '');
     return s.replace(/[’'`´\-\.\s_\/]+/g, ' ').replace(/^[^A-Z0-9]+/, '').trim();
   }
-  /* « Le Havre », « la Rochelle », « l’Écosse », « St-Malo » */
+  /* « Le Havre », « la Rochelle », « l’Écosse », « St-Malo » */
   function sansArticle(s) {
     return s.replace(/^DE LA /, '').replace(/^(LE|LA|LES|L|UN|UNE|DES|DU|D) /, '')
       .replace(/^STE /, 'SAINTE ').replace(/^ST /, 'SAINT ');
@@ -83,7 +83,7 @@
   /* ancienne normalisation (conservée pour les tests et l'affichage de la lettre) */
   function normalize(s) { return espace(s).replace(/ /g, ''); }
 
-  /* la réponse commence-t-elle par la lettre ? (article ignoré : « Le Havre » vaut pour H et L) */
+  /* la réponse commence-t-elle par la lettre ? (article ignoré : « Le Havre » vaut pour H et L) */
   function bonneLettre(ans, L) {
     var e = espace(ans);
     if (!e) return false;
@@ -251,7 +251,7 @@
     });
   }
 
-  /* compatibilité : l'ancien lexique « à 6 catégories » (tests, outils) */
+  /* compatibilité : l'ancien lexique « à 6 catégories » (tests, outils) */
   function botLexCompat() {
     var idx = index();
     return DEFAUT.map(function (id) {
@@ -338,7 +338,7 @@
       '<p><strong>Avant de jouer :</strong> l’hôte choisit les catégories (21 au choix, ou une sélection toute prête), la durée et le nombre de manches.</p>' +
       '<p><strong>Les points :</strong> 10 par mot accepté, <strong>5 si un autre joueur a écrit le même</strong> (doublon : on partage), 0 si la réponse est vide, commence par une autre lettre ou est refusée.</p>' +
       '<p><strong>Qui décide ?</strong> Un mot connu du dictionnaire du jeu est validé d’office : personne ne peut le refuser. Pour les autres, chacun vote : refusé seulement si la majorité est contre (égalité = accepté). Contre l’ordinateur, vous pouvez <strong>contester</strong> un refus de l’IA.</p>' +
-      '<p><strong>Tolérant :</strong> accents, majuscules, tirets, articles (« Le Havre ») et pluriels ne comptent pas.</p>' +
+      '<p><strong>Tolérant :</strong> accents, majuscules, tirets, articles (« Le Havre ») et pluriels ne comptent pas.</p>' +
       '<p><strong>Sur un seul téléphone :</strong> chacun écrit à son tour, lettre révélée pour lui seul, puis la table corrige ensemble.</p>',
     min: 2, max: 4,
     hotseat: true, hidden: true, netOnly: false,
@@ -566,7 +566,7 @@
 
       if (action.t === 'closeVote') {
         // filet de sécurité : un joueur ne vote pas (téléphone posé…) →
-        // l'hôte clôt, les votes manquants valent « tout accepté »
+        // l'hôte clôt, les votes manquants valent « tout accepté »
         if (player !== 0) return { ok: false, error: 'Seul l’hôte peut clore le vote.' };
         if (state.phase !== 'vote') return { ok: false, error: 'Pas de vote en cours.' };
         scoreRound(state);
@@ -640,7 +640,16 @@
       var s = assainir(ctx.state);
       var me = ctx.me;
       var v = el._bac;
-      if (!v || v.id !== s.id) v = el._bac = { id: s.id, brouillon: {}, votes: {}, vus: {}, t0: {} };
+      if (!v || v.id !== s.id) {
+        v = el._bac = { id: s.id, brouillon: {}, votes: {}, vus: {}, t0: {} };
+        // l'appli s'est rechargée en pleine manche : les réponses tapées reviennent
+        try {
+          var gard = JSON.parse(localStorage.getItem('gg-bac-brouillon') || 'null');
+          if (gard && gard.id === s.id && gard.me === me && Array.isArray(gard.r)) {
+            v.brouillon[gard.round] = gard.r.map(function (x) { return String(x || '').slice(0, 40); });
+          }
+        } catch (e) {}
+      }
       if (el._bacTimer) { clearInterval(el._bacTimer); el._bacTimer = null; }
       var hotseat = ctx.mode === 'local' && !s.niveauIA && s.players.length > 1;
       var solo = ctx.mode === 'local' && !!s.niveauIA;
@@ -810,7 +819,7 @@
     roue.style.transition = 'transform ' + duree + 'ms cubic-bezier(.12,.8,.22,1)';
     roue.style.transform = 'rotate(' + angle.toFixed(2) + 'deg)';
     son('whoosh', { volume: 0.5 });
-    // un « tic » à chaque lettre qui passe sous la flèche (freinage de la roue)
+    // un « tic » à chaque lettre qui passe sous la flèche (freinage de la roue)
     var K = tours * n + i, tics = Math.min(K, 18);
     if (duree > 300) {
       for (var k = 1; k <= tics; k++) {
@@ -844,14 +853,14 @@
     var el = o.el, s = o.s, me = o.me, v = o.v, ctx = o.ctx;
     var ids = catIds(s);
     var sub = !!s.submitted[me];
-    // chacun son tour : écran « prêt ? » avant de découvrir la lettre
+    // chacun son tour : écran « prêt ? » avant de découvrir la lettre
     if (s.mode === 'chacun' && s.ecrivain === me && !s.pretEcrire && !sub) {
       el.innerHTML = '<div class="bac-pret"><span class="bac-pret-ic">🙈</span><h2>' + esc(s.players[me].name) +
         ', à vous d’écrire !</h2><p class="hint">Manche ' + s.round + ' / ' + s.maxRounds + ' · ' + ids.length +
         ' catégories · ' + s.duration + ' secondes.<br>Les autres ne regardent pas l’écran…</p>' +
         '<button class="btn big jeu" data-a="go">🎡 Découvrir ma lettre</button></div>';
       var go = el.querySelector('[data-a="go"]');
-      var arme = Date.now() + 300; // bouton posé à l'endroit exact du « Voir mon jeu » de la coque
+      var arme = Date.now() + 300; // bouton posé à l'endroit exact du « Voir mon jeu » de la coque
       go.addEventListener('click', function () {
         if (Date.now() < arme || go.disabled) return;
         go.disabled = true;
@@ -899,6 +908,9 @@
     el.querySelectorAll('input[data-cat]').forEach(function (inp) {
       inp.addEventListener('input', function () {
         brouillon[parseInt(inp.getAttribute('data-cat'), 10)] = inp.value;
+        try {
+          localStorage.setItem('gg-bac-brouillon', JSON.stringify({ id: s.id, me: ctx.me, round: s.round, r: brouillon }));
+        } catch (e) {}
         son('type', { volume: 0.25 });
       });
       inp.addEventListener('keydown', function (e) {
@@ -972,7 +984,7 @@
     }
   }
 
-  /* minuteur circulaire : l'arc se vide, « tic » les 10 dernières secondes */
+  /* minuteur circulaire : l'arc se vide, « tic » les 10 dernières secondes */
   function lancerMinuteur(o) {
     var el = o.el, s = o.s;
     var arc = el.querySelector('.bac-chrono-arc');
@@ -1031,7 +1043,7 @@
       var attente = s.players.filter(function (p, i) { return !s.voted[i]; }).map(function (p) { return p.name; });
       html += '<p class="waiting">⏳ En attente du vote de ' + esc(attente.join(', ') || '…') + '</p>';
       if (me === 0) {
-        html += '<button class="btn" data-a="closevote">⏱️ Clore le vote (les votes manquants valent « tout accepté »)</button>';
+        html += '<button class="btn" data-a="closevote">⏱️ Clore le vote (les votes manquants valent « tout accepté »)</button>';
       }
       html += '</div>';
       el.innerHTML = html;
@@ -1181,7 +1193,7 @@
       case 'vote':
         if (r.ia) {
           var autres = autresCategories(r.ans, id);
-          return '🤖 inconnu de l’IA pour « ' + nomCat(id) + ' »' +
+          return '🤖 inconnu de l’IA pour « ' + nomCat(id) + ' »' +
             (autres.length ? ' (pour elle : ' + autres.slice(0, 2).map(nomCat).join(', ') + ')' : '');
         }
         return 'refusé par ' + listeNoms(s, r.par || []) + (s.players.length > 2 ? ' (majorité contre)' : '');

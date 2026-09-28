@@ -35,7 +35,7 @@
   var miniTimer = null;      // minuteur d'autorité (petit bac…)
   var miniLastViewer = -1;   // dernier joueur affiché (écran passe-téléphone)
   var miniCount = 2;         // nombre de joueurs (mini-jeu sur un téléphone)
-  var miniBots = 0;          // adversaires IA en jeu (mode « contre l'ordinateur »)
+  var miniBots = 0;          // adversaires IA en jeu (mode « contre l'ordinateur »)
   var miniSoloBots = 1;      // choix courant sur l'écran de config solo
   var miniBotTimer = null;   // prochaine action IA programmée
   var miniNiveau = 'moyen';  // niveau des IA (jeux qui déclarent mod.niveaux)
@@ -46,7 +46,7 @@
   var exchangeMode = false;
   var exchangeSel = [];      // positions marquées pour l'échange
   var jokerTarget = null;    // {index, rackPos} en attente du choix de lettre
-  var passHidden = false;    // écran « passez le téléphone » affiché
+  var passHidden = false;    // écran « passez le téléphone » affiché
   var waitingHost = false;   // invité : action envoyée, réponse attendue
   var waitingTimer = null;
   var toastTimer = null;
@@ -66,6 +66,7 @@
   var guestSiege = null;     // (invité) {code, jeton, nom} : sa place réservée dans la partie
   var revanches = [];        // (hôte) prénoms des invités partants pour rejouer
   var salleAttente = [];     // (hôte) arrivés pendant la partie : ils jouent à la suivante
+  var prochainPremier = 0;   // (hôte) revanche : qui commence la partie suivante
 
   /* Connexion absente (partie reprise après un rechargement, en attendant
      que l'invité revienne) : les envois échouent sans rien casser. */
@@ -87,7 +88,7 @@
   /* ---------- navigation entre écrans ----------
      Chaque écran entre avec une petite animation ; l'accent de couleur du
      jeu choisi (data-jeu sur <body>) colore bannières, boutons et en-têtes ;
-     hors de l'accueil, une « garde » d'historique intercepte le bouton
+     hors de l'accueil, une « garde » d'historique intercepte le bouton
      retour d'Android (voir onRetour). */
   var ECRANS_JEU = ['screen-mini', 'screen-game'];
   var ECRANS_CONFIG = ['screen-mini-setup', 'screen-host', 'screen-mots-home',
@@ -219,7 +220,7 @@
 
   var tirageEnCours = false;  // tirage au sort du premier joueur à l'écran
   var tirageVu = null;        // identifiant de la partie dont le tirage a été montré
-  var delaiSuite = null;      // minuteur « après l'animation du coup »
+  var delaiSuite = null;      // minuteur « après l'animation du coup »
   var ignoreClic = false;     // un glissement vient de finir : on ignore le clic qui suit
   var dernierTap = { idx: -1, t: 0 };
   var astuce = null;          // {ic, texte, fin} — petit conseil passager
@@ -266,7 +267,7 @@
     }
   }
 
-  /* Taille d'une case du plateau « au repos » (le zoom est une simple mise
+  /* Taille d'une case du plateau « au repos » (le zoom est une simple mise
      à l'échelle : pas de nouvelle mise en page, rien ne saccade). */
   var zoomK = 1;
   function majTailleCase() {
@@ -299,10 +300,10 @@
   }
 
   /* Zoom : le plateau grandit (cases d'au moins 44 px) et défile sous le
-     doigt. Une simple mise à l'échelle animée (« FLIP »), entièrement sur
+     doigt. Une simple mise à l'échelle animée (« FLIP »), entièrement sur
      le compositeur : fluide même sur un petit téléphone.
      centreIdx : case à centrer ; ancre {x, y} : point de l'écran qui reste
-     sous le doigt (on zoome « autour du doigt ») ; sec : sans animation. */
+     sous le doigt (on zoome « autour du doigt ») ; sec : sans animation. */
   function setZoom(on, centreIdx, sec, ancre) {
     var sc = $('board-scroll'), b = $('board');
     if (!sc || !b) return;
@@ -728,13 +729,13 @@
     el.setAttribute('aria-label', el.title);
   }
 
-  /* Nom d'un joueur pour les messages (« L’IA » en solo). */
+  /* Nom d'un joueur pour les messages (« L’IA » en solo). */
   function nomJoueur(i) {
     return mode === 'solo' && i === 1 ? 'L’IA' : esc(state.players[i].name);
   }
 
   /* Dernière action d'un autre joueur que celui qui regarde : c'est elle
-     que le bandeau rappelle (un « a joué » périmé ne reste jamais affiché). */
+     que le bandeau rappelle (un « a joué » périmé ne reste jamais affiché). */
   function derniereActionTexte() {
     var h = state.history[state.history.length - 1];
     if (!h || h.player === myIndex() || state.over || !state.players[h.player]) return '';
@@ -760,7 +761,7 @@
     if (state.over) html = 'Partie terminée';
     else if (tirageEnCours) html = 'Tirage au sort…';
     else if (mode === 'solo' && state.current === 1) html = '🤖 L’IA réfléchit<span class="tb-pts"></span>';
-    else html = 'Au tour de <strong>' + esc(state.players[state.current].name) + '</strong>' + (waiting ? '…' : '');
+    else html = 'Au tour ' + window.GG.de(esc(state.players[state.current].name)) + '<strong>' + esc(state.players[state.current].name) + '</strong>' + (waiting ? '…' : '');
     html += derniereActionTexte();
     var el = $('turn-banner');
     if (el.innerHTML !== html) el.innerHTML = html;
@@ -782,14 +783,14 @@
     } else if (mode === 'solo' && state.current === 1) {
       ic = '🤖'; tx = 'L’IA cherche son coup…';
     } else if (canAct() && exchangeMode) {
-      ic = '⇄'; tx = 'Touchez les lettres à rendre au sac, puis « Échanger ».';
+      ic = '⇄'; tx = 'Touchez les lettres à rendre au sac, puis « Échanger ».';
     } else if (canAct()) {
       if (!state.moveCount) { ic = '★'; tx = 'Premier mot : il doit passer par l’étoile du centre.'; }
       else { ic = '👆'; tx = 'Touchez une lettre puis une case, ou faites-la glisser.'; }
     } else if (waitingHost) {
       ic = '⏳'; tx = 'Envoi du coup à l’hôte…';
     } else if (!passHidden) {
-      ic = '⏳'; tx = 'Au tour de <b>' + esc(state.players[state.current].name) + '</b>.';
+      ic = '⏳'; tx = 'Au tour ' + window.GG.de(esc(state.players[state.current].name)) + '<b>' + esc(state.players[state.current].name) + '</b>.';
     }
     var html = tx ? '<span class="zi-ic">' + ic + '</span><span class="zi-tx">' + tx + '</span>' : '';
     if (el.innerHTML !== html) el.innerHTML = html;
@@ -874,7 +875,7 @@
     if (!res.ok) {
       ic = '⚠️'; tx = esc(res.error);
     } else if (bad) {
-      ic = '❌'; tx = '« ' + esc(bad) + ' » n’est pas dans le dictionnaire.';
+      ic = '❌'; tx = '« ' + esc(bad) + ' » n’est pas dans le dictionnaire.';
     } else {
       ic = verdict ? '✅' : '🔢';
       tx = res.words.map(function (w) { return '<b>' + esc(w.word) + '</b> ' + w.score; }).join(' + ') +
@@ -1084,23 +1085,23 @@
       if (refusInvite.cle !== cle) refusInvite = { cle: cle, n: 0 };
       refusInvite.n++;
       if (classique || refusInvite.n >= S.ESSAIS_MAX) {
-        toast('« ' + bad + ' » n’est pas dans le dictionnaire : tour perdu.');
+        toast('« ' + bad + ' » n’est pas dans le dictionnaire : tour perdu.');
         pending = [];
         selected = -1;
         sendAction({ kind: 'pass' });
       } else {
         var reste = S.ESSAIS_MAX - refusInvite.n;
-        toast('« ' + bad + ' » n’est pas dans le dictionnaire. Encore ' + reste + ' essai' + (reste > 1 ? 's' : '') + ' ce tour-ci.');
+        toast('« ' + bad + ' » n’est pas dans le dictionnaire. Encore ' + reste + ' essai' + (reste > 1 ? 's' : '') + ' ce tour-ci.');
       }
       return;
     }
     var r = S.refuseMove(state, myIndex(), bad);
     if (!r.ok) { toast(r.error); return; }
     if (r.perdu) {
-      toast('« ' + bad + ' » n’est pas dans le dictionnaire : tour perdu.');
+      toast('« ' + bad + ' » n’est pas dans le dictionnaire : tour perdu.');
       setTimeout(function () { afterLocalAction(); }, reduit() ? 0 : 450);
     } else {
-      toast('« ' + bad + ' » n’est pas dans le dictionnaire. Encore ' + r.restants + ' essai' +
+      toast('« ' + bad + ' » n’est pas dans le dictionnaire. Encore ' + r.restants + ' essai' +
         (r.restants > 1 ? 's' : '') + ' ce tour-ci.');
       sauvePartie();
       render();
@@ -1389,7 +1390,7 @@
         aiThinking = false;
         return;
       }
-      // l'IA « réfléchit » au moins un instant : on voit l'animation
+      // l'IA « réfléchit » au moins un instant : on voit l'animation
       var attente = reduit() ? 0 : Math.max(0, 1000 - (Date.now() - debut));
       setTimeout(function () { joueIA(rep && rep.action, cle); }, attente);
     });
@@ -1412,7 +1413,7 @@
     }
   }
 
-  /* ---------- coach : « le meilleur coup était… » ---------- */
+  /* ---------- coach : « le meilleur coup était… » ---------- */
   var coach = { cle: null, coup: null, pret: false, messages: {} };
   function coachPrepare() {
     if (!motsOptions().coach || !state || state.over || !peutJouer() || passHidden) return;
@@ -1562,7 +1563,7 @@
   }
 
   /* Nouvelles lettres : elles volent du sac jusqu'au chevalet. Les tuiles
-     encore « en vol » restent cachées même si le chevalet est redessiné
+     encore « en vol » restent cachées même si le chevalet est redessiné
      entre-temps (tour de l'IA, message réseau). */
   var pioche = { reste: 0, filet: null };
   function tuilesChevalet() { return Array.prototype.slice.call($('rack').querySelectorAll('.rack-tile')); }
@@ -1606,7 +1607,7 @@
     }, delai || 0);
   }
 
-  /* « Scrabble ! » : les 7 lettres posées d'un coup, fêtées en grand. */
+  /* « Scrabble ! » : les 7 lettres posées d'un coup, fêtées en grand. */
   function celebreScrabble() {
     var fx = fxM();
     var el = document.createElement('div');
@@ -1788,7 +1789,9 @@
           detail = (d.avant | 0) + ' (aucune lettre restante)';
         }
       }
-      lines.push('<div class="final-line"><span class="fl-g"><span class="fl-n">' + (medailles[k] || '') +
+      // ex æquo : même médaille (rang = nombre de joueurs strictement devant)
+      var rang = ranked.filter(function (x) { return x.score > r.score; }).length;
+      lines.push('<div class="final-line"><span class="fl-g"><span class="fl-n">' + (medailles[rang] || '') +
         esc(r.name) + '</span>' + (detail ? '<span class="fl-d">' + detail + '</span>' : '') +
         '</span><strong>' + r.score + ' pt' + (Math.abs(r.score) > 1 ? 's' : '') + '</strong></div>');
     });
@@ -1808,7 +1811,10 @@
     var w = $('end-winner');
     var gagnants = S.gagnants(state);
     if (!gagnants.length) {
-      w.textContent = 'Égalité !';
+      // le titre dit déjà « Égalité ! » : on nomme les ex æquo
+      var tete = ranked.filter(function (x) { return x.score === ranked[0].score; })
+        .map(function (x) { return x.name; });
+      w.textContent = tete.length > 1 ? 'Ex æquo : ' + tete.join(' et ') : '';
     } else if (gagnants.length === 1) {
       w.textContent = mode === 'solo' && gagnants[0] === 1 ? 'L’IA gagne !' : state.players[gagnants[0]].name + ' gagne !';
     } else {
@@ -1816,7 +1822,14 @@
     }
     $('btn-end-new').classList.toggle('hidden', mode === 'guest');
     effaceSauvegarde();
-    celebreFin('mots', gagnants, mode === 'solo' ? [0] : (mode === 'local' ? null : [myFixedIndex]));
+    var humainsMots = mode === 'solo' ? [0] : (mode === 'local' ? null : [myFixedIndex]);
+    var serreMots = false;
+    if (humainsMots && gagnants.length) {
+      var sw = Math.max.apply(null, gagnants.map(function (g) { return Number(state.players[g].score) || 0; }));
+      var sh = Math.max.apply(null, humainsMots.map(function (g) { return Number(state.players[g].score) || 0; }));
+      serreMots = sw > 0 && sh >= 0.8 * sw;
+    }
+    celebreFin('mots', gagnants, humainsMots, serreMots);
     showOverlay('overlay-end', true);
   }
 
@@ -1844,7 +1857,7 @@
   }
 
   /* Options de Words sur les écrans de configuration (solo et sur ce
-     téléphone) : niveau « expert », coach, règle du mot refusé. */
+     téléphone) : niveau « expert », coach, règle du mot refusé. */
   function injecteOptionsMots() {
     var niveaux = $('ai-level');
     if (niveaux && !niveaux.querySelector('[data-level="expert"]')) {
@@ -1998,7 +2011,9 @@
      gagnants : indices, [] = égalité, 'tous' = victoire collective,
      null = défaite collective, undefined = inconnu.
      humains : indices joués sur CE téléphone (null = tout le monde, hotseat). */
-  function celebreFin(jeu, gagnants, humains) {
+  /* serre : la défaite s'est jouée à peu de chose (« Perdu, de peu… »).
+     Inconnu ou écrasante : simplement « Perdu… ». */
+  function celebreFin(jeu, gagnants, humains, serre) {
     var fx = window.GG.fx, sfx = window.GG.sfx;
     var titre = 'Fin de partie', trophee = '🏁', issue = 'fini';
     var moiGagne = false;
@@ -2012,7 +2027,7 @@
     else if (Array.isArray(gagnants)) {
       if (!humains) { titre = 'Bravo !'; trophee = '🏆'; issue = 'fini'; }
       else if (moiGagne) { titre = 'Victoire !'; trophee = '🏆'; issue = 'gagne'; }
-      else { titre = 'Perdu, de peu…'; trophee = '🥈'; issue = 'perdu'; }
+      else { titre = serre ? 'Perdu, de peu…' : 'Perdu…'; trophee = serre ? '🥈' : '🎲'; issue = 'perdu'; }
     }
     $('end-titre').textContent = titre;
     $('end-trophee').textContent = trophee;
@@ -2116,11 +2131,39 @@
     var j = Math.round(h / 24);
     return 'il y a ' + j + ' jour' + (j > 1 ? 's' : '');
   }
+  /* Un invité en ligne dont l'appli s'est rechargée : sa place l'attend. */
+  function siegeRecent() {
+    var sg = lis('gg-siege', null);
+    if (!sg || !sg.code || !sg.jeton || Date.now() - (sg.ts || 0) > 3 * 3600000) return null;
+    return sg;
+  }
+  function renderRepriseInvite(box, sg) {
+    box.innerHTML = '<div class="reprise" role="button" tabindex="0" id="btn-reprise">' +
+      '<span class="rp-ic">🌍</span>' +
+      '<span class="rp-tx"><span class="rp-t">Revenir dans la partie</span>' +
+      '<span class="rp-s">en ligne · code ' + window.GG.esc(sg.code) + ' · ' + ilYa(sg.ts) + '</span></span>' +
+      '<span class="rp-go">Revenir ▶</span></div>' +
+      '<button class="rp-x" id="btn-reprise-x" aria-label="Oublier cette partie">✕</button>';
+    $('btn-reprise').addEventListener('click', function () {
+      showOnlineJoin(sg.code);
+      if (sg.nom) $('online-name').value = sg.nom;
+      guestOnlineJoin();
+    });
+    $('btn-reprise-x').addEventListener('click', function () {
+      try { localStorage.removeItem('gg-siege'); } catch (e) {}
+      renderReprise();
+    });
+  }
+
   function renderReprise() {
     var box = $('home-reprise');
     if (!box) return;
     var sv = lisSauvegarde();
-    if (!sv) { box.innerHTML = ''; return; }
+    if (!sv) {
+      var sg = siegeRecent();
+      if (sg) renderRepriseInvite(box, sg); else box.innerHTML = '';
+      return;
+    }
     var info = catInfo(sv.type === 'mots' ? 'mots' : sv.jeu);
     var noms = (sv.state.players || []).map(function (p) { return p.name; });
     var qui = sv.type === 'reseau'
@@ -2132,16 +2175,17 @@
       '<span class="rp-ic">' + info.icone + '</span>' +
       '<span class="rp-tx"><span class="rp-t">Reprendre : ' + window.GG.esc(info.nom) + '</span>' +
       '<span class="rp-s">' + window.GG.esc(qui) + ' · ' + ilYa(sv.ts) + '</span></span>' +
-      '<span class="rp-go">Jouer ▶</span>' +
-      '<span class="rp-x" id="btn-reprise-x" role="button" aria-label="Oublier cette partie">✕</span></div>';
-    $('btn-reprise').addEventListener('click', function (ev) {
-      if (ev.target && ev.target.id === 'btn-reprise-x') {
-        ev.stopPropagation();
+      '<span class="rp-go">Jouer ▶</span></div>' +
+      '<button class="rp-x" id="btn-reprise-x" aria-label="Oublier cette partie">✕</button>';
+    $('btn-reprise').addEventListener('click', reprendPartie);
+    // oublier une partie se confirme (une table à jetons est alors réglée)
+    $('btn-reprise-x').addEventListener('click', function () {
+      askConfirm('Oublier cette partie ?', 'Elle ne pourra plus être reprise' +
+        (catInfo(sv.type === 'mots' ? 'mots' : sv.jeu).id === 'poker' || sv.jeu === 'blackjack'
+          ? ' (vos jetons en jeu sont réglés).' : '.'), function () {
         abandonneSauvegarde();
         renderReprise();
-        return;
-      }
-      reprendPartie();
+      });
     });
   }
   function reprendPartie() {
@@ -2239,9 +2283,9 @@
     box.innerHTML = '<div class="bienvenue">' +
       '<button class="bv-x" id="bv-x" aria-label="Plus tard">✕</button>' +
       '<p class="bv-t">Bienvenue sur GGgames ! 🎉</p>' +
-      '<p class="bv-s">Comment tu t’appelles ? Ton prénom sera proposé dans tous les jeux.</p>' +
+      '<p class="bv-s">Comment vous appelez-vous ? Votre prénom sera proposé dans tous les jeux.</p>' +
       '<form class="bv-ligne" id="bv-form"><input type="text" id="bv-nom" maxlength="14" ' +
-      'placeholder="Ton prénom" autocomplete="given-name" enterkeyhint="done">' +
+      'placeholder="Votre prénom" autocomplete="given-name" enterkeyhint="done">' +
       '<button class="btn primary" type="submit">C’est moi !</button></form></div>';
     $('bv-form').addEventListener('submit', function (ev) {
       ev.preventDefault();
@@ -2262,7 +2306,7 @@
     });
   }
 
-  /* ---------- écran « Mon profil » ---------- */
+  /* ---------- écran « Mon profil » ---------- */
   function openProfil() {
     var p = profil();
     $('pf-nom').value = p.nom;
@@ -2311,7 +2355,7 @@
     showScreen('screen-profil');
   }
 
-  /* ---------- écran « Réglages » ---------- */
+  /* ---------- écran « Réglages » ---------- */
   function majReglages() {
     var R = window.GG.reglages;
     $('rg-son').classList.toggle('on', R.get('son') !== false);
@@ -2390,7 +2434,7 @@
     if (!need || !window.GG.wallet) return true;
     if (window.GG.wallet.get() >= need) return true;
     toast('Il faut au moins ' + window.GG.wallet.fmt(need) + ' 🪙 pour jouer — ' +
-      'la cagnotte se recharge chaque semaine (voir la Boutique).');
+      'la cagnotte se recharge chaque semaine.');
     openBoutique();
     return false;
   }
@@ -2513,7 +2557,7 @@
       });
       html += '<div class="grille-jeux">' + tuiles(ids) + '</div>';
     } else {
-      // « Récemment joués » en tête, quand on regarde tout
+      // « Récemment joués » en tête, quand on regarde tout
       var rec = filtreActif === 'tous' ? recents().filter(function (id) {
         return id === 'mots' || window.GG.byId[id];
       }).slice(0, 3) : [];
@@ -2591,13 +2635,21 @@
     $('btn-mini-hotseat').classList.toggle('hidden', !mod.hotseat || mod.netOnly);
     $('btn-mini-host').classList.toggle('hidden', mod.max < 2);
     $('mini-hotseat-config').classList.add('hidden');
-    // jouer seul : le jeu sait faire jouer des adversaires IA
-    $('btn-mini-solo').classList.toggle('hidden', !mod.bot);
+    // jouer seul : contre des IA si le jeu en a, sinon une partie en solitaire
+    var soloPossible = !!mod.bot || (mod.min === 1 && !mod.netOnly);
+    $('btn-mini-solo').classList.toggle('hidden', !soloPossible);
+    $('btn-mini-solo').querySelector('.mode-s').textContent = mod.bot ? 'contre l’ordinateur' : 'une partie rien que pour vous';
     $('mini-solo-config').classList.add('hidden');
+    if (!mod.bot && soloPossible) {
+      miniSoloBots = 0;
+      ['msolo-bots-label', 'msolo-bots', 'msolo-niveau-label', 'msolo-niveau'].forEach(function (id) {
+        $(id).classList.add('hidden');
+      });
+    }
     if (mod.bot) {
       var bb = $('msolo-bots');
       bb.innerHTML = '';
-      // un jeu qui se joue aussi seul propose « aucun adversaire »
+      // un jeu qui se joue aussi seul propose « aucun adversaire »
       var bMin = mod.min === 1 ? 0 : Math.max(1, mod.min - 1);
       var bMax = Math.min(BOT_NAMES.length, mod.max - 1);
       miniSoloBots = Math.max(1, bMin);
@@ -2643,7 +2695,7 @@
     var box = $('mini-count');
     box.innerHTML = '';
     // sur un seul téléphone : 4 noms maximum, ou moins si le jeu l'impose ;
-    // « à plusieurs » commence à 2 même si le jeu se joue aussi seul
+    // « à plusieurs » commence à 2 même si le jeu se joue aussi seul
     var hotMax = Math.min(mod.hotseatMax || mod.max, 4);
     miniCount = Math.min(Math.max(mod.min, 2), hotMax);
     for (var n = mod.min; n <= hotMax; n++) {
@@ -2678,7 +2730,7 @@
       miniBots = 0;
       miniState = mod.create(names, { dict: dict, mode: 'local' });
       miniMe = 0;
-      enterMini();
+      enterMini(0); // celui qui a lancé tient le téléphone
     });
   }
 
@@ -2708,13 +2760,15 @@
      réflexion pour que la partie respire. Les IA reçoivent une copie de
      l'état (jamais l'original) et leurs refus restent silencieux. */
   function pumpBots() {
-    if (mode !== 'local' || !miniBots || !miniState || !miniMod || !miniMod.bot) return;
+    if (!miniState || !miniMod || !miniMod.bot || !indicesRobots().length) return;
     clearTimeout(miniBotTimer);
     if (miniMod.over(miniState)) return;
     miniBotTimer = setTimeout(function () {
-      if (mode !== 'local' || !miniBots || !miniState || !miniMod) return;
+      if (!miniState || !miniMod || !miniMod.bot) return;
       if (miniMod.over(miniState)) return;
-      for (var i = 1; i < miniState.players.length; i++) {
+      var robots = indicesRobots();
+      for (var k = 0; k < robots.length; k++) {
+        var i = robots[k];
         var a = null;
         try { a = miniMod.bot(window.GG.clone(miniState), i, { dict: dict, niveau: miniState.niveauIA || 'moyen' }); } catch (e) { a = null; }
         if (!a) continue;
@@ -2742,7 +2796,57 @@
     return out;
   }
 
-  /* Le rythme des IA : le jeu peut le régler (vitesse « rapide », suspense
+  /* Qui l'ordinateur fait-il jouer ? Seul contre l'IA : les adversaires.
+     En ligne, chez l'hôte : un joueur qui a quitté, ou absent depuis plus de
+     40 s — la partie ne reste jamais figée sur son tour. Il reprend la main
+     dès qu'il revient. */
+  function indicesRobots() {
+    if (mode === 'local') return indicesBots();
+    if (mode !== 'host') return [];
+    return hostPeers.filter(function (p) { return p.robot && p.playerIndex; })
+      .map(function (p) { return p.playerIndex; });
+  }
+
+  var DELAI_ROBOT_ABSENT = 40000;
+  function robotPour(peer, actif) {
+    clearTimeout(peer.robotMinuteur);
+    peer.robotMinuteur = null;
+    var avant = !!peer.robot;
+    peer.robot = !!actif && gameStarted();
+    if (peer.robot !== avant) {
+      updateNetBanner();
+      if (currentGame === 'mots') { renderBadgesSafe(); planifieRobotMots(); }
+      else { miniRender(); pumpBots(); }
+    }
+  }
+  /* un invité décroche : s'il n'est pas revenu dans 40 s, l'ordinateur prend le relais */
+  function robotSiAbsent(peer) {
+    clearTimeout(peer.robotMinuteur);
+    if (!gameStarted() || peer.robot) return;
+    peer.robotMinuteur = setTimeout(function () {
+      if (!peer.connected && hostPeers.indexOf(peer) !== -1) robotPour(peer, true);
+    }, DELAI_ROBOT_ABSENT);
+  }
+
+  /* Words : un joueur absent passe son tour (pas d'IA à sa place : on ne
+     joue pas ses lettres pour lui). */
+  var robotMotsMinuteur = null;
+  function planifieRobotMots() {
+    clearTimeout(robotMotsMinuteur);
+    if (mode !== 'host' || currentGame !== 'mots' || !state || state.over) return;
+    var absent = hostPeers.filter(function (p) { return p.robot && p.playerIndex === state.current; })[0];
+    if (!absent) return;
+    robotMotsMinuteur = setTimeout(function () {
+      if (mode !== 'host' || !state || state.over || state.current !== absent.playerIndex || !absent.robot) return;
+      var res = S.passTurn(state, absent.playerIndex);
+      if (!res || !res.ok) return;
+      broadcastState();
+      render();
+      if (state.over) showEnd();
+    }, 1500);
+  }
+
+  /* Le rythme des IA : le jeu peut le régler (vitesse « rapide », suspense
      d'un lancer de dé…) avec mod.delaiIA(state) → millisecondes. */
   function delaiBots() {
     var d = 650 + Math.random() * 550;
@@ -2755,14 +2859,17 @@
     return d;
   }
 
-  function enterMini() {
+  /* dernierVu : qui tient le téléphone en entrant (0 : celui qui vient de
+     lancer la partie ; -1 : inconnu — reprise, revanche — et l'écran de
+     passage s'affiche avant tout secret) */
+  function enterMini(dernierVu) {
     stopScanner();
     noteRecent(currentGame);
     sauvePartie();
     showScreen('screen-mini');
     $('btn-menu-invite').classList.toggle('hidden', mode !== 'host');
     chatBadges(); // la discussion n'existe qu'entre téléphones
-    miniLastViewer = -1;
+    miniLastViewer = typeof dernierVu === 'number' ? dernierVu : -1;
     miniRender();
     pumpBots();
   }
@@ -2785,9 +2892,12 @@
     document.body.classList.toggle('theme-casino',
       currentGame === 'poker' || currentGame === 'blackjack' || currentGame === 'solitaire');
     var bar = $('mini-players');
-    bar.classList.toggle('hidden', !!mod.noBadges);
+    // un seul joueur : ni badge ni « au tour de » (cela n'a pas de sens)
+    var seul = !!(miniState.players && miniState.players.length === 1);
+    bar.classList.toggle('hidden', !!mod.noBadges || seul);
     var t = mod.turnOf(miniState);
-    if (!mod.noBadges) {
+    var robotsHote = indicesRobots();
+    if (!mod.noBadges && !seul) {
       if (bar.childElementCount !== miniState.players.length) {
         bar.innerHTML = '';
         miniState.players.forEach(function () {
@@ -2804,20 +2914,23 @@
         b.classList.toggle('turn', t === i);
         b.classList.toggle('me', mode !== 'local' && i === miniMe);
         b.classList.toggle('offline', mode === 'host' && isPeerOffline(i));
+        b.classList.toggle('robot', mode === 'host' && robotsHote.indexOf(i) !== -1);
       });
     }
     $('mini-icon').textContent = mod.icone;
-    $('mini-turn').innerHTML = mod.max === 1 ? '<strong>' + esc(mod.nom) + '</strong>'
+    $('mini-turn').innerHTML = mod.max === 1 || seul ? '<strong>' + esc(mod.nom) + '</strong>'
       : mod.over(miniState) ? 'Partie terminée'
         : t === -1 ? '<strong>' + esc(mod.nom) + '</strong>'
           : (mode !== 'local' && t === miniMe) || (mode === 'local' && miniBots && t === 0)
             ? '<strong>À vous de jouer !</strong>'
-            : 'Au tour de <strong>' + esc(miniState.players[t].name) + '</strong>';
+            : 'Au tour ' + window.GG.de(esc(miniState.players[t].name)) + '<strong>' + esc(miniState.players[t].name) + '</strong>';
 
     var viewer = miniViewer();
     // jeux à infos cachées sur un seul téléphone : écran de passage
-    if (mode === 'local' && mod.hidden && miniLastViewer !== -1 &&
-        viewer !== miniLastViewer && !mod.over(miniState)) {
+    // (y compris au lancement, à la reprise et à la revanche : le premier
+    // joueur prend le téléphone avant de voir ses secrets)
+    if (mode === 'local' && mod.hidden && !miniBots && miniState.players.length > 1 &&
+        (miniLastViewer === -1 || viewer !== miniLastViewer) && !mod.over(miniState)) {
       passHidden = true;
       $('pass-name').textContent = miniState.players[viewer].name;
       showOverlay('overlay-pass', true);
@@ -2888,12 +3001,25 @@
     effaceSauvegarde();
     var g = null;
     try { g = miniMod.gagnants ? miniMod.gagnants(miniState) : gagnantsParScore(); } catch (e) { g = null; }
-    // seul contre l'IA, ou jeu solitaire : c'est bien « vous » qui gagnez
+    // seul contre l'IA, ou jeu solitaire : c'est bien « vous » qui gagnez
     var humains = mode === 'local'
       ? (miniBots || (miniState.players && miniState.players.length === 1) ? [0] : null)
       : [miniViewer()];
-    celebreFin(currentGame, g, humains);
+    celebreFin(currentGame, g, humains, defaiteSerree(g, humains));
     showOverlay('overlay-end', true);
+  }
+
+  /* Une défaite « de peu » : le meilleur score des humains atteint au moins
+     80 % de celui du gagnant (scores numériques positifs seulement). */
+  function defaiteSerree(gagnants, humains) {
+    if (!Array.isArray(gagnants) || !gagnants.length || !humains || !miniMod.scoreOf) return false;
+    try {
+      var sc = function (i) { return Number(miniMod.scoreOf(miniState, i)); };
+      var w = Math.max.apply(null, gagnants.map(sc));
+      var h = Math.max.apply(null, humains.map(sc));
+      if (!isFinite(w) || !isFinite(h) || w <= 0 || h < 0) return false;
+      return h >= 0.8 * w;
+    } catch (e) { return false; }
   }
 
   /* Faute de mieux : le meilleur score l'emporte (égalité : personne). */
@@ -3018,6 +3144,8 @@
       try { miniMod.cashout(miniState, 0); } catch (e) {}
       updateWallet();
     }
+    // même jeu : le premier joueur tourne ; autre jeu : on repart du début
+    prochainPremier = jeu === currentGame && miniState ? ((miniState.premier || 0) + 1) % n : 0;
     revanches = [];
     hostPeers = presents;
     salleAttente = salleAttente.filter(function (p) { return p.connected && entrants.indexOf(p) === -1; });
@@ -3074,7 +3202,7 @@
   }
 
   function broadcastLobby() {
-    envoiATous({ t: 'lobby', names: lobbyNames() });
+    envoiATous({ t: 'lobby', names: lobbyNames(), jeu: pendingGame });
   }
 
   /* Un même message pour tous les invités. En ligne, un seul envoi que le
@@ -3108,6 +3236,7 @@
       }
     });
     sauvePartie(); // l'hôte en ligne peut reprendre sa partie s'il recharge
+    planifieRobotMots();
   }
 
   /* État d'un mini-jeu, expurgé des secrets pour un joueur donné. */
@@ -3185,7 +3314,7 @@
     if (enLigne) $('host-code-big').textContent = onlineCode || '······';
   }
 
-  /* Affiche/masque le bandeau « connexion perdue » sur les deux écrans de jeu. */
+  /* Affiche/masque le bandeau « connexion perdue » sur les deux écrans de jeu. */
   function setNetBanner(visible, text) {
     ['net-banner', 'mini-net-banner'].forEach(function (id, k) {
       $(id).classList.toggle('hidden', !visible);
@@ -3200,8 +3329,9 @@
     if (mode === 'host') {
       // la reconnexion au relais a la priorité sur ce bandeau
       if (netKind === 'online' && onlineLien && !onlineLien.ferme && !onlineLien.estOuvert()) return;
-      var off = hostPeers.filter(function (p) { return !p.connected && !p.parti; });
-      var partis = hostPeers.filter(function (p) { return p.parti; });
+      var off = hostPeers.filter(function (p) { return !p.connected && !p.parti && !p.robot; });
+      var partis = hostPeers.filter(function (p) { return p.parti && !p.robot; });
+      var robots = hostPeers.filter(function (p) { return p.robot; });
       var morceaux = [];
       if (off.length) {
         morceaux.push(off.map(function (p) { return p.name; }).join(', ') +
@@ -3210,6 +3340,10 @@
       if (partis.length) {
         morceaux.push(partis.map(function (p) { return p.name; }).join(', ') +
           (partis.length > 1 ? ' ont quitté' : ' a quitté'));
+      }
+      if (robots.length) {
+        morceaux.push('🤖 ' + (currentGame === 'mots' ? 'Tour passé pour ' : 'L’ordinateur joue pour ') +
+          robots.map(function (p) { return p.name; }).join(', '));
       }
       if (gameStarted() && morceaux.length) setNetBanner(true, morceaux.join(' · ') + '.');
       else setNetBanner(false);
@@ -3226,24 +3360,27 @@
       if (!peer.connected && !peer.parti && hostPeers.indexOf(peer) !== -1 &&
           msg.t !== 'hello' && msg.t !== 'quitte') {
         peer.connected = true;
+        if (peer.robot || peer.robotMinuteur) robotPour(peer, false);
         updateNetBanner();
         renderBadgesSafe();
         sendInitTo(peer);
       }
       hostHandleMessage(peer, msg);
     };
-    net.onOpen = function () { /* attend le « hello » de l'invité */ };
+    net.onOpen = function () { /* attend le « hello » de l'invité */ };
     net.onClose = function () {
       if (peer.net !== net) return; // ancienne connexion, remplacée depuis
       peer.connected = false;
       var enAttente = salleAttente.indexOf(peer);
       if (enAttente !== -1) { salleAttente.splice(enAttente, 1); majFinReseau(); return; }
       // dans le salon (partie non lancée) : on retire le pair, sinon il
-      // compte comme un fantôme (« partie complète », prénom occupé…)
+      // compte comme un fantôme (« partie complète », prénom occupé…)
       if (!gameStarted()) {
         var at = hostPeers.indexOf(peer);
         if (at !== -1) hostPeers.splice(at, 1);
         broadcastLobby();
+      } else if (hostPeers.indexOf(peer) !== -1) {
+        robotSiAbsent(peer);
       }
       updateNetBanner();
       renderBadgesSafe();
@@ -3276,6 +3413,7 @@
         var etaitAbsent = !peer.connected;
         peer.connected = true;
         peer.parti = false;
+        if (peer.robot || peer.robotMinuteur) robotPour(peer, false);
         if (invitePeer === peer) invitePeer = null;
         remetSiege(peer);
         if (gameStarted()) {
@@ -3340,8 +3478,8 @@
         }
         peer.connected = true;
         remetSiege(peer);
-        peer.net.send({ t: 'lobby', names: lobbyNames(), attente: true });
-        // ne pas laisser l'hôte bloqué sur « Connexion en cours… » : retour au jeu
+        peer.net.send({ t: 'lobby', names: lobbyNames(), attente: true, jeu: currentGame });
+        // ne pas laisser l'hôte bloqué sur « Connexion en cours… » : retour au jeu
         if (document.querySelector('#screen-host.active')) hostBackToGame();
         majFinReseau();
         return;
@@ -3353,6 +3491,7 @@
       }
       match.connected = true;
       match.parti = false;
+      if (match.robot || match.robotMinuteur) robotPour(match, false);
       attachPeerHandlers(match);
       if (invitePeer === peer) invitePeer = null;
       remetSiege(match);
@@ -3396,7 +3535,9 @@
         broadcastLobby();
         if (document.querySelector('#screen-host.active')) renderLobby();
       } else {
-        toast(peer.name + ' a quitté la partie.');
+        var relais = currentGame === 'mots' || (miniMod && miniMod.bot);
+        toast(peer.name + ' a quitté la partie.' + (relais ? ' L’ordinateur joue à sa place.' : ''));
+        robotPour(peer, true);
         updateNetBanner();
         renderBadgesSafe();
         if (currentGame !== 'mots') miniRender();
@@ -3436,7 +3577,7 @@
             var suite = !refus || !refus.ok ? ''
               : refus.perdu ? ' Tour perdu.'
                 : ' Encore ' + refus.restants + ' essai' + (refus.restants > 1 ? 's' : '') + ' ce tour-ci.';
-            peer.net.send({ t: 'err', msg: '« ' + badWord + ' » n’est pas dans le dictionnaire.' + suite });
+            peer.net.send({ t: 'err', msg: '« ' + badWord + ' » n’est pas dans le dictionnaire.' + suite });
             if (refus && refus.ok) {
               broadcastState();
               render();
@@ -3536,7 +3677,7 @@
       var code = await peer.net.createOffer();
       if (invitePeer !== peer) return; // invitation annulée entre-temps
       // QR = adresse de l'application + code : le scan avec l'appareil photo
-      // du téléphone ouvre directement l'app en mode « rejoindre ».
+      // du téléphone ouvre directement l'app en mode « rejoindre ».
       var url = appBaseUrl() + '#j=' + code;
       window.QRTool.render($('host-qr'), url);
       $('host-code').value = url;
@@ -3553,7 +3694,7 @@
       hostAcceptAnswer(text);
     }, function () {
       showError('host-error',
-        'Caméra indisponible. Utilisez le champ « coller le code » ci-dessous.');
+        'Caméra indisponible. Utilisez le champ « coller le code » ci-dessous.');
       // le champ de collage est désormais toujours visible (jeu à distance)
       var det = $('host-step-scan').querySelector('details');
       if (det) det.open = true;
@@ -3569,7 +3710,7 @@
       $('host-step-wait').classList.remove('hidden');
       $('host-error').classList.add('hidden');
       armPairingWatchdog('host');
-      // Le retour au salon se fait à la réception du « hello »
+      // Le retour au salon se fait à la réception du « hello »
     } catch (e) {
       showError('host-error', e.message);
       hostScanAnswer();
@@ -3609,7 +3750,8 @@
       currentGame = pendingGame;
       miniMod = window.GG.byId[currentGame];
       miniBots = 0; // en réseau, tout le monde est humain
-      miniState = miniMod.create(names, { dict: dict, mode: 'reseau' });
+      miniState = miniMod.create(names, { dict: dict, mode: 'reseau', premier: prochainPremier });
+      prochainPremier = 0;
       miniMe = 0;
       miniLastViewer = -1;
       hostPeers.forEach(function (peer) { sendInitTo(peer); });
@@ -3660,7 +3802,7 @@
       return;
     }
     if (msg.t === 'lobby') {
-      // le salon s'affiche là où l'invité se trouve : écran QR ou écran « code »
+      // le salon s'affiche là où l'invité se trouve : écran QR ou écran « code »
       var enLigne = netKind === 'online';
       var box = $(enLigne ? 'online-lobby' : 'join-lobby');
       box.classList.remove('hidden');
@@ -3668,9 +3810,13 @@
         (msg.names || []).map(function (n, i) {
           return '<div class="lobby-row">' + (i === 0 ? '👑 ' : '🟢 ') + esc(n) + '</div>';
         }).join('');
+      // le jeu annoncé par l'hôte (ce téléphone le connaît-il ?)
+      var infoJeu = null;
+      try { infoJeu = typeof msg.jeu === 'string' ? catInfo(msg.jeu) : null; } catch (e) { infoJeu = null; }
+      var quoi = infoJeu ? ' ' + infoJeu.icone + ' ' + infoJeu.nom + ' —' : '';
       $(enLigne ? 'online-waiting' : 'join-waiting').textContent = msg.attente
-        ? '⏳ La partie est déjà lancée : vous jouerez à la suivante. Restez sur cet écran !'
-        : '⏳ Connecté ! En attente du début de la partie…';
+        ? '⏳' + quoi + ' la partie est déjà lancée : vous jouerez à la suivante. Restez sur cet écran !'
+        : '⏳ Connecté !' + quoi + ' en attente du début de la partie…';
       return;
     }
     if (msg.t === 'init') {
@@ -3798,7 +3944,7 @@
       guestGotOffer(text);
     }, function () {
       showError('join-error',
-        'Caméra indisponible. Utilisez le champ « coller le code » ci-dessous.');
+        'Caméra indisponible. Utilisez le champ « coller le code » ci-dessous.');
       $('join-step-scan').querySelector('details').open = true;
     });
   }
@@ -3929,8 +4075,15 @@
       envoiATous({ t: 'adieu', msg: 'L’hôte a arrêté la partie.' });
       if (netKind !== 'online') salleAttente.forEach(function (p) { p.net.send({ t: 'adieu', msg: 'L’hôte a arrêté la partie.' }); });
     }
-    if (mode === 'guest' && guestNet && guestNet.isOpen()) guestNet.send({ t: 'quitte' });
-    hostPeers.concat(salleAttente).forEach(function (p) { try { p.net.close(); } catch (e) {} });
+    if (mode === 'guest') {
+      if (guestNet && guestNet.isOpen()) guestNet.send({ t: 'quitte' });
+      try { localStorage.removeItem('gg-siege'); } catch (e) {}
+    }
+    hostPeers.concat(salleAttente).forEach(function (p) {
+      clearTimeout(p.robotMinuteur);
+      try { p.net.close(); } catch (e) {}
+    });
+    clearTimeout(robotMotsMinuteur);
     hostPeers = [];
     salleAttente = [];
     revanches = [];
@@ -4119,7 +4272,7 @@
     return (hostName ? hostName + ' t’invite' : 'Je t’invite') +
       (nom ? ' à jouer à ' + nom : ' à jouer') + ' sur GGgames ! 🎲\n\n' +
       'Touche ce lien pour rejoindre la partie : ' + lienDePartie(onlineCode) + '\n\n' +
-      '(ou, dans l’appli : « Rejoindre avec un code » → ' + onlineCode + ')';
+      '(ou, dans l’appli : « Rejoindre avec un code » → ' + onlineCode + ')';
   }
 
   /* Clé de ce téléphone auprès du relais : une connexion fantôme laissée
@@ -4178,7 +4331,7 @@
         updateNetBanner();
       },
       onPair: function (pair) {
-        // nouveau téléphone dans le salon : on attend son « bonjour »,
+        // nouveau téléphone dans le salon : on attend son « bonjour »,
         // exactement comme avec un QR code
         var peer = { net: pair, name: null, playerIndex: null, connected: false };
         attachPeerHandlers(peer);
@@ -4222,7 +4375,7 @@
     guestOnlineConnect(code, nom, !!siegePour(code));
   }
 
-  /* Connexion (ou reconnexion) d'un invité : un seul « bonjour » par
+  /* Connexion (ou reconnexion) d'un invité : un seul « bonjour » par
      connexion, avec le jeton de siège s'il en a un. */
   function guestOnlineConnect(code, nom, reprise) {
     netKind = 'online';
@@ -4296,6 +4449,11 @@
     $('online-error').classList.add('hidden');
     $('online-lobby').classList.add('hidden');
     if (codePreRempli) $('online-code').value = codePreRempli;
+    else {
+      // l'appli s'est rechargée pendant une partie : le code est encore connu
+      var sg = siegeRecent();
+      if (sg) $('online-code').value = sg.code;
+    }
     showScreen('screen-online');
     if (!window.GG.Online.disponible()) showRelaisSettings();
   }
@@ -4564,7 +4722,7 @@
       'l’étoile du centre ; ensuite, chaque mot touche ceux déjà posés.</p>' +
       '<p><strong>🔢 Les points :</strong> chaque lettre a une valeur ; les cases colorées ' +
       'multiplient la lettre (LD ×2, LT ×3) ou le mot (MD ×2, MT ×3). Poser ses 7 lettres ' +
-      'd’un coup (« Scrabble ! ») rapporte 50 points bonus.</p>' +
+      'd’un coup (« Scrabble ! ») rapporte 50 points bonus.</p>' +
       '<p><strong>📕 Mot refusé :</strong> chaque mot doit exister dans le dictionnaire ' +
       'français. Par défaut, on peut retenter : 3 essais par tour, au 3ᵉ refus le tour est ' +
       'perdu. Avec la <em>règle classique</em> (option), un mot refusé fait perdre le tour ' +
@@ -4574,7 +4732,7 @@
       '<p><strong>🏁 Fin de partie :</strong> quand un joueur a posé toutes ses lettres et que ' +
       'le sac est vide (il gagne la valeur des lettres restant aux autres, qui la perdent), ou ' +
       'quand chaque joueur a passé trois fois de suite (règlement international du Scrabble ' +
-      'classique : un échange ou un coup, même à 0 point, n’est pas un « je passe ») ; chacun ' +
+      'classique : un échange ou un coup, même à 0 point, n’est pas un « je passe ») ; chacun ' +
       'perd alors la valeur de ses lettres.</p>' +
       '<p><strong>💡 Coach :</strong> en option, après chaque coup, le meilleur coup possible ' +
       'vous est montré.</p>';
@@ -4625,7 +4783,7 @@
       });
     });
 
-    // Partie solo contre l'IA (niveau « expert » et options de Words ajoutés ici)
+    // Partie solo contre l'IA (niveau « expert » et options de Words ajoutés ici)
     injecteOptionsMots();
     document.querySelectorAll('.level-btn').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -4713,7 +4871,7 @@
     $('btn-join-share').addEventListener('click', function () {
       shareText('join-code', 'GGgames — ma réponse',
         'Voici mon code de réponse : colle-le dans GGgames ' +
-        '(bouton « Scanner la réponse ») et la partie démarre !');
+        '(bouton « Scanner la réponse ») et la partie démarre !');
     });
     $('btn-join-paste-ok').addEventListener('click', function () {
       guestGotOffer($('join-paste').value);
@@ -4817,11 +4975,11 @@
     $('btn-end-home').addEventListener('click', quitToHome);
 
     // Invitation reçue en scannant le QR avec l'appareil photo du téléphone :
-    // l'URL contient le code (#j=...) → on ouvre directement l'écran « rejoindre ».
+    // l'URL contient le code (#j=...) → on ouvre directement l'écran « rejoindre ».
     // (au chargement, mais aussi si l'app était déjà ouverte : hashchange)
     function handleInviteHash() {
       // lien d'une partie EN LIGNE : ?jeu=poker&de=Loïc#c=PLUME7 → écran
-      // « rejoindre » avec la carte d'invitation (qui invite, à quel jeu)
+      // « rejoindre » avec la carte d'invitation (qui invite, à quel jeu)
       if (location.hash && location.hash.indexOf('#c=') === 0) {
         var court = location.hash.slice(3).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
         var invit = null;
@@ -4853,7 +5011,7 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(function (reg) {
         if (reg && reg.update) { try { reg.update().catch(function () {}); } catch (e) {} }
-        // badge « prête pour le mode avion » quand tout est en cache
+        // badge « prête pour le mode avion » quand tout est en cache
         var showReady = function () {
           var b = document.getElementById('offline-badge');
           if (b) b.classList.remove('hidden');

@@ -3,9 +3,9 @@
  * V2 : de vrais dés en 3D qui roulent et rebondissent sur la piste, les dés
  * gardés se rangent de côté, une feuille lisible (grandes cases, points
  * possibles affichés, choix confirmé, sous-total vers 63, annulation du
- * dernier choix), « Yams ! » fêté, et l’option « secouer pour lancer ».
+ * dernier choix), « Yams ! » fêté, et l’option « secouer pour lancer ».
  * IA : facile, moyen, difficile (espérance maximale sur deux relances).
- * Contre l’ordinateur, un bouton « Rapide » fait jouer ses tours d’un coup.
+ * Contre l’ordinateur, un bouton « Rapide » fait jouer ses tours d’un coup.
  */
 (function (root) {
   'use strict';
@@ -176,7 +176,7 @@
     return out;
   }
   // score moyen de chaque case avec un jeu raisonnable (coût d’opportunité)
-  // (en haut : le « rythme » du bonus, trois dés de chaque)
+  // (en haut : le « rythme » du bonus, trois dés de chaque)
   var PAR = {
     un: 3, deux: 6, trois: 9, quatre: 12, cinq: 15, six: 18,
     brelan: 21.7, carre: 13.1, full: 22.6, psuite: 29.5, gsuite: 32.7, yams: 16.9, chance: 22
@@ -335,7 +335,7 @@
     nom: 'Yams',
     icone: '🎲',
     desc: '5 dés, 3 lancers, 13 cases : la feuille de score se remplit toute seule.',
-    regles: '<p><strong>🎯 Le but :</strong> remplir les 13 cases de votre feuille avec les meilleures combinaisons de dés.</p><p><strong>Comment jouer :</strong> 3 lancers par tour ; entre deux, touchez les dés à garder (ils se rangent de côté). Puis touchez une case de la feuille — les points possibles y sont écrits — et confirmez. Chaque case ne sert qu’une fois, même pour 0 !</p><p><strong>Les cases :</strong> les 1 à 6 (somme de ces dés), brelan et carré (somme des 5 dés), full 25, petite suite (4 qui se suivent) 30, grande suite 40, yams (5 pareils) 50, chance (somme).</p><p><strong>Le bonus :</strong> +35 si vos cases 1 à 6 totalisent 63 ou plus (trois de chaque). Le plus gros total gagne.</p><p><strong>Astuces :</strong> un choix malheureux ? « Annuler » tant que le joueur suivant n’a pas lancé. 📳 Activez « secouer » pour lancer en agitant le téléphone.</p>',
+    regles: '<p><strong>🎯 Le but :</strong> remplir les 13 cases de votre feuille avec les meilleures combinaisons de dés.</p><p><strong>Comment jouer :</strong> 3 lancers par tour ; entre deux, touchez les dés à garder (ils se rangent de côté). Puis touchez une case de la feuille — les points possibles y sont écrits — et confirmez. Chaque case ne sert qu’une fois, même pour 0 !</p><p><strong>Les cases :</strong> les 1 à 6 (somme de ces dés), brelan et carré (somme des 5 dés), full 25, petite suite (4 qui se suivent) 30, grande suite 40, yams (5 pareils) 50, chance (somme).</p><p><strong>Le bonus :</strong> +35 si vos cases 1 à 6 totalisent 63 ou plus (trois de chaque). Le plus gros total gagne.</p><p><strong>Astuces :</strong> un choix malheureux ? « Annuler » tant que le joueur suivant n’a pas lancé. 📳 Activez « secouer » pour lancer en agitant le téléphone.</p>',
     min: 1, max: 4,
     hotseat: true, hidden: false, netOnly: false,
     niveaux: ['facile', 'moyen', 'difficile'],
@@ -423,7 +423,7 @@
       if (player !== state.current) return { ok: false, error: 'Ce n’est pas votre tour.' };
       if (action.t === 'roll') {
         if (state.rolls <= 0) return { ok: false, error: 'Plus de lancer disponible.' };
-        // jeton anti double-appui : un 2e « lancer » identique est ignoré
+        // jeton anti double-appui : un 2e « lancer » identique est ignoré
         if (action.n !== undefined && action.n !== state.rolls) return { ok: false, error: 'Lancer déjà pris en compte.' };
         if (action.keep !== undefined && (!Array.isArray(action.keep) || action.keep.length !== 5)) {
           return { ok: false, error: 'Dés gardés invalides.' };
@@ -595,8 +595,8 @@
     // ---- message et actions ----
     var msg;
     if (s.finished) msg = 'Partie terminée !';
-    else if (!mine) msg = enSolo ? nomC + ' joue…' : 'Au tour de ' + nomC + '…';
-    else if (!rolled) msg = hotseat && s.players.length > 1 ? 'À toi, <b>' + nomC + '</b> : lance les dés !' : 'À vous : lancez les dés !';
+    else if (!mine) msg = enSolo ? nomC + ' joue…' : 'Au tour ' + GG.de(nomC) + nomC + '…';
+    else if (!rolled) msg = hotseat && s.players.length > 1 ? 'À vous, <b>' + nomC + '</b> : lancez les dés !' : 'À vous : lancez les dés !';
     else if (s.rolls > 0) msg = 'Gardez des dés, relancez… ou marquez une case.';
     else msg = 'Plus de lancer : choisissez une case.';
     html += '<p class="mini-msg ym-msg">' + msg + '</p>';
@@ -657,7 +657,7 @@
     dernierEl = el;
 
     /* ---- interactions ----
-       Anti double-appui : un seul acte par rendu, et le bouton « Lancer »
+       Anti double-appui : un seul acte par rendu, et le bouton « Lancer »
        qui réapparaît au même endroit n’est armé qu’après la retombée des dés. */
     var gen = (el._ymGen || 0) + 1;
     el._ymGen = gen;

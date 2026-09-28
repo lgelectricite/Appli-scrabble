@@ -2,7 +2,7 @@
  * GGgames — Le Plus Proche (2 à 12 joueurs, estimation), version V2.
  *
  * Une question à réponse chiffrée que PERSONNE ne connaît par cœur
- * (« Combien de rivets tiennent la tour Eiffel ? »). Chacun tape son
+ * (« Combien de rivets tiennent la tour Eiffel ? »). Chacun tape son
  * estimation en secret sur un grand pavé numérique ; à la révélation, les
  * estimations se posent sur une règle graduée et le drapeau de la réponse
  * tombe. Points selon la distance : 100 pour la réponse exacte, 0 à deux
@@ -10,7 +10,7 @@
  * une réponse exacte.
  *
  * La banque : 'Question|réponse|unité|source|catégorie'. Chaque réponse est
- * sourcée (la source s'affiche à la révélation). Pas de question « connue »
+ * sourcée (la source s'affiche à la révélation). Pas de question « connue »
  * ou calculable (jours dans l'année, planètes…) et très peu de dates.
  */
 (function (root) {
@@ -61,7 +61,7 @@
     "Combien de places compte le Stade de France en configuration football ?|80000|places|Consortium Stade de France|monu",
     "Combien de places compte l’Orange Vélodrome de Marseille ?|67394|places|Olympique de Marseille|monu",
     "Combien de monuments historiques sont protégés en France ?|46000|monuments|Ministère de la Culture|monu",
-    "Combien de musées portent l’appellation « musée de France » ?|1220|musées|Ministère de la Culture|monu",
+    "Combien de musées portent l’appellation « musée de France » ?|1220|musées|Ministère de la Culture|monu",
     "Quelle est l’altitude du mont Ventoux ?|1910|m|IGN|geo",
     "Quelle est l’altitude du pic du Midi de Bigorre ?|2877|m|IGN|geo",
     "Quelle est l’altitude du puy de Sancy, point culminant du Massif central ?|1885|m|IGN|geo",
@@ -225,7 +225,7 @@
     return { q: p[0], a: parseInt(p[1], 10), unit: p[2] || '', src: p[3] || '', cat: p[4] || 'geo' };
   }
   function estAnnee(q) { return !!q && q.unit === 'année'; }
-  /* 12345678 → « 12 345 678 » (espaces insécables fines) */
+  /* 12345678 → « 12 345 678 » (espaces insécables fines) */
   function fmtN(n) {
     if (typeof n !== 'number' || !isFinite(n)) return '—';
     var s = String(Math.round(Math.abs(n))), out = '';
@@ -389,7 +389,7 @@
     var u = 1 - Math.random(), v = Math.random();
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
   }
-  /* un humain dit « 2 500 000 », pas « 2 487 312 » */
+  /* un humain dit « 2 500 000 », pas « 2 487 312 » */
   function arrondiHumain(n) {
     if (n < 100) return Math.round(n);
     var p = Math.pow(10, Math.floor(Math.log(n) / Math.LN10) - 1);
@@ -405,9 +405,9 @@
     hotseat: true, hotseatMax: 4, hidden: true, netOnly: false,
     niveaux: ['facile', 'moyen', 'difficile'],
     regles: '<p><strong>🎯 Le but :</strong> être le plus proche de la bonne réponse — personne ne la connaît par cœur, il faut l’estimer !</p>' +
-      '<p><strong>Comment jouer :</strong> à chaque manche, une question chiffrée (« Combien de rivets tiennent la tour Eiffel ? »). Chacun tape son estimation <strong>en secret</strong> sur le pavé numérique. À la révélation, les estimations se posent sur une règle graduée et la réponse tombe, avec sa source.</p>' +
+      '<p><strong>Comment jouer :</strong> à chaque manche, une question chiffrée (« Combien de rivets tiennent la tour Eiffel ? »). Chacun tape son estimation <strong>en secret</strong> sur le pavé numérique. À la révélation, les estimations se posent sur une règle graduée et la réponse tombe, avec sa source.</p>' +
       '<p><strong>Les points :</strong> jusqu’à <strong>100</strong> selon la distance (100 si c’est exact, 50 à mi-chemin, 0 à deux fois la réponse ; pour une date, 0 à 50 ans d’écart), <strong>+30</strong> au plus proche (les ex æquo aussi), <strong>+50</strong> pour une réponse exacte.</p>' +
-      '<p><strong>Sur un seul téléphone :</strong> on se le passe, l’écran se masque entre deux joueurs. Chacun son téléphone : un chrono, et l’hôte peut « ne plus attendre » un absent.</p>',
+      '<p><strong>Sur un seul téléphone :</strong> on se le passe, l’écran se masque entre deux joueurs. Chacun son téléphone : un chrono, et l’hôte peut « ne plus attendre » un absent.</p>',
 
     create: function (names) {
       return {
@@ -784,7 +784,7 @@
       var h = fait
         ? '<p class="pr-verrou">🤫 Votre estimation : <strong>' + (estAnnee(q) ? String(moi.guess) : fmtN(moi.guess)) + '</strong> ' +
           GG.esc(uniteDe(q)) + '</p>'
-        : (s.opts.mode === 'secret' ? '<p class="qz-verrou a-toi">🙈 À toi, <strong>' + nom(s, ctx.me) + '</strong> : estimation secrète</p>' : '');
+        : (s.opts.mode === 'secret' ? '<p class="qz-verrou a-toi">🙈 À vous, <strong>' + nom(s, ctx.me) + '</strong> : estimation secrète</p>' : '');
       h += '<div class="qz-attendus"><span class="qz-compte">' + faits + '/' + n + ' ont répondu</span>' + s.players.map(function (p, i) {
         return '<span class="qz-mini-av' + (aEstime(p) ? ' ok' : '') + '" title="' + nom(s, i) + '">' + avatar(s, i) + '</span>';
       }).join('') + '</div>';
@@ -914,7 +914,7 @@
         ctx.act({ t: 'next', k: s.idx });
       }
     });
-    // clavier physique : on garde la saisie propre et « Entrée » valide
+    // clavier physique : on garde la saisie propre et « Entrée » valide
     root.addEventListener('input', function (ev) {
       if (ev.target && ev.target.id === 'pr-guess') {
         var brut = chiffres(ev.target.value);

@@ -459,9 +459,14 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-we
   font-family: var(--f-titre); font-weight: 600; font-size: 15px;
   background: rgba(255, 255, 255, .22); border-radius: 999px; padding: 8px 14px;
 }
-.reprise .rp-x {
-  position: absolute; top: 6px; right: 8px; width: 26px; height: 26px; border-radius: 50%;
-  display: grid; place-items: center; font-size: 13px; background: rgba(0, 0, 0, .2);
+/* « oublier » : hors de la carte, loin de « Jouer », et confirmé */
+.home-reprise { position: relative; }
+.home-reprise:not(:empty) { margin-top: 12px; }
+.home-reprise .rp-x {
+  position: absolute; top: -12px; right: -6px; z-index: 2; width: 40px; height: 40px; padding: 0;
+  display: grid; place-items: center; border-radius: 50%; cursor: pointer;
+  font-size: 14px; color: var(--txt); background: var(--bg-2, #1d1f4a);
+  border: 1px solid var(--stroke-2); box-shadow: var(--ombre-2);
 }
 
 /* première ouverture : faisons connaissance */
@@ -470,14 +475,14 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-we
   background: var(--glass-2, rgba(255, 255, 255, .08)); border: 1px solid var(--stroke-2);
   box-shadow: var(--ombre-2); animation: carteEntre .5s var(--ressort) both;
 }
-.bienvenue .bv-t { margin: 0 30px 2px 0; font-family: var(--f-titre); font-size: 19px; font-weight: 600; color: var(--txt); }
+.bienvenue .bv-t { margin: 0 42px 2px 0; font-family: var(--f-titre); font-size: 19px; font-weight: 600; color: var(--txt); }
 .bienvenue .bv-s { margin: 0 0 10px; font-size: 14px; color: var(--txt-2); }
 .bienvenue .bv-ligne { display: flex; gap: 8px; margin: 0; }
 .bienvenue .bv-ligne input { flex: 1; min-width: 0; margin: 0; }
 .bienvenue .bv-ligne .btn { flex: none; width: auto; margin: 0; padding: 0 16px; }
 .bienvenue .bv-x {
-  position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%;
-  border: 0; background: rgba(255, 255, 255, .08); color: var(--txt-2); font-size: 14px; cursor: pointer;
+  position: absolute; top: 6px; right: 6px; width: 40px; height: 40px; border-radius: 50%;
+  border: 0; background: rgba(255, 255, 255, .08); color: var(--txt-2); font-size: 15px; cursor: pointer;
 }
 
 /* la carte d'invitation (lien reçu : qui invite, à quel jeu) */
@@ -504,10 +509,11 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-we
   display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
   margin: 0 -14px 10px; padding: 2px 14px 6px;
   scroll-snap-type: x proximity;
+  scroll-padding-inline: 14px; /* « Tous » ne colle jamais au bord */
 }
 .cat-tabs::-webkit-scrollbar { display: none; }
 .cat-tab {
-  flex: none; scroll-snap-align: start; min-height: 38px; padding: 7px 14px;
+  flex: none; scroll-snap-align: start; min-height: 42px; padding: 8px 15px;
   font-family: var(--f-titre); font-size: 15px; font-weight: 600; color: var(--txt-2);
   background: var(--glass); border: 1px solid var(--stroke); border-radius: 999px;
   cursor: pointer; transition: all .2s var(--doux);
@@ -574,8 +580,8 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-we
 
 /* ===== cagnotte ===== */
 .wallet-chip {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 36px;
-  padding: 6px 12px 6px 10px; margin-top: 10px;
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px;
+  padding: 7px 14px 7px 12px; margin-top: 10px;
   font-family: var(--f-titre); font-weight: 600; font-size: 14px; color: #3a2200;
   background: var(--grad-or); border: 1px solid rgba(255, 255, 255, .4); border-radius: 999px;
   box-shadow: 0 6px 16px rgba(255, 170, 40, .3), inset 0 1px 0 rgba(255, 255, 255, .6);
@@ -591,6 +597,14 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-we
 .bank-label { margin: 0; color: var(--txt-2); font-weight: 800; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
 .bank-amount { margin: 6px 0; font-family: var(--f-titre); font-size: 40px; font-weight: 700; color: #ffe39a; }
 .bank-card .hint { margin: 0; }
+.cagnotte-infos { display: grid; gap: 10px; margin: 0 0 14px; }
+.cagnotte-infos .ci {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r);
+  background: var(--glass); border: 1px solid var(--stroke); text-align: left;
+}
+.cagnotte-infos .ci-ic { font-size: 26px; line-height: 1; }
+.cagnotte-infos .ci-tx { font-size: 14px; color: var(--txt-2); line-height: 1.4; }
+.cagnotte-infos .ci-tx b { display: block; font-family: var(--f-titre); font-weight: 600; font-size: 16px; color: var(--txt); margin-bottom: 2px; }
 .shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
 .shop-pack {
   display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 6px;
@@ -759,6 +773,8 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-we
 .player-badge.me .p-name::after { content: ' ✦'; color: var(--or); }
 .player-badge.offline { opacity: .45; }
 .player-badge.offline .p-name::after { content: ' ⚡'; }
+.player-badge.robot { opacity: .8; }
+.player-badge.robot .p-name::after { content: ' 🤖'; }
 
 #net-banner, #mini-net-banner {
   display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
@@ -778,6 +794,14 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-we
 }
 #btn-end-new:disabled { opacity: .75; }
 #overlay-end .fin-liens { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+/* petits écrans : la carte de fin se resserre pour que tout tienne */
+@media (max-height: 700px) {
+  #overlay-end .overlay-card { padding-top: 14px; }
+  #overlay-end .fin-trophee { font-size: 54px; }
+  #overlay-end #end-titre { margin: .2em 0; }
+  #end-winner { font-size: 24px; margin-bottom: 6px; }
+  #end-detail .final-line { padding-top: 7px; padding-bottom: 7px; }
+}
 #overlay-end .fin-liens .btn { width: auto; }
 .fin-retour {
   position: fixed; z-index: 55; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom));

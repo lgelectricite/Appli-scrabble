@@ -1,6 +1,6 @@
 /*
  * GGgames — Mots fléchés V2 (solitaire).
- * De vraies grilles pleines « comme en kiosque » : les définitions sont DANS
+ * De vraies grilles pleines « comme en kiosque » : les définitions sont DANS
  * les cases, les flèches partent vers leur mot, on écrit dans la grille avec
  * le clavier fixé en bas de l’écran. Grilles générées à la demande à partir
  * d’une graine (plus de 1 000 par force, identiques sur tous les téléphones),

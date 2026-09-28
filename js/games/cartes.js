@@ -4,8 +4,8 @@
  *
  * Sur un téléphone, une carte fait 30 à 65 pixels de large : les dispositions
  * de symboles des cartes papier (dix petits ♠ pour un 10) y deviennent une
- * bouillie illisible. On fait comme les applications de poker (« grand
- * index ») : le RANG en très gros dans le coin, la COULEUR juste dessous, et
+ * bouillie illisible. On fait comme les applications de poker (« grand
+ * index ») : le RANG en très gros dans le coin, la COULEUR juste dessous, et
  * un grand symbole qui occupe le reste de la carte. Les symboles sont dessinés
  * en SVG : nets à toutes les tailles, identiques sur tous les téléphones.
  *
@@ -71,7 +71,7 @@
       '</span>';
   };
 
-  /* codage « couleur × 13 + rang », l'As valant 0 (blackjack, solitaire) */
+  /* codage « couleur × 13 + rang », l'As valant 0 (blackjack, solitaire) */
   GG.carteStd = function (c, o) {
     if (typeof c !== 'number' || c < 0 || c > 51) return GG.carteDos(o);
     var r = c % 13;

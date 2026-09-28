@@ -217,6 +217,9 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
     console.log('--- 8 américain : à deux sur un téléphone ---');
     const h = await page(412, 780, 'huitHot');
     await lancer(h, 'huit', 'hot');
+    // première carte « saute ton tour » : c'est au joueur 2 → écran de passage d'abord
+    await attendre(600);
+    await passerSiBesoin(h);
     await h.waitForSelector('.hu-main .ha-card');
     await attendre(1600);
     if (await h.locator('.hu-main .ha-card.ok').count()) {

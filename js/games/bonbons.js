@@ -94,7 +94,7 @@
         }
       }
     }
-    // les carrés 2×2 comptent aussi (liaison « en carré »)
+    // les carrés 2×2 comptent aussi (liaison « en carré »)
     for (r = 0; r < N - 1; r++) {
       for (c = 0; c < N - 1; c++) {
         var i = r * N + c;
@@ -663,7 +663,7 @@
 
   /* ================================================================
    * Mélange (plus aucun coup) : les mêmes bonbons, spéciaux compris,
-   * changent de place — la grille n'est jamais « régénérée ».
+   * changent de place — la grille n'est jamais « régénérée ».
    * ================================================================ */
   function shuffleBoard(E) {
     var pos = [], pcs = [], i, k, t;
@@ -761,8 +761,8 @@
 
   var LEVELS_DATA = [];
   /* Les 60 niveaux dessinés à la main. Coups, cibles, quantités et étoiles
-     viennent du calibrage : taux de réussite simulé du joueur « meilleur coup
-     immédiat » (indiqué en commentaire), sur une pente régulière avec des
+     viennent du calibrage : taux de réussite simulé du joueur « meilleur coup
+     immédiat » (indiqué en commentaire), sur une pente régulière avec des
      niveaux de respiration (après chaque boss et à mi-monde). */
   LEVELS_DATA.push(
     /* ===== Prairie Guimauve ===== */
@@ -916,10 +916,10 @@
     score: { '5-0': [445, 0.365], '6-0': [261, 0.321] }
   };
   /* niveaux 61 à 560 : valeur calibrée (base 36) — coups, quantité à récolter ou
-     cible/100 — précédée de « variante: » quand le plan a dû être retiré pour
+     cible/100 — précédée de « variante: » quand le plan a dû être retiré pour
      tenir une partie de 11 à 40 coups (vs 120 parties simulées par niveau) */
   /* niveaux 61 à 1060 : valeur calibrée (base 36) — coups, quantité à récolter ou
-     cible/100 — précédée de « variante: » quand le plan a dû être retiré pour
+     cible/100 — précédée de « variante: » quand le plan a dû être retiré pour
      tenir une partie de 11 à 40 coups (100 parties simulées par niveau) */
   var CALIB_GEN =
     'i,r,37,c,s,1m,3:j,21,19,f,m,n,k,j,1:g,i,e,j,x,1h,1:j,p,2:13,d,1:i,15,p,1g,u,k,p,1o,1:g,n,d,i,d,i,10,11,14,' +
@@ -1168,7 +1168,7 @@
   /* ================================================================
    * Fin de niveau
    * ================================================================ */
-  /* « Sucre final » : les coups restants deviennent des bonbons rayés qui éclatent. */
+  /* « Sucre final » : les coups restants deviennent des bonbons rayés qui éclatent. */
   function sucreFinal(E) {
     var p = E.p, restants = Math.min(p.moves, 15);
     if (E.rec && E.rec.steps) E.rec.steps.push({ k: 'final', n: p.moves });
@@ -1398,7 +1398,7 @@
   };
 
   /* ================================================================
-   * Le joueur « meilleur coup immédiat » : il essaie chaque échange, ne
+   * Le joueur « meilleur coup immédiat » : il essaie chaque échange, ne
    * regarde que la première vague (ce qu'un joueur VOIT avant de jouer) et
    * garde celui qui avance le plus l'objectif. Il sert à mesurer la
    * difficulté réelle des niveaux (taux de réussite simulé) et à l'indice.
@@ -2305,7 +2305,7 @@
     var vals = { moves: p.moves + 1, score: p.score - (fx.gain | 0), restes: [], goalDone: false };
     if (s.phase === 'result' && fx.bonusMoves) vals.moves = fx.bonusMoves + 1;
     var restes = restesObjectif(s, p);
-    // on « rembobine » l'objectif
+    // on « rembobine » l'objectif
     var parCle = {};
     fx.steps.forEach(function (st) {
       if (st.k === 'clear') {
@@ -2646,7 +2646,7 @@
   }
 
   /* ================================================================
-   * Outils pour les tests (plateaux « bruts » sans niveau)
+   * Outils pour les tests (plateaux « bruts » sans niveau)
    * ================================================================ */
   function ctxBrut(b) {
     var p = { board: b, seq: 1000 };

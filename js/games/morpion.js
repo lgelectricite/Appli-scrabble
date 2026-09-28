@@ -63,7 +63,7 @@
     memo[cle] = res;
     return res;
   }
-  /* valeur exacte de chaque case libre pour le joueur « moi » qui a le trait */
+  /* valeur exacte de chaque case libre pour le joueur « moi » qui a le trait */
   function valeursCoups(grid, moi) {
     var lui = moi === 'X' ? 'O' : 'X', g = grid.slice(), out = [];
     for (var i = 0; i < 9; i++) {
@@ -153,7 +153,7 @@
     return auHasard(libres);
   }
 
-  /* ================= dessin « à la main » =================
+  /* ================= dessin « à la main » =================
      Un petit générateur pseudo-aléatoire, graine = partie + manche + case :
      chaque trait garde la même forme d’un rendu à l’autre. */
   function graine(n) {
@@ -200,11 +200,13 @@
     hotseat: true, hidden: false, netOnly: false,
     niveaux: ['facile', 'moyen', 'difficile'],
 
-    create: function (names) {
+    create: function (names, opts) {
       var state = {
         id: Math.floor(Math.random() * 1e9),
         players: names.map(function (n) { return { name: n, wins: 0 }; }),
-        starter: 0,
+        // revanche : la coque fait tourner le premier joueur
+        starter: opts && (opts.premier === 1) ? 1 : 0,
+        premier: opts && (opts.premier === 1) ? 1 : 0,
         opts: { manches: 3 },
         manche: 1,
         serieGagnee: false,
@@ -339,10 +341,10 @@
         if (s.draw) msg = '🤝 Match nul : personne ne passe !';
         else msg = '🏆 ' + GG.esc(s.players[s.winner].name) + (s.serieGagnee ? ' remporte la série !' : ' gagne la manche !');
       } else if (mine) {
-        msg = marque(s.current) + (hotseat ? 'À toi, <b>' + GG.esc(s.players[s.current].name) + '</b> !' : 'À vous de jouer !');
+        msg = marque(s.current) + (hotseat ? 'À vous, <b>' + GG.esc(s.players[s.current].name) + '</b> !' : 'À vous de jouer !');
       } else {
         msg = marque(s.current) + (solo ? GG.esc(s.players[s.current].name) + ' réfléchit…'
-          : 'Au tour de ' + GG.esc(s.players[s.current].name) + '…');
+          : 'Au tour ' + GG.de(GG.esc(s.players[s.current].name)) + GG.esc(s.players[s.current].name) + '…');
       }
       html += '<p class="mini-msg ttt-msg">' + msg + '</p>';
 

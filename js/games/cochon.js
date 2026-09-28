@@ -1,11 +1,11 @@
-/* GGgames — Cochon (jeu de dé « Pig ») : premier à 100 points.
+/* GGgames — Cochon (jeu de dé « Pig ») : premier à 100 points.
  *
  * V2 : un gros dé en 3D qui roule avec suspense, une course vers 100 (une
- * jauge par joueur, les points « en jeu » en pointillés), les pièces qui
- * volent vers la jauge quand on met à l’abri, et « Cochon ! » quand le dé
+ * jauge par joueur, les points « en jeu » en pointillés), les pièces qui
+ * volent vers la jauge quand on met à l’abri, et « Cochon ! » quand le dé
  * fait 1. Options : tour égal (tout le monde joue autant de tours) et
  * variante à deux dés (un 1 : tour perdu ;
- * double 1 : « Gros cochon », retour à zéro). IA : facile, moyen, difficile
+ * double 1 : « Gros cochon », retour à zéro). IA : facile, moyen, difficile
  * (seuil adaptatif selon le score). Contre l’ordinateur : mode rapide.
  */
 (function (root) {
@@ -64,7 +64,7 @@
     }
     if (moi + tp >= CIBLE) return 'bank'; // 100 atteint : à l’abri !
     if (niveau === 'difficile') {
-      // « suivre le rythme, puis finir la course » : si quelqu’un approche
+      // « suivre le rythme, puis finir la course » : si quelqu’un approche
       // de 100, on joue pour gagner ce tour-ci ; sinon on s’arrête à 21 ± l’écart
       if (!state.opts.egal || me === state.players.length - 1 || lui < 90) {
         if (lui >= 71 || moi >= 71) return 'roll';
@@ -121,7 +121,7 @@
     nom: 'Cochon',
     icone: '🐷',
     desc: 'Lancez le dé, tentez votre chance : le 1 fait tout perdre ! Premier à 100.',
-    regles: '<p><strong>🎯 Le but :</strong> être le premier à 100 points.</p><p><strong>Comment jouer :</strong> lancez le dé autant de fois que vous l’osez, les points du tour s’accumulent… puis « Je garde » pour les mettre à l’abri. Mais si le dé fait 1 : 🐷 Cochon ! tout le tour est perdu.</p><p><strong>Tour égal</strong> (au choix) : quand quelqu’un atteint 100, les joueurs suivants jouent encore leur tour ; le plus gros total gagne. Tout le monde a joué autant de tours… mais le dernier sait exactement quoi battre !</p><p><strong>Variante à deux dés :</strong> un 1 fait perdre le tour ; un double 1 (« Gros cochon ») remet votre total à zéro !</p>',
+    regles: '<p><strong>🎯 Le but :</strong> être le premier à 100 points.</p><p><strong>Comment jouer :</strong> lancez le dé autant de fois que vous l’osez, les points du tour s’accumulent… puis « Je garde » pour les mettre à l’abri. Mais si le dé fait 1 : 🐷 Cochon ! tout le tour est perdu.</p><p><strong>Tour égal</strong> (au choix) : quand quelqu’un atteint 100, les joueurs suivants jouent encore leur tour ; le plus gros total gagne. Tout le monde a joué autant de tours… mais le dernier sait exactement quoi battre !</p><p><strong>Variante à deux dés :</strong> un 1 fait perdre le tour ; un double 1 (« Gros cochon ») remet votre total à zéro !</p>',
     min: 2, max: 4,
     hotseat: true, hidden: false, netOnly: false,
     niveaux: ['facile', 'moyen', 'difficile'],
@@ -214,7 +214,7 @@
        - facile : s’arrête à un seuil fixe (12–16), sans regarder les scores ;
        - moyen : seuil tiré autour de 18–26, qui s’adapte un peu ;
        - difficile : seuil adaptatif 21 + écart/8, joue le tout pour le tout
-         quand quelqu’un approche de 100, et sait « dépasser le meneur »
+         quand quelqu’un approche de 100, et sait « dépasser le meneur »
          au dernier tour. */
     bot: function (state, me, ctx) {
       if (state.finished || state.current !== me) return null;
@@ -306,8 +306,8 @@
       else if (dern.res === 'banque') msg = '💰 ' + qui + ' met ' + (+dern.points || 0) + ' points à l’abri.';
     }
     var suite = s.finished ? 'Partie terminée !' : mine
-      ? (hotseat ? 'À toi, <b>' + nom(s.current) + '</b> : lance ou garde !' : 'À vous : lancez, ou gardez vos points.')
-      : (enSolo ? nom(s.current) + ' tente sa chance…' : 'Au tour de ' + nom(s.current) + '…');
+      ? (hotseat ? 'À vous, <b>' + nom(s.current) + '</b> : lancez ou gardez !' : 'À vous : lancez, ou gardez vos points.')
+      : (enSolo ? nom(s.current) + ' tente sa chance…' : 'Au tour ' + GG.de(nom(s.current)) + nom(s.current) + '…');
     html += '<p class="mini-msg pig-msg">' + (msg ? msg + ' ' : '') + suite + '</p>';
     // ---- actions ----
     html += '<div class="mini-actions pig-actions">' +
@@ -325,7 +325,7 @@
     /* ---- anti double-appui ----
        Un 1 au dé passe le tour SANS que les boutons bougent : au changement de
        joueur on gèle les boutons un instant (sur un seul téléphone) ; et le
-       bouton « Lancer » n’est ré-armé qu’une fois le dé retombé. */
+       bouton « Lancer » n’est ré-armé qu’une fois le dé retombé. */
     var gen = (el._pigGen || 0) + 1;
     el._pigGen = gen;
     el._pigJoue = false;
@@ -375,7 +375,7 @@
     if (d.res !== 'banque' && d.player !== ctx.me && !hotseat) sfx.play('dice', { volume: 0.8 });
     if (nouveauJournal && d.res === 'banque') sfx.play('dice', { volume: 0.7 });
     setTimeout(function () {
-      // « Cochon ! » se joue même si l’IA suivante a déjà redessiné l’écran
+      // « Cochon ! » se joue même si l’IA suivante a déjà redessiné l’écran
       if (el._pigGen !== gen && d.res !== 'cochon' && d.res !== 'gros') return;
       zone = el.querySelector('.pig-zone') || zone;
       var tp = el.querySelector('.pig-tp');

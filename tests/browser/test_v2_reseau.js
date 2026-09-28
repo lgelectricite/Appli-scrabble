@@ -281,7 +281,8 @@ function mandataire(portEcoute, portRelais) {
     await M.page.click('#btn-menu-quit');
     await M.page.click('#btn-confirm-yes');
     await pause(800);
-    check('l’hôte sait que Manon a quitté (et non « déconnectée »)', /Manon a quitté/.test(await banniere(H.page)),
+    check('l’hôte sait que Manon a quitté (et non « déconnectée ») : l’ordinateur prend sa place',
+      /Manon a quitté|ordinateur joue pour Manon/.test(await banniere(H.page)) && !/déconnect/.test(await banniere(H.page)),
       await banniere(H.page));
 
     console.log('--- L’hôte change de jeu : Nina entre dans la partie ---');
@@ -303,6 +304,34 @@ function mandataire(portEcoute, portRelais) {
     await N.page.waitForSelector('#screen-home.active', { timeout: 5000 }).catch(() => {});
     check('Nina revient à l’accueil avec un message', await N.page.locator('#screen-home.active').count() === 1);
     for (const t of [H, M, N]) await t.ctx.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('--- Un invité quitte : la partie ne reste pas figée sur son tour ---');
+  {
+    const { H, G } = await table('yams', 'Hôte', ['Manon', 'Paul']);
+    await lancer(H, G);
+    const [M, P] = G;
+    await M.page.click('#btn-mini-menu');
+    await M.page.click('#btn-menu-quit');
+    await M.page.click('#btn-confirm-yes');
+    await H.page.waitForFunction(() => /ordinateur joue pour Manon/.test(document.getElementById('mini-net-banner').textContent),
+      null, { timeout: 8000 }).catch(() => {});
+    check('l’hôte est prévenu : l’ordinateur joue pour Manon', /ordinateur joue pour Manon/.test(await banniere(H.page)),
+      await banniere(H.page));
+    // l'hôte joue son tour : lancer, choisir une case, confirmer
+    await H.page.waitForSelector('[data-a="roll"]', { timeout: 8000 });
+    await pause(500);
+    await H.page.click('[data-a="roll"]');
+    await H.page.waitForSelector('.ym-ligne.possible', { timeout: 8000 });
+    await H.page.locator('.ym-ligne.possible[data-cat="chance"]').click();
+    await H.page.click('[data-a="marque"]');
+    // tour de Manon (partie) : l'ordinateur le joue, puis c'est à Paul
+    await P.page.waitForFunction(() => /À vous/.test(document.getElementById('mini-turn').textContent),
+      null, { timeout: 30000 }).catch(() => {});
+    check('le tour de Manon est joué pour elle : c’est à Paul', /À vous/.test(await P.page.textContent('#mini-turn')),
+      await P.page.textContent('#mini-turn'));
+    for (const t of [H, M, P]) await t.ctx.close();
   }
 
   /* ------------------------------------------------------------------ */

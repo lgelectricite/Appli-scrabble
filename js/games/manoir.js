@@ -9,11 +9,13 @@
  *   - les témoignages des suspects (publics ; le coupable ment sur son alibi),
  *   - les indices des six pistes (chacune verrouillée par une énigme du décor),
  *   - les informations confidentielles des enquêteurs (une par rôle).
- * Aucune piste ne dit « X est innocent » : il faut raisonner.
+ * Aucune piste ne dit « X est innocent » : il faut raisonner.
  * L'accusation se décide au VOTE du groupe, avec confirmation.
  */
 (function (root) {
   'use strict';
+  /* « 0 erreur », « 1 indice », « 3 erreurs » */
+  function pluriel(n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); }
   var GG = root.GG;
 
   /* ================================================================
@@ -76,7 +78,7 @@
   /* ================================================================
    * 2. Les six affaires
    * ================================================================ */
-  /* txt : le nom tel qu'on le dit dans une phrase (« le colonel Safran ») */
+  /* txt : le nom tel qu'on le dit dans une phrase (« le colonel Safran ») */
   function S(id, nom, f, teinte, desc, txt) {
     return { id: id, nom: nom, f: f, teinte: teinte, desc: desc, ini: initiales(nom), txt: txt || nom.split(',')[0] };
   }
@@ -137,33 +139,33 @@
       pistes: [
         P('coffre', 'Le coffre-fort', '🗝️', 'Un coffre verrouillé, dissimulé derrière un tableau.', [
           E('Sur le cadre du tableau, Lord Edmond a gravé le mot de passe du coffre, chaque lettre ayant avancé d’un pas dans l’alphabet : USFTPS.', ['TRESOR'], 'U devient T, S devient R…', { type: 'cesar', code: 'USFTPS', d: 1 }),
-          E('Le cadran du coffre attend un nombre. Un billet glissé dessous : « Mon âge le jour de mon mariage : le tiers de mon âge d’aujourd’hui, plus 11. J’ai 72 ans. »', ['35'], '72 ÷ 3 = 24… et ensuite ?', { type: 'calc', v: 35 }),
-          E('Gravé sous la poignée : « Je fais tic-tac dans le grand hall et je sonne toutes les heures ; mon nom a sept lettres. » Qui suis-je ?', ['HORLOGE', 'PENDULE'], 'La sienne s’est arrêtée à 23 h 10…')
+          E('Le cadran du coffre attend un nombre. Un billet glissé dessous : « Mon âge le jour de mon mariage : le tiers de mon âge d’aujourd’hui, plus 11. J’ai 72 ans. »', ['35'], '72 ÷ 3 = 24… et ensuite ?', { type: 'calc', v: 35 }),
+          E('Gravé sous la poignée : « Je fais tic-tac dans le grand hall et je sonne toutes les heures ; mon nom a sept lettres. » Qui suis-je ?', ['HORLOGE', 'PENDULE'], 'La sienne s’est arrêtée à 23 h 10…')
         ]),
         P('lettre', 'La lettre déchirée', '✉️', 'Des fragments de papier retrouvés dans la cheminée.', [
           E('Un mot, lisible seulement dans un miroir : TNEMATSET', ['TESTAMENT'], 'Lisez-le de droite à gauche.', { type: 'envers', code: 'TNEMATSET' }),
-          E('Charade griffonnée : mon premier est un petit légume rond et vert qu’on écosse ; mon second est le pronom de « quelqu’un » ; mon tout tue sans bruit.', ['POISON'], 'POIS + …'),
-          E('Au bas de la lettre : « Si on me partage, je n’existe plus. » Qui suis-je ?', ['SECRET'], 'Ce que la lettre devait garder…')
+          E('Charade griffonnée : mon premier est un petit légume rond et vert qu’on écosse ; mon second est le pronom de « quelqu’un » ; mon tout tue sans bruit.', ['POISON'], 'POIS + …'),
+          E('Au bas de la lettre : « Si on me partage, je n’existe plus. » Qui suis-je ?', ['SECRET'], 'Ce que la lettre devait garder…')
         ]),
         P('journal', 'Le journal intime', '📔', 'Le journal de Lord Edmond, fermé par un cadenas.', [
-          E('Cadenas à quatre chiffres. Sur la couverture : « Mon année de naissance, 1-8-6-3, chiffres rangés du plus grand au plus petit. »', ['8631'], 'Le plus grand chiffre d’abord : 8…', { type: 'calc', v: 8631 }),
-          E('Dernière page : « Je noircis le papier sans jamais le brûler, et je dors dans un encrier. » Qui suis-je ?', ['ENCRE'], 'La plume y trempe.'),
+          E('Cadenas à quatre chiffres. Sur la couverture : « Mon année de naissance, 1-8-6-3, chiffres rangés du plus grand au plus petit. »', ['8631'], 'Le plus grand chiffre d’abord : 8…', { type: 'calc', v: 8631 }),
+          E('Dernière page : « Je noircis le papier sans jamais le brûler, et je dors dans un encrier. » Qui suis-je ?', ['ENCRE'], 'La plume y trempe.'),
           E('Lord Edmond notait les coups de l’horloge : 1, 3, 6, 10, 15… Quel nombre vient ensuite ?', ['21'], 'On ajoute 2, puis 3, puis 4, puis 5…', { type: 'calc', v: 21 })
         ]),
         P('majordome', 'Le majordome', '🎩', 'Barnabé parlera… si vous prouvez votre esprit.', [
-          E('« Plein de trous, je retiens pourtant les feuilles du thé de Monsieur. » Qu’est-ce ?', ['PASSOIRE', 'PASSE-THÉ', 'TAMIS'], 'On la pose sur la tasse.'),
-          E('« Plus je sèche, plus je suis mouillée. » Qui suis-je ?', ['SERVIETTE'], 'Après le bain…'),
-          E('« On me monte et on me descend sans que je bouge jamais. » Qui suis-je ?', ['ESCALIER'], 'Marche après marche.')
+          E('« Plein de trous, je retiens pourtant les feuilles du thé de Monsieur. » Qu’est-ce ?', ['PASSOIRE', 'PASSE-THÉ', 'TAMIS'], 'On la pose sur la tasse.'),
+          E('« Plus je sèche, plus je suis mouillée. » Qui suis-je ?', ['SERVIETTE'], 'Après le bain…'),
+          E('« On me monte et on me descend sans que je bouge jamais. » Qui suis-je ?', ['ESCALIER'], 'Marche après marche.')
         ]),
         P('gardien', 'Le carnet du gardien', '🏮', 'Ses notes de ronde, écrites à sa manière.', [
-          E('« Une ronde toutes les 45 minutes, la première à 20 h 30. » À quelle heure commence la 5e ronde ? (par exemple : 21h15)', ['23H30', '2330'], 'Quatre fois 45 minutes après 20 h 30.'),
+          E('« Une ronde toutes les 45 minutes, la première à 20 h 30. » À quelle heure commence la 5e ronde ? (par exemple : 21h15)', ['23H30', '2330'], 'Quatre fois 45 minutes après 20 h 30.'),
           E('Les lettres gravées sur sa lanterne, R-A-N-E-T-L-E-N, forment le nom de l’objet lui-même.', ['LANTERNE'], 'Il l’allume pour sa ronde.', { type: 'anagramme', code: 'RANETLEN' }),
-          E('« Je garde la maison sans aboyer : on me tourne dans la serrure. » Qui suis-je ?', ['CLÉ', 'CLEF'], 'Le gardien en porte un trousseau.')
+          E('« Je garde la maison sans aboyer : on me tourne dans la serrure. » Qui suis-je ?', ['CLÉ', 'CLEF'], 'Le gardien en porte un trousseau.')
         ]),
         P('malle', 'La malle de l’observatoire', '🧳', 'Une malle sanglée, montée du grenier par le professeur.', [
-          E('« Je suis la seule planète du système solaire à ne pas porter le nom d’un dieu. » Qui suis-je ?', ['TERRE'], 'Vous marchez dessus.'),
-          E('Cadenas de la malle : « Le nombre de planètes du système solaire multiplié par le nombre de saisons. »', ['32'], '8 planètes, 4 saisons.', { type: 'calc', v: 32 }),
-          E('« Petite et lointaine, je brille par milliers dans le ciel… quand l’orage s’en va. » Qui suis-je ?', ['ÉTOILE'], 'Le professeur les compte à la lunette.')
+          E('« Je suis la seule planète du système solaire à ne pas porter le nom d’un dieu. » Qui suis-je ?', ['TERRE'], 'Vous marchez dessus.'),
+          E('Cadenas de la malle : « Le nombre de planètes du système solaire multiplié par le nombre de saisons. »', ['32'], '8 planètes, 4 saisons.', { type: 'calc', v: 32 }),
+          E('« Petite et lointaine, je brille par milliers dans le ciel… quand l’orage s’en va. » Qui suis-je ?', ['ÉTOILE'], 'Le professeur les compte à la lunette.')
         ])
       ]
     },
@@ -210,32 +212,32 @@
       temoins: ['Firmin, le souffleur,', 'Mathilde, l’ouvreuse,', 'Léon, le machiniste,'],
       pistes: [
         P('partition', 'La partition annotée', '🎼', 'Des notes griffonnées d’une main pressée.', [
-          E('Au dos de la partition : « DO, RÉ, MI, FA, SOL, LA… » Quelle note manque pour finir la gamme ?', ['SI'], 'Juste avant le DO suivant.'),
+          E('Au dos de la partition : « DO, RÉ, MI, FA, SOL, LA… » Quelle note manque pour finir la gamme ?', ['SI'], 'Juste avant le DO suivant.'),
           E('Le code du chef : chaque lettre a avancé d’un pas dans l’alphabet. Déchiffrez : SJEFBV', ['RIDEAU'], 'S devient R, J devient I…', { type: 'cesar', code: 'SJEFBV', d: 1 }),
-          E('« J’ai 88 touches noires et blanches, mais je n’ouvre aucune porte. » Qui suis-je ?', ['PIANO'], 'Il y en a un dans la fosse.')
+          E('« J’ai 88 touches noires et blanches, mais je n’ouvre aucune porte. » Qui suis-je ?', ['PIANO'], 'Il y en a un dans la fosse.')
         ]),
         P('trousseau', 'Le trousseau du régisseur', '🗝️', 'Toutes les clés du théâtre… ou presque.', [
           E('Sur les étiquettes : loge 1, loge 2, loge 4, loge 8, loge 16… Quel numéro porte la clé suivante ?', ['32'], 'Chaque numéro double.', { type: 'calc', v: 32 }),
           E('Anagramme gravée sur l’anneau : E-C-N-E-S. Quel lieu du théâtre cette clé ouvre-t-elle ?', ['SCÈNE'], 'Là où l’on chante.', { type: 'anagramme', code: 'ECNES' }),
-          E('« Tout le monde me tient en entrant, personne ne me boit : je donne droit à un fauteuil. » Qui suis-je ?', ['BILLET', 'TICKET', 'PLACE'], 'L’ouvreuse le déchire.')
+          E('« Tout le monde me tient en entrant, personne ne me boit : je donne droit à un fauteuil. » Qui suis-je ?', ['BILLET', 'TICKET', 'PLACE'], 'L’ouvreuse le déchire.')
         ]),
         P('admirateur', 'La lettre d’admirateur', '✉️', 'Parfumée, signée d’une simple initiale.', [
           E('La lettre se termine par un mot écrit à l’envers : RUOMA', ['AMOUR'], 'De droite à gauche…', { type: 'envers', code: 'RUOMA' }),
           E('Charade : mon premier est l’extrémité d’une corde ; mon second borde le fleuve et l’on y attend le train ; mon tout se lance à la diva le soir de la première.', ['BOUQUET'], 'BOUT + …'),
-          E('« Je suis la reine de la soirée : on m’applaudit, on me couvre de fleurs… et ce soir, je ne chanterai plus. » Qui suis-je ?', ['DIVA', 'CANTATRICE'], 'Elvira, bien sûr.')
+          E('« Je suis la reine de la soirée : on m’applaudit, on me couvre de fleurs… et ce soir, je ne chanterai plus. » Qui suis-je ?', ['DIVA', 'CANTATRICE'], 'Elvira, bien sûr.')
         ]),
         P('habilleuse', 'L’habilleuse', '🪡', 'Elle a tout vu, mais parle par énigmes.', [
-          E('« J’ai un œil, mais je ne vois rien : le fil y passe. » Qui suis-je ?', ['AIGUILLE'], 'L’habilleuse en a plein sa pelote.'),
-          E('« Long et soyeux, je traîne derrière la robe de la diva. » Qui suis-je ?', ['TRAÎNE'], 'Mon nom dit ce que je fais.'),
+          E('« J’ai un œil, mais je ne vois rien : le fil y passe. » Qui suis-je ?', ['AIGUILLE'], 'L’habilleuse en a plein sa pelote.'),
+          E('« Long et soyeux, je traîne derrière la robe de la diva. » Qui suis-je ?', ['TRAÎNE'], 'Mon nom dit ce que je fais.'),
           E('Le code de la penderie : le double de 18, moins 7.', ['29'], '36 – 7…', { type: 'calc', v: 29 })
         ]),
         P('souffleur', 'Le carnet du souffleur', '📔', 'Il note tout ce qui se dit… en coulisses aussi.', [
           E('Charade : mon premier est la première note de la gamme ; mon second est la note suivante ; mon tout brille comme les balcons de l’Opéra.', ['DORÉ'], 'DO + …'),
           E('Trois actes de 40 minutes et deux entractes de 15 minutes : combien de minutes dure l’opéra ?', ['150'], '120 + 30…', { type: 'calc', v: 150 }),
-          E('« Plus on m’applaudit, plus je reviens saluer. » Qui suis-je ?', ['RAPPEL'], 'Le public le réclame à la fin.')
+          E('« Plus on m’applaudit, plus je reviens saluer. » Qui suis-je ?', ['RAPPEL'], 'Le public le réclame à la fin.')
         ]),
         P('costumes', 'La malle à costumes', '🧳', 'Quelqu’un y a caché quelque chose à la hâte.', [
-          E('Étiquette : « Noir ou doré, je cache le visage au bal. » Qui suis-je ?', ['MASQUE', 'LOUP'], 'Il se porte sur les yeux.'),
+          E('Étiquette : « Noir ou doré, je cache le visage au bal. » Qui suis-je ?', ['MASQUE', 'LOUP'], 'Il se porte sur les yeux.'),
           E('Anagramme cousue dans la doublure : R-E-P-A-O.', ['OPÉRA'], 'Vous y êtes !', { type: 'anagramme', code: 'REPAO' }),
           E('Cadenas : le nombre de lettres du mot TOSCA, multiplié par lui-même.', ['25'], '5 × 5…', { type: 'calc', v: 25 })
         ])
@@ -284,9 +286,9 @@
       temoins: ['Octave, le chef de train,', 'Jules, le serveur,', 'Marius, le mécanicien,'],
       pistes: [
         P('valise', 'La valise verrouillée', '🧳', 'Un cadenas à secret protège son contenu.', [
-          E('Une étiquette : « Le train a quitté Paris à 21 h 40 et roulait depuis 4 h 35 quand il s’est arrêté. » À quelle heure s’est-il arrêté ? (par exemple : 1h05)', ['2H15', '0215', '215', '02H15'], '21 h 40 + 4 h = 1 h 40 ; il reste 35 minutes.'),
+          E('Une étiquette : « Le train a quitté Paris à 21 h 40 et roulait depuis 4 h 35 quand il s’est arrêté. » À quelle heure s’est-il arrêté ? (par exemple : 1h05)', ['2H15', '0215', '215', '02H15'], '21 h 40 + 4 h = 1 h 40 ; il reste 35 minutes.'),
           E('Anagramme sur l’étiquette : N-O-L-Y. La ville d’où vient la valise.', ['LYON'], 'La capitale des Gaules.', { type: 'anagramme', code: 'NOLY' }),
-          E('« Plus on me perce, plus je vaux : le contrôleur me poinçonne. » Qui suis-je ?', ['BILLET', 'TICKET'], 'Sans moi, pas de voyage.')
+          E('« Plus on me perce, plus je vaux : le contrôleur me poinçonne. » Qui suis-je ?', ['BILLET', 'TICKET'], 'Sans moi, pas de voyage.')
         ]),
         P('telegramme', 'Le télégramme froissé', '📨', 'Reçu la veille au soir, à moitié brûlé.', [
           E('En morse : trois brèves, trois longues, trois brèves (· · · — — — · · ·). Quel est ce célèbre appel ?', ['SOS'], 'On l’envoie en détresse.'),
@@ -295,23 +297,23 @@
         ]),
         P('controleur', 'Le carnet du contrôleur', '📔', 'Les allées et venues de la nuit, tout y est.', [
           E('Le train compte 9 voitures. Le contrôleur les traverse toutes, de la première à la dernière. Combien de portes de communication franchit-il ?', ['8'], 'Il y a une porte entre deux voitures.', { type: 'calc', v: 8 }),
-          E('« Je siffle, je fume, et je tire tout le monde derrière moi. » Qui suis-je ?', ['LOCOMOTIVE', 'LOCO', 'MACHINE'], 'Tout à l’avant.'),
-          E('« Je tombe sans jamais me faire mal, blanche et légère, et cette nuit je bloque le train. » Qui suis-je ?', ['NEIGE'], 'Regardez par la fenêtre.')
+          E('« Je siffle, je fume, et je tire tout le monde derrière moi. » Qui suis-je ?', ['LOCOMOTIVE', 'LOCO', 'MACHINE'], 'Tout à l’avant.'),
+          E('« Je tombe sans jamais me faire mal, blanche et légère, et cette nuit je bloque le train. » Qui suis-je ?', ['NEIGE'], 'Regardez par la fenêtre.')
         ]),
         P('serveur', 'Le serveur du wagon-bar', '🤵', 'Il a servi un dernier verre… à qui ?', [
-          E('« Je suis né du raisin, je vieillis en fût et on me sert en carafe. » Qui suis-je ?', ['VIN'], 'Rouge, blanc ou rosé.'),
+          E('« Je suis né du raisin, je vieillis en fût et on me sert en carafe. » Qui suis-je ?', ['VIN'], 'Rouge, blanc ou rosé.'),
           E('L’addition : trois cafés à 2 francs et deux cognacs à 5 francs. Combien en tout ?', ['16'], '6 + 10…', { type: 'calc', v: 16 }),
-          E('« Noir et amer, je réveille les voyageurs endormis. » Qui suis-je ?', ['CAFÉ'], 'Servi brûlant au petit matin.')
+          E('« Noir et amer, je réveille les voyageurs endormis. » Qui suis-je ?', ['CAFÉ'], 'Servi brûlant au petit matin.')
         ]),
         P('montre', 'La montre brisée', '⌚', 'Arrêtée net. Mais à quelle heure exactement ?', [
           E('À 3 h pile, les aiguilles forment un angle droit. À quelle autre heure pile (entre 1 h et 12 h) forment-elles aussi un angle droit ?', ['9', '9H', 'NEUF', '21H'], 'Symétrique de 3 h.'),
-          E('« J’ai des aiguilles mais je ne couds jamais. » Qui suis-je ?', ['MONTRE', 'HORLOGE', 'PENDULE', 'RÉVEIL'], 'Tic, tac…'),
+          E('« J’ai des aiguilles mais je ne couds jamais. » Qui suis-je ?', ['MONTRE', 'HORLOGE', 'PENDULE', 'RÉVEIL'], 'Tic, tac…'),
           E('Cette montre retarde de 5 minutes par heure. Réglée juste à 20 h, quelle heure affichait-elle à 2 h du matin ? (par exemple : 1h05)', ['1H30', '0130', '130', '01H30'], 'Six heures de retard à 5 minutes…')
         ]),
         P('registre', 'Le registre des passagers', '🗂️', 'Un nom y a été soigneusement gratté.', [
           E('Sous le nom gratté, un mot à l’envers : TERCES', ['SECRET'], 'De droite à gauche.', { type: 'envers', code: 'TERCES' }),
           E('Le registre compte 12 voyageurs en première classe et deux fois plus en seconde. Combien de voyageurs en tout ?', ['36'], '12 + 24…', { type: 'calc', v: 36 }),
-          E('« Je relie deux voitures : on m’accroche et on me décroche. » Qui suis-je ?', ['ATTELAGE', 'CROCHET'], 'Entre deux wagons.')
+          E('« Je relie deux voitures : on m’accroche et on me décroche. » Qui suis-je ?', ['ATTELAGE', 'CROCHET'], 'Entre deux wagons.')
         ])
       ]
     },
@@ -358,33 +360,33 @@
       temoins: ['le commissaire de bord Jaouen', 'Nell, la femme de chambre,', 'Tim, le mousse,'],
       pistes: [
         P('journal', 'Le journal de bord', '📘', 'Tenu au jour le jour par le commandant.', [
-          E('« Le navire a filé 20 nœuds pendant 3 heures. » Combien de milles marins a-t-il parcourus ?', ['60'], 'Un nœud, c’est un mille par heure.', { type: 'calc', v: 60 }),
+          E('« Le navire a filé 20 nœuds pendant 3 heures. » Combien de milles marins a-t-il parcourus ?', ['60'], 'Un nœud, c’est un mille par heure.', { type: 'calc', v: 60 }),
           E('Quand on regarde vers l’avant du navire, comment appelle-t-on le côté gauche ?', ['BÂBORD'], 'L’autre, c’est tribord.'),
           E('Chaque lettre a avancé d’un pas dans l’alphabet : QIBSF', ['PHARE'], 'Q devient P…', { type: 'cesar', code: 'QIBSF', d: 1 })
         ]),
         P('bouteille', 'La bouteille à la mer', '🍾', 'Un message roulé, à peine lisible.', [
           E('Un mot écrit à l’envers : NAECO', ['OCÉAN'], 'Tout autour du navire.', { type: 'envers', code: 'NAECO' }),
-          E('« Je montre toujours le nord, même dans la tempête. » Qui suis-je ?', ['BOUSSOLE', 'COMPAS'], 'Une aiguille aimantée.'),
-          E('« Je monte et je descends deux fois par jour, sans jamais quitter le rivage. » Qui suis-je ?', ['MARÉE'], 'Haute ou basse.')
+          E('« Je montre toujours le nord, même dans la tempête. » Qui suis-je ?', ['BOUSSOLE', 'COMPAS'], 'Une aiguille aimantée.'),
+          E('« Je monte et je descends deux fois par jour, sans jamais quitter le rivage. » Qui suis-je ?', ['MARÉE'], 'Haute ou basse.')
         ]),
         P('coffre', 'Le coffre du commissaire', '🔐', 'Il garde les objets de valeur des passagers.', [
           E('Cadenas : les jours de la traversée (7) multipliés par les repas servis chaque jour (3).', ['21'], '7 × 3…', { type: 'calc', v: 21 }),
           E('Anagramme : R-O-S-E-T-R. Ce que le coffre protège.', ['TRÉSOR'], 'Des bijoux, de l’or…', { type: 'anagramme', code: 'ROSETR' }),
-          E('« On me jette à l’eau pour que le navire s’arrête, et je reste accrochée au fond. » Qui suis-je ?', ['ANCRE'], 'Au bout d’une grosse chaîne.')
+          E('« On me jette à l’eau pour que le navire s’arrête, et je reste accrochée au fond. » Qui suis-je ?', ['ANCRE'], 'Au bout d’une grosse chaîne.')
         ]),
         P('telegraphiste', 'Le télégraphiste', '📡', 'Kerlan n’est pas le seul à écouter les ondes…', [
           E('Un message codé, A=1, B=2… : 13-5-18', ['MER'], 'M est la 13e lettre.', { type: 'rangs', code: [13, 5, 18] }),
-          E('« Invisible, je traverse l’océan à la vitesse de la lumière jusqu’au poste radio. » Qui suis-je ?', ['ONDE', 'ONDE RADIO'], 'Hertzienne…'),
+          E('« Invisible, je traverse l’océan à la vitesse de la lumière jusqu’au poste radio. » Qui suis-je ?', ['ONDE', 'ONDE RADIO'], 'Hertzienne…'),
           E('Suite des fréquences : 3, 6, 12, 24… Quel nombre ensuite ?', ['48'], 'Chaque nombre double.', { type: 'calc', v: 48 })
         ]),
         P('malle', 'La malle-cabine', '🧳', 'Une malle de voyage aux initiales dorées.', [
-          E('« J’ai des épaules mais pas de tête, et je garde les costumes bien droits. » Qui suis-je ?', ['CINTRE'], 'Dans la penderie.'),
+          E('« J’ai des épaules mais pas de tête, et je garde les costumes bien droits. » Qui suis-je ?', ['CINTRE'], 'Dans la penderie.'),
           E('Cadenas : l’année du naufrage du Titanic, 1912, chiffres additionnés.', ['13'], '1 + 9 + 1 + 2…', { type: 'calc', v: 13 }),
           E('Mot brodé à l’envers sur la doublure : EGAYOV', ['VOYAGE'], 'Ce que fait la malle.', { type: 'envers', code: 'EGAYOV' })
         ]),
         P('carte', 'La carte marine', '🗺️', 'Une route tracée au crayon… puis effacée.', [
           E('Anagramme au crayon : L-E-I. Un bout de terre au milieu de l’océan.', ['ÎLE'], 'Robinson y a vécu.', { type: 'anagramme', code: 'LEI' }),
-          E('« J’ai des méridiens mais je ne suis pas une horloge, et je tourne sur mon axe. » Qui suis-je ?', ['GLOBE', 'TERRE', 'MAPPEMONDE'], 'Sur le bureau du commandant.'),
+          E('« J’ai des méridiens mais je ne suis pas une horloge, et je tourne sur mon axe. » Qui suis-je ?', ['GLOBE', 'TERRE', 'MAPPEMONDE'], 'Sur le bureau du commandant.'),
           E('Le navire suit le cap 90 (plein est), puis fait demi-tour. Quel cap suit-il maintenant ?', ['270', 'OUEST'], 'Un demi-tour, c’est 180 degrés.')
         ])
       ]
@@ -432,32 +434,32 @@
       temoins: ['Gustave, le veilleur de nuit,', 'Irène, la cuisinière,', 'Tom, le pisteur,'],
       pistes: [
         P('registre', 'Le registre de l’hôtel', '📒', 'Les arrivées et les départs de la semaine.', [
-          E('« 18 chambres, dont un tiers occupées. » Combien de chambres occupées ?', ['6'], '18 ÷ 3…', { type: 'calc', v: 6 }),
+          E('« 18 chambres, dont un tiers occupées. » Combien de chambres occupées ?', ['6'], '18 ÷ 3…', { type: 'calc', v: 6 }),
           E('Un mot écrit à l’envers : EHCNALAVA', ['AVALANCHE'], 'Ce qui a coupé la route.', { type: 'envers', code: 'EHCNALAVA' }),
-          E('« Pointue comme une dague, je pends au bord du toit en hiver et je fonds au printemps. » Qui suis-je ?', ['STALACTITE', 'GLAÇON', 'CHANDELLE DE GLACE'], 'De la glace…')
+          E('« Pointue comme une dague, je pends au bord du toit en hiver et je fonds au printemps. » Qui suis-je ?', ['STALACTITE', 'GLAÇON', 'CHANDELLE DE GLACE'], 'De la glace…')
         ]),
         P('trophee', 'Le trophée brisé', '🏆', 'Un morceau manque… et le socle était creux.', [
-          E('Sur le socle : « Premier, l’or ; deuxième, l’argent ; troisième… ? »', ['BRONZE'], 'Un alliage de cuivre.'),
+          E('Sur le socle : « Premier, l’or ; deuxième, l’argent ; troisième… ? »', ['BRONZE'], 'Un alliage de cuivre.'),
           E('Anagramme : L-A-D-M-I-E-L-E. Ce que Lagarde gagnait.', ['MÉDAILLE'], 'Elle se porte autour du cou.', { type: 'anagramme', code: 'LADMIELE' }),
           E('Lagarde a gagné 4 courses par saison pendant 6 saisons, puis 3 de plus. Combien de victoires en tout ?', ['27'], '24 + 3…', { type: 'calc', v: 27 })
         ]),
         P('carte', 'La carte des pistes', '🗺️', 'Des pistes entourées au feutre rouge.', [
           E('Verte, bleue, rouge… Quelle est la couleur des pistes les plus difficiles ?', ['NOIRE', 'NOIR'], 'Celle des experts.'),
           E('Le téléphérique monte de 1 200 m à 2 700 m en 5 minutes. Combien de mètres par minute ?', ['300'], '1 500 ÷ 5…', { type: 'calc', v: 300 }),
-          E('« Je glisse sans roues, et on me fixe aux pieds. » Qui suis-je ?', ['SKI'], 'Lagarde en était le champion.')
+          E('« Je glisse sans roues, et on me fixe aux pieds. » Qui suis-je ?', ['SKI'], 'Lagarde en était le champion.')
         ]),
         P('veilleur', 'Le veilleur de nuit', '🔦', 'Gustave a tout vu… mais il faut le faire parler.', [
-          E('« Plus il y en a, moins on voit. » Qu’est-ce ?', ['NOIR', 'OBSCURITÉ', 'BROUILLARD', 'NUIT'], 'Éteignez la lumière…'),
-          E('« Ma ronde revient toutes les 40 minutes depuis 19 h. » À quelle heure commence la 6e ronde ? (par exemple : 21h20)', ['22H20', '2220'], 'Cinq fois 40 minutes après 19 h.'),
-          E('« Je vous éclaire dans le noir, et je tiens dans la main. » Qui suis-je ?', ['LAMPE', 'TORCHE', 'LAMPE TORCHE', 'LAMPE DE POCHE'], 'Gustave ne la lâche jamais.')
+          E('« Plus il y en a, moins on voit. » Qu’est-ce ?', ['NOIR', 'OBSCURITÉ', 'BROUILLARD', 'NUIT'], 'Éteignez la lumière…'),
+          E('« Ma ronde revient toutes les 40 minutes depuis 19 h. » À quelle heure commence la 6e ronde ? (par exemple : 21h20)', ['22H20', '2220'], 'Cinq fois 40 minutes après 19 h.'),
+          E('« Je vous éclaire dans le noir, et je tiens dans la main. » Qui suis-je ?', ['LAMPE', 'TORCHE', 'LAMPE TORCHE', 'LAMPE DE POCHE'], 'Gustave ne la lâche jamais.')
         ]),
         P('casier', 'Le casier n°7', '🔐', 'Le casier personnel du champion.', [
           E('Chaque lettre a avancé d’un pas dans l’alphabet : TPNNFU', ['SOMMET'], 'T devient S…', { type: 'cesar', code: 'TPNNFU', d: 1 }),
           E('Cadenas : le numéro du casier, au cube, moins 300.', ['43'], '7 × 7 × 7 = 343…', { type: 'calc', v: 43 }),
-          E('« On me chausse et on me déchausse, dur et serré à la cheville, et je me clipse sur le ski. » Qui suis-je ?', ['CHAUSSURE', 'CHAUSSURE DE SKI', 'BOTTE'], 'Aux pieds du skieur.')
+          E('« On me chausse et on me déchausse, dur et serré à la cheville, et je me clipse sur le ski. » Qui suis-je ?', ['CHAUSSURE', 'CHAUSSURE DE SKI', 'BOTTE'], 'Aux pieds du skieur.')
         ]),
         P('photo', 'L’appareil photo', '📷', 'La pellicule n’a pas été développée…', [
-          E('« Plus on me développe, plus on y voit clair. » Qui suis-je ?', ['PELLICULE', 'PHOTO', 'PHOTOGRAPHIE'], 'Elle se roule dans l’appareil.'),
+          E('« Plus on me développe, plus on y voit clair. » Qui suis-je ?', ['PELLICULE', 'PHOTO', 'PHOTOGRAPHIE'], 'Elle se roule dans l’appareil.'),
           E('Anagramme au dos d’un cliché : H-S-A-L-F.', ['FLASH'], 'Il éblouit une fraction de seconde.', { type: 'anagramme', code: 'HSALF' }),
           E('Maud a utilisé 3 pellicules de 36 photos et la moitié d’une quatrième. Combien de photos ?', ['126'], '108 + 18…', { type: 'calc', v: 126 })
         ])
@@ -471,7 +473,7 @@
         S('esmeralda', 'Esmeralda, la trapéziste', true, 300, 'Monsieur Loyal voulait la remplacer par une plus jeune.', 'Esmeralda'),
         S('brutus', 'Brutus, le dompteur', false, 25, 'Endetté jusqu’au cou auprès du directeur.', 'Brutus'),
         S('pipo', 'Pipo, le clown', false, 50, 'Derrière le maquillage, une vieille rancune.', 'Pipo'),
-        S('zelda', 'Madame Zelda, la voyante', true, 270, 'Elle avait « prédit » la mort de Monsieur Loyal.', 'Madame Zelda'),
+        S('zelda', 'Madame Zelda, la voyante', true, 270, 'Elle avait « prédit » la mort de Monsieur Loyal.', 'Madame Zelda'),
         S('ivan', 'Ivan, l’hercule', false, 190, 'Le directeur l’avait humilié devant toute la troupe.', 'Ivan')
       ],
       lieux: [
@@ -507,33 +509,33 @@
       pistes: [
         P('malle', 'La malle du magicien', '🎩', 'Un double fond, évidemment.', [
           E('Chaque lettre a avancé d’un pas dans l’alphabet : KPOHMFVS', ['JONGLEUR'], 'K devient J…', { type: 'cesar', code: 'KPOHMFVS', d: 1 }),
-          E('« Plus on m’en enlève, plus je deviens grand. » Qui suis-je ?', ['TROU'], 'Creusez…'),
-          E('« On me sort d’un chapeau haut de forme, et j’ai de longues oreilles. » Qui suis-je ?', ['LAPIN'], 'Il aime les carottes.')
+          E('« Plus on m’en enlève, plus je deviens grand. » Qui suis-je ?', ['TROU'], 'Creusez…'),
+          E('« On me sort d’un chapeau haut de forme, et j’ai de longues oreilles. » Qui suis-je ?', ['LAPIN'], 'Il aime les carottes.')
         ]),
         P('affiche', 'L’affiche déchirée', '📜', 'Il manque un morceau… au mauvais endroit.', [
           E('Anagramme sur l’affiche : P-A-T-E-A-U-C-H-I.', ['CHAPITEAU'], 'La grande tente.', { type: 'anagramme', code: 'PATEAUCHI' }),
-          E('« Je fais rire les enfants avec mon nez rouge et mes grandes chaussures. » Qui suis-je ?', ['CLOWN', 'AUGUSTE'], 'Pipo en est un.'),
+          E('« Je fais rire les enfants avec mon nez rouge et mes grandes chaussures. » Qui suis-je ?', ['CLOWN', 'AUGUSTE'], 'Pipo en est un.'),
           E('Au guichet : trois places adultes à 12 francs et deux places enfants à moitié prix. Combien en tout ?', ['48'], '36 + 12…', { type: 'calc', v: 48 })
         ]),
         P('boule', 'La boule de cristal', '🔮', 'Madame Zelda y lit l’avenir… et y cache des choses.', [
-          E('« Je vous dis la bonne aventure contre une pièce. » Qui suis-je ?', ['VOYANTE', 'DEVINERESSE', 'CARTOMANCIENNE', 'DIVINATION'], 'Madame Zelda en est une.'),
+          E('« Je vous dis la bonne aventure contre une pièce. » Qui suis-je ?', ['VOYANTE', 'DEVINERESSE', 'CARTOMANCIENNE', 'DIVINATION'], 'Madame Zelda en est une.'),
           E('Suite mystique : 1, 4, 9, 16, 25… Quel nombre ensuite ?', ['36'], 'Les carrés : 1×1, 2×2…', { type: 'calc', v: 36 }),
           E('Un mot à l’envers dans le cristal : NITSED', ['DESTIN'], 'Ce que lit la voyante.', { type: 'envers', code: 'NITSED' })
         ]),
         P('comptes', 'Le livre de comptes', '📒', 'Les dettes de chacun, noir sur blanc.', [
           E('Brutus doit 1 200 francs et rembourse 150 francs par mois. En combien de mois sera-t-il quitte ?', ['8'], '1 200 ÷ 150…', { type: 'calc', v: 8 }),
-          E('« Je suis le roi des animaux, et je rugis sous le chapiteau. » Qui suis-je ?', ['LION'], 'Brutus le dompte.'),
+          E('« Je suis le roi des animaux, et je rugis sous le chapiteau. » Qui suis-je ?', ['LION'], 'Brutus le dompte.'),
           E('Code, A=1, B=2… : 16-9-19-20-5', ['PISTE'], 'P est la 16e lettre.', { type: 'rangs', code: [16, 9, 19, 20, 5] })
         ]),
         P('palefrenier', 'Le palefrenier', '🐴', 'Tonio soigne les chevaux… et écoute aux portes.', [
-          E('« J’ai quatre fers, mais je ne repasse rien. » Qui suis-je ?', ['CHEVAL'], 'Il galope sur la piste.'),
-          E('« On saute à travers moi, parfois enflammé. » Qui suis-je ?', ['CERCEAU', 'CERCLE', 'ANNEAU'], 'Rond comme la piste.'),
+          E('« J’ai quatre fers, mais je ne repasse rien. » Qui suis-je ?', ['CHEVAL'], 'Il galope sur la piste.'),
+          E('« On saute à travers moi, parfois enflammé. » Qui suis-je ?', ['CERCEAU', 'CERCLE', 'ANNEAU'], 'Rond comme la piste.'),
           E('Dans l’écurie : 5 chevaux et 3 poneys. Combien de fers faut-il pour tous les ferrer ?', ['32'], '8 bêtes à 4 fers…', { type: 'calc', v: 32 })
         ]),
         P('billets', 'Le coffre à billets', '🎟️', 'La recette de la soirée… entamée.', [
           E('Cadenas : 25 rangées de 12 sièges, moins 13 places vides ce soir. Combien de spectateurs ?', ['287'], '300 – 13…', { type: 'calc', v: 287 }),
-          E('« On me déchire à l’entrée, et je reste en souvenir. » Qui suis-je ?', ['BILLET', 'TICKET'], 'On l’achète au guichet.'),
-          E('Anagramme griffonnée par Monsieur Loyal : R-E-G-N-A-D. Un mot qu’il criait avant le numéro des fauves.', ['DANGER'], '« Attention… »', { type: 'anagramme', code: 'REGNAD' })
+          E('« On me déchire à l’entrée, et je reste en souvenir. » Qui suis-je ?', ['BILLET', 'TICKET'], 'On l’achète au guichet.'),
+          E('Anagramme griffonnée par Monsieur Loyal : R-E-G-N-A-D. Un mot qu’il criait avant le numéro des fauves.', ['DANGER'], '« Attention… »', { type: 'anagramme', code: 'REGNAD' })
         ])
       ]
     }
@@ -585,7 +587,7 @@
   function maj(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
   /* Normalisation tolérante d'une réponse : majuscules sans accents, les
-     petits mots de tête retirés (« une horloge », « c’est la clé »…). */
+     petits mots de tête retirés (« une horloge », « c’est la clé »…). */
   var VIDES = ['LE', 'LA', 'LES', 'L', 'UN', 'UNE', 'DES', 'DU', 'DE', 'D', 'MON', 'MA', 'MES',
     'TON', 'TA', 'TES', 'SON', 'SA', 'SES', 'NOTRE', 'NOS', 'VOTRE', 'VOS', 'LEUR', 'LEURS',
     'CE', 'CET', 'CETTE', 'CES', 'C', 'CEST', 'EST', 'IL', 'ELLE', 'SAGIT', 'S', 'AGIT', 'AU',
@@ -613,7 +615,7 @@
       var n = normRep(a);
       if (!n) return false;
       if (n === r || sansPluriel(n) === sansPluriel(r)) return true;
-      // « 8 jours », « 35 ans » : le nombre suffit
+      // « 8 jours », « 35 ans » : le nombre suffit
       return /^\d+$/.test(n) && num && num[1] === n && !/^\d+H\d/.test(r);
     });
   }
@@ -685,13 +687,13 @@
       for (j = 0; j < noms.length; j++) {
         if (noms[j] !== s0 && pos[noms[j]] === pos[s0]) return false;
       }
-      // le coupable était sur les lieux : personne d'autre ne pouvait y être « seul »
+      // le coupable était sur les lieux : personne d'autre ne pouvait y être « seul »
       if (pos[s0] === l && s0 !== c) return false;
     }
     return true;
   }
 
-  /* Tous les triplets compatibles (le solveur). « parmi » : ne tester que
+  /* Tous les triplets compatibles (le solveur). « parmi » : ne tester que
      ces triplets-là (ajouter un fait ne peut que réduire la liste). */
   function solveur(scen, faits, parmi) {
     var out = [];
@@ -712,7 +714,7 @@
 
   /* ---- textes des faits ---- */
   function nomS(scen, id) { var s = byId(scen.suspects, id); return s ? (s.txt || s.nom.split(',')[0]) : '?'; }
-  /* « de » + nom : du colonel, de la baronne, d’Hector, de Pipo */
+  /* « de » + nom : du colonel, de la baronne, d’Hector, de Pipo */
   function deX(t) {
     if (/^le /.test(t)) return 'du ' + t.slice(3);
     if (/^la /.test(t)) return 'de la ' + t.slice(3);
@@ -729,15 +731,15 @@
 
   function texteTemoignage(scen, f) {
     var e = fem(scen, f.par), ou = f.at[0][1], h = scen.heure;
-    if (ou.indexOf('ch_') === 0) return '« À ' + h + ', je dormais dans ma chambre, porte fermée. »';
+    if (ou.indexOf('ch_') === 0) return '« À ' + h + ', je dormais dans ma chambre, porte fermée. »';
     var li = lieuInfo(scen, ou);
-    if (f.at.length > 1) return '« À ' + h + ', j’étais ' + li.dans + ', avec ' + nomS(scen, f.at[1][0]) + '. »';
-    if (f.seul) return '« À ' + h + ', j’étais seul' + e + ' ' + li.dans + '. »';
-    return '« À ' + h + ', j’étais ' + li.dans + '. »';
+    if (f.at.length > 1) return '« À ' + h + ', j’étais ' + li.dans + ', avec ' + nomS(scen, f.at[1][0]) + '. »';
+    if (f.seul) return '« À ' + h + ', j’étais seul' + e + ' ' + li.dans + '. »';
+    return '« À ' + h + ', j’étais ' + li.dans + '. »';
   }
 
-  /* Deux versions de chaque fait : « piste » (on vous le rapporte) et
-     « perso » (vous le savez vous-même, dans votre dossier secret). */
+  /* Deux versions de chaque fait : « piste » (on vous le rapporte) et
+     « perso » (vous le savez vous-même, dans votre dossier secret). */
   function textes(scen, f) {
     var T = pick(scen.temoins), h = scen.heure, a, li, tr;
     switch (f.t) {
@@ -925,7 +927,7 @@
       if (Object.keys(susPub).length < 2) continue;
       var pool = GG.shuffle(faitsPossibles(scen, v));
       // on privilégie un mélange : indices matériels et observations en
-      // alternance ; les alibis « vu ailleurs » (trop directs) passent en
+      // alternance ; les alibis « vu ailleurs » (trop directs) passent en
       // dernier, et un seul au plus sera retenu
       var direct = function (f) { return f.t === 'vu' && f.at[0][0] !== v.c; };
       var ind = pool.filter(estIndice), obs = pool.filter(function (f) { return !estIndice(f) && !direct(f); });
@@ -1074,7 +1076,7 @@
     // dossiers secrets : les faits indispensables sont distribués ; les joueurs
     // en surnombre reçoivent des vérités de confirmation
     var prives = GG.shuffle(aff.prives.slice()).map(function (f) { return faitPublic(scen, f, seq++); });
-    // (jamais « l'arme ne quitte pas le coupable » ni « on a vu le coupable » :
+    // (jamais « l'arme ne quitte pas le coupable » ni « on a vu le coupable » :
     // trop parlant pour une simple confirmation)
     var extras = GG.shuffle(aff.reste.filter(function (f) {
       return !estIndice(f) && f.t !== 'vu' && !(f.t === 'armeMain' && f.arme === aff.v.w);
@@ -1233,7 +1235,7 @@
           '<p class="mn-sum-s">Affaire résolue à ' + GG.esc(heureNuit(s.nuitFin || 0)) + '.</p>'
           : '<p class="mn-sum-s">L’assassin s’est échappé dans la nuit…</p>') +
         '<p class="mn-sum-s">🧩 ' + s.pistes.filter(function (p) { return p.solved; }).length + '/6 pistes · ❌ ' +
-        (s.wrongAnswers | 0) + ' erreurs · 💡 ' + (s.hintsUsed | 0) + ' indices</p></div>';
+        pluriel(s.wrongAnswers | 0, 'erreur') + ' · 💡 ' + pluriel(s.hintsUsed | 0, 'indice') + '</p></div>';
     },
 
     /* la solution, les réponses des énigmes, les indices des pistes fermées
@@ -1625,7 +1627,7 @@
       var dons = [];
       s.pistes.forEach(function (pi) {
         if (pi.solved) return;
-        if (p.role.id === 'cryptographe' && pi.first) dons.push(pi.icone + ' ' + pi.nom + ' : commence par « ' + pi.first + ' »');
+        if (p.role.id === 'cryptographe' && pi.first) dons.push(pi.icone + ' ' + pi.nom + ' : commence par « ' + pi.first + ' »');
         if (p.role.id === 'serrurier' && pi.hint && !pi.hintShown) dons.push(pi.icone + ' ' + pi.nom + ' : ' + pi.hint);
         if (p.role.id === 'archiviste' && pi.kinds) dons.push(pi.icone + ' ' + pi.nom + ' : ' + pi.kinds.map(catIc).join(' '));
       });
@@ -1738,7 +1740,7 @@
     return out;
   }
 
-  /* les confidences arrachées aux témoins (« Faire parler un témoin ») */
+  /* les confidences arrachées aux témoins (« Faire parler un témoin ») */
   function revelesHtml(s) {
     return (s.revelesTxt || []).map(function (t) {
       return '<div class="mn-clue revele">🕯️ ' + riche(t) + '</div>';
@@ -1809,7 +1811,7 @@
       '<div class="mn-parchment">' + GG.esc(p.q) + '</div>';
     if (!partage && me.role) {
       if (me.role.id === 'cryptographe' && p.first) {
-        out += '<p class="mn-hint">🔐 Votre don : la réponse commence par « ' + GG.esc(p.first) + ' »</p>';
+        out += '<p class="mn-hint">🔐 Votre don : la réponse commence par « ' + GG.esc(p.first) + ' »</p>';
       }
       if (me.role.id === 'serrurier' && !p.hintShown && p.hint) {
         out += '<p class="mn-hint">🗝️ Votre passe-partout : ' + GG.esc(p.hint) + '</p>';
@@ -1817,7 +1819,7 @@
     }
     if (p.hintShown && p.hint) out += '<p class="mn-hint">💡 ' + GG.esc(p.hint) + '</p>';
     if (p.lastWrong) {
-      out += '<p class="mn-wrong" data-w="' + (p.wrongN | 0) + '">« ' + GG.esc(p.lastWrong) + ' » n’a rien ouvert…</p>';
+      out += '<p class="mn-wrong" data-w="' + (p.wrongN | 0) + '">« ' + GG.esc(p.lastWrong) + ' » n’a rien ouvert…</p>';
     }
     return out;
   }
@@ -1855,8 +1857,8 @@
   function phrase(sc, si, ai, li) {
     var sus = byId(sc.suspects, si), arm = byId(sc.armes, ai), lie = byId(sc.lieux, li);
     if (!sus || !arm || !lie) return '';
-    return '« J’accuse <strong>' + GG.esc(sus.nom.split(',')[0]) + '</strong>, avec ' + GG.esc(minus(arm.nom)) +
-      ', ' + GG.esc(lie.dans) + ' ! »';
+    return '« J’accuse <strong>' + GG.esc(sus.nom.split(',')[0]) + '</strong>, avec ' + GG.esc(minus(arm.nom)) +
+      ', ' + GG.esc(lie.dans) + ' ! »';
   }
   function confirmHtml(s) {
     var a = view.accuse;
@@ -1937,8 +1939,8 @@
       GG.esc(arm.icone) + ',<br><strong>' + GG.esc(lie.dans) + '</strong> ' + GG.esc(lie.icone) + '.</p>' +
       (s.won ? '<div class="mn-stars">' + '⭐'.repeat(n) + '☆'.repeat(3 - n) + '</div>' : '') + '</div>' +
       '<div class="mn-stats">🌙 ' + GG.esc(heureNuit(s.nuitFin || 0)) + ' · 🧩 ' +
-      s.pistes.filter(function (p) { return p.solved; }).length + '/6 pistes · ❌ ' + (s.wrongAnswers | 0) +
-      ' erreurs · 💡 ' + (s.hintsUsed | 0) + ' indices</div>';
+      s.pistes.filter(function (p) { return p.solved; }).length + '/6 pistes · ❌ ' +
+      pluriel(s.wrongAnswers | 0, 'erreur') + ' · 💡 ' + pluriel(s.hintsUsed | 0, 'indice') + '</div>';
   }
 
   /* ---------- l'horloge de la nuit, animée sans redessiner l'écran ---------- */

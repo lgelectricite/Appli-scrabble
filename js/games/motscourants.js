@@ -8,7 +8,7 @@
       {id, nom, ic, mots: [très courants, courants, plus rares]}.
    3. GG.MOTS_MYSTERE : les mots secrets du Mot Mystère, par longueur (5, 6, 7),
       du plus courant au moins courant (noms, adjectifs, verbes à l’infinitif).
-   4. GG.MOTS_VOCAB : le vocabulaire « parlé » par longueur (toutes les formes :
+   4. GG.MOTS_VOCAB : le vocabulaire « parlé » par longueur (toutes les formes :
       pluriels, conjugaisons…), du plus courant au moins courant. Sert à l’IA du
       Mot Mystère (qui ne connaît donc pas la liste secrète) et à valider les
       essais si le grand dictionnaire n’a pas pu être chargé.

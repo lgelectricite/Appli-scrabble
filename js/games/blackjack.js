@@ -393,7 +393,7 @@
     icone: '♠️',
     desc: 'Défiez le croupier : approchez 21 sans le dépasser et repartez avec les jetons !',
     regles: '<p><strong>🎯 Le but :</strong> battre le croupier en vous approchant de 21 sans jamais le dépasser.</p>' +
-      '<p><strong>Miser :</strong> empilez les jetons (1, 5, 25, 100, 500) pour composer n’importe quel montant, de 1 à 5 000, puis validez. « Rejouer » remet la même mise en un geste.</p>' +
+      '<p><strong>Miser :</strong> empilez les jetons (1, 5, 25, 100, 500) pour composer n’importe quel montant, de 1 à 5 000, puis validez. « Rejouer » remet la même mise en un geste.</p>' +
       '<p><strong>Jouer :</strong> vous recevez deux cartes. Tirez, restez, ou doublez (avec vos deux premières cartes : mise doublée, une seule carte de plus). L’as vaut 1 ou 11, les figures 10.</p>' +
       '<p><strong>Séparer :</strong> deux cartes de même valeur (deux 8, ou un valet et une dame : elles valent 10 toutes les deux) se séparent en deux mains, chacune avec sa mise. Une séparation par manche ; les as séparés ne reçoivent qu’une carte chacun ; on peut doubler après avoir séparé.</p>' +
       '<p><strong>Le croupier :</strong> il vérifie d’abord s’il a un blackjack, puis joue après vous et tire jusqu’à 17 — il reste sur tous les 17.</p>' +
@@ -401,7 +401,7 @@
       '<p><strong>Abandon (option) :</strong> sur vos deux premières cartes, vous pouvez rendre la main et récupérer la moitié de votre mise.</p>' +
       '<p><strong>Les gains :</strong> victoire 1 pour 1, blackjack 3 pour 2 (au demi-jeton près : 5 misés rapportent 7,5 ; la cagnotte garde le demi-jeton, deux demis font un jeton), égalité : mise rendue.</p>' +
       '<p><strong>Quitter la table :</strong> comme au casino, une main commencée se termine : si vous partez en pleine main, elle est jouée pour vous (vous restez), et réglée normalement.</p>' +
-      '<p><strong>💡 Conseils :</strong> l’aide « stratégie de base » (réglages de la table) vous souffle le meilleur coup mathématique à chaque décision.</p>',
+      '<p><strong>💡 Conseils :</strong> l’aide « stratégie de base » (réglages de la table) vous souffle le meilleur coup mathématique à chaque décision.</p>',
     min: 1,
     max: 4,
     hotseat: true,
@@ -677,7 +677,7 @@
         state.dealer = [];
         for (i = 0; i < state.players.length; i++) razManche(state.players[i]);
         if (remise) {
-          // « Rejouer » : la même mise, en un geste
+          // « Rejouer » : la même mise, en un geste
           p.bet = remise;
           p.engage = (p.engage || 0) + remise;
           if (tousOntChoisi(state)) distribuer(state);
@@ -720,7 +720,7 @@
       // clé unique par table ET par manche
       var cleManche = idTable(s) + ':' + s.round;
 
-      /* ---- anti « ghost tap » : à chaque transition (phase, main du split),
+      /* ---- anti « ghost tap » : à chaque transition (phase, main du split),
          la console est gelée un instant ; un seul act par rendu ---- */
       var cleCtx = cleManche + ':' + s.phase + ':' + (moi && moi.split ? 'S' + moi.hi : 'N');
       if (el._bjCtxCle !== undefined && el._bjCtxCle !== cleCtx) el._bjGelFin = now + 600;
@@ -1083,7 +1083,7 @@
           }
           html += '<p class="mini-msg bj-msg" id="bj-msg"></p>';
         } else if (s.turn >= 0) {
-          html += '<p class="waiting">Au tour de ' + GG.esc(s.players[s.turn].name) + '…</p>';
+          html += '<p class="waiting">Au tour ' + GG.de(s.players[s.turn].name) + GG.esc(s.players[s.turn].name) + '…</p>';
         }
       } else if (enResultat) {
         if (me === 0) {
@@ -1351,7 +1351,7 @@
     MISE_MAX: MISE_MAX
   };
 
-  /* l'aide « stratégie de base » : un réglage de CE téléphone */
+  /* l'aide « stratégie de base » : un réglage de CE téléphone */
   function lireAide() {
     try { return localStorage.getItem('gg-bj-aide') === '1'; } catch (e) { return false; }
   }

@@ -57,54 +57,44 @@
       <button class="icon-btn" id="btn-reglages" title="Réglages" aria-label="Réglages">⚙️</button>
     </header>
     <div class="home-hello">
-      <p class="salut" id="home-salut">Salut ! 👋</p>
-      <p id="home-sous">À quoi on joue ?</p>
+      <p class="salut" id="home-salut">Salut ! 👋</p>
+      <p id="home-sous">À quoi on joue ?</p>
       <p id="offline-badge" class="offline-badge hidden">✈️ Prête pour le mode avion</p>
       <button id="btn-wallet" class="wallet-chip">🪙 <b id="wallet-amount">10 000</b> jetons
-        <span class="wallet-more">Boutique ›</span></button>
+        <span class="wallet-more">Cagnotte ›</span></button>
     </div>
     <div id="home-bienvenue"></div>
-    <div id="home-reprise"></div>
+    <div id="home-reprise" class="home-reprise"></div>
     <div class="home-rejoindre">
       <button class="btn" id="btn-home-online"><span class="ic">🌍</span>Rejoindre<small>avec un code</small></button>
       <button class="btn" id="btn-home-join"><span class="ic">📷</span>Scanner<small>un QR, sur place</small></button>
     </div>
     <nav class="cat-tabs" id="cat-tabs" aria-label="Catégories"></nav>
     <div id="catalog"></div>
-    <p class="hint" style="text-align:center;margin-top:22px">Sur place sans Internet : l’hôte montre un QR code.
-      À distance : il partage un <strong>code de 6 caractères</strong>.</p>
+    <p class="hint" style="text-align:center;margin-top:22px">Sur place sans Internet : l’hôte montre un QR code.
+      À distance : il partage un <strong>code de 6 caractères</strong>.</p>
   </section>
 
   <!-- ============ BOUTIQUE DE JETONS ============ -->
   <section id="screen-boutique" class="screen">
-    <h2>🪙 Boutique de jetons</h2>
+    <h2>🪙 Ma cagnotte</h2>
     <div class="bank-card">
       <p class="bank-label">Votre cagnotte</p>
       <p class="bank-amount"><b id="bank-n">10 000</b> 🪙</p>
       <p class="hint" id="bank-refill"></p>
     </div>
-    <div class="shop-grid">
-      <div class="shop-pack"><span class="pack-amt">5 000 🪙</span>
-        <span class="pack-soon">Bientôt</span></div>
-      <div class="shop-pack best"><span class="pack-amt">25 000 🪙</span>
-        <span class="pack-soon">Bientôt</span></div>
-      <div class="shop-pack"><span class="pack-amt">100 000 🪙</span>
-        <span class="pack-soon">Bientôt</span></div>
+    <div class="cagnotte-infos">
+      <div class="ci"><span class="ci-ic">🎁</span><span class="ci-tx"><b>Toujours de quoi jouer</b>
+        Sous 10&nbsp;000 jetons, la cagnotte remonte d’elle-même à 10&nbsp;000 chaque semaine. Gratuit, sans publicité.</span></div>
+      <div class="ci"><span class="ci-ic">🃏</span><span class="ci-tx"><b>Poker</b>
+        Une cave de 100 jetons pour s’asseoir (blinds 1/2). Quitter la table rend votre pile.</span></div>
+      <div class="ci"><span class="ci-ic">♠️</span><span class="ci-tx"><b>Blackjack</b>
+        On mise dès 1 jeton. Comme au casino, une mise engagée dans une main en cours est perdue si l’on quitte.</span></div>
+      <div class="ci"><span class="ci-ic">🏆</span><span class="ci-tx"><b>Plafond</b>
+        Jusqu’à 1&nbsp;000&nbsp;000 de jetons : de quoi voir venir&nbsp;!</span></div>
     </div>
-    <p class="hint">Les jetons servent à s’asseoir au 🃏 Poker (cave de 100,
-      blinds 1/2) et à miser au ♠️ Blackjack (à partir de 1 jeton). Vos gains
-      restent dans la cagnotte, et quitter une table rend toujours votre pile
-      et vos mises en cours. Si elle passe sous
-      10 000, elle remonte automatiquement à 10 000 chaque semaine — et les
-      packs de la boutique arriveront avec la version vendue en magasin
-      d’applications.</p>
-    <hr class="sep">
-    <p class="hint">Un souci d’affichage après une mise à jour ? Ce bouton
-      retélécharge l’application entière (gardez Internet le temps du
-      rechargement) — vos parties enregistrées et votre cagnotte sont
-      conservées.</p>
-    <button class="btn" id="btn-forcer-maj">🔄 Recharger l’application</button>
     <p class="hint" id="version-appli"></p>
+    <button class="btn hidden" id="btn-forcer-maj">🔄 Recharger l’application</button>
     <button class="btn link" data-back>← Retour</button>
   </section>
 
@@ -113,7 +103,7 @@
     <div class="jeu-hero">
       <span class="jh-ic">🔤</span>
       <h2>Words</h2>
-      <p>Le jeu de lettres : posez vos mots sur le plateau, le dictionnaire français arbitre.</p>
+      <p>Le jeu de lettres : posez vos mots sur le plateau, le dictionnaire français arbitre.</p>
       <div class="jh-meta"><span class="jh-pill">1–4 joueurs</span><span class="jh-pill">🤖 IA 4 niveaux</span></div>
     </div>
     <div class="home-buttons">
@@ -245,12 +235,12 @@
     <button class="btn" id="btn-rg-maj">🔄 Recharger l’application</button>
     <details class="code-details">
       <summary>Licences des ressources libres utilisées</summary>
-      <p class="licences">Polices Fredoka, Nunito et Fraunces : SIL Open Font License 1.1.
-        Dictionnaire : dérivé de « an-array-of-french-words » (MIT, © Zeke Sikelianos),
+      <p class="licences">Polices Fredoka, Nunito et Fraunces : SIL Open Font License 1.1.
+        Dictionnaire : dérivé de « an-array-of-french-words » (MIT, © Zeke Sikelianos),
         lui-même issu de la liste Letterpress (CC0). Fréquences des mots courants
-        (niveaux de l’IA, Mot Mystère, Pendu) : Lexique 3.83 (B. New, C. Pallier et
-        al., CC BY-SA 4.0) et wordfreq (R. Speer, CC BY-SA 4.0). QR codes : qrcode-generator (MIT,
-        © Kazuhiko Arase) et jsQR (Apache-2.0, © Cosmo Wolfe). Tout le reste : GGgames.</p>
+        (niveaux de l’IA, Mot Mystère, Pendu) : Lexique 3.83 (B. New, C. Pallier et
+        al., CC BY-SA 4.0) et wordfreq (R. Speer, CC BY-SA 4.0). QR codes : qrcode-generator (MIT,
+        © Kazuhiko Arase) et jsQR (Apache-2.0, © Cosmo Wolfe). Tout le reste : GGgames.</p>
     </details>
     <button class="btn link" data-back>← Retour</button>
   </section>
@@ -275,13 +265,13 @@
         <div class="code-big" id="host-code-big">······</div>
         <button class="btn big primary" id="btn-host-whatsapp">💬 Inviter sur WhatsApp</button>
         <button class="btn big" id="btn-host-share-code">📤 Autres applications</button>
-        <p class="hint">Vos amis touchent « 🌍 Rejoindre avec un code » sur l’accueil
+        <p class="hint">Vos amis touchent « 🌍 Rejoindre avec un code » sur l’accueil
           et tapent ce code — de n’importe où. Il reste valable tant que vous
           gardez cet écran ou la partie ouverts.</p>
       </div>
       <h3>Joueurs</h3>
       <div id="lobby-list"></div>
-      <button class="btn big" id="btn-host-wifi">📶 QR Wi-Fi : connecter un téléphone à mon réseau</button>
+      <button class="btn big" id="btn-host-wifi">📶 QR Wi-Fi : connecter un téléphone à mon réseau</button>
       <button class="btn big" id="btn-host-invite">➕ Inviter un joueur</button>
       <button class="btn big primary" id="btn-host-start" disabled>Commencer la partie</button>
       <button class="btn big hidden" id="btn-host-back-game">← Retour au jeu</button>
@@ -290,10 +280,10 @@
 
     <div class="net-step hidden" id="host-step-wifi">
       <h3>📶 Connecter un téléphone à votre réseau</h3>
-      <p class="hint">1. Activez votre partage de connexion : <strong>Réglages →
-        Partage de connexion → « Autoriser d’autres utilisateurs »</strong>
+      <p class="hint">1. Activez votre partage de connexion : <strong>Réglages →
+        Partage de connexion → « Autoriser d’autres utilisateurs »</strong>
         (le nom du réseau et le mot de passe sont affichés sur cet écran).<br>
-        2. Recopiez-les ici — c’est à faire une seule fois, l’application s’en souvient :</p>
+        2. Recopiez-les ici — c’est à faire une seule fois, l’application s’en souvient :</p>
       <label>Nom du réseau (celui affiché dans les réglages)
         <input type="text" id="wifi-ssid" maxlength="40" placeholder="iPhone de …" autocomplete="off">
       </label>
@@ -303,34 +293,34 @@
       <button class="btn big primary" id="btn-wifi-make">Générer le QR Wi-Fi</button>
       <div class="qr-box hidden" id="wifi-qr"></div>
       <p class="hint hidden" id="wifi-done">✅ L’autre joueur scanne ce QR avec
-        <strong>l’appareil photo</strong> de son téléphone : il rejoint votre réseau
-        automatiquement. Ensuite, revenez au salon et touchez « Inviter un joueur ».</p>
+        <strong>l’appareil photo</strong> de son téléphone : il rejoint votre réseau
+        automatiquement. Ensuite, revenez au salon et touchez « Inviter un joueur ».</p>
       <button class="btn big" id="btn-wifi-back">← Retour au salon</button>
     </div>
 
     <div class="net-step hidden" id="host-step-offer">
       <p><strong>Étape 1&nbsp;/&nbsp;2</strong> — L’autre joueur scanne ce QR code avec
-        <strong>l’appareil photo</strong> de son téléphone : l’application s’ouvre toute
+        <strong>l’appareil photo</strong> de son téléphone : l’application s’ouvre toute
         seule, prête à se connecter.</p>
       <div class="qr-box" id="host-qr"></div>
       <div class="loin-box">
-        <p><strong>🌍 Votre ami n’est pas à côté de vous ?</strong> Envoyez-lui ce lien
-          d’invitation par message : il l’ouvre, entre son prénom, et vous renvoie
+        <p><strong>🌍 Votre ami n’est pas à côté de vous ?</strong> Envoyez-lui ce lien
+          d’invitation par message : il l’ouvre, entre son prénom, et vous renvoie
           le code de réponse qu’il obtient. (Chacun doit avoir Internet.)</p>
         <button class="btn small" id="btn-host-share">📤 Envoyer le lien d’invitation</button>
       </div>
       <details class="code-details">
-        <summary>Le scan ne marche pas ? Code texte</summary>
+        <summary>Le scan ne marche pas ? Code texte</summary>
         <textarea id="host-code" readonly rows="4"></textarea>
         <button class="btn small" id="btn-host-copy">Copier le code</button>
       </details>
-      <button class="btn big primary" id="btn-host-scan-answer">Étape 2 : recevoir sa réponse →</button>
+      <button class="btn big primary" id="btn-host-scan-answer">Étape 2 : recevoir sa réponse →</button>
     </div>
 
     <div class="net-step hidden" id="host-step-scan">
-      <p><strong>Étape 2&nbsp;/&nbsp;2</strong> — Côte à côte : scannez le QR code affiché sur l’autre téléphone.</p>
+      <p><strong>Étape 2&nbsp;/&nbsp;2</strong> — Côte à côte : scannez le QR code affiché sur l’autre téléphone.</p>
       <div class="video-box"><video id="host-video" muted playsinline></video></div>
-      <p class="hint">🌍 <strong>À distance :</strong> collez ci-dessous le code de réponse
+      <p class="hint">🌍 <strong>À distance :</strong> collez ci-dessous le code de réponse
         que votre ami vous a envoyé par message.</p>
       <textarea id="host-paste" rows="4" placeholder="Collez le code de réponse ici"></textarea>
       <button class="btn small" id="btn-host-paste-ok">Valider le code</button>
@@ -354,21 +344,21 @@
       <button class="btn big primary" id="btn-join-scan">Scanner l’invitation</button>
     </div>
     <div class="net-step hidden" id="join-step-scan">
-      <p>Scannez le QR code affiché sur le téléphone qui a créé la partie :</p>
+      <p>Scannez le QR code affiché sur le téléphone qui a créé la partie :</p>
       <div class="video-box"><video id="join-video" muted playsinline></video></div>
       <details class="code-details">
-        <summary>Le scan ne marche pas ? Coller le code</summary>
+        <summary>Le scan ne marche pas ? Coller le code</summary>
         <textarea id="join-paste" rows="4" placeholder="Collez le code d’invitation ici"></textarea>
         <button class="btn small" id="btn-join-paste-ok">Valider le code</button>
       </details>
     </div>
     <div class="net-step hidden" id="join-step-answer">
       <p>Faites maintenant scanner ce QR code de réponse par le téléphone qui a créé la partie
-        (depuis l’application, bouton « Scanner la réponse ») :</p>
+        (depuis l’application, bouton « Scanner la réponse ») :</p>
       <div class="qr-box" id="join-qr"></div>
       <div class="loin-box">
-        <p><strong>🌍 Vous jouez à distance ?</strong> Renvoyez ce code de réponse
-          par message à celui qui a créé la partie : il le colle chez lui et
+        <p><strong>🌍 Vous jouez à distance ?</strong> Renvoyez ce code de réponse
+          par message à celui qui a créé la partie : il le colle chez lui et
           la partie démarre.</p>
         <button class="btn small" id="btn-join-share">📤 Envoyer ma réponse</button>
       </div>
@@ -421,12 +411,12 @@
   <!-- ============ EN LIGNE : RÉGLAGES DU SERVEUR ============ -->
   <section id="screen-relais" class="screen">
     <h2>⚙️ Serveur des parties en ligne</h2>
-    <p class="hint"><strong>Vous n’avez normalement rien à régler ici :</strong> le
+    <p class="hint"><strong>Vous n’avez normalement rien à régler ici :</strong> le
       serveur de rendez-vous de GGgames est déjà configuré. Il met les téléphones
       en relation pour les parties à distance, sans jamais connaître le jeu ni
       rien enregistrer.</p>
     <p class="hint">Cet écran sert à faire tourner <strong>votre propre serveur</strong>
-      si vous le préférez : son code est fourni dans le dossier <code>relay/</code>
+      si vous le préférez : son code est fourni dans le dossier <code>relay/</code>
       du projet et s’installe gratuitement en quelques clics. Collez l’adresse
       obtenue ci-dessous — l’application s’en souviendra.</p>
     <label>Adresse du serveur
@@ -539,7 +529,7 @@
 
   <div id="overlay-joker" class="overlay hidden">
     <div class="overlay-card">
-      <h2>Joker : choisissez la lettre</h2>
+      <h2>Joker : choisissez la lettre</h2>
       <div id="joker-letters"></div>
       <button class="btn link" id="btn-joker-cancel">Annuler</button>
     </div>
@@ -566,7 +556,7 @@
     <div class="overlay-card scroll">
       <h2 id="rules-title">Règles</h2>
       <div id="rules-body" class="rules-body"></div>
-      <button class="btn big primary" id="btn-rules-close">C’est parti !</button>
+      <button class="btn big primary" id="btn-rules-close">C’est parti !</button>
     </div>
   </div>
 
@@ -600,14 +590,14 @@
   <!-- l'hôte choisit le jeu suivant, sans perdre la bande -->
   <div id="overlay-switch" class="overlay sheet hidden">
     <div class="overlay-card scroll">
-      <h2>🎲 On joue à quoi ?</h2>
-      <p class="hint">Tout le monde reste connecté : la partie suivante s’ouvre chez chacun.</p>
+      <h2>🎲 On joue à quoi ?</h2>
+      <p class="hint">Tout le monde reste connecté : la partie suivante s’ouvre chez chacun.</p>
       <div class="grille-jeux" id="switch-jeux"></div>
       <button class="btn link" id="btn-switch-close">Annuler</button>
     </div>
   </div>
 
-  <!-- après « Voir le jeu » : revenir à l'écran de fin -->
+  <!-- après « Voir le jeu » : revenir à l'écran de fin -->
   <button class="fin-retour hidden" id="btn-fin-retour">🏁 Fin de partie</button>
 
   <div id="toast" class="hidden"></div>

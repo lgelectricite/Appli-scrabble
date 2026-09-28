@@ -4,7 +4,7 @@
  * 8 = joker (on choisit la couleur), Valet = saute le suivant, As = change
  * de sens, 2 = le suivant pioche 2 (cumulable). La 1re carte retournée
  * applique aussi son effet. Règles maison réglées par l'hôte avant la
- * première carte : score cible, annonce « Carte ! », interdit de finir sur
+ * première carte : score cible, annonce « Carte ! », interdit de finir sur
  * un 8, le 10 fait rejouer. Les mains adverses et la pioche restent
  * secrètes (redact). IA à trois niveaux ; la difficile compte les cartes.
  */
@@ -53,7 +53,7 @@
   }
 
   /* la carte c peut-elle être posée ? main : la main du joueur (règle
-     « interdit de finir sur un 8 ») */
+     « interdit de finir sur un 8 ») */
   function playable(state, c, main) {
     if (state.pending2 > 0) return c.r === '2';
     if (c.r === '8') {
@@ -127,7 +127,7 @@
     state.lastMsg = '';
     state.dernier = { t: 'donne' };
     // la première carte retournée applique son effet, comme si le
-    // « donneur » (le joueur d'avant) venait de la poser
+    // « donneur » (le joueur d'avant) venait de la poser
     if (first.r === '2') {
       state.pending2 = 2;
       state.lastMsg = 'Première carte : un 2 ! ' + nom(state, start) + ' pioche 2 cartes… ou pose un 2.';
@@ -186,7 +186,7 @@
     return tot;
   }
 
-  /* petit hachage déterministe (décisions « humaines » de l'IA, stables d'un appel à l'autre) */
+  /* petit hachage déterministe (décisions « humaines » de l'IA, stables d'un appel à l'autre) */
   function hache(a, b, c) {
     var h = (a * 374761393 + b * 668265263 + (c || 0) * 2147483647) | 0;
     h = (h ^ (h >>> 13)) * 1274126177;
@@ -383,7 +383,7 @@
     if (s.indexOf('🤖') === 0) return '🤖';
     var m = s.replace(/^\s+/, '');
     var ch = m.charAt(0);
-    // une lettre accentuée ou un caractère « double » (émoji) : on garde le point de code entier
+    // une lettre accentuée ou un caractère « double » (émoji) : on garde le point de code entier
     var code = m.charCodeAt(0);
     if (code >= 0xd800 && code <= 0xdbff) ch = m.slice(0, 2);
     return ch.toUpperCase() || '?';
@@ -460,8 +460,8 @@
     regles: '<p><strong>🎯 Le but :</strong> être le premier à vider sa main — et marquer les points des cartes restantes chez les autres. Le premier au score cible (300 points par défaut) gagne la partie.</p>' +
       '<p><strong>Comment jouer :</strong> recouvrez la carte du dessus par une carte de la <strong>même couleur</strong> ou de la <strong>même valeur</strong>. Rien à jouer ? Piochez une carte : jouable, vous pouvez la poser, sinon passez.</p>' +
       '<p><strong>Les cartes spéciales :</strong> le <strong>8</strong> se pose sur tout et choisit la couleur · le <strong>Valet</strong> saute le joueur suivant · l’<strong>As</strong> change le sens (à deux, on rejoue) · le <strong>2</strong> fait piocher 2 cartes au suivant, et les 2 se cumulent ! La première carte retournée a aussi son effet.</p>' +
-      '<p><strong>« Carte ! » :</strong> quand il ne vous reste que 2 cartes, touchez « Carte ! » avant de poser l’avant-dernière. Oubli = 2 cartes de pénalité.</p>' +
-      '<p><strong>Règles maison</strong> (réglées par l’hôte pendant la première manche, bouton ⚙️ sous la main) : score cible 100, 300 ou 500 · annonce « Carte ! » · interdit de finir sur un 8 · le 10 fait rejouer.</p>' +
+      '<p><strong>« Carte ! » :</strong> quand il ne vous reste que 2 cartes, touchez « Carte ! » avant de poser l’avant-dernière. Oubli = 2 cartes de pénalité.</p>' +
+      '<p><strong>Règles maison</strong> (réglées par l’hôte pendant la première manche, bouton ⚙️ sous la main) : score cible 100, 300 ou 500 · annonce « Carte ! » · interdit de finir sur un 8 · le 10 fait rejouer.</p>' +
       '<p><strong>Les points :</strong> le gagnant de la manche marque la valeur des cartes restantes chez les autres (8 = 50, figures = 10, as = 1).</p>',
 
     create: function (names) {
@@ -548,15 +548,15 @@
       if (!state.manques) state.manques = state.players.map(function () { return {}; });
 
       if (action.t === 'carte') {
-        if (!R.carte) return { ok: false, error: 'L’annonce « Carte ! » n’est pas en jeu.' };
+        if (!R.carte) return { ok: false, error: 'L’annonce « Carte ! » n’est pas en jeu.' };
         if (p.hand.length !== 2) {
-          return { ok: false, error: 'On annonce « Carte ! » avec 2 cartes en main, avant de poser l’avant-dernière.' };
+          return { ok: false, error: 'On annonce « Carte ! » avec 2 cartes en main, avant de poser l’avant-dernière.' };
         }
         if (state.annonce === player) return { ok: false, error: 'Déjà annoncé !' };
         state.annonce = player;
         state.coups = (state.coups || 0) + 1;
         state.dernier = { t: 'carte', p: player };
-        state.lastMsg = p.name + ' annonce « Carte ! »';
+        state.lastMsg = p.name + ' annonce « Carte ! »';
         return { ok: true };
       }
 
@@ -584,11 +584,11 @@
         state.lastMsg = p.name + ' joue ' + nomCarte(c) +
           (c.r === '8' ? ' et demande du ' + NOMS_COUL[SUITS.indexOf(action.suit)] + ' ' + action.suit : '');
         if (c.r === '8') ev.suit = action.suit;
-        // « Carte ! » oublié : 2 cartes de pénalité
+        // « Carte ! » oublié : 2 cartes de pénalité
         if (R.carte && p.hand.length === 1 && state.annonce !== player) {
           var pen = drawCards(state, player, 2);
           ev.oubli = pen;
-          state.lastMsg += ' · oubli de « Carte ! » : +' + pen + ' cartes';
+          state.lastMsg += ' · oubli de « Carte ! » : +' + pen + ' cartes';
         }
         state.annonce = -1;
         state.dernier = ev;
@@ -670,10 +670,10 @@
     /* L'adversaire IA. Il ne regarde que sa main, la défausse (cartes déjà
        jouées, publiques), les tailles de mains et qui a dû piocher sur quelle
        couleur — jamais le contenu des mains adverses ni l'ordre de la pioche.
-       facile : pose au hasard, oublie souvent « Carte ! » ;
+       facile : pose au hasard, oublie souvent « Carte ! » ;
        moyen : garde sa couleur forte et ses 8 ;
        difficile : compte les cartes, vise les couleurs qui manquent au
-       suivant, se déleste avant la fin et n'oublie jamais « Carte ! ». */
+       suivant, se déleste avant la fin et n'oublie jamais « Carte ! ». */
     bot: function (state, me, ctx) {
       if (state.finished || state.fini) return null; // l'hôte relance la manche
       if (state.current !== me) return null;
@@ -690,7 +690,7 @@
         return { t: 'pass' };
       }
 
-      // « Carte ! » avant de poser l'avant-dernière (sauf trou de mémoire)
+      // « Carte ! » avant de poser l'avant-dernière (sauf trou de mémoire)
       if (R.carte && main.length === 2 && state.annonce !== me) {
         var oubli = niveau === 'facile' ? 0.4 : niveau === 'moyen' ? 0.1 : 0;
         if (hache(state.coups || 0, me, state.manche) >= oubli) return { t: 'carte' };
@@ -788,13 +788,13 @@
       html += '<p class="hu-tour' + (mine ? ' moi' : '') + '">' + (mine
         ? (s.pending2 > 0 ? '⚠️ À vous : posez un 2 ou piochez ' + s.pending2 + ' cartes'
           : s.hasDrawn ? 'À vous : posez une carte ou passez' : 'À vous !')
-        : 'Au tour de <strong>' + esc(nom(s, s.current)) + '</strong>…') + '</p>';
+        : 'Au tour ' + GG.de(esc(nom(s, s.current))) + '<strong>' + esc(nom(s, s.current)) + '</strong>…') + '</p>';
 
       // ---------- actions ----------
       var btnCarte = mine && R.carte && main.length === 2 && s.annonce !== me;
       html += '<div class="hu-actions">' +
         (btnCarte ? '<button class="btn hu-btn-carte" data-a="carte">📣 Carte !</button>' : '') +
-        (mine && s.annonce === me && main.length === 2 ? '<span class="hu-annonce">📣 « Carte ! » annoncé</span>' : '') +
+        (mine && s.annonce === me && main.length === 2 ? '<span class="hu-annonce">📣 « Carte ! » annoncé</span>' : '') +
         (mine && s.hasDrawn && s.pending2 === 0 ? '<button class="btn jeu" data-a="pass">Passer ➡️</button>' : '') +
         '</div>';
 
@@ -828,7 +828,7 @@
       var ouvrable = me === 0 && s.manche === 1 && !s.finished;
       html += '<div class="hu-moi"><span class="hu-moi-score">' + esc(my.name) + ' · <b>' + (my.score | 0) + '</b> / ' + R.cible + ' pts</span>' +
         '<button class="hu-regles-chip" data-a="regles"' + (ouvrable ? '' : ' disabled') + '>⚙️ ' +
-        (R.carte ? '« Carte ! »' : 'sans « Carte ! »') + (R.fin8 ? ' · pas de fin sur 8' : '') + (R.dix ? ' · 10 rejoue' : '') +
+        (R.carte ? '« Carte ! »' : 'sans « Carte ! »') + (R.fin8 ? ' · pas de fin sur 8' : '') + (R.dix ? ' · 10 rejoue' : '') +
         (ouvrable ? ' · modifier' : '') + '</button></div>';
       html += '</div>';
 
@@ -851,7 +851,7 @@
           '<p class="hu-lbl">Score à atteindre</p><div class="choix-ligne">' + CIBLES.map(function (ci2) {
             return '<button class="count-btn' + (brouillon.cible === ci2 ? ' active' : '') + '" data-cible="' + ci2 + '">' + ci2 + '</button>';
           }).join('') + '</div>' +
-          [['carte', '📣 Annonce « Carte ! »', 'oubli = 2 cartes de pénalité'],
+          [['carte', '📣 Annonce « Carte ! »', 'oubli = 2 cartes de pénalité'],
             ['fin8', '🚫 Interdit de finir sur un 8', 'le joker ne peut pas être la dernière carte'],
             ['dix', '🔁 Le 10 fait rejouer', 'on repose aussitôt une carte']].map(function (o) {
             return '<button class="hu-interr' + (brouillon[o[0]] ? ' on' : '') + '" data-opt="' + o[0] + '" role="switch" aria-checked="' +
@@ -874,7 +874,7 @@
       }
 
       // les voiles plein écran se calent sur la fenêtre visible (l'écran de la
-      // coque, animé par une transformation, devient leur repère « fixed »)
+      // coque, animé par une transformation, devient leur repère « fixed »)
       el.querySelectorAll('.hu-roue-voile, .hu-feuille-voile').forEach(calerSurFenetre);
 
       // ---------- gestes ----------
@@ -1135,7 +1135,7 @@
         setTimeout(function () {
           son('wrong');
           var cib = ev.p === me ? el.querySelector('.hu-main') : siege(ev.p);
-          F.floatText(cib || defausse, 'Oubli de « Carte ! » +' + ev.oubli, { color: '#ff4d5e', size: 22 });
+          F.floatText(cib || defausse, 'Oubli de « Carte ! » +' + ev.oubli, { color: '#ff4d5e', size: 22 });
           if (ev.p === me) { vibre('error'); F.shakeScreen(0.5); }
           volerDepuisPioche(el, pioche, ev.p === me ? null : siege(ev.p), ev.oubli, nouvelles, me === ev.p);
         }, 520);
@@ -1254,7 +1254,7 @@
       return s.players[b].score - s.players[a].score;
     });
     // une ligne par joueur : avatar | nom et cartes restantes | total — des
-    // blocs séparés, jamais « Suzette100 pts » collés
+    // blocs séparés, jamais « Suzette100 pts » collés
     html += '<div class="hu-fin-liste">' + ordre.map(function (i) {
       var pl = s.players[i];
       var mainF = pl.hand || [];

@@ -19,7 +19,7 @@ function check(n, c, e) {
   await p.click('#btn-wallet');
   await p.waitForSelector('#screen-boutique.active');
   check('boutique : cagnotte affichée', /10\s*000/.test(await p.textContent('#bank-n')));
-  check('boutique : 3 packs annoncés', await p.locator('.shop-pack').count() === 3);
+  check('cagnotte : les règles des jetons expliquées', await p.locator('.cagnotte-infos .ci').count() >= 3);
   check('boutique : mention de la recharge hebdomadaire',
     /recharge|semaine|pleine/i.test(await p.textContent('#screen-boutique')));
   await p.click('#screen-boutique [data-back]');

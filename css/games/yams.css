@@ -229,3 +229,5 @@
   .ym-onglets { margin-bottom: 8px; }
   .ym-onglet { min-height: 44px; }
 }
+/* zone d'appui agrandie sans changer l'apparence (44 px au doigt) */
+.ym-vite::after { content: ''; position: absolute; inset: -8px -4px; }

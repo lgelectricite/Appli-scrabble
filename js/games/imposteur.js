@@ -2,7 +2,7 @@
  * GGgames — L'Imposteur (3 à 12 joueurs).
  * Tout le monde reçoit le même mot secret… sauf le ou les imposteurs, qui
  * reçoivent un mot voisin (jamais un synonyme). Personne ne sait dans quel
- * camp il est ! Variante « Mister White » : un joueur n'a AUCUN mot ; s'il
+ * camp il est ! Variante « Mister White » : un joueur n'a AUCUN mot ; s'il
  * est démasqué, il gagne quand même s'il devine le mot des civils.
  * Déroulé d'une manche : découverte du mot (carte qu'on garde retournée en
  * appuyant), tour d'indices (écrits ou dits à l'oral) minuté, débat minuté,
@@ -15,7 +15,7 @@
 
   /* ================================================================
    * 1. Les paires de mots voisins (jamais synonymes)
-   *    « MOT A|MOT B|niveau » — niveau 1 : bien distincts, 2 : voisins,
+   *    « MOT A|MOT B|niveau » — niveau 1 : bien distincts, 2 : voisins,
    *    3 : subtils. Le sens (qui a quel mot) est tiré au sort.
    * ================================================================ */
   var CATEGORIES = [
@@ -711,7 +711,7 @@
     return null;
   }
 
-  /* comparaison tolérante : « un chat », « Chats », « le CHAT » */
+  /* comparaison tolérante : « un chat », « Chats », « le CHAT » */
   var VIDES = ['LE', 'LA', 'LES', 'L', 'UN', 'UNE', 'DES', 'DU', 'DE', 'D', 'CEST', 'C', 'EST', 'MON', 'MA', 'MES'];
   function motNorm(s) {
     var t = String(s || '').toUpperCase().replace(/Œ/g, 'OE').replace(/Æ/g, 'AE')
@@ -783,7 +783,7 @@
     var pool = frais(ASSOC_N[norm(word)], word);
     if (!pool.length) {
       // tout a été dit : on reprend une association de SON mot déjà entendue
-      // chez les autres (« moi aussi : … »), jamais une des siennes
+      // chez les autres (« moi aussi : … »), jamais une des siennes
       var dejaDit = {};
       (state.tours || []).forEach(function (tour) {
         tour.forEach(function (c) { if (c.p === me && c.text) dejaDit[norm(c.text)] = true; });
@@ -794,7 +794,7 @@
       return fl.length ? pick(fl) : 'MYSTÈRE';
     }
     // doute sur soi : si les indices entendus ne collent pas à mon mot, je
-    // choisis parmi MES associations la plus « passe-partout » (celle que
+    // choisis parmi MES associations la plus « passe-partout » (celle que
     // d'autres mots partagent), pour ne rien dévoiler
     var mine = {};
     (ASSOC_N[norm(word)] || []).forEach(function (a) { mine[norm(a)] = true; });
@@ -1368,7 +1368,7 @@
         '<p class="imp-verdict-t">' + nom(s, r.out) + ' est éliminé' + '</p></div>';
     }
     if (s.whiteTry) {
-      out += '<p class="imp-white-rate">🎩 Mister White proposait « ' + GG.esc(s.whiteTry.text || '…') + ' » : raté !</p>';
+      out += '<p class="imp-white-rate">🎩 Mister White proposait « ' + GG.esc(s.whiteTry.text || '…') + ' » : raté !</p>';
     }
     out += '</div>';
     if (ctx.me === 0) out += '<button class="btn big jeu imp-suite" data-a="next">➜ Nouveau tour d’indices</button>';
@@ -1394,7 +1394,7 @@
     var out = '<div class="imp-fin ' + (w === 'civils' ? 'civ' : 'imp') + '"><h2>' + titre + '</h2>' +
       '<div class="imp-mots"><div><small>Mot des civils</small><b>' + GG.esc(s.pair ? s.pair[0] : '?') + '</b></div>' +
       '<div class="imp-vs">≠</div><div><small>Mot de l’imposteur</small><b>' + GG.esc(s.pair ? s.pair[1] : '?') + '</b></div></div>' +
-      (s.whiteTry && s.whiteTry.ok ? '<p>Mister White a proposé « ' + GG.esc(s.whiteTry.text) + ' » : dans le mille !</p>' : '') +
+      (s.whiteTry && s.whiteTry.ok ? '<p>Mister White a proposé « ' + GG.esc(s.whiteTry.text) + ' » : dans le mille !</p>' : '') +
       '<div class="imp-roles">' + s.players.map(function (pl, i) {
         return '<span class="imp-role-tag ' + GG.esc(pl.role === 'imposteur' ? 'imp' : pl.role === 'white' ? 'white' : 'civ') + '">' +
           (pl.role === 'imposteur' ? '🥸' : pl.role === 'white' ? '🎩' : '😇') + ' ' + nom(s, i) + (pl.alive ? '' : ' 💀') +

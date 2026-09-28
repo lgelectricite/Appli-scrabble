@@ -2,7 +2,7 @@
  * GGgames — Sudoku V2 (solo).
  *
  * Grilles générées à la volée et CLASSÉES par les techniques humaines qu'elles
- * exigent (un solveur « logique » les résout comme un joueur : singletons,
+ * exigent (un solveur « logique » les résout comme un joueur : singletons,
  * pointages, paires, triplets, X-wing, XY-wing, swordfish, coloriage…) :
  *   facile     → singletons cachés seulement (38 à 40 cases données)
  *   moyen      → il faut aussi des singletons nus (28 à 30 cases données)
@@ -184,7 +184,7 @@
   }
 
   /* ================================================================
-   * Le solveur « humain » : il n'emploie que des techniques de joueur,
+   * Le solveur « humain » : il n'emploie que des techniques de joueur,
    * toujours la plus simple disponible. Le palier le plus haut qu'il a dû
    * atteindre donne la difficulté réelle de la grille.
    * ================================================================ */
@@ -931,7 +931,7 @@
     desc: 'Grilles classées par les techniques qu’elles exigent : 4 niveaux vraiment réguliers, notes au crayon, indices, défi du jour et records.',
     regles: '<p><strong>🎯 Le but :</strong> remplir la grille : chaque ligne, chaque colonne et chaque carré de 3×3 contient une seule fois les chiffres 1 à 9.</p>' +
       '<p><strong>Comment jouer :</strong> touchez une case, puis un chiffre du pavé. Sous chaque chiffre, le nombre d’exemplaires qu’il reste à placer. Un mauvais chiffre s’affiche en rouge et compte une erreur (3 erreurs et c’est perdu, si la limite est activée).</p>' +
-      '<p><strong>✏️ Notes :</strong> activez les notes pour griffonner les candidats d’une case ; « Auto » les remplit toutes d’un coup. Elles s’effacent toutes seules quand vous posez un chiffre.</p>' +
+      '<p><strong>✏️ Notes :</strong> activez les notes pour griffonner les candidats d’une case ; « Auto » les remplit toutes d’un coup. Elles s’effacent toutes seules quand vous posez un chiffre.</p>' +
       '<p><strong>Outils :</strong> ↶ annule sans limite · ⌫ efface · 💡 révèle une case (+30 s au chrono).</p>' +
       '<p><strong>Niveaux :</strong> Facile (singletons cachés) · Moyen (singletons nus) · Difficile (pointages, paires, triplets) · Expert (X-wing, XY-wing, swordfish…). Chaque grille est vérifiée : elle a une seule solution et exige exactement les techniques de son niveau.</p>' +
       '<p><strong>🗓️ Défi du jour :</strong> une nouvelle grille chaque jour, la même pour tout le monde.</p>',
@@ -1106,7 +1106,7 @@
       }
 
       if (t === 'hint') {
-        // la case choisie si elle est à remplir, sinon la prochaine case « logique »
+        // la case choisie si elle est à remplir, sinon la prochaine case « logique »
         var cible = -1, hi = action.i | 0;
         if (action.i !== undefined && hi >= 0 && hi < 81 && !state.puzzle[hi] && !lock[hi] &&
           (!grid[hi] || bad[hi])) cible = hi;

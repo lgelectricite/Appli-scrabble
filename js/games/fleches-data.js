@@ -3,8 +3,8 @@
  *
  *  1. LE LEXIQUE (en bas du fichier) : près de 3 000 mots français courants de
  *     2 à 10 lettres, écrits à la main, chacun avec 3 définitions de difficulté
- *     croissante : « facile » (directe), « moyenne », « difficile » (piège, jeu
- *     de mots, comme dans la presse). Un « ° » devant le mot le réserve aux
+ *     croissante : « facile » (directe), « moyenne », « difficile » (piège, jeu
+ *     de mots, comme dans la presse). Un « ° » devant le mot le réserve aux
  *     grilles corsées (mot de cruciverbiste).
  *  2. LE GÉNÉRATEUR : remplit une grille ligne par ligne à l’aide d’un arbre des
  *     mots (trie) ; les cases-définitions (fléchés) ou les cases noires (croisés)
@@ -72,14 +72,14 @@
       .normalize('NFD').replace(/[̀-ͯ]/g, '')
       .replace(/[^A-Z]/g, '');
   }
-  /* date locale « AAAA-MM-JJ » (le défi du jour change à minuit chez soi) */
+  /* date locale « AAAA-MM-JJ » (le défi du jour change à minuit chez soi) */
   function aujourdhui(d) {
     d = d || new Date();
     var m = d.getMonth() + 1, j = d.getDate();
     return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (j < 10 ? '0' : '') + j;
   }
   function dateValide(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s); }
-  /* jour de la semaine d’une date « AAAA-MM-JJ » (0 = dimanche), sans fuseau */
+  /* jour de la semaine d’une date « AAAA-MM-JJ » (0 = dimanche), sans fuseau */
   function jourSemaine(s) {
     var p = s.split('-');
     return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay();
@@ -198,7 +198,7 @@
   /* ================================================================
    * 4. Le générateur (fléchés : o.mode = 'fleches' ; croisés : 'croises')
    *
-   * On remplit la grille ligne par ligne. Sur une ligne, chaque « segment »
+   * On remplit la grille ligne par ligne. Sur une ligne, chaque « segment »
    * (après une case-définition / noire, ou au bord) reçoit : une case
    * définition/noire, une lettre isolée (elle appartiendra à un mot vertical),
    * ou un mot entier suivi d’une case définition/noire. Pour chaque colonne on
@@ -209,7 +209,7 @@
    * au besoin, dans une limite de pas : au-delà, on repart d’une autre graine
    * (dérivée de la première : le résultat reste déterministe).
    *
-   * Règles des fléchés « comme en kiosque » :
+   * Règles des fléchés « comme en kiosque » :
    *  - ligne 0 : case-définition sur les colonnes paires, lettres sur les
    *    impaires ; colonne 0 : case-définition sur les lignes paires ;
    *  - chaque mot part de la case-définition voisine (flèche droite) ou, au
@@ -638,7 +638,7 @@
      chaque niveau (croisés), la tentative réussie quand la première est
      laborieuse (calculée une fois pour toutes par tests/test_grilles.js :
      RACCOURCIS=1 node tests/test_grilles.js). Ce ne sont pas des grilles
-     stockées : juste « commencer à l’essai n° a » (base 36), ce qui donne la
+     stockées : juste « commencer à l’essai n° a » (base 36), ce qui donne la
      même grille en bornant son calcul à quelques milliers de pas. */
   var RACCOURCIS_TXT = {
     1: 'h:5,1l:6,1u:5,2q:5,3p:5,4c:b,53:5,6n:5,8q:5,ao:6,bl:6,c2:6,e9:5,lt:5,n7:8,n8:5,nj:6,oo:5',
@@ -757,7 +757,7 @@
    * ================================================================ */
 
   var PEN = { erreur: 2, lettre: 3, mot: 1, grille: 5 };
-  var PAUSE_MAX = 60000; // un chrono « actif » : une longue absence compte 1 min au plus
+  var PAUSE_MAX = 60000; // un chrono « actif » : une longue absence compte 1 min au plus
   function maintenant() { return Date.now(); }
   function tic(s) {
     var t = s.t || (s.t = { cumul: 0, dernier: maintenant() });
@@ -932,7 +932,7 @@
       }
       return { ok: false, error: 'Aide inconnue.' };
     }
-    // « claim » : proposer un mot entier d’un coup (ancienne interface, tests)
+    // « claim » : proposer un mot entier d’un coup (ancienne interface, tests)
     var wc = s.words[i];
     if (!wc) return { ok: false, error: 'Mot inconnu.' };
     if (wc.ok) return { ok: false, error: 'Déjà trouvé !' };
@@ -1004,7 +1004,7 @@
     return (LARGEURS[cle] = MESURE.measureText(txt).width);
   }
   /* apos : on s’autorise aussi à passer à la ligne juste après une
-     apostrophe (« d’ | Amérique ») quand le mot entier ne tient pas */
+     apostrophe (« d’ | Amérique ») quand le mot entier ne tient pas */
   function police(txt, larg, haut, max, min, apos) {
     var mots = String(txt).split(/\s+/), bouts = [];
     mots.forEach(function (m) {
@@ -1677,7 +1677,7 @@
   if (typeof module === 'object' && module.exports) module.exports = GG.grilles;
 
   /* ================================================================
-   * 10. LE LEXIQUE — « MOT|facile|moyenne|difficile »
+   * 10. LE LEXIQUE — « MOT|facile|moyenne|difficile »
    *     (° devant le mot : mot de cruciverbiste, forces 3 à 5 seulement)
    *     Chaque mot figure dans le grand dictionnaire (data/mots.txt) ;
    *     aucune définition ne contient la racine de sa réponse.
@@ -3433,7 +3433,7 @@
     'MORT|Décès|Trépas|Faucheuse',
     'MORUE|Cabillaud|Poisson salé|Brandade',
     'MOT|Terme|Vocable|Petit billet',
-    'MOTEUR|Machine|Mécanique|Cri avant « Action ! »',
+    'MOTEUR|Machine|Mécanique|Cri avant « Action ! »',
     'MOTO|Deux-roues|Bécane|Grosse cylindrée',
     'MOTS|Termes|Paroles|Vocables',
     'MOU|Flasque|Sans énergie|Poumon de veau',

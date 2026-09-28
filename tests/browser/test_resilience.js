@@ -71,7 +71,13 @@ function check(n, c, e) {
     /Version installée/.test(await p3.textContent('#version-appli')) ||
     (await p3.textContent('#version-appli')) === '',
     await p3.textContent('#version-appli'));
-  await p3.click('#btn-forcer-maj');
+  // V2 : le rechargement complet se trouve dans les Réglages
+  await p3.click('[data-back]:visible').catch(() => {});
+  await p3.goto(URL_APP);
+  await p3.waitForSelector('#catalog .game-tile');
+  await p3.click('#btn-reglages');
+  await p3.waitForSelector('#screen-reglages.active');
+  await p3.click('#btn-rg-maj');
   await p3.waitForFunction(() => location.search.indexOf('maj=') !== -1, null, { timeout: 15000 });
   const restants = await p3.evaluate(() => caches.keys());
   check('les caches ont été vidés', restants.indexOf('gggames-vTEST') === -1, restants);

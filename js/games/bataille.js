@@ -1,11 +1,11 @@
 /* GGgames — Bataille navale (2 joueurs, série en 1, 3 ou 5 manches).
  *
  * V2 : une mer animée, une flotte dessinée (coques vues de dessus) que l’on
- * place soi-même (glisser, toucher pour pivoter, ou « au hasard »), des tirs
+ * place soi-même (glisser, toucher pour pivoter, ou « au hasard »), des tirs
  * avec traînée, explosions, éclaboussures et navires qui sombrent, la carte
  * adverse dans le brouillard. Sur un seul téléphone, le tireur VOIT son
  * résultat avant de passer la main, et les messages disent qui a tiré.
- * Règles au choix : un tir par tour (classique) ou « touché = on rejoue »,
+ * Règles au choix : un tir par tour (classique) ou « touché = on rejoue »,
  * navires écartés ou collés permis. IA : facile, moyen, difficile (densité
  * de probabilité).
  */
@@ -242,7 +242,7 @@
     nom: 'Bataille navale',
     icone: '🚢',
     desc: 'Placez votre flotte, coulez celle d’en face. Vos navires restent secrets.',
-    regles: '<p><strong>🎯 Le but :</strong> couler les 5 navires adverses (porte-avions 5 cases, cuirassé 4, croiseur 3, sous-marin 3, torpilleur 2) avant que les vôtres ne le soient.</p><p><strong>La flotte :</strong> glissez vos navires pour les placer, touchez-en un pour le faire pivoter, ou « Au hasard ».</p><p><strong>Le tir :</strong> touchez une case de la carte adverse, dans le brouillard. 🌊 À l’eau, 💥 touché, ☠️ coulé quand toutes ses cases sont touchées.</p><p><strong>Règles au choix :</strong> un tir par tour (classique) ou « touché = on rejoue » ; navires écartés (ils ne se touchent pas, même en diagonale) ou collés permis ; série en 1, 3 ou 5 manches gagnantes — le perdant commence la manche suivante.</p>',
+    regles: '<p><strong>🎯 Le but :</strong> couler les 5 navires adverses (porte-avions 5 cases, cuirassé 4, croiseur 3, sous-marin 3, torpilleur 2) avant que les vôtres ne le soient.</p><p><strong>La flotte :</strong> glissez vos navires pour les placer, touchez-en un pour le faire pivoter, ou « Au hasard ».</p><p><strong>Le tir :</strong> touchez une case de la carte adverse, dans le brouillard. 🌊 À l’eau, 💥 touché, ☠️ coulé quand toutes ses cases sont touchées.</p><p><strong>Règles au choix :</strong> un tir par tour (classique) ou « touché = on rejoue » ; navires écartés (ils ne se touchent pas, même en diagonale) ou collés permis ; série en 1, 3 ou 5 manches gagnantes — le perdant commence la manche suivante.</p>',
     min: 2, max: 2,
     hotseat: true, hidden: true, netOnly: false,
     niveaux: ['facile', 'moyen', 'difficile'],
@@ -308,7 +308,7 @@
         });
       }
       if (copy.dernier && copy.dernier.cible !== viewer && copy.dernier.res === 'touche') {
-        delete copy.dernier.navire; // « touché », sans dire lequel
+        delete copy.dernier.navire; // « touché », sans dire lequel
       }
       return copy;
     },
@@ -585,7 +585,7 @@
         '<div class="bn-duo">';
       [0, 1].forEach(function (k) {
         var t2 = (s.tirs[1 - k] | 0), h2 = (s.touches[1 - k] | 0);
-        html += '<div class="bn-flotte-fin"><p class="bn-label">🚢 Flotte de ' + nom(k) + '</p>' +
+        html += '<div class="bn-flotte-fin"><p class="bn-label">🚢 Flotte ' + GG.de(nom(k)) + nom(k) + '</p>' +
           grille({ owner: k, voir: true, petit: true }) +
           '<p class="bn-stat">' + t2 + (t2 > 1 ? ' tirs reçus' : ' tir reçu') + ' · ' +
           (t2 ? Math.round(100 * h2 / t2) : 0) + ' % au but</p></div>';
@@ -632,7 +632,7 @@
           msg = dern.res === 'eau' ? '🌊 En ' + co + ' : à l’eau.'
             : dern.res === 'coule' ? '☠️ Coulé ! Le ' + (nomNav || 'navire') + ' de ' + nom(opp) + ' sombre (' + co + ').'
               : '💥 En ' + co + ' : touché !';
-          if (s.attente) msg += ' ' + (hotseat ? 'Passez la main.' : 'Au tour de ' + nom(opp) + '…');
+          if (s.attente) msg += ' ' + (hotseat ? 'Passez la main.' : 'Au tour ' + GG.de(nom(opp)) + nom(opp) + '…');
           else if (mine) msg += ' Rejouez !';
         } else {
           msg = (dern.res === 'eau' ? '🌊 ' + nom(dern.tireur) + ' a tiré en ' + co + ' : à l’eau.'
@@ -640,12 +640,12 @@
               : '💥 ' + nom(dern.tireur) + ' a touché votre ' + (nomNav || 'navire') + ' en ' + co + ' !');
         }
         if (!s.attente && !(mine && dern.tireur === me)) {
-          msg += ' <b>' + (mine ? (hotseat ? 'À toi de tirer, ' + nom(me) + ' !' : 'À vous de tirer !')
-            : (enSolo ? nom(s.current) + ' vise…' : 'Au tour de ' + nom(s.current) + '…')) + '</b>';
+          msg += ' <b>' + (mine ? (hotseat ? 'À vous de tirer, ' + nom(me) + ' !' : 'À vous de tirer !')
+            : (enSolo ? nom(s.current) + ' vise…' : 'Au tour ' + GG.de(nom(s.current)) + nom(s.current) + '…')) + '</b>';
         }
       } else {
-        msg = mine ? '<b>' + (hotseat ? 'À toi de tirer, ' + nom(me) + ' !' : 'À vous de tirer !') + '</b> Visez dans le brouillard.'
-          : (enSolo ? '<b>' + nom(s.current) + '</b> vise…' : 'Au tour de <b>' + nom(s.current) + '</b>…');
+        msg = mine ? '<b>' + (hotseat ? 'À vous de tirer, ' + nom(me) + ' !' : 'À vous de tirer !') + '</b> Visez dans le brouillard.'
+          : (enSolo ? '<b>' + nom(s.current) + '</b> vise…' : 'Au tour ' + GG.de(nom(s.current)) + '<b>' + nom(s.current) + '</b>…');
       }
       html += '<p class="mini-msg bn-msg">' + msg + '</p>';
       html += '<p class="bn-label">🎯 Carte de ' + nom(opp) + ' <span>' + shipsLeft(s.boards[opp]) + ' 🚢 à flot</span></p>';
@@ -705,8 +705,8 @@
         agir(a);
       });
     });
-    // le tir (la carte n’est « prête » qu’après un instant : un double appui
-    // sur « Voir mon jeu » ne doit pas tirer au hasard)
+    // le tir (la carte n’est « prête » qu’après un instant : un double appui
+    // sur « Voir mon jeu » ne doit pas tirer au hasard)
     var carte = el.querySelector('.bn-grid.aim');
     if (carte) {
       carte.setAttribute('data-pret', '0');

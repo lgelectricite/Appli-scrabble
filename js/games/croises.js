@@ -19,7 +19,7 @@
     moyen: { nom: 'Moyen', ic: '🙂', detail: 'vocabulaire varié · définitions indirectes' },
     difficile: { nom: 'Difficile', ic: '😈', detail: 'grande grille · définitions pièges' }
   };
-  /* niveau connu seulement (« constructor » ou « __proto__ » ne passent pas) */
+  /* niveau connu seulement (« constructor » ou « __proto__ » ne passent pas) */
   function niveau(l) {
     return typeof l === 'string' && Object.prototype.hasOwnProperty.call(LEVELS, l) ? LEVELS[l] : { nom: '', ic: '', detail: '' };
   }

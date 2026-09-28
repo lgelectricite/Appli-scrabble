@@ -167,7 +167,7 @@
 
   /* ---------------- la mémoire de l'IA ----------------
      Le journal (public) liste les cartes retournées, dans l'ordre. L'IA ne
-     « voit » que ces cartes-là, et n'en retient qu'une partie :
+     « voit » que ces cartes-là, et n'en retient qu'une partie :
        facile    : les 2 à 4 dernières cartes vues, avec des oublis ;
        moyen     : les 6 dernières, un oubli de temps en temps ;
        difficile : tout ce qui a été montré.
@@ -456,7 +456,7 @@
       var tries = s.players[s.current] ? s.players[s.current].tries : 0;
       var texteTour = s.finished ? 'Toutes les paires sont trouvées !'
         : partage ? 'À ' + GG.esc(s.players[s.current].name) + ' de jouer !'
-          : mine ? 'À vous de jouer !' : 'Au tour de ' + GG.esc(s.players[s.current].name) + '…';
+          : mine ? 'À vous de jouer !' : 'Au tour ' + GG.de(GG.esc(s.players[s.current].name)) + GG.esc(s.players[s.current].name) + '…';
       function visage(c) {
         return c.e == null ? '' : (th.svg ? drapeau(c.e) : '<span class="mem-emoji">' + GG.esc(c.e) + '</span>');
       }
@@ -479,7 +479,7 @@
 
       // La grille n'est reconstruite que si sa forme change ; sinon on met à
       // jour les cartes en place (48 cartes : bien plus léger, et le
-      // retournement 3D n'est qu'une transition CSS sur la classe « up »).
+      // retournement 3D n'est qu'une transition CSS sur la classe « up »).
       var cleDom = s.id + ':' + s.cards.length + ':' + themeId + ':' + dim.cols + ':' + dim.s + ':' + s.players.length + ':' + (s.defi || '');
       var board = el.querySelector('.mem-board');
       var reconstruire = el._memDom !== cleDom || !board || !el.querySelector('.mem-jeu');
@@ -613,7 +613,7 @@
           GG.sfx.play('wrong', { volume: 0.35 });
         }, 460);
       }
-      // les paires déjà trouvées avant ce rendu sont posées « faites »
+      // les paires déjà trouvées avant ce rendu sont posées « faites »
       s.cards.forEach(function (c, i) { if (c.matched && !(d && d.t === 'paire' && nouveau && (i === d.i || i === d.j))) v.faites[i] = true; });
 
       // mémoire visuelle : ce qui est face visible à l'écran maintenant

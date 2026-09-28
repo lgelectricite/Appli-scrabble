@@ -93,7 +93,7 @@
   })();
   var CENTRE = [0, 1, 2, 4, 2, 1, 0]; // tenir le milieu rapporte
   /* La parité des menaces (la clé des fins de partie) : une menace (3 jetons
-     et un trou) vaut bien plus quand le trou est sur une rangée « à soi » —
+     et un trou) vaut bien plus quand le trou est sur une rangée « à soi » —
      impaire (1re, 3e, 5e en partant du bas) pour celui qui a commencé la
      manche, paire pour l’autre : c’est lui qui finira par y poser. */
   var PARITE = 30;
@@ -281,7 +281,7 @@
   }
 
   /* Analyse de chaque coup possible à la racine : [{col, val, offre}] où
-     « offre » signale un coup qui laisse une victoire immédiate à l’adversaire. */
+     « offre » signale un coup qui laisse une victoire immédiate à l’adversaire. */
   function analyseRacine(grid, q, prof, opts) {
     var pos = new Position(grid, q, opts.parite ? PARITE : 0);
     var o = { pos: pos, noeuds: 0, limite: 0, stop: false, table: opts.table ? tt() : null, listes: [], hist: new Int32Array(3 * NB) };
@@ -328,7 +328,7 @@
     return { coups: coups, prof: faite, noeuds: o.noeuds, ms: maintenant() - t0, msMin: msMin };
   }
 
-  /* Filtre de bon sens commun à tous les niveaux sauf « facile » : on ne
+  /* Filtre de bon sens commun à tous les niveaux sauf « facile » : on ne
      choisit jamais un coup qui offre la victoire immédiate s’il en existe un
      autre, et quand tout est perdu on retarde la défaite au maximum. */
   function sansCadeau(coups) {
@@ -406,11 +406,13 @@
     hotseat: true, hidden: false, netOnly: false,
     niveaux: ['facile', 'moyen', 'difficile'],
 
-    create: function (names) {
+    create: function (names, opts) {
       var state = {
         id: Math.floor(Math.random() * 1e9),
         players: names.map(function (n) { return { name: n, wins: 0 }; }),
-        starter: 0,
+        // revanche : la coque fait tourner le premier joueur
+        starter: opts && (opts.premier === 1) ? 1 : 0,
+        premier: opts && (opts.premier === 1) ? 1 : 0,
         opts: { manches: 3 },
         manche: 1,
         serieGagnee: false,
@@ -441,7 +443,7 @@
     apply: function (state, player, action) {
       action = action || {};
       if (action.t === 'fin') {
-        // minuteur d’autorité (-1) ou bouton « voir le résultat »
+        // minuteur d’autorité (-1) ou bouton « voir le résultat »
         if (state.fini) return player === -1 ? { ok: true } : { ok: false, error: 'La partie est finie.' };
         if (!state.serieGagnee) return player === -1 ? { ok: true } : { ok: false, error: 'La série continue.' };
         state.fini = true;
@@ -558,11 +560,11 @@
         else msg = '🏆 ' + GG.esc(s.players[s.winner].name) + ' gagne la manche !';
       } else if (mine) {
         msg = '<span class="p4-disc mini ' + coul(s.current) + '"></span> ' +
-          (hotseat ? 'À toi, <b>' + GG.esc(s.players[s.current].name) + '</b> !' : 'À vous de jouer !');
+          (hotseat ? 'À vous, <b>' + GG.esc(s.players[s.current].name) + '</b> !' : 'À vous de jouer !');
       } else {
         msg = '<span class="p4-disc mini ' + coul(s.current) + '"></span> ' +
           (solo ? GG.esc(s.players[s.current].name) + ' réfléchit<span class="p4-points"><i>.</i><i>.</i><i>.</i></span>'
-            : 'Au tour de ' + GG.esc(s.players[s.current].name) + '…');
+            : 'Au tour ' + GG.de(GG.esc(s.players[s.current].name)) + GG.esc(s.players[s.current].name) + '…');
       }
       html += '<p class="mini-msg p4-msg">' + msg + '</p>';
 
@@ -731,7 +733,7 @@
   };
 
   /* La façade du plateau : un rectangle de plastique percé de 42 trous
-     (règle de remplissage « evenodd »), avec reflets et biseaux. */
+     (règle de remplissage « evenodd »), avec reflets et biseaux. */
   var FACADE = (function () {
     var d = 'M34 0H726A34 34 0 0 1 760 34V626A34 34 0 0 1 726 660H34A34 34 0 0 1 0 626V34A34 34 0 0 1 34 0Z';
     var biseaux = '';

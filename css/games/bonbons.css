@@ -372,3 +372,6 @@ body[data-jeu="bonbons"]::before, body[data-jeu="bonbons"]::after { animation-pl
   background: linear-gradient(180deg, transparent, rgba(10, 11, 28, .92) 40%);
 }
 .bb-map-bas .btn { max-width: 460px; margin: 0 auto; display: flex; }
+/* zone d'appui agrandie sans changer l'apparence (44 px au doigt) */
+.bb-carte-btn { position: relative; }
+.bb-carte-btn::after { content: ''; position: absolute; inset: -7px -4px; }

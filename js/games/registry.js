@@ -4,7 +4,7 @@
  *   id, nom, icone, desc, regles — catalogue et règles
  *   min, max                    — nombre de joueurs
  *   hotseat                     — jouable à plusieurs sur un seul téléphone
- *   hidden                      — informations cachées (écran « passez le téléphone »)
+ *   hidden                      — informations cachées (écran « passez le téléphone »)
  *   netOnly                     — uniquement en réseau (infos secrètes simultanées)
  *   create(names, ctx)          — état initial ; ctx = {dict}
  *   turnOf(state)               — joueur dont c'est le tour (-1 : simultané)
@@ -20,7 +20,7 @@
  *   render(el, ctx)             — ctx = {state, me, act(a), canAct, mode}
  *
  * Les effets (GG.fx, GG.sfx, GG.haptic, GG.reglages) sont remplacés par
- * js/fx.js et js/sfx.js dans le navigateur. Les versions « muettes »
+ * js/fx.js et js/sfx.js dans le navigateur. Les versions « muettes »
  * ci-dessous garantissent qu'un appel ne plante jamais : dans Node (tests),
  * ou si un de ces fichiers n'a pas pu se charger.
  */
@@ -50,6 +50,11 @@
       return String(s == null ? '' : s)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    },
+    /* « de » ou « d’ » devant un prénom : « Au tour d’Alice », « de Marc ».
+       Accepte le prénom brut ou déjà échappé (la première lettre ne change pas). */
+    de: function (nom) {
+      return /^[aeiouyàâäéèêëîïôöùûüœæ]/i.test(String(nom == null ? '' : nom).trim()) ? 'd’' : 'de ';
     },
     fx: muet,
     sfx: muet,
