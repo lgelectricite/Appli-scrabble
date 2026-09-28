@@ -9,6 +9,8 @@ function check(name, cond, extra) {
   else { failures++; console.log('  FAIL ' + name + (extra !== undefined ? ' -> ' + JSON.stringify(extra) : '')); }
 }
 const idx = (r, c) => r * 15 + c;
+// premier joueur imposé : ces tests supposent que le joueur 1 commence
+const P0 = { premier: 0 };
 
 const text = fs.readFileSync(ROOT + '/data/mots.txt', 'utf8');
 const t0 = Date.now();
@@ -19,7 +21,7 @@ check('MAISON présent', dict.set.has('MAISON'));
 check('pas d’accents ni tirets', !dict.set.has('ÉTÉ') && dict.set.has('ETE'));
 
 // ---- 1. Premier coup sur plateau vide ----
-let g = S.newGame(['Moi', 'IA']);
+let g = S.newGame(['Moi', 'IA'], P0);
 g.players[1].rack = ['M', 'A', 'I', 'S', 'O', 'N', 'X'];
 g.current = 1;
 let t1 = Date.now();
@@ -39,7 +41,7 @@ if (action.kind === 'move') {
 }
 
 // ---- 2. Coup croisé sur un plateau occupé ----
-g = S.newGame(['Moi', 'IA']);
+g = S.newGame(['Moi', 'IA'], P0);
 g.players[0].rack = ['C', 'H', 'A', 'T', 'E', 'E', 'E'];
 S.playMove(g, 0, [
   { index: idx(7, 6), letter: 'C' }, { index: idx(7, 7), letter: 'H' },
@@ -78,7 +80,7 @@ check('facile ≤ moyen en moyenne (facile ' + (sumEasy / 5).toFixed(1) + ' / mo
   sumEasy <= sumMed + 10, { facile: sumEasy / 5, moyen: sumMed / 5 });
 
 // ---- 4. Joker utilisé correctement ----
-g = S.newGame(['Moi', 'IA']);
+g = S.newGame(['Moi', 'IA'], P0);
 g.players[1].rack = ['?', '?', 'A', 'E', 'R', 'S', 'T'];
 g.current = 1;
 const aj = AI.chooseAction(S, g, 1, dict, 'difficile');
@@ -90,7 +92,7 @@ if (aj.kind === 'move') {
 
 // ---- 5. Aucun coup possible → échange ou passe ----
 const emptyDict = AI.buildDict('');
-g = S.newGame(['Moi', 'IA']);
+g = S.newGame(['Moi', 'IA'], P0);
 g.current = 1;
 const fallback = AI.chooseAction(S, g, 1, emptyDict, 'difficile');
 check('sans dictionnaire : échange (sac plein)', fallback.kind === 'exchange', fallback.kind);
@@ -99,7 +101,7 @@ const fallback2 = AI.chooseAction(S, g, 1, emptyDict, 'difficile');
 check('sac presque vide : passe', fallback2.kind === 'pass', fallback2.kind);
 
 // ---- 6. L'IA ne prolonge pas un mot inventé en mot invalide ----
-g = S.newGame(['Moi', 'IA']);
+g = S.newGame(['Moi', 'IA'], P0);
 g.players[0].rack = ['X', 'Q', 'K', 'W', 'E', 'E', 'E'];
 S.playMove(g, 0, [
   { index: idx(7, 7), letter: 'X' }, { index: idx(7, 8), letter: 'Q' }

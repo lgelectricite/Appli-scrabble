@@ -2844,6 +2844,7 @@
         pending = [];
         selected = -1;
         enterGame();
+        if (state.current === 1) aiTurn();
       }).catch(function () {
         btn.disabled = false;
         $('solo-loading').classList.add('hidden');

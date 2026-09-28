@@ -15,7 +15,18 @@
   var CENTER = 7 * SIZE + 7;
   var RACK_SIZE = 7;
   var BINGO_BONUS = 50;
-  var MAX_SCORELESS = 6; // fin de partie après 6 tours sans point
+  /* Règlement international du Scrabble classique (FISF), § 3.2 : « si les
+     deux joueurs passent chacun leur tour trois fois consécutivement (donc
+     six JE PASSE), la partie s'arrête et chaque joueur défalque de son
+     cumul la valeur de ses lettres ». Un échange (§ 3.3) n'est PAS un
+     « je passe », pas plus qu'un coup, même à 0 point. Généralisé à 3 ou
+     4 joueurs : la partie s'arrête quand CHAQUE joueur a passé 3 fois de
+     suite. Un mot refusé qui fait perdre le tour compte comme un passe
+     (§ 3.5.3 : « A reprend ses lettres, et passe son tour »). */
+  var PASSES_FIN = 3;
+  /* Variante « essais » (celle des applis) : on peut retenter après un mot
+     refusé, mais au 3e refus dans le même tour, le tour est perdu. */
+  var ESSAIS_MAX = 3;
 
   var JOKER = '?';
 
@@ -81,20 +92,75 @@
     }
   }
 
-  function newGame(names) {
+  /* Rang d'une lettre au tirage au sort : le joker d'abord, puis A, B… */
+  function rangTirage(l) {
+    return l === JOKER ? -1 : l.charCodeAt(0) - 65;
+  }
+
+  /*
+   * Tirage au sort du premier joueur : chacun pioche une lettre, la plus
+   * proche du A commence (le joker bat toutes les lettres). En cas
+   * d'égalité en tête, seuls les ex æquo retirent. Les lettres retournent
+   * ensuite dans le sac. Remplit state.tirage (les tours de tirage, pour
+   * l'animation) et state.premier.
+   */
+  function tirageAuSort(state) {
+    var enLice = state.players.map(function (_, i) { return i; });
+    var tours = [];
+    while (enLice.length > 1 && tours.length < 12) {
+      var sac = state.bag.slice();
+      var tour = enLice.map(function (p) {
+        var k = Math.floor(Math.random() * sac.length);
+        var l = sac.splice(k, 1)[0];
+        return { p: p, l: l };
+      });
+      tours.push(tour);
+      var meilleur = Math.min.apply(null, tour.map(function (t) { return rangTirage(t.l); }));
+      enLice = tour.filter(function (t) { return rangTirage(t.l) === meilleur; })
+        .map(function (t) { return t.p; });
+    }
+    // filet de sécurité (douze égalités de suite : quasi impossible)
+    if (enLice.length > 1) enLice = [enLice[Math.floor(Math.random() * enLice.length)]];
+    state.tirage = tours;
+    state.premier = enLice[0];
+    state.current = enLice[0];
+  }
+
+  function nouvelId() {
+    return Date.now().toString(36) + Math.floor(Math.random() * 1e9).toString(36);
+  }
+
+  /*
+   * Nouvelle partie. opts (facultatif) :
+   *   refus   : 'essais' (défaut : on peut retenter un mot refusé, 3 essais
+   *             par tour) ou 'perdu' (règle classique : mot refusé = tour perdu)
+   *   premier : force le premier joueur (tests) ; sinon tirage au sort.
+   */
+  function newGame(names, opts) {
+    opts = opts || {};
     var state = {
+      id: nouvelId(),
       board: new Array(SIZE * SIZE).fill(null),
       bag: shuffle(makeBag()),
       players: names.map(function (n) {
-        return { name: n, rack: [], score: 0 };
+        return { name: n, rack: [], score: 0, passes: 0, refus: 0 };
       }),
       current: 0,
-      scoreless: 0,
+      premier: 0,
+      tirage: [],
+      regles: { refus: opts.refus === 'perdu' ? 'perdu' : 'essais' },
+      essais: 0,
       moveCount: 0,
       history: [],
+      lastMove: null,
       over: false,
       finalDetail: null
     };
+    if (typeof opts.premier === 'number' && opts.premier >= 0 && opts.premier < names.length) {
+      state.premier = state.current = opts.premier;
+    } else {
+      tirageAuSort(state);
+    }
     state.players.forEach(function (_, i) { draw(state, i); });
     return state;
   }
@@ -278,41 +344,59 @@
     return copy;
   }
 
+  function rackValue(rack) {
+    return (rack || []).reduce(function (s, l) { return s + letterValue(l); }, 0);
+  }
+
+  /* Fin par épuisement du reliquat (§ 5.1.1) : le finisseur empoche la
+     valeur des lettres restant aux autres, qui la perdent. */
   function endByPlayOut(state, finisherIdx) {
     var gained = 0;
     var detail = [];
     state.players.forEach(function (p, i) {
       if (i === finisherIdx) return;
-      var pts = p.rack.reduce(function (s, l) { return s + letterValue(l); }, 0);
+      var pts = rackValue(p.rack);
+      detail.push({ player: i, avant: p.score, delta: -pts, lettres: p.rack.slice() });
       p.score -= pts;
       gained += pts;
-      detail.push({ player: i, delta: -pts });
     });
-    state.players[finisherIdx].score += gained;
-    detail.push({ player: finisherIdx, delta: gained });
+    var f = state.players[finisherIdx];
+    detail.push({ player: finisherIdx, avant: f.score, delta: gained, lettres: [] });
+    f.score += gained;
     state.over = true;
     state.finalDetail = { reason: 'playout', finisher: finisherIdx, detail: detail };
   }
 
-  function endByScoreless(state) {
+  /* Fin par passes consécutives (§ 3.2 et 5.1.4) : chacun défalque la
+     valeur de ses lettres. */
+  function endByPasses(state) {
     var detail = [];
     state.players.forEach(function (p, i) {
-      var pts = p.rack.reduce(function (s, l) { return s + letterValue(l); }, 0);
+      var pts = rackValue(p.rack);
+      detail.push({ player: i, avant: p.score, delta: -pts, lettres: p.rack.slice() });
       p.score -= pts;
-      detail.push({ player: i, delta: -pts });
     });
     state.over = true;
-    state.finalDetail = { reason: 'scoreless', detail: detail };
+    state.finalDetail = { reason: 'passes', detail: detail };
+  }
+
+  /* Chaque joueur a-t-il passé PASSES_FIN fois de suite ? */
+  function tousOntPasse(state) {
+    return state.players.every(function (p) { return (p.passes || 0) >= PASSES_FIN; });
   }
 
   function nextTurn(state) {
     state.current = (state.current + 1) % state.players.length;
+    state.essais = 0;
   }
 
   /* Applique un coup déjà vérifié. Retourne le résultat de checkMove. */
   function playMove(state, playerIdx, placements) {
     if (state.over) return { ok: false, error: 'La partie est terminée.' };
     if (playerIdx !== state.current) return { ok: false, error: 'Ce n’est pas votre tour.' };
+    if (!Array.isArray(placements) || placements.length > RACK_SIZE) {
+      return { ok: false, error: 'Placement invalide.' };
+    }
     var res = checkMove(state, placements);
     if (!res.ok) return res;
     var p = state.players[playerIdx];
@@ -324,9 +408,8 @@
     });
     p.rack = newRack;
     p.score += res.total;
+    p.passes = 0; // un coup, même à 0 point, n'est pas un « je passe »
     state.moveCount++;
-    // un coup légal à 0 point (joker seul) compte comme tour sans score
-    if (res.total > 0) state.scoreless = 0; else state.scoreless++;
     // dernier coup joué : mis en évidence sur le plateau de tous les joueurs
     state.lastMove = {
       player: playerIdx,
@@ -334,44 +417,79 @@
       words: res.words.map(function (w) { return w.word; }),
       points: res.total
     };
-    state.history.push({
+    var entree = {
       player: playerIdx,
       type: 'move',
       words: res.words,
       points: res.total,
-      bingo: res.bingo
-    });
+      bingo: res.bingo,
+      cells: placements.map(function (pl) { return { i: pl.index, l: pl.letter, b: !!pl.blank }; }),
+      tires: 0
+    };
+    state.history.push(entree);
 
     if (p.rack.length === 0 && state.bag.length === 0) {
       endByPlayOut(state, playerIdx);
-    } else if (state.scoreless >= MAX_SCORELESS) {
-      endByScoreless(state);
     } else {
+      var avant = p.rack.length;
       draw(state, playerIdx);
+      entree.tires = p.rack.length - avant;
       nextTurn(state);
     }
     return res;
   }
 
-  function passTurn(state, playerIdx) {
-    if (state.over) return { ok: false, error: 'La partie est terminée.' };
-    if (playerIdx !== state.current) return { ok: false, error: 'Ce n’est pas votre tour.' };
-    state.scoreless++;
-    state.history.push({ player: playerIdx, type: 'pass', points: 0 });
-    if (state.scoreless >= MAX_SCORELESS) {
-      endByScoreless(state);
+  /* « Je passe » (ou tour perdu : opts.refus = mot refusé). */
+  function passer(state, playerIdx, opts) {
+    var p = state.players[playerIdx];
+    p.passes = (p.passes || 0) + 1;
+    var entree = { player: playerIdx, type: 'pass', points: 0 };
+    if (opts && opts.refus) entree.refus = opts.refus;
+    state.history.push(entree);
+    if (tousOntPasse(state)) {
+      endByPasses(state);
     } else {
       nextTurn(state);
     }
+  }
+
+  function passTurn(state, playerIdx) {
+    if (state.over) return { ok: false, error: 'La partie est terminée.' };
+    if (playerIdx !== state.current) return { ok: false, error: 'Ce n’est pas votre tour.' };
+    passer(state, playerIdx);
     return { ok: true };
+  }
+
+  /*
+   * Un mot proposé n'est pas au dictionnaire. Selon state.regles.refus :
+   *   'essais' : on peut retenter, mais au 3e refus du tour, le tour est perdu ;
+   *   'perdu'  : règle classique, le tour est perdu tout de suite.
+   * Renvoie {ok, perdu, essais, restants}. Le compteur de mots refusés de
+   * chaque joueur figure dans les statistiques de fin de partie.
+   */
+  function refuseMove(state, playerIdx, mot) {
+    if (state.over) return { ok: false, error: 'La partie est terminée.' };
+    if (playerIdx !== state.current) return { ok: false, error: 'Ce n’est pas votre tour.' };
+    mot = String(mot == null ? '' : mot).toUpperCase().replace(/[^A-Z]/g, '').slice(0, SIZE);
+    var p = state.players[playerIdx];
+    p.refus = (p.refus || 0) + 1;
+    state.essais = (state.essais || 0) + 1;
+    var essais = state.essais;
+    var classique = !!(state.regles && state.regles.refus === 'perdu');
+    if (classique || essais >= ESSAIS_MAX) {
+      passer(state, playerIdx, { refus: mot || '?' });
+      return { ok: true, perdu: true, essais: essais, restants: 0 };
+    }
+    return { ok: true, perdu: false, essais: essais, restants: ESSAIS_MAX - essais };
   }
 
   function exchange(state, playerIdx, letters) {
     if (state.over) return { ok: false, error: 'La partie est terminée.' };
     if (playerIdx !== state.current) return { ok: false, error: 'Ce n’est pas votre tour.' };
-    if (!letters || letters.length === 0) {
+    if (!Array.isArray(letters) || letters.length === 0) {
       return { ok: false, error: 'Sélectionnez au moins une lettre à échanger.' };
     }
+    if (letters.length > RACK_SIZE) return { ok: false, error: 'Échange invalide.' };
     if (state.bag.length < RACK_SIZE) {
       return { ok: false, error: 'Échange impossible : moins de 7 lettres dans le sac.' };
     }
@@ -383,18 +501,51 @@
       copy.splice(at, 1);
     }
     p.rack = copy;
+    // § 3.3 : on pioche d'abord, puis on remet les lettres rejetées dans le sac
     draw(state, playerIdx);
-    // Remet les lettres échangées dans le sac, puis mélange
     letters.forEach(function (l) { state.bag.push(l); });
     shuffle(state.bag);
-    state.scoreless++;
-    state.history.push({ player: playerIdx, type: 'exchange', points: 0, count: letters.length });
-    if (state.scoreless >= MAX_SCORELESS) {
-      endByScoreless(state);
-    } else {
-      nextTurn(state);
-    }
+    p.passes = 0; // un échange n'est pas un « je passe »
+    state.history.push({ player: playerIdx, type: 'exchange', points: 0, count: letters.length, tires: letters.length });
+    nextTurn(state);
     return { ok: true };
+  }
+
+  /*
+   * Gagnants au sens de la coque : indices des joueurs au meilleur score ;
+   * [] si tout le monde est à égalité.
+   */
+  function gagnants(state) {
+    var top = Math.max.apply(null, state.players.map(function (p) { return p.score; }));
+    var g = [];
+    state.players.forEach(function (p, i) { if (p.score === top) g.push(i); });
+    return g.length === state.players.length ? [] : g;
+  }
+
+  /* Statistiques de la partie, par joueur, tirées de l'historique. */
+  function stats(state) {
+    var st = state.players.map(function (p) {
+      return { coups: 0, points: 0, moyenne: 0, meilleur: null, scrabbles: 0,
+        refus: p.refus || 0, echanges: 0, passes: 0 };
+    });
+    (state.history || []).forEach(function (h) {
+      var s = st[h.player];
+      if (!s) return;
+      if (h.type === 'move') {
+        s.coups++;
+        s.points += h.points || 0;
+        if (h.bingo) s.scrabbles++;
+        var mot = h.words && h.words.length
+          ? h.words.slice().sort(function (a, b) { return b.score - a.score; })[0].word : '';
+        if (!s.meilleur || h.points > s.meilleur.points) s.meilleur = { mot: mot, points: h.points };
+      } else if (h.type === 'exchange') {
+        s.echanges++;
+      } else if (h.type === 'pass') {
+        s.passes++;
+      }
+    });
+    st.forEach(function (s) { s.moyenne = s.coups ? Math.round(s.points / s.coups * 10) / 10 : 0; });
+    return st;
   }
 
   return {
@@ -404,11 +555,19 @@
     JOKER: JOKER,
     PREMIUM: PREMIUM,
     DISTRIBUTION: DISTRIBUTION,
+    BINGO_BONUS: BINGO_BONUS,
+    PASSES_FIN: PASSES_FIN,
+    ESSAIS_MAX: ESSAIS_MAX,
     letterValue: letterValue,
+    rackValue: rackValue,
+    rangTirage: rangTirage,
     newGame: newGame,
     checkMove: checkMove,
     playMove: playMove,
     passTurn: passTurn,
-    exchange: exchange
+    refuseMove: refuseMove,
+    exchange: exchange,
+    gagnants: gagnants,
+    stats: stats
   };
 });
