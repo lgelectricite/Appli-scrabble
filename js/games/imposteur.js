@@ -1168,11 +1168,12 @@
   var decalages = {};
   function decalage(ech) {
     if (!ech || !ech.maintenant) return 0;
-    if (decalages[ech.k] === undefined) {
+    var c = ech.k + ':' + ech.fin;             // unique d'une partie à l'autre
+    if (decalages[c] === undefined) {
       var d = Date.now() - ech.maintenant;
-      decalages[ech.k] = Math.abs(d) < 400 ? 0 : d;
+      decalages[c] = Math.abs(d) < 400 ? 0 : d;
     }
-    return decalages[ech.k];
+    return decalages[c];
   }
 
   function teteHtml(s, ctx) {
