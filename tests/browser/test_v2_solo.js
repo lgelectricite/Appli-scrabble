@@ -253,6 +253,9 @@ async function finAnimation(p) {
 }
 /* prépare un état avec le moteur du jeu, puis le fait « reprendre » par la coque */
 async function scenario(p, code) {
+  // on quitte d'abord la partie en cours : sinon la coque, en la sauvegardant au départ de la
+  // page (machine chargée : sauvegarde en retard), écraserait l'état préparé
+  await p.reload();
   await p.evaluate((code) => {
     const bb = GG.byId.bonbons, st = bb.create(['Moi']);
     new Function('bb', 'st', code)(bb, st);
@@ -328,9 +331,10 @@ async function testBonbons(browser) {
   let res = (await etatJeu(p)).res;
   check('fin de niveau : fenêtre de résultat', !!res && await p.locator('.bb-res').count() === 1);
   if (res.won) {
-    await p.waitForTimeout(600 + 560 * res.stars);
-    check('les étoiles tombent une à une (' + res.stars + ')', await p.locator('.bb-etoile.on').count() === res.stars &&
-      await p.locator('.bb-etoile.tombe').count() === res.stars);
+    // (on attend la chute de la dernière étoile, sans délai fixe : la machine de test est partagée)
+    const tombees = await p.waitForFunction((n) => document.querySelectorAll('.bb-etoile.on.tombe').length === n &&
+      document.querySelectorAll('.bb-etoile.on').length === n, res.stars, { timeout: 15000 }).then(() => true, () => false);
+    check('les étoiles tombent une à une (' + res.stars + ')', tombees);
     check('gagnants() = [0] après un niveau réussi', await p.evaluate(() => JSON.stringify(GG.byId.bonbons.gagnants(document.getElementById('mini-area')._bbCtx.state))) === '[0]');
     await p.click('[data-a="next"]');
   } else {
@@ -453,7 +457,8 @@ async function testBonbons(browser) {
         if (r < 3 || c < 2 || c > 5) { st.holes[i] = 1; q.board[i] = null; }
       }
       const E = bb._ctxOf(st, q, null);
-      for (let i = 0; i < 64; i++) if (q.board[i]) q.board[i] = { t: Math.floor(Math.random() * 6), s: 0, id: 500 + i };
+      const couleur = bb._mulberry(graine * 13 + 5); // scénario reproductible d'une exécution à l'autre
+      for (let i = 0; i < 64; i++) if (q.board[i]) q.board[i] = { t: Math.floor(couleur() * 6), s: 0, id: 500 + i };
       if (bb._findRuns(q.board).length) continue;
       const moves = bb._allMoves(E);
       if (!moves.length) continue;
@@ -465,11 +470,17 @@ async function testBonbons(browser) {
       const mv = moves[0];
       bb._setRandom(bb._mulberry(graine * 7 + 1));
       bb.apply(st, 0, { t: 'swap', a: mv[0], b: mv[1] });
-      if (q.fx && q.fx.shuffled) return { etat: avant, mv, graine: graine * 7 + 1 };
+      // (le coup peut légitimement faire éclater un spécial dans sa cascade : on veut un
+      // scénario où les deux spéciaux arrivent intacts jusqu'au mélange)
+      const ids = sp.map(i => avant.players[0].board[i].id).sort().join(',');
+      if (q.fx && q.fx.shuffled && q.board.filter(c => c && c.s).map(c => c.id).sort().join(',') === ids) {
+        return { etat: avant, mv, graine: graine * 7 + 1 };
+      }
     }
     return null;
   });
   if (melange) {
+    await p.reload(); // (même précaution que scenario())
     await p.evaluate((m) => localStorage.setItem('gg-partie', JSON.stringify({ v: 2, type: 'mini', jeu: 'bonbons', bots: 0, state: m.etat, me: 0, ts: Date.now() })), melange);
     await p.reload();
     await p.click('#btn-reprise');
@@ -484,7 +495,7 @@ async function testBonbons(browser) {
     const st2 = await etatJeu(p);
     const spApres = b2.filter(c => c && c.s).map(c => c.s).sort().join(',');
     check('bug 2 : après le mélange, les bonbons spéciaux sont toujours là et un coup existe',
-      spApres.split(',').length >= 2 && await p.evaluate((st) => GG.byId.bonbons._hasMoveE(GG.byId.bonbons._ctxOf(st, st.players[0], null)), st2), spApres);
+      spApres === '1,2' && await p.evaluate((st) => GG.byId.bonbons._hasMoveE(GG.byId.bonbons._ctxOf(st, st.players[0], null)), st2), spApres);
     await p.evaluate(() => GG.byId.bonbons._setRandom(null));
   } else check('bug 2 : scénario de grille morte trouvé', false);
 

@@ -1939,6 +1939,7 @@
     }
     if (frais && !neuf) {
       V.fxN = fx.n;
+      V.vivant = fx.n; // ce coup a été vu en direct (sa fin de niveau sera fêtée)
       joueTimeline(el, V, ctx, fx);
       return;
     }
@@ -2048,7 +2049,9 @@
     V.modal.innerHTML = html;
     var carte = V.modal.querySelector('.bb-carte');
     GG.fx.bounceIn(carte);
-    var frais = Math.abs(Date.now() - (r.ts || 0)) < 8000; // pas de fête rejouée à la reprise
+    // pas de fête rejouée à la reprise ; mais un dernier coup vu en direct est toujours fêté,
+    // même si son film (sucre final compris) a duré longtemps sur un téléphone lent
+    var frais = (p.fx && V.vivant === p.fx.n) || Math.abs(Date.now() - (r.ts || 0)) < 8000;
     GG.fx.countUp(V.modal.querySelector('#bb-res-pts'), frais ? 0 : r.score, r.score, 1100);
     if (!frais && gagne) {
       V.modal.querySelectorAll('.bb-etoile').forEach(function (e, k) { if (k < r.stars) e.classList.add('on'); });
