@@ -31,34 +31,33 @@ function check(name, cond, extra) {
   await page.fill('#local-name-4', 'Zoé');
   await page.click('#btn-local-start');
   await page.waitForSelector('#overlay-pass:not(.hidden)', { timeout: 30000 });
-  check('1er joueur : Léa', (await page.textContent('#pass-name')) === 'Léa');
+  // V2 : le premier joueur est tiré au sort, puis on tourne dans l'ordre
+  const noms = ['Léa', 'Marc', 'Sam', 'Zoé'];
+  const premier = await page.evaluate(() => window.GGMotsTest.etat().premier);
+  const nomPremier = await page.textContent('#pass-name');
+  check('1er joueur : celui du tirage au sort (' + nomPremier + ')', nomPremier === noms[premier], nomPremier);
   await page.click('#btn-pass-ready');
 
   const badges = await page.locator('#players-bar .player-badge').count();
   check('4 badges de joueurs', badges === 4, badges);
 
-  // Léa joue un mot VALIDE du dictionnaire (ou passe si impossible)
+  // le premier joueur joue un mot VALIDE du dictionnaire (ou passe si impossible)
   const w1 = await H.playFirstWord(page);
   if (!w1) await H.passTurn(page);
-  console.log('  → Léa ' + (w1 ? 'joue ' + w1 : 'passe'));
-  await page.waitForSelector('#overlay-pass:not(.hidden)');
-  check('au tour de Marc', (await page.textContent('#pass-name')) === 'Marc');
-  await page.click('#btn-pass-ready');
-  await H.passTurn(page);
-  await page.waitForSelector('#overlay-pass:not(.hidden)');
-  check('au tour de Sam', (await page.textContent('#pass-name')) === 'Sam');
-  await page.click('#btn-pass-ready');
-  await H.passTurn(page);
-  await page.waitForSelector('#overlay-pass:not(.hidden)');
-  check('au tour de Zoé', (await page.textContent('#pass-name')) === 'Zoé');
-  await page.click('#btn-pass-ready');
-  await H.passTurn(page);
-  await page.waitForSelector('#overlay-pass:not(.hidden)');
-  check('rotation complète : retour à Léa', (await page.textContent('#pass-name')) === 'Léa');
+  console.log('  → ' + nomPremier + ' ' + (w1 ? 'joue ' + w1 : 'passe'));
+  for (let k = 1; k <= 3; k++) {
+    const attendu = noms[(premier + k) % 4];
+    await page.waitForSelector('#overlay-pass:not(.hidden)', { timeout: 15000 });
+    check('au tour de ' + attendu, (await page.textContent('#pass-name')) === attendu);
+    await page.click('#btn-pass-ready');
+    await H.passTurn(page);
+  }
+  await page.waitForSelector('#overlay-pass:not(.hidden)', { timeout: 15000 });
+  check('rotation complète : retour à ' + nomPremier, (await page.textContent('#pass-name')) === nomPremier);
   await page.click('#btn-pass-ready');
   if (w1) {
-    const score0 = await page.textContent('#badge-0 .p-score');
-    check('score de Léa > 0', parseInt(score0, 10) > 0, score0);
+    const score0 = await page.textContent('#badge-' + premier + ' .p-score');
+    check('score de ' + nomPremier + ' > 0', parseInt(score0, 10) > 0, score0);
   }
   await ctx1.close();
 
@@ -114,62 +113,81 @@ function check(name, cond, extra) {
   await g1.waitForSelector('#screen-game.active', { timeout: 15000 });
   await g2.waitForSelector('#screen-game.active', { timeout: 15000 });
   check('les 3 sont en jeu', true);
-  check('Valider désactivé chez Nina (tour de Hugo)', await g1.locator('#btn-play').isDisabled());
+  // V2 : premier joueur tiré au sort ; les pages dans l'ordre des joueurs
+  const pages = [host, g1, g2];
+  const nomsNet = ['Hugo', 'Nina', 'Paul'];
+  const prem = await host.evaluate(() => window.GGMotsTest.etat().premier);
+  const ordre = [0, 1, 2].map(k => (prem + k) % 3);
+  const A = pages[ordre[0]], B = pages[ordre[1]], C = pages[ordre[2]];
+  console.log('  → ordre : ' + ordre.map(i => nomsNet[i]).join(', '));
+  check('tous les téléphones connaissent le même premier joueur',
+    await g1.evaluate(() => window.GGMotsTest.etat().premier) === prem &&
+    await g2.evaluate(() => window.GGMotsTest.etat().premier) === prem);
+  check('Valider désactivé chez ' + nomsNet[ordre[1]] + ' (tour de ' + nomsNet[ordre[0]] + ')',
+    await B.locator('#btn-play').isDisabled());
+  // la fin de l'animation du tirage rend la main au premier joueur
+  await A.waitForFunction(() => !document.querySelector('#btn-pass').disabled, null, { timeout: 15000 });
 
-  // Hugo joue un mot valide
-  const wHugo = await H.playFirstWord(host);
-  if (!wHugo) await H.passTurn(host);
-  console.log('  → Hugo ' + (wHugo ? 'joue ' + wHugo : 'passe'));
-  if (wHugo) {
-    await g1.waitForFunction(() =>
-      document.querySelectorAll('#board .cell .tile').length === 2, null, { timeout: 8000 });
-    await g2.waitForFunction(() =>
-      document.querySelectorAll('#board .cell .tile').length === 2, null, { timeout: 8000 });
-    check('plateau synchronisé chez les 2 invités', true);
+  // le premier joue un mot valide
+  const wA = await H.playFirstWord(A);
+  if (!wA) await H.passTurn(A);
+  console.log('  → ' + nomsNet[ordre[0]] + ' ' + (wA ? 'joue ' + wA : 'passe'));
+  if (wA) {
+    for (const pg of pages) {
+      await pg.waitForFunction(() =>
+        document.querySelectorAll('#board .cell .tile').length === 2, null, { timeout: 8000 });
+    }
+    check('plateau synchronisé chez tout le monde', true);
   }
-  await g1.waitForFunction(() =>
-    document.querySelector('#turn-banner').textContent.includes('Nina'), null, { timeout: 8000 });
+  await B.waitForFunction(n =>
+    document.querySelector('#turn-banner').textContent.includes(n), nomsNet[ordre[1]], { timeout: 8000 });
+  await B.waitForFunction(() => !document.querySelector('#btn-pass').disabled, null, { timeout: 8000 });
 
-  // Nina : essaie un mot invalide → doit être refusé par l'hôte
-  if (wHugo) {
-    const before = await g1.locator('#board .cell .tile').count();
-    // pose une lettre au hasard sous la 1re case : rarement valide, mais si ça l'est on saute
+  // le deuxième : essaie un mot invalide → doit être refusé, puis joue un mot croisé
+  if (wA) {
+    const before = await host.locator('#board .cell .tile').count();
     const info = await (async () => {
-      await g1.locator('#rack .rack-tile').nth(0).click();
-      await g1.locator('#board .cell[data-i="127"]').click();
-      await H.maybeJoker(g1, 'Z');
-      return g1.textContent('#move-info');
+      await B.locator('#rack .rack-tile').nth(0).click();
+      await B.locator('#board .cell[data-i="127"]').click();
+      await H.maybeJoker(B, 'Z');
+      return B.textContent('#move-info');
     })();
     if (/dictionnaire/.test(info)) {
       check('aperçu invité signale le mot invalide', true);
     }
-    await g1.click('#btn-recall');
-    // puis un vrai mot croisé (ou passe)
-    const wNina = await H.playCrossLetter(g1, 112, 127);
-    if (!wNina) await H.passTurn(g1);
-    console.log('  → Nina ' + (wNina ? 'joue ' + wNina : 'passe'));
-    if (wNina) {
-      await host.waitForFunction(c =>
-        document.querySelectorAll('#board .cell .tile').length === c, before + 1, { timeout: 8000 });
-      check('coup de Nina appliqué chez l’hôte', true);
+    await B.click('#btn-recall');
+    const wB = await H.playCrossLetter(B, 112, 127);
+    if (!wB) await H.passTurn(B);
+    console.log('  → ' + nomsNet[ordre[1]] + ' ' + (wB ? 'joue ' + wB : 'passe'));
+    if (wB) {
+      // chacun a reçu l'état de l'hôte (pas seulement la tuile posée en attente)
+      for (const pg of pages) {
+        await pg.waitForFunction(c => window.GGMotsTest.etat().history.length === 2 &&
+          document.querySelectorAll('#board .cell .tile').length === c, before + 1, { timeout: 8000 });
+      }
+      check('coup de ' + nomsNet[ordre[1]] + ' appliqué partout', true);
       // surbrillance du dernier mot chez les adversaires
-      const hl = await host.locator('#board .cell.last-word').count();
-      check('dernier mot surligné chez l’hôte', hl >= 1, hl);
+      const hl = await A.locator('#board .cell.last-word').count();
+      check('dernier mot surligné chez les autres', hl >= 1, hl);
       check('bannière : rappel du dernier coup',
-        /a joué/.test(await host.textContent('#turn-banner')));
+        /a joué/.test(await A.textContent('#turn-banner')));
       check('pas de surbrillance chez son auteur',
-        await g1.locator('#board .cell.last-word').count() === 0);
+        await B.locator('#board .cell.last-word').count() === 0);
     }
   } else {
-    await H.passTurn(g1);
+    await H.passTurn(B);
   }
-  await g2.waitForFunction(() =>
-    document.querySelector('#turn-banner').textContent.includes('Paul'), null, { timeout: 8000 });
-  check('le tour est passé à Paul', true);
-  await H.passTurn(g2);
-  await host.waitForFunction(() =>
-    document.querySelector('#turn-banner').textContent.includes('Hugo'), null, { timeout: 8000 });
-  check('retour à Hugo après la passe de Paul', true);
+  await C.waitForFunction(n =>
+    document.querySelector('#turn-banner').textContent.includes(n), nomsNet[ordre[2]], { timeout: 8000 });
+  check('le tour est passé à ' + nomsNet[ordre[2]], true);
+  await C.waitForFunction(() => !document.querySelector('#btn-pass').disabled, null, { timeout: 8000 });
+  await H.passTurn(C);
+  await A.waitForFunction(n =>
+    document.querySelector('#turn-banner').textContent.includes(n), nomsNet[ordre[0]], { timeout: 8000 });
+  check('retour au premier joueur après la passe', true);
+  // V2 : le bandeau dit que le dernier a passé (plus de « a joué » périmé)
+  check('bandeau : « a passé son tour » après une passe',
+    /a passé son tour/.test(await A.textContent('#turn-banner')), await A.textContent('#turn-banner'));
 
   await ctxH.close();
   await ctxG1.close();

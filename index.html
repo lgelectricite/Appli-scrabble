@@ -443,23 +443,41 @@
     <div id="net-banner" class="hidden">⚠️ <span id="net-banner-text">Connexion perdue.</span>
       <button class="btn small" id="btn-reconnect">Reconnecter</button></div>
 
-    <div id="board-wrap"><div id="board"></div></div>
+    <!-- le plateau : un objet posé sur la table (cadre, relief) ; il défile
+         quand on zoome pour poser ses lettres du bout du doigt -->
+    <div id="board-wrap">
+      <div id="board-scroll"><div id="board"></div></div>
+      <div id="ia-pense" class="hidden" aria-live="polite"><span class="ip-ic">🤖</span>
+        <span class="ip-tx">réfléchit</span><span class="ip-pts"><i></i><i></i><i></i></span></div>
+    </div>
 
-    <div id="move-info" class="hidden"></div>
+    <!-- ligne d'état : aperçu du coup, dernier coup joué, conseils du coach -->
+    <div id="move-zone">
+      <button class="icon-btn" id="btn-zoom" title="Zoomer sur le plateau" aria-label="Zoomer sur le plateau">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/><path class="zp" d="M10.5 7.5v6"/><path d="M7.5 10.5h6"/></svg>
+      </button>
+      <div id="move-info" class="hidden"></div>
+      <div id="zone-info"></div>
+    </div>
 
-    <div id="rack"></div>
+    <div id="rack-zone"><div id="rack"></div></div>
 
     <div id="actions">
-      <button class="btn action primary" id="btn-play">Valider</button>
-      <button class="btn action" id="btn-exchange">Échanger</button>
-      <button class="btn action" id="btn-pass">Passer</button>
-      <button class="btn action" id="btn-recall">Reprendre</button>
-      <button class="btn action" id="btn-shuffle">Mélanger</button>
+      <button class="btn action" id="btn-recall" title="Reprendre les lettres posées">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></svg><span>Reprendre</span></button>
+      <button class="btn action" id="btn-shuffle" title="Mélanger le chevalet">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h3.5c5 0 6 10 11 10H21"/><path d="M18 4l3 3-3 3"/><path d="M3 17h3.5c1.6 0 2.8-.9 3.8-2.2"/><path d="M13.7 9.2C14.7 7.9 15.9 7 17.5 7H21"/><path d="M18 14l3 3-3 3"/></svg><span>Mélanger</span></button>
+      <button class="btn action" id="btn-exchange" title="Échanger des lettres">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14l-4-4"/><path d="M20 16H6l4 4"/></svg><span>Échanger</span></button>
+      <button class="btn action" id="btn-pass" title="Passer son tour">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l8 7-8 7z"/><path d="M17 5v14"/></svg><span>Passer</span></button>
+      <button class="btn action primary" id="btn-play" title="Valider le mot">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg><span>Valider</span></button>
     </div>
     <div id="exchange-bar" class="hidden">
-      <span>Touchez les lettres à échanger</span>
-      <button class="btn small primary" id="btn-exchange-ok">Échanger (0)</button>
+      <span class="eb-tx">Touchez les lettres à rendre au sac</span>
       <button class="btn small" id="btn-exchange-cancel">Annuler</button>
+      <button class="btn small primary" id="btn-exchange-ok">Échanger (0)</button>
     </div>
   </section>
 
