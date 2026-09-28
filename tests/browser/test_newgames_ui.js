@@ -17,6 +17,24 @@ function check(n, c, e) {
       await p.waitForTimeout(120);
     }
   }
+  /* touche une carte de l'éventail là où elle est visible (ses voisines la
+     recouvrent en partie, comme dans une vraie main) */
+  async function tapVisible(sel) {
+    const pt = await p.evaluate(s => {
+      const el = document.querySelector(s);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      for (let y = r.top + 8; y < r.bottom - 4; y += 6) {
+        for (let x = r.left + 4; x < r.right - 2; x += 4) {
+          const h = document.elementFromPoint(x, y);
+          if (h && (h === el || el.contains(h))) return { x, y };
+        }
+      }
+      return null;
+    }, sel);
+    if (pt) await p.mouse.click(pt.x, pt.y);
+    else await p.locator(sel).first().click();
+  }
   async function quit() {
     await p.click('#btn-mini-menu'); await p.click('#btn-menu-quit'); await p.click('#btn-confirm-yes');
     await p.waitForTimeout(150);
@@ -84,7 +102,7 @@ function check(n, c, e) {
   const okCards = await p.locator('.ha-hand .ha-card.ok').count();
   if (okCards > 0) {
     // joue la première carte jouable qui n'est pas un 8 (sinon choisit une couleur)
-    await p.locator('.ha-hand .ha-card.ok').first().click();
+    await tapVisible('.ha-hand .ha-card.ok');
     await p.waitForTimeout(150);
     if (await p.locator('.ha-suit-btn').count()) {
       await p.locator('.ha-suit-btn').first().click();
