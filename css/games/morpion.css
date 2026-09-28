@@ -1,16 +1,118 @@
 /* ===== GGgames V2 — Morpion =====
-   Styles propres à ce jeu (chargés après css/style.css). */
+   Une page de carnet à spirale posée sur la table de nuit : grille tracée
+   à la main, X rouges et O bleus au feutre, ligne gagnante au surligneur. */
 
-/* ================= Morpion ================= */
+.ttt-v2 { max-width: 430px; margin: 0 auto; touch-action: manipulation; }
+
+/* ---- série ---- */
+.ttt-serie {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 44px; margin: 2px 2px 0;
+}
+.ttt-serie.choix { justify-content: center; font-weight: 800; color: var(--txt-2); font-size: 14.5px; }
+.ttt-serie-btn {
+  width: 44px; height: 44px; border-radius: 50%; cursor: pointer; touch-action: manipulation;
+  font-family: var(--f-titre); font-size: 19px; font-weight: 600; color: var(--txt);
+  background: var(--glass-2); border: 1.5px solid var(--stroke-2);
+  transition: transform .18s var(--ressort), background .2s;
+}
+.ttt-serie-btn:active { transform: scale(.9); }
+.ttt-serie-btn.on {
+  color: #fff; border-color: transparent; background: var(--jeu-grad);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .45);
+}
+.ttt-pips { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 13.5px; }
+.ttt-pips b {
+  font-weight: 800; color: var(--txt-2); max-width: 118px; margin: 0 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ttt-pips i {
+  flex: none; width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid var(--stroke-2); background: rgba(0, 0, 0, .2);
+}
+.ttt-pips i.on { border-color: rgba(255, 255, 255, .7); animation: ttt-pip .5s var(--ressort) both; }
+.ttt-pips i.on.x { background: #ff4b64; }
+.ttt-pips i.on.o { background: #3b82f6; }
+@keyframes ttt-pip { from { transform: scale(0); } }
+.ttt-manche {
+  flex: none; font-family: var(--f-titre); font-weight: 600; font-size: 13px; color: var(--txt-3);
+  padding: 3px 10px; border-radius: 999px; background: var(--glass); border: 1px solid var(--stroke);
+}
+.ttt-msg { min-height: 24px; margin: 4px 4px 2px; }
+.ttt-msg b { color: var(--txt); }
+.ttt-mini { font-family: var(--f-titre); font-weight: 700; font-size: 19px; margin-right: 7px; vertical-align: -1px; }
+.ttt-mini.x { color: #ff5a70; }
+.ttt-mini.o { color: #5b9bff; }
+
+/* ---- le carnet ---- */
+.ttt-carnet {
+  position: relative; width: min(88vw, 370px); margin: 22px auto 8px;
+  transform: rotate(-1.2deg);
+}
+.ttt-spirale {
+  position: absolute; z-index: 2; top: -13px; left: 18px; right: 18px; height: 28px; pointer-events: none;
+  background:
+    radial-gradient(circle at 11px 21px, #1c1f40 0 4px, transparent 4.6px) 0 0 / 23px 28px repeat-x,
+    linear-gradient(90deg, transparent 0 7px, #9ea6bc 7px 8.5px, #f5f7fc 8.5px 11px, #8a93aa 11px 14.5px, transparent 14.5px) 0 1px / 23px 19px repeat-x;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, .35));
+}
+.ttt-feuille {
+  position: relative; aspect-ratio: 1; border-radius: 6px 6px 12px 12px;
+  background:
+    repeating-linear-gradient(0deg, rgba(80, 130, 230, .17) 0 1px, transparent 1px 19px),
+    repeating-linear-gradient(90deg, rgba(80, 130, 230, .17) 0 1px, transparent 1px 19px),
+    linear-gradient(160deg, #fffef9 0%, #f7f3e8 100%);
+  box-shadow: 0 1px 0 #e6e0cf, 0 3px 0 #d8d1bc, 0 5px 0 #c9c1a8, 0 20px 38px rgba(0, 0, 0, .5);
+}
+.ttt-carnet.page .ttt-feuille { animation: ttt-page .55s var(--doux) both; transform-origin: 50% 0; }
+@keyframes ttt-page {
+  from { transform: perspective(900px) rotateX(-75deg); opacity: .2; }
+}
+.ttt-grille, .ttt-fluo {
+  position: absolute; left: 5%; top: 5%; width: 90%; height: 90%; overflow: visible; pointer-events: none;
+}
+.ttt-grille path {
+  fill: none; stroke: #27304f; stroke-width: 5.5; stroke-linecap: round; opacity: .9;
+}
+.ttt-carnet.page .ttt-grille path {
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: ttt-trace .3s cubic-bezier(.45, 0, .3, 1) forwards;
+  animation-delay: calc(.2s + var(--k) * .13s);
+}
+@keyframes ttt-trace { to { stroke-dashoffset: 0; } }
+
 .ttt-board {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
-  max-width: 320px; margin: 0 auto;
+  position: absolute; left: 5%; top: 5%; width: 90%; height: 90%;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
 }
 .ttt-cell {
-  aspect-ratio: 1; background: var(--card); border: 2px solid var(--ink);
-  border-radius: 12px; box-shadow: 0 3px 0 var(--ink);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 52px; font-weight: 800; cursor: pointer;
-  font-family: 'Fraunces', Georgia, serif;
+  position: relative; margin: 0; padding: 11%; border: 0; border-radius: 14px;
+  background: transparent; cursor: pointer; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
-.ttt-cell.win { background: var(--green); color: #fff; }
+.ttt-cell:not(.pleine):active { background: rgba(39, 48, 79, .07); }
+.ttt-board[data-pret="0"] .ttt-cell { cursor: default; }
+.ttt-sym { display: block; width: 100%; height: 100%; overflow: visible; }
+.ttt-sym path { fill: none; stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; }
+.ttt-sym.x path { stroke: #e3314c; }
+.ttt-sym.o path { stroke: #2462e8; }
+/* effet feutre : un second passage plus clair, décalé */
+.ttt-sym.x { filter: drop-shadow(1px 1px 0 rgba(227, 49, 76, .25)); }
+.ttt-sym.o { filter: drop-shadow(1px 1px 0 rgba(36, 98, 232, .25)); }
+.ttt-sym.nouveau path {
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: ttt-trace .24s cubic-bezier(.4, 0, .25, 1) forwards;
+  animation-delay: calc(var(--k) * .2s);
+}
+.ttt-sym.o.nouveau path { animation-duration: .36s; }
+.ttt-cell.win .ttt-sym { animation: ttt-danse .5s ease-in-out .5s 2; }
+@keyframes ttt-danse { 30% { transform: rotate(-9deg) scale(1.08); } 70% { transform: rotate(7deg) scale(1.05); } }
+
+/* la ligne gagnante : surligneur fluo + trait de feutre */
+.ttt-fluo { mix-blend-mode: multiply; }
+.ttt-fluo path { fill: none; stroke-linecap: round; }
+.ttt-fluo .surligne { stroke: #ffe234; stroke-width: 46; opacity: .8; }
+.ttt-fluo .barre { stroke: #27304f; stroke-width: 6; opacity: .85; }
+.ttt-fluo.nouveau path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: ttt-trace .4s var(--doux) .3s forwards; }
+.ttt-fluo.nouveau .barre { animation-delay: .6s; }
+.ttt-v2 .mini-actions { margin-top: 16px; }

@@ -131,5 +131,101 @@ if (joue('p4')) {
   }
 }
 
+/* ================= MORPION ================= */
+if (joue('morpion')) {
+  const mor = require(ROOT + '/js/games/morpion.js');
+  console.log('--- Morpion : série ---');
+  let g = mor.create(['A', 'B']);
+  check('niveaux déclarés', JSON.stringify(mor.niveaux) === '["facile","moyen","difficile"]');
+  check('série en 3 par défaut, 1/3/5 au choix', g.opts.manches === 3 && mor.apply(g, 0, { t: 'serie', n: 1 }).ok);
+  [0, 3, 1, 4].forEach(i => mor.apply(g, g.current, { t: 'play', i }));
+  const r = mor.apply(g, 0, { t: 'play', i: 2 });
+  check('ligne + série gagnée en 1 manche → minuteur de fin', g.serieGagnee && r.timer && r.timer.action.t === 'fin');
+  check('fin de partie après le minuteur, gagnants() = [0]',
+    mor.apply(g, -1, { t: 'fin' }).ok && mor.over(g) && JSON.stringify(mor.gagnants(g)) === '[0]');
+
+  console.log('--- Morpion : bug 6 (le piège des coins opposés) ---');
+  // X (humain) : coin 0 ; si O prend le centre, X prend le coin opposé 8 ;
+  // ensuite X gagne s’il peut, pare sinon, et crée une fourchette s’il peut
+  function humainPiege(s) {
+    const gr = s.grid, libres = [];
+    for (let i = 0; i < 9; i++) if (!gr[i]) libres.push(i);
+    if (!gr[0]) return 0;
+    if (!gr[8] && gr[4] === 'O') return 8;
+    const L = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+    const fin = (j) => L.map(l => l.filter(c => gr[c] === j).length === 2 && l.some(c => !gr[c]) ? l.find(c => !gr[c]) : -1).filter(c => c >= 0);
+    if (fin('X').length) return fin('X')[0];
+    if (fin('O').length) return fin('O')[0];
+    for (const c of libres) {
+      gr[c] = 'X'; const n = fin('X').length; gr[c] = null;
+      if (n >= 2) return c;
+    }
+    return libres[0];
+  }
+  const N = RAPIDE ? 300 : 1000;
+  ['facile', 'moyen', 'difficile'].forEach(niv => {
+    let perdu = 0;
+    for (let k = 0; k < N; k++) {
+      const s = mor.create(['H', 'IA']);
+      while (!s.roundOver) {
+        const a = s.current === 0 ? { t: 'play', i: humainPiege(s) } : mor.bot(s, 1, { niveau: niv });
+        mor.apply(s, s.current, a);
+      }
+      if (s.winner === 0) perdu++;
+    }
+    mesure('Morpion ' + niv + ' : piège des coins opposés gagnant', perdu + '/' + N + ' (avant : 1000/1000)');
+    if (niv === 'difficile') check('Morpion difficile : le piège ne marche JAMAIS', perdu === 0);
+    if (niv === 'moyen') check('Morpion moyen : le piège ne marche plus à coup sûr (< 40 %)', perdu < 0.4 * N);
+  });
+
+  console.log('--- Morpion : difficile imbattable (toutes les parties possibles) ---');
+  // on explore TOUTES les suites de coups de l’adversaire, et tous les
+  // coups que le niveau difficile peut choisir
+  let parties = 0, defaites = 0, victoiresIA = 0;
+  function explore(grid, trait, iaSym) {
+    const L = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+    const ligne = L.find(l => grid[l[0]] && grid[l[0]] === grid[l[1]] && grid[l[1]] === grid[l[2]]);
+    if (ligne || grid.every(v => v)) {
+      parties++;
+      if (ligne && grid[ligne[0]] !== iaSym) defaites++;
+      else if (ligne) victoiresIA++;
+      return;
+    }
+    const choix = trait === iaSym ? mor._candidatsDifficile(grid, iaSym)
+      : grid.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+    choix.forEach(i => {
+      const g2 = grid.slice(); g2[i] = trait;
+      explore(g2, trait === 'X' ? 'O' : 'X', iaSym);
+    });
+  }
+  explore([null, null, null, null, null, null, null, null, null], 'X', 'X');
+  explore([null, null, null, null, null, null, null, null, null], 'X', 'O');
+  mesure('Morpion difficile', parties + ' parties explorées (IA en X puis en O) : ' + defaites +
+    ' défaite, ' + victoiresIA + ' victoires de l’IA');
+  check('Morpion difficile : AUCUNE défaite possible', defaites === 0 && parties > 1000);
+
+  console.log('--- Morpion : niveaux mesurés entre eux ---');
+  function duel(a, b, n) {
+    let wa = 0, wb = 0;
+    for (let k = 0; k < n; k++) {
+      const s = mor.create(['a', 'b']);
+      s.starter = k % 2; s.current = s.starter;
+      const niv = [a, b];
+      while (!s.roundOver) mor.apply(s, s.current, mor.bot(s, s.current, { niveau: niv[s.current] }));
+      if (s.winner === 0) wa++; else if (s.winner === 1) wb++;
+    }
+    return [wa, wb, n - wa - wb];
+  }
+  const nD = RAPIDE ? 200 : 1000;
+  [['moyen', 'facile'], ['difficile', 'moyen'], ['difficile', 'facile']].forEach(([a, b]) => {
+    const [wa, wb, nul] = duel(a, b, nD);
+    mesure('Morpion ' + a + ' contre ' + b, wa + ' victoires, ' + wb + ' défaites, ' + nul + ' nuls sur ' + nD);
+    check('Morpion : ' + a + ' ne perd presque jamais contre ' + b, wb <= (a === 'difficile' ? 0 : 0.05 * nD));
+    // entre deux joueurs solides le morpion finit souvent nul : on exige
+    // seulement que le plus fort gagne nettement plus qu’il ne perd
+    check('Morpion : ' + a + ' gagne nettement plus que ' + b, wa >= Math.max(5 * wb, (b === 'facile' ? 0.25 : 0.01) * nD));
+  });
+}
+
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 des classiques OK.');
 process.exit(failures ? 1 : 0);

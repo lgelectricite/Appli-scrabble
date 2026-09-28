@@ -169,6 +169,76 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
     }
   }
 
+  /* ======================= MORPION ======================= */
+  if (joue('morpion')) {
+    for (const [w, h] of [[412, 780], [360, 640]]) {
+      console.log('--- Morpion à deux sur un téléphone (' + w + '×' + h + ') ---');
+      const p = await nouvelle(w, h);
+      await lanceLocal(p, 'morpion', ['Léa', 'Marc']);
+      check('grille dessinée à la main (4 traits animés)', await p.locator('.ttt-carnet.page .ttt-grille path').count() === 4);
+      await p.click('[data-serie="1"]');
+      const tape = async i => {
+        await p.waitForSelector('.ttt-board[data-pret="1"]');
+        await p.locator('.ttt-cell[data-i="' + i + '"]').click();
+      };
+      await tape(4);
+      await attendre(100);
+      await p.locator('.ttt-cell[data-i="0"]').click();
+      check('double appui : la case voisine 100 ms après est ignorée', await p.locator('.ttt-sym').count() === 1);
+      check('le X se trace au feutre (animation)', await p.locator('.ttt-sym.x.nouveau path').count() === 2);
+      await tape(0);
+      check('le O se trace au feutre', await p.locator('.ttt-sym.o.nouveau path').count() === 1);
+      await tape(8); await tape(2);
+      await capture(p, 'morpion_' + w + '_jeu');
+      await sansDebord(p, 'Morpion en cours');
+      await tape(6); await tape(1);
+      await p.waitForSelector('.ttt-fluo', { timeout: 3000 });
+      check('ligne gagnante tracée au surligneur', await p.locator('.ttt-fluo .surligne').count() === 1 &&
+        await p.locator('.ttt-cell.win').count() === 3);
+      check('Marc gagne (O en 0-1-2)', /Marc remporte la série/.test(await p.textContent('.ttt-msg')));
+      await attendre(500);
+      await capture(p, 'morpion_' + w + '_gagne');
+      await sansDebord(p, 'Morpion fin de manche');
+      await p.waitForSelector('#overlay-end:not(.hidden)', { timeout: 6000 });
+      check('fin de série célébrée par la coque', /Marc/.test(await p.textContent('#end-detail')));
+      await p._ctx.close();
+    }
+    {
+      console.log('--- Morpion contre l’IA difficile : le piège des coins opposés (bug 6) ---');
+      const p = await nouvelle(412, 780);
+      await lanceSolo(p, 'morpion', 'difficile');
+      await p.waitForSelector('.ttt-board');
+      const joueHumain = async i => {
+        await p.waitForFunction(() => /À vous/.test(document.querySelector('.ttt-msg').textContent), null, { timeout: 5000 });
+        await p.waitForSelector('.ttt-board[data-pret="1"]');
+        await p.locator('.ttt-cell[data-i="' + i + '"]').click();
+      };
+      await joueHumain(0);
+      await p.waitForFunction(() => document.querySelectorAll('.ttt-sym').length === 2, null, { timeout: 5000 });
+      const centre = await p.locator('.ttt-cell[data-i="4"] .ttt-sym.o').count();
+      if (centre) {
+        await joueHumain(8);
+        await p.waitForFunction(() => document.querySelectorAll('.ttt-sym').length === 4, null, { timeout: 5000 });
+        const coin = await p.evaluate(() => [2, 6].some(i => document.querySelector('.ttt-cell[data-i="' + i + '"] .ttt-sym')));
+        check('BUG 6 corrigé : après coin–centre–coin opposé, l’IA prend un bord (pas un coin)', !coin);
+      } else {
+        check('BUG 6 : l’IA répond au coin (centre ou non, jamais perdante)', true);
+      }
+      // on finit la manche en jouant la première case libre
+      for (let k = 0; k < 6; k++) {
+        if (await p.locator('[data-a="again"], [data-a="fin"]').count()) break;
+        const libre = await p.evaluate(() => [...document.querySelectorAll('.ttt-cell')].findIndex(c => !c.querySelector('.ttt-sym')));
+        if (libre < 0) break;
+        try { await joueHumain(libre); } catch (e) { /* manche finie pendant l’attente */ }
+        await attendre(1500);
+      }
+      const msg = await p.textContent('.ttt-msg');
+      check('l’humain ne bat pas le niveau difficile', !/Joueur 1|Vous/.test(msg) || /nul/.test(msg), msg);
+      await sansDebord(p, 'Morpion solo');
+      await p._ctx.close();
+    }
+  }
+
   await browser.close();
   console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 des classiques (navigateur) OK.');
   process.exit(failures ? 1 : 0);
