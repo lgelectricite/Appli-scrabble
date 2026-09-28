@@ -32,15 +32,27 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
     await p.waitForSelector('#catalog .game-tile');
     return p;
   }
+  /* débordement horizontal : la page, et tout élément visible de la zone de jeu
+     (sauf ce qui est volontairement rogné par un parent « overflow: hidden »,
+     comme les nuages qui traversent la scène du Pendu) */
   async function debordement(p) {
     return p.evaluate(() => {
       const W = window.innerWidth;
       if (document.documentElement.scrollWidth > W + 1) return 'page ' + document.documentElement.scrollWidth;
-      const fautif = [...document.querySelectorAll('#mini-area *')].find(e => {
+      const zone = document.querySelector('#mini-area');
+      const rogne = e => {
+        for (let a = e.parentElement; a && a !== zone; a = a.parentElement) {
+          if (getComputedStyle(a).overflowX !== 'visible') return true;
+        }
+        return false;
+      };
+      const fautif = [...zone.querySelectorAll('*')].find(e => {
+        if (e.closest('svg') && e.tagName.toLowerCase() !== 'svg') return false;
         const r = e.getBoundingClientRect();
-        return r.width > 0 && (r.right > W + 1 || r.left < -1) && getComputedStyle(e).position !== 'fixed';
+        return r.width > 0 && (r.right > W + 1 || r.left < -1) && getComputedStyle(e).position !== 'fixed' && !rogne(e);
       });
-      return fautif ? (fautif.className || fautif.tagName) + ' ' + Math.round(fautif.getBoundingClientRect().right) : null;
+      return fautif ? String(fautif.className && fautif.className.baseVal !== undefined ? fautif.className.baseVal : fautif.className || fautif.tagName) +
+        ' ' + Math.round(fautif.getBoundingClientRect().right) : null;
     });
   }
   async function lanceSolo(p, jeu, niveau) {
@@ -311,6 +323,149 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
     }
     await quitte(t);
     await t.context().close();
+  }
+
+  /* ======================= PENDU ======================= */
+  if (partie('pendu')) {
+    console.log('--- Pendu : solo contre l’ordinateur (412×780) ---');
+    const p = await nouveauTelephone(412, 780);
+    await p.click('.game-tile[data-g="pendu"]');
+    await p.waitForSelector('#screen-mini-setup.active');
+    check('bug 9 : « Jouer seul » proposé d’emblée (contre l’ordinateur, niveaux)',
+      await p.locator('#btn-mini-solo:not(.hidden)').count() === 1);
+    await p.click('#btn-mini-solo');
+    check('bug 9 : choix du niveau de l’ordinateur', await p.locator('#msolo-niveau .count-btn').count() === 3);
+    await p.click('#msolo-niveau .count-btn[data-niveau="facile"]');
+    await p.click('#btn-msolo-start');
+    await p.waitForSelector('.pdu-accueil [data-lvl="facile"]', { timeout: 20000 });
+    check('accueil : la montgolfière et les 3 difficultés de mots', await p.locator('.pdu-accueil .pdu-svg').count() === 1 &&
+      await p.locator('.pdu-accueil [data-lvl]').count() === 3);
+    check('accueil sans débordement', !(await debordement(p)), await debordement(p));
+    await p.click('[data-lvl="facile"]');
+    await p.waitForSelector('.pdu-kb');
+    check('dessin vectoriel : montgolfière, mer, nuages', await p.locator('.pdu-scene .pdu-ballon .pdu-enveloppe').count() === 1 &&
+      await p.locator('.pdu-scene .pdu-vague').count() === 2 && await p.locator('.pdu-scene .pdu-nuage').count() === 3);
+    const cat = await p.textContent('.pdu-cat-pill');
+    check('catégorie donnée en indice', /Animaux|Fruits|Cuisine|maison|corps|Vêtements|Sports|Musique|Nature|Météo|Transports|Métiers|École|mer|Espace|Fêtes|Contes|ville|jardin|montagne|Pirates|Technologie/.test(cat), cat);
+    check('« il reste N erreurs » écrit en toutes lettres (8 en facile) + 8 pastilles',
+      /Encore 8 erreurs permises/.test(await p.textContent('.pdu-vies')) && await p.locator('.pdu-pip').count() === 8);
+    const nSlots = await p.locator('.pdu-slot').count();
+    check('facile : mot court (4 à 7 lettres)', nSlots >= 4 && nSlots <= 7, nSlots);
+    // une lettre absente (on essaie des lettres rares jusqu'à se tromper)
+    const descente = () => p.evaluate(() => {
+      const m = /translateY\(([-\d.]+)(px|%)\)/.exec(document.querySelector('.pdu-ballon').getAttribute('style'));
+      return m ? parseFloat(m[1]) : 0;
+    });
+    const avant = await descente();
+    let perf = null;
+    for (const L of 'WKZXJYQV') {
+      if (!(await p.locator('.pdu-kb:not(.attente)').count())) break;
+      await attendre(420);
+      const fautes = await p.locator('.pdu-rustine').count();
+      perf = await fluidite(p, () => p.click('.pdu-key[data-l="' + L + '"]'), 900);
+      if (await p.locator('.pdu-rustine').count() > fautes) break;
+    }
+    check('erreur : une rustine, la montgolfière se dégonfle et descend', await p.locator('.pdu-rustine').count() >= 1 &&
+      (await descente()) > avant);
+    check('erreur : la touche éclate (animation) et reste barrée', await p.locator('.pdu-key.faux').count() >= 1);
+    check('erreur : « Encore 7 erreurs permises »', /Encore [0-7] erreurs permises|Dernière/.test(await p.textContent('.pdu-vies')));
+    if (perf) {
+      console.log('    → fluidité au processeur ×4 (erreur + ballon) : médiane ' + perf.med.toFixed(1) + ' ms, 95e centile ' + perf.p95.toFixed(1) + ' ms');
+      check('fluide au processeur ×4 (médiane ≤ 20 ms, 95 % ≤ 50 ms)', perf.med <= 20 && perf.p95 <= 50, perf);
+    }
+    // l'ordinateur joue à son tour
+    await p.waitForFunction(() => /Margot/.test(document.querySelector('#mini-turn').textContent) ||
+      document.querySelector('.pdu-fin'), null, { timeout: 5000 }).catch(() => {});
+    await p.waitForFunction(() => document.querySelector('.pdu-kb:not(.attente)') || document.querySelector('.pdu-fin'), null, { timeout: 15000 });
+    check('l’ordinateur a joué au moins une lettre', await p.evaluate(() =>
+      document.querySelectorAll('.pdu-key.bon, .pdu-key.faux').length >= 2 || !!document.querySelector('.pdu-fin')));
+    // on termine la manche avec les lettres fréquentes
+    for (let k = 0; k < 60; k++) {
+      if (await p.locator('.pdu-fin').count()) break;
+      if (!(await p.locator('.pdu-kb:not(.attente)').count())) { await attendre(400); continue; }
+      await attendre(380);
+      const L = await p.evaluate(() => {
+        for (const c of 'EASIRNTULODCMPGBVHFQYXJKWZ') { const b = document.querySelector('.pdu-key[data-l="' + c + '"]'); if (b && !b.disabled) return c; }
+        return null;
+      });
+      if (!L) break;
+      await p.click('.pdu-key[data-l="' + L + '"]');
+    }
+    await p.waitForSelector('.pdu-fin', { timeout: 20000 });
+    check('fin de manche : le mot est révélé (lettres manquantes en rouge si perdu)', await p.evaluate(() =>
+      [...document.querySelectorAll('.pdu-slot')].every(s => s.textContent.trim().length === 1)));
+    check('fin de manche sans débordement', !(await debordement(p)), await debordement(p));
+    // bug 4 : double appui sur « Mot suivant »
+    await attendre(800);
+    const bn = await p.locator('#pdu-next').boundingBox();
+    await p.mouse.click(bn.x + bn.width / 2, bn.y + bn.height / 2);
+    await p.mouse.click(bn.x + bn.width / 2, bn.y + bn.height / 2);
+    await attendre(250);
+    await p.waitForSelector('.pdu-kb', { timeout: 8000 });
+    check('bug 4 : double appui sur « Mot suivant » → aucune lettre proposée dans la manche suivante, aucune erreur',
+      await p.locator('.pdu-key.bon, .pdu-key.faux').count() === 0 && /Encore 8 erreurs/.test(await p.textContent('.pdu-vies')) &&
+      /Manche 2 \/ 5/.test(await p.textContent('.pdu-barre')));
+    await quitte(p);
+    await p.context().close();
+
+    console.log('--- Pendu : partie seule de 5 manches (360×640) ---');
+    const s = await nouveauTelephone(360, 640);
+    await lanceTel(s, 'pendu', 1);
+    await s.waitForSelector('[data-lvl="moyen"]', { timeout: 20000 });
+    await s.click('[data-lvl="moyen"]');
+    let pire = 0, vuCinq = false, deborde = null;
+    for (let m = 0; m < 5; m++) {
+      await s.waitForSelector('.pdu-kb', { timeout: 8000 });
+      if (m === 0) deborde = await debordement(s);
+      for (let k = 0; k < 30; k++) {
+        if (await s.locator('.pdu-fin').count()) break;
+        await attendre(m === 0 && k === 0 ? 450 : 60);
+        const L = await s.evaluate(() => {
+          for (const c of 'EASIRNTULODCMPGBVHFQYXJKWZ') { const b = document.querySelector('.pdu-key[data-l="' + c + '"]'); if (b && !b.disabled) return c; }
+          return null;
+        });
+        if (!L) break;
+        await s.click('.pdu-key[data-l="' + L + '"]');
+      }
+      await s.waitForSelector('.pdu-fin', { timeout: 8000 });
+      const txt = await s.textContent('.pdu-barre');
+      const mm = /Manche (\d+) \/ (\d+)/.exec(txt);
+      if (mm) { pire = Math.max(pire, +mm[1]); if (mm[1] === '5' && mm[2] === '5') vuCinq = true; }
+      await attendre(750);
+      await s.click('#pdu-next');
+      await attendre(250);
+    }
+    await s.waitForSelector('#overlay-end:not(.hidden)', { timeout: 8000 });
+    check('partie seule sans débordement (360)', !deborde, deborde);
+    check('bug 4 : « Manche 5 / 5 » à la dernière manche, jamais « 6 / 5 »', vuCinq && pire === 5, pire);
+    check('fin de partie célébrée par la coque (résumé du Pendu)', /mot/.test(await s.textContent('#end-detail')));
+    await s.context().close();
+
+    console.log('--- Pendu : « je choisis le mot, tu devines » à 2 (360×640) ---');
+    const d = await nouveauTelephone(360, 640);
+    await lanceTel(d, 'pendu', 2);
+    await d.waitForSelector('.pdu-mode[data-m="duel"]', { timeout: 20000 });
+    await d.click('.pdu-mode[data-m="duel"]');
+    await d.click('[data-a="duel"]');
+    await d.waitForSelector('#pdu-mot');
+    check('duel : saisie masquée et consigne « ne regardez pas »', await d.getAttribute('#pdu-mot', 'type') === 'password' &&
+      /ne regardez pas/.test(await d.textContent('.pdu-cache')));
+    check('duel : écran de saisie sans débordement', !(await debordement(d)), await debordement(d));
+    await d.fill('#pdu-mot', '12');
+    await d.click('#pdu-valider');
+    check('duel : mot invalide refusé avec un message', /3 à 14 lettres/.test(await d.textContent('#pdu-err')));
+    await d.fill('#pdu-mot', 'Girafe');
+    await d.click('.pdu-cat[data-cat="animaux"]');
+    await d.click('#pdu-valider');
+    await d.waitForSelector('.pdu-kb');
+    check('duel : au tour du joueur 2, 6 cases, indice « Animaux »', /Joueur 2/.test(await d.textContent('#mini-turn')) &&
+      await d.locator('.pdu-slot').count() === 6 && /Animaux/.test(await d.textContent('.pdu-cat-pill')));
+    check('duel : le mot secret n’est nulle part dans la page du devineur', !(await d.evaluate(() => document.body.innerHTML.includes('GIRAFE'))));
+    await attendre(400);
+    await d.click('.pdu-key[data-l="A"]');
+    await attendre(200);
+    check('duel : lettre trouvée, elle s’affiche', await d.locator('.pdu-slot.ok').count() === 1);
+    await d.context().close();
   }
 
   await browser.close();

@@ -190,17 +190,18 @@ check('phase de choix du niveau', g.phase === 'setup');
 check('lettre avant le niveau refusée', !pendu.apply(g, 0, { t: 'letter', l: 'A' }).ok);
 check('niveau réservé à l’hôte', !pendu.apply(g, 1, { t: 'level', l: 'facile' }).ok);
 pendu.apply(g, 0, { t: 'level', l: 'difficile' });
-check('difficile : mot court (4-6) et 6 cœurs', g.maxErrors === 6 &&
-  g.secret.length >= 4 && g.secret.length <= 6, g.secret);
+// V2 : niveaux recalibrés sur la fréquence des mots (facile = très courants et courts)
+check('difficile : mots de 6 à 12 lettres, vocabulaire plus riche, 6 erreurs permises', g.maxErrors === 6 &&
+  g.secret.length >= 6 && g.secret.length <= 12, g.secret);
 check('le mot vient des mots courants', GG.MOTS_COURANTS.indexOf(g.secret) !== -1, g.secret);
 // niveaux : longueurs respectées sur 30 tirages
 let lvlOk = true;
 for (let t = 0; t < 30; t++) {
   const x = pendu.create(['A']);
   pendu.apply(x, 0, { t: 'level', l: 'facile' });
-  if (x.secret.length < 7 || x.secret.length > 10 || x.maxErrors !== 8) lvlOk = false;
+  if (x.secret.length < 4 || x.secret.length > 7 || x.maxErrors !== 8) lvlOk = false;
 }
-check('facile : mots de 7-10 lettres, 8 cœurs (30 tirages)', lvlOk);
+check('facile : mots très courants de 4 à 7 lettres, 8 erreurs permises (30 tirages)', lvlOk);
 g = pendu.create(['A', 'B'], null);
 pendu.apply(g, 0, { t: 'level', l: 'facile' });
 g.secret = 'MAISONS';

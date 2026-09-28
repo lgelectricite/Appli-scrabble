@@ -273,5 +273,230 @@ if (partie('motus')) {
   }
 }
 
+/* harnais « tout IA » (comme tests/test_bots.js) : une partie complète sans
+   blocage ni action refusée ; drive = l'hôte humain qui enchaîne les écrans */
+function partieToutIA(mod, noms, niveau, drive, max) {
+  const ctx = { dict, niveau };
+  const st = mod.create(noms, ctx);
+  st.niveauIA = niveau;
+  const minuteurs = [];
+  for (let k = 0; k < max; k++) {
+    if (mod.over(st)) return { ok: true, st, k };
+    if (minuteurs.length) {
+      const t = minuteurs.shift();
+      const r = mod.apply(st, -1, t.action, ctx);
+      if (r.ok && r.timer) minuteurs.push(r.timer);
+      continue;
+    }
+    const d = drive(st);
+    if (d) {
+      const r = mod.apply(st, d.player, d.action, ctx);
+      if (!r.ok) return { ok: false, err: 'drive refusé : ' + r.error };
+      if (r.timer) minuteurs.push(r.timer);
+      continue;
+    }
+    let joue = false;
+    for (let i = 0; i < st.players.length; i++) {
+      const a = mod.bot(GG.clone(st), i, ctx);
+      if (!a) continue;
+      const r = mod.apply(st, i, a, ctx);
+      if (!r.ok) return { ok: false, err: 'IA refusée ' + JSON.stringify(a) + ' : ' + r.error };
+      if (r.timer) minuteurs.push(r.timer);
+      joue = true;
+      break;
+    }
+    if (!joue) return { ok: false, err: 'blocage : personne ne peut jouer' };
+  }
+  return { ok: false, err: 'trop long' };
+}
+
+/* ================= PENDU ================= */
+if (partie('pendu')) {
+  console.log('--- Pendu ---');
+  const pendu = require(ROOT + '/js/games/pendu.js');
+  const TH = GG.MOTS_THEMES;
+  const rangDe = {};
+  TH.forEach(t => t.mots.forEach((l, r) => l.forEach(w => { if (!(w in rangDe) || rangDe[w] > r) rangDe[w] = r; })));
+  const joueTout = (g, joueur) => {
+    for (const L of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+      if (g.roundOver) break;
+      pendu.apply(g, joueur === undefined ? g.current : joueur, { t: 'letter', l: L });
+    }
+  };
+  // bug 5 : niveaux recalibrés (facile = mots très courants et courts)
+  for (const lvl of ['facile', 'moyen', 'difficile']) {
+    const cfg = pendu._LEVELS[lvl];
+    let rares = 0, horsLong = 0, sansCat = 0, lettres = 0, pasTresCourant = 0;
+    const N = 300;
+    for (let k = 0; k < N; k++) {
+      const g = pendu.create(['A']);
+      pendu.apply(g, 0, { t: 'level', l: lvl });
+      if (rangDe[g.secret] === 2) rares++;
+      if (rangDe[g.secret] !== 0) pasTresCourant++;
+      if (g.secret.length < cfg.min || g.secret.length > cfg.max) horsLong++;
+      if (!TH.some(t => t.id === g.cat)) sansCat++;
+      lettres += g.secret.length;
+    }
+    console.log('    → ' + lvl + ' : ' + pct(rares, N) + ' % de mots « plus rares », ' +
+      (lettres / N).toFixed(1) + ' lettres en moyenne, ' + cfg.lives + ' erreurs permises');
+    if (lvl === 'facile') {
+      check('bug 5 : en facile, 0 % de vocabulaire corsé (avant : 41 %), 100 % de mots très courants de 4 à 7 lettres',
+        rares === 0 && pasTresCourant === 0 && horsLong === 0, { rares, pasTresCourant, horsLong });
+    }
+    if (lvl === 'moyen') check('bug 5 : en moyen, aucun mot « plus rare »', rares === 0 && horsLong === 0);
+    if (lvl === 'difficile') {
+      check('bug 5 : en difficile, vocabulaire plus riche (6 à 12 lettres, aucun mot « très courant »)',
+        horsLong === 0 && rares > 0 && pasTresCourant === N);
+    }
+    check('  … ' + lvl + ' : chaque mot a sa catégorie (indice)', sansCat === 0);
+  }
+  // bug 4 : « Manche 6 / 5 »
+  {
+    const g = pendu.create(['A', 'B']);
+    pendu.apply(g, 0, { t: 'level', l: 'facile' });
+    let maxVu = 0;
+    for (let m = 0; m < 5; m++) {
+      joueTout(g);
+      maxVu = Math.max(maxVu, g.round);
+      pendu.apply(g, 0, { t: 'next' });
+      maxVu = Math.max(maxVu, g.round);
+    }
+    check('bug 4 : 5 manches jouées, fin de partie, le compteur ne dépasse jamais 5 / 5',
+      g.finished && g.round === 5 && maxVu === 5, { round: g.round, maxVu });
+    check('bug 4 : un « Mot suivant » de trop est refusé', !pendu.apply(g, 0, { t: 'next' }).ok);
+    const g2 = pendu.create(['A']);
+    pendu.apply(g2, 0, { t: 'level', l: 'moyen' });
+    joueTout(g2, 0);
+    pendu.apply(g2, 0, { t: 'next' });
+    check('bug 4 : nouvelle manche vierge (aucune lettre jouée, aucune erreur)',
+      g2.tried.length === 0 && g2.errors === 0 && g2.round === 2);
+  }
+  // pas de répétition (dans la partie et d'une partie à l'autre)
+  {
+    global.localStorage = fauxStockage();
+    const vus = new Set();
+    let rep = 0;
+    for (let p2 = 0; p2 < 20; p2++) {
+      const g = pendu.create(['A']);
+      pendu.apply(g, 0, { t: 'level', l: 'moyen' });
+      for (let m = 0; m < 5; m++) {
+        if (vus.has(g.secret)) rep++;
+        vus.add(g.secret);
+        joueTout(g, 0);
+        pendu.apply(g, 0, { t: 'next' });
+      }
+    }
+    check('20 parties de 5 mots (moyen) : aucun mot revu', rep === 0, rep);
+    delete global.localStorage;
+  }
+  // bug 9 : « Jouer seul » proposé (IA à niveaux) et parties tout-IA sans accroc
+  check('bug 9 : le Pendu se joue seul contre l’ordinateur (bot + niveaux)',
+    typeof pendu.bot === 'function' && JSON.stringify(pendu.niveaux) === '["facile","moyen","difficile"]');
+  {
+    let ok = true, err = null;
+    for (let k = 0; k < 12 && ok; k++) {
+      const duelMode = k % 3 === 2;
+      const noms = ['🤖 A', '🤖 B', '🤖 C'].slice(0, 2 + (k % 2));
+      const r = partieToutIA(pendu, noms, ['facile', 'moyen', 'difficile'][k % 3], st => {
+        if (st.phase === 'setup') {
+          return { player: 0, action: duelMode ? { t: 'duel' } : { t: 'level', l: ['facile', 'moyen', 'difficile'][k % 3] } };
+        }
+        if (st.roundOver && !st.finished) return { player: 0, action: { t: 'next' } };
+        return null;
+      }, 3000);
+      if (!r.ok) { ok = false; err = r.err; }
+    }
+    check('12 parties tout-IA (le jeu choisit / « je choisis le mot »), 2 et 3 joueurs, sans accroc', ok, err);
+  }
+  // mesures des niveaux d'IA (parties de 5 manches contre un joueur moyen simulé)
+  {
+    const N = pendu._NIVEAUX_IA;
+    N._humain = { pattern: 0.55, vocab: 1, hasard: 0.08, top: 2 };
+    const taux = {};
+    const G = 150;
+    for (const niv of ['facile', 'moyen', 'difficile']) {
+      let w = 0;
+      for (let k = 0; k < G; k++) {
+        const ia = k % 2;
+        const s2 = pendu.create(ia ? ['H', 'IA'] : ['IA', 'H']);
+        pendu.apply(s2, 0, { t: 'level', l: ['facile', 'moyen', 'difficile'][k % 3] });
+        for (let z = 0; z < 2000 && !s2.finished; z++) {
+          if (s2.roundOver) { pendu.apply(s2, 0, { t: 'next' }); continue; }
+          const i = s2.current;
+          pendu.apply(s2, i, pendu.bot(GG.clone(s2), i, { niveau: i === ia ? niv : '_humain' }));
+        }
+        const a = s2.players[ia].score, h = s2.players[1 - ia].score;
+        w += a > h ? 1 : (a === h ? 0.5 : 0);
+      }
+      taux[niv] = pct(w, G);
+    }
+    console.log('    → IA du Pendu : gagne ' + taux.facile + ' % (facile), ' + taux.moyen + ' % (moyen), ' +
+      taux.difficile + ' % (difficile) contre un joueur moyen simulé');
+    check('bug 9 : niveaux d’IA réellement différents (facile < moyen < difficile, écarts ≥ 10 points)',
+      taux.facile + 10 <= taux.moyen && taux.moyen + 10 <= taux.difficile);
+    check('bug 9 : « difficile » fait transpirer (≥ 62 %), « facile » reste battable (≤ 38 %)',
+      taux.difficile >= 62 && taux.facile <= 38);
+    // l'IA ne regarde jamais le mot
+    const g = pendu.create(['A', 'B']);
+    pendu.apply(g, 0, { t: 'level', l: 'moyen' });
+    g.current = 1;
+    const c = GG.clone(g);
+    Object.defineProperty(c, 'secret', { get() { throw new Error('triche !'); } });
+    let triche = false, a = null;
+    try { a = pendu.bot(c, 1, { niveau: 'difficile' }); } catch (e) { triche = true; }
+    check('bug 9 : l’IA ne lit jamais le mot secret', !triche && a && pendu.apply(g, 1, a).ok);
+  }
+  // « je choisis le mot, tu devines »
+  {
+    const solo = pendu.create(['A']);
+    check('duel : impossible seul', !pendu.apply(solo, 0, { t: 'duel' }).ok);
+    const g = pendu.create(['Léa', 'Tom']);
+    check('duel : lancé par l’hôte', pendu.apply(g, 0, { t: 'duel' }).ok && g.phase === 'choose' && pendu.turnOf(g) === 0);
+    check('duel : 2 manches par joueur', g.maxRounds === 4);
+    check('duel : seul celui qui choisit peut écrire le mot', !pendu.apply(g, 1, { t: 'choose', w: 'CHAT' }).ok);
+    check('duel : mot trop court ou avec chiffres refusé', !pendu.apply(g, 0, { t: 'choose', w: 'CH' }).ok &&
+      !pendu.apply(g, 0, { t: 'choose', w: 'CHAT9' }).ok);
+    let r = pendu.apply(g, 0, { t: 'choose', w: 'Éléphant', cat: '<img src=x onerror=alert(1)>' });
+    check('duel : accents retirés, catégorie inconnue ignorée (liste blanche)', r.ok && g.secret === 'ELEPHANT' && g.cat === '');
+    check('duel : c’est à Tom de deviner', pendu.turnOf(g) === 1 && g.current === 1);
+    check('duel : le mot reste caché pour Tom, visible pour Léa',
+      pendu.redact(g, 1).secret === undefined && pendu.redact(g, 0).secret === 'ELEPHANT');
+    check('duel : Léa ne peut pas deviner son propre mot', !pendu.apply(g, 0, { t: 'letter', l: 'E' }).ok);
+    for (const L of 'ZXWKQJYVB') { if (g.roundOver) break; pendu.apply(g, 1, { t: 'letter', l: L }); }
+    check('duel : le mot a résisté → +5 pour Léa', g.roundOver && g.lost && g.players[0].score === 5, g.players);
+    pendu.apply(g, 0, { t: 'next' });
+    check('duel : manche suivante, c’est Tom qui choisit', g.phase === 'choose' && g.chooser === 1 && pendu.turnOf(g) === 1);
+    r = pendu.apply(g, 1, { t: 'choose', w: 'chat', cat: 'animaux' });
+    check('duel : catégorie connue gardée comme indice', r.ok && g.cat === 'animaux' && g.current === 0);
+    // l'ordinateur sait choisir un mot et deviner celui d'un humain
+    const h = pendu.create(['Vous', '🤖 Margot']);
+    pendu.apply(h, 0, { t: 'duel' });
+    pendu.apply(h, 0, { t: 'choose', w: 'TOMATE', cat: 'fruits' });
+    let coups = 0;
+    while (!h.roundOver && coups++ < 40) {
+      const a = pendu.bot(GG.clone(h), 1, { niveau: 'moyen' });
+      if (!a) break;
+      pendu.apply(h, 1, a);
+    }
+    pendu.apply(h, 0, { t: 'next' });
+    const a2 = pendu.bot(GG.clone(h), 1, { niveau: 'moyen' });
+    check('duel contre l’ordinateur : il devine le mot de l’humain, puis choisit le sien',
+      h.round === 2 && a2 && a2.t === 'choose' && pendu.apply(h, 1, a2).ok && h.phase === 'play' && h.current === 0);
+  }
+  // gagnants()
+  {
+    const g = pendu.create(['A', 'B']);
+    g.players[0].score = 7; g.players[1].score = 3;
+    check('gagnants : le meilleur score', JSON.stringify(pendu.gagnants(g)) === '[0]');
+    g.players[1].score = 7;
+    check('gagnants : égalité → []', JSON.stringify(pendu.gagnants(g)) === '[]');
+    const s1 = pendu.create(['A']);
+    s1.trouves = 3;
+    const gagne3 = JSON.stringify(pendu.gagnants(s1)) === '[0]';
+    s1.trouves = 2;
+    check('gagnants en solo : 3 mots sur 5 → victoire, 2 → défaite', gagne3 && pendu.gagnants(s1) === null);
+  }
+}
+
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 jeux de mots OK.');
 process.exit(failures ? 1 : 0);
