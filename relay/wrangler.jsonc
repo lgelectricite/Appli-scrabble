@@ -3,7 +3,8 @@
   "name": "gggames-relais",
   "main": "src/index.js",
   "compatibility_date": "2026-01-01",
-  "observability": { "enabled": true },
+  // aucun journal des parties : le relais ne garde aucune trace des joueurs
+  "observability": { "enabled": false },
   "durable_objects": {
     "bindings": [
       { "name": "SALONS", "class_name": "Salon" }

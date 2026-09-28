@@ -15,8 +15,9 @@ aucun score, ne voit pas vos cartes : c'est toujours le **téléphone qui crée
 la partie** qui arbitre, exactement comme aujourd'hui. Le relais ne fait que
 mettre les téléphones en relation et faire suivre des paquets scellés.
 
-- Il **ne stocke rien** : aucune base de données, aucun historique, aucun
-  compte. Quand la partie se termine, il ne reste rien.
+- Il **ne stocke rien** de durable : aucune base de données, aucun
+  historique, aucun compte, aucun journal. Quand la partie se termine, il ne
+  reste rien.
 - Un salon **se met en veille** dès que personne ne parle : une partie en
   attente ne consomme rien.
 - Un invité ne peut parler qu'à l'hôte : personne ne peut se faire passer
@@ -47,25 +48,49 @@ jours utilise de l'ordre de **1 % du quota**. En cas de dépassement, le
 service s'arrête jusqu'au lendemain — il n'y a **jamais de facture
 surprise**.
 
+## Mettre à jour le relais (version 2 : les parties survivent aux coupures)
+
+Depuis la V2 de GGgames, le relais **attend l'hôte trois minutes** quand il
+perd le réseau (ascenseur, passage Wi-Fi → 4G, appli rechargée) au lieu
+d'arrêter la partie de tout le monde, et un téléphone qui change de réseau
+retrouve sa place. Pour en profiter, redéployez-le :
+
+- installé avec le bouton ci-dessus : dans le tableau de bord Cloudflare,
+  ouvrez le Worker `gggames-relais`, puis **Deployments → Redeploy** depuis
+  le dépôt (ou recliquez sur le bouton : Cloudflare propose de remplacer) ;
+- installé à la main : `cd relay && npx wrangler deploy`.
+
+L'application reste compatible avec l'ancien relais (les coupures y sont
+seulement moins bien tolérées).
+
 ## Pour les curieux : le protocole
 
-Une seule adresse : `wss://<votre-relais>/salon/<CODE>?r=h` pour l'hôte,
-`…?r=g` pour un invité.
+Une seule adresse : `wss://<votre-relais>/salon/<CODE>?r=h&k=<clé>` pour
+l'hôte, `…?r=g&k=<clé>` pour un invité. La clé est un secret tiré par chaque
+téléphone : seul l'hôte qui a ouvert un code peut le reprendre après une
+coupure, et la vieille connexion d'un téléphone qui revient lui cède la place.
 
 | Message | Sens | Contenu |
 |---|---|---|
 | `{sys:'bienvenue', id, hote}` | relais → téléphone | connexion acceptée |
 | `{sys:'refus', pourquoi}` | relais → téléphone | `pris`, `inconnu` ou `plein` |
+| `{sys:'presents', ids}` | relais → hôte | qui est là (à chaque connexion de l'hôte) |
 | `{sys:'entre', id}` / `{sys:'sort', id}` | relais → hôte | un invité arrive ou part |
-| `{sys:'hote-parti'}` | relais → invités | l'hôte a quitté |
+| `{sys:'hote-absent'}` / `{sys:'hote-revenu'}` | relais → invités | l'hôte a décroché / est revenu |
+| `{sys:'hote-parti'}` | relais → invités | l'hôte a quitté (ou n'est pas revenu à temps) |
+| `{sys:'fin'}` | hôte → relais | l'hôte arrête la partie : code libéré tout de suite |
 | `{a:'<id>'\|'*', d:…}` | hôte → relais | à transmettre à un invité, ou à tous |
 | `{d:…}` | invité → relais | à transmettre à l'hôte |
 | `{de:'<id>', d:…}` | relais → téléphone | message reçu, avec son expéditeur |
+| `ping` → `pong` | téléphone ↔ relais | signal de vie (répondu sans réveiller le salon) |
 
-Le champ `d` n'est **jamais lu par le relais**.
+Le champ `d` n'est **jamais lu par le relais**. Le relais ne garde qu'une
+petite fiche par salon le temps de la partie (la clé de l'hôte et l'heure de
+son éventuelle absence) ; elle est effacée dès que la partie s'arrête.
 
 Codes de fermeture : `4001` code déjà pris · `4002` code inconnu ·
-`4003` salon complet · `4004` message trop gros ou débit excessif.
+`4003` salon complet · `4004` message trop gros ou débit excessif ·
+`4005` connexion remplacée par une plus récente du même téléphone.
 
 ## Le lancer chez soi (facultatif)
 

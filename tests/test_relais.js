@@ -81,9 +81,9 @@ const pause = ms => new Promise(r => setTimeout(r, ms));
   await pause(250);
   check('l’hôte est prévenu du départ', hote.recu.some(m => m.sys === 'sort' && m.id === 'g2'));
 
-  // départ de l'hôte : les invités sont prévenus
+  // départ volontaire de l'hôte (fermeture normale) : les invités sont prévenus
   g1.recu.length = 0;
-  hote.close();
+  hote.close(1000);
   await pause(300);
   check('les invités apprennent le départ de l’hôte', g1.recu.some(m => m.sys === 'hote-parti'));
 

@@ -157,6 +157,9 @@ function check(name, cond, extra) {
       check('dernier mot surligné chez l’hôte', hl >= 1, hl);
       check('bannière : rappel du dernier coup',
         /a joué/.test(await host.textContent('#turn-banner')));
+      // l'état à jour doit d'abord arriver chez Nina (sinon on voit encore le coup de Hugo)
+      await g1.waitForFunction(() => !/Au tour de Nina/.test(document.getElementById('turn-banner').textContent),
+        null, { timeout: 8000 }).catch(() => {});
       check('pas de surbrillance chez son auteur',
         await g1.locator('#board .cell.last-word').count() === 0);
     }

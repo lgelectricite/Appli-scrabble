@@ -15,7 +15,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # On ne publie jamais une version dont les tests échouent.
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Syntaxe de tous les fichiers JavaScript
+        run: node tests/test_syntaxe.js
+      - name: Moteur du jeu de lettres
+        run: node tests/test_engine.js
+      - name: Règles de tous les jeux
+        run: node tests/test_games.js
+      - name: Jeux de réflexion
+        run: node tests/test_puzzle.js
+      - name: Quiz, Le Plus Proche, 8 américain
+        run: node tests/test_newgames.js
+      - name: Casino et cagnotte
+        run: node tests/test_casino.js
+      - name: Adversaires IA
+        run: node tests/test_bots.js
+      - name: Relais des parties en ligne
+        run: npm install ws --no-save && node tests/test_relais.js && node tests/test_relais_v2.js
+
   deploy:
+    needs: verifier
     runs-on: ubuntu-latest
     environment:
       name: github-pages

@@ -61,6 +61,26 @@
   var netKind = 'qr';
   var onlineLien = null;     // lien vers le relais (hôte ou invité)
   var onlineCode = '';       // code de la partie en cours
+  var onlineCle = '';        // (hôte) clé secrète qui lui rend SON code après une coupure
+  var guestNom = '';         // (invité) prénom annoncé à l'hôte
+  var guestSiege = null;     // (invité) {code, jeton, nom} : sa place réservée dans la partie
+  var revanches = [];        // (hôte) prénoms des invités partants pour rejouer
+  var salleAttente = [];     // (hôte) arrivés pendant la partie : ils jouent à la suivante
+
+  /* Connexion absente (partie reprise après un rechargement, en attendant
+     que l'invité revienne) : les envois échouent sans rien casser. */
+  var NET_ABSENT = {
+    send: function () { return false; },
+    close: function () {},
+    isOpen: function () { return false; }
+  };
+
+  /* Jeton de siège : remis à chaque invité admis, il lui rend SA place s'il
+     revient (et à personne d'autre). */
+  function tireJeton() {
+    return window.GG.Online && window.GG.Online.tirerCle ? window.GG.Online.tirerCle()
+      : String(Math.random()).slice(2) + String(Date.now());
+  }
 
   function $(id) { return document.getElementById(id); }
 
@@ -96,7 +116,7 @@
     try { history.pushState({ gg: 1 }, ''); garde = true; } catch (e) {}
   }
   var FENETRES = ['overlay-joker', 'overlay-confirm', 'overlay-rules', 'overlay-history',
-    'overlay-chat', 'overlay-menu'];
+    'overlay-chat', 'overlay-switch', 'overlay-menu'];
   function onRetour() {
     garde = false;
     if ($('screen-home').classList.contains('active')) return; // on laisse sortir
@@ -122,6 +142,7 @@
     var avant = !el.classList.contains('hidden');
     el.classList.toggle('hidden', !visible);
     if (visible && !avant) window.GG.sfx.play(el.classList.contains('sheet') ? 'open' : 'pop');
+    if (id === 'overlay-end' && visible) majFinReseau();
   }
 
   function toast(msg) {
@@ -871,6 +892,17 @@
     } else if (state && (mode === 'solo' || mode === 'local') && currentGame === 'mots' && !state.over) {
       sv = { v: 2, type: 'mots', mode: mode, niveau: aiLevel, state: state, ts: Date.now() };
     }
+    else if (mode === 'host' && netKind === 'online' && onlineCode && onlineCle &&
+        ((currentGame !== 'mots' && miniState && miniMod && !miniMod.over(miniState)) ||
+         (currentGame === 'mots' && state && !state.over))) {
+      // l'hôte en ligne : s'il recharge l'appli, il rouvre SON salon et
+      // chacun retrouve sa place grâce à son jeton
+      sv = { v: 2, type: 'reseau', jeu: currentGame, code: onlineCode, cle: onlineCle, hote: hostName,
+        sieges: hostPeers.map(function (p) {
+          return { nom: p.name, nomTape: p.nomTape || '', jeton: p.jeton || '', i: p.playerIndex };
+        }),
+        state: currentGame === 'mots' ? state : miniState, ts: Date.now() };
+    }
     if (sv) ecris(SAUVE_CLE, sv);
   }
   function lisSauvegarde() {
@@ -878,6 +910,11 @@
     if (!sv || sv.v !== 2 || !sv.state) return null;
     if (Date.now() - sv.ts > 14 * 86400000) return null; // au-delà de 2 semaines, on oublie
     if (sv.type === 'mini' && !window.GG.byId[sv.jeu]) return null;
+    if (sv.type === 'reseau') {
+      // une partie en ligne n'attend pas des heures : les amis sont partis
+      if (Date.now() - sv.ts > 2 * 3600000 || !sv.code || !sv.cle) return null;
+      if (sv.jeu !== 'mots' && !window.GG.byId[sv.jeu]) return null;
+    }
     return sv;
   }
   function effaceSauvegarde() {
@@ -910,7 +947,9 @@
     if (!sv) { box.innerHTML = ''; return; }
     var info = catInfo(sv.type === 'mots' ? 'mots' : sv.jeu);
     var noms = (sv.state.players || []).map(function (p) { return p.name; });
-    var qui = sv.type === 'mots'
+    var qui = sv.type === 'reseau'
+      ? 'en ligne avec ' + noms.slice(1).join(', ') + ' · code ' + sv.code
+      : sv.type === 'mots'
       ? (sv.mode === 'solo' ? 'contre l’IA (' + sv.niveau + ')' : 'à ' + noms.length + ' sur ce téléphone')
       : (sv.bots ? 'contre ' + noms.slice(1).join(', ') : (noms.length > 1 ? 'à ' + noms.length + ' sur ce téléphone' : 'en solo'));
     box.innerHTML = '<div class="reprise" data-jeu="' + info.id + '" role="button" tabindex="0" id="btn-reprise">' +
@@ -932,6 +971,7 @@
   function reprendPartie() {
     var sv = lisSauvegarde();
     if (!sv) { renderReprise(); return; }
+    if (sv.type === 'reseau') { reprendPartieEnLigne(sv); return; }
     if (sv.type === 'mini') {
       var mod = window.GG.byId[sv.jeu];
       var besoinDico = sv.jeu === 'motus';
@@ -958,6 +998,44 @@
       else if (mode === 'solo' && state.current === 1) aiTurn();
     }).catch(function () {
       toast('Impossible de charger le dictionnaire pour reprendre la partie.');
+    });
+  }
+
+  /* L'hôte d'une partie en ligne revient (appli rechargée, téléphone
+     redémarré) : il rouvre SON code, et chaque invité qui revient retrouve
+     sa place grâce à son jeton — les autres attendent sur leur écran. */
+  function reprendPartieEnLigne(sv) {
+    if (!window.GG.Online.disponible()) { showRelaisSettings(); return; }
+    var besoinDico = sv.jeu === 'mots' || sv.jeu === 'motus';
+    (besoinDico ? loadDict().catch(function () {}) : Promise.resolve()).then(function () {
+      netKind = 'online';
+      mode = 'host';
+      hostName = sv.hote || monNom('Joueur 1');
+      pendingGame = currentGame = sv.jeu;
+      revanches = [];
+      hostPeers = (sv.sieges || []).map(function (x) {
+        return { net: NET_ABSENT, name: x.nom, nomTape: x.nomTape || '', jeton: x.jeton || '',
+          playerIndex: x.i, connected: false };
+      });
+      if (sv.jeu === 'mots') {
+        miniState = null;
+        miniMod = null;
+        state = sv.state;
+        myFixedIndex = 0;
+        pending = [];
+        selected = -1;
+        enterGame();
+      } else {
+        state = null;
+        miniMod = window.GG.byId[sv.jeu];
+        miniBots = 0;
+        miniState = sv.state;
+        miniMe = 0;
+        miniLastViewer = -1;
+        enterMini();
+      }
+      setNetBanner(true, 'Réouverture de la partie ' + sv.code + '…');
+      hostOnlineOuvre(sv.code, sv.cle, true);
     });
   }
 
@@ -1187,11 +1265,11 @@
     if (tabs && !tabs.childElementCount) {
       tabs.innerHTML = FILTRES.map(function (f) {
         return '<button class="cat-tab' + (f.id === filtreActif ? ' active' : '') +
-          '" data-f="' + f.id + '">' + f.t + '</button>';
+          '" data-filtre="' + f.id + '">' + f.t + '</button>';
       }).join('');
       tabs.querySelectorAll('.cat-tab').forEach(function (b) {
         b.addEventListener('click', function () {
-          filtreActif = b.dataset.f;
+          filtreActif = b.dataset.filtre;
           tabs.querySelectorAll('.cat-tab').forEach(function (x) { x.classList.toggle('active', x === b); });
           renderCatalog();
         });
@@ -1587,6 +1665,7 @@
   }
 
   function miniRematch() {
+    if (mode === 'host') { hostRejoue(currentGame); return; }
     var names = miniState.players.map(function (p) { return p.name; });
     var niveauIA = miniState.niveauIA;
     miniState = miniMod.create(names, { dict: dict, niveau: niveauIA });
@@ -1601,6 +1680,127 @@
     pumpBots();
   }
 
+  /* ---------- fin de partie à plusieurs téléphones ----------
+     L'invité peut réclamer la revanche (l'hôte voit qui est partant) ;
+     l'hôte relance, ou change de jeu en gardant toute la bande. */
+  var guestRevanche = false;
+
+  function majFinReseau() {
+    var fin = $('overlay-end');
+    if (!fin || fin.classList.contains('hidden')) return;
+    var nouv = $('btn-end-new'), chg = $('btn-end-switch'), rev = $('end-revanches');
+    if (!nouv || !chg || !rev) return;
+    if (mode === 'guest') {
+      nouv.classList.remove('hidden');
+      nouv.disabled = guestRevanche;
+      nouv.textContent = guestRevanche ? '✅ Revanche demandée' : '🔁 Je veux la revanche';
+      chg.classList.add('hidden');
+      rev.textContent = guestRevanche
+        ? 'L’hôte est prévenu. Restez sur cet écran : la partie suivante s’ouvrira toute seule.'
+        : 'L’hôte peut relancer une partie : restez sur cet écran.';
+      rev.classList.remove('hidden');
+      return;
+    }
+    nouv.disabled = false;
+    nouv.classList.remove('hidden');
+    nouv.textContent = mode === 'host' ? '🔁 Revanche' : 'Nouvelle partie';
+    chg.classList.toggle('hidden', mode !== 'host');
+    if (mode !== 'host') { rev.classList.add('hidden'); return; }
+    var partis = hostPeers.filter(function (p) { return !p.connected; }).map(function (p) { return p.name; });
+    var morceaux = [];
+    if (revanches.length) morceaux.push('🔁 Partant' + (revanches.length > 1 ? 's' : '') + ' : ' + revanches.join(', '));
+    if (partis.length) morceaux.push('👋 ' + partis.join(', ') + (partis.length > 1 ? ' ne sont plus là' : ' n’est plus là'));
+    var attendent = salleAttente.filter(function (p) { return p.connected; }).map(function (p) { return p.name; });
+    if (attendent.length) morceaux.push('⏳ ' + attendent.join(', ') + (attendent.length > 1 ? ' attendent' : ' attend') + ' pour jouer');
+    rev.textContent = morceaux.join(' · ');
+    rev.classList.toggle('hidden', !morceaux.length);
+  }
+
+  /* Les jeux jouables par la bande actuelle (hôte + invités connectés). */
+  function jeuxPourLaBande() {
+    var n = 1 + hostPeers.concat(salleAttente).filter(function (p) { return p.connected; }).length;
+    var ids = [];
+    CATEGORIES.forEach(function (c) {
+      c.jeux.forEach(function (id) {
+        var m = null;
+        try { m = catInfo(id); } catch (e) { m = null; }
+        if (!m || m.max < 2 || ids.indexOf(id) !== -1) return;
+        if (id !== 'mots' && !window.GG.byId[id]) return;
+        if (n >= m.min && n <= m.max) ids.push(id);
+      });
+    });
+    return ids;
+  }
+
+  function ouvreChangeJeu() {
+    var ids = jeuxPourLaBande();
+    var box = $('switch-jeux');
+    box.innerHTML = ids.length
+      ? ids.map(function (id, i) { return tuileHtml(catInfo(id), i); }).join('')
+      : '<p class="hint">Aucun autre jeu ne se joue à ce nombre de joueurs.</p>';
+    box.querySelectorAll('.game-tile').forEach(function (t) {
+      t.addEventListener('click', function () {
+        showOverlay('overlay-switch', false);
+        hostRejoue(t.dataset.g);
+      });
+    });
+    showOverlay('overlay-switch', true);
+  }
+
+  /* L'hôte relance (même jeu) ou change de jeu : seuls les joueurs encore
+     connectés sont de la partie suivante, chacun reçoit le nouvel état. */
+  function hostRejoue(jeu) {
+    var info = catInfo(jeu);
+    if (!info) return;
+    // les joueurs encore là, puis ceux qui attendaient (dans la limite du jeu)
+    var presents = hostPeers.filter(function (p) { return p.connected; });
+    var place = Math.max(0, info.max - 1 - presents.length);
+    var entrants = salleAttente.filter(function (p) { return p.connected; }).slice(0, place);
+    presents = presents.concat(entrants);
+    var n = presents.length + 1;
+    if (n < info.min) {
+      toast('Il faut au moins ' + info.min + ' joueurs connectés pour ' + info.nom + '.');
+      return;
+    }
+    if (n > info.max) {
+      toast(info.nom + ' se joue à ' + info.max + ' au plus.');
+      return;
+    }
+    if (jeu !== currentGame && !chipGate(jeu)) return;
+    // on quitte proprement la table en cours : la pile revient à la cagnotte
+    if (jeu !== currentGame && miniMod && miniMod.cashout && miniState) {
+      try { miniMod.cashout(miniState, 0); } catch (e) {}
+      updateWallet();
+    }
+    revanches = [];
+    hostPeers = presents;
+    salleAttente = salleAttente.filter(function (p) { return p.connected && entrants.indexOf(p) === -1; });
+    entrants.forEach(function (p) { p.enAttente = false; });
+    clearTimeout(miniTimer);
+    clearTimeout(miniBotTimer);
+    showOverlay('overlay-end', false);
+    pendingGame = jeu;
+    if (jeu === 'mots') { miniState = null; miniMod = null; } else { state = null; }
+    if (jeu === 'mots' && !dict) {
+      loadDict().then(hostStartGame).catch(function () {
+        toast('Impossible de charger le dictionnaire de Words.');
+      });
+      return;
+    }
+    hostStartGame();
+  }
+
+  /* Réservé aux tests automatiques : affiche l'écran de fin de la partie
+     en cours (certains jeux se jouent en manches sans fin). */
+  window.GG.__finDePartie = function () { if (miniState && miniMod) showMiniEnd(); };
+
+  function demandeRevanche() {
+    if (!guestNet || !guestNet.isOpen()) { toast('Connexion perdue.'); return; }
+    guestNet.send({ t: 'revanche' });
+    guestRevanche = true;
+    majFinReseau();
+  }
+
   /* =================================================================
    *  RÉSEAU — HÔTE (serveur de la partie)
    * ================================================================= */
@@ -1609,7 +1809,7 @@
 
   function uniqueName(name) {
     var base = (name || 'Joueur').slice(0, 14) || 'Joueur';
-    var taken = [normName(hostName)].concat(hostPeers.map(function (p) { return normName(p.name); }));
+    var taken = [normName(hostName)].concat(hostPeers.concat(salleAttente).map(function (p) { return normName(p.name); }));
     var candidate = base;
     var n = 2;
     while (taken.indexOf(normName(candidate)) !== -1) {
@@ -1628,8 +1828,16 @@
   }
 
   function broadcastLobby() {
+    envoiATous({ t: 'lobby', names: lobbyNames() });
+  }
+
+  /* Un même message pour tous les invités. En ligne, un seul envoi que le
+     relais recopie à chacun : à 12 joueurs, l'hôte n'écrit plus 12 fois. */
+  function envoiATous(msg) {
+    if (netKind === 'online' && onlineLien && onlineLien.diffuser &&
+        onlineLien.diffuser(msg)) return;
     hostPeers.forEach(function (peer) {
-      if (peer.connected) peer.net.send({ t: 'lobby', names: lobbyNames() });
+      if (peer.connected) peer.net.send(msg);
     });
   }
 
@@ -1653,6 +1861,7 @@
         peer.net.send({ t: 'state', state: wordsRedactFor(peer.playerIndex) });
       }
     });
+    sauvePartie(); // l'hôte en ligne peut reprendre sa partie s'il recharge
   }
 
   /* État d'un mini-jeu, expurgé des secrets pour un joueur donné. */
@@ -1660,16 +1869,40 @@
     return miniMod && miniMod.redact ? miniMod.redact(miniState, playerIdx) : miniState;
   }
 
+  /* Diffusion de l'état : les changements d'un même instant partent en un
+     seul envoi, et un invité ne reçoit rien si SA vue n'a pas changé. Sans
+     secret à cacher (pas de redact), un seul message sert à tout le monde. */
+  var diffusionPrevue = null;
   function miniBroadcast() {
-    hostPeers.forEach(function (peer) {
-      if (peer.connected) {
-        peer.net.send({ t: 'state', state: miniRedactFor(peer.playerIndex) });
+    if (diffusionPrevue) return;
+    diffusionPrevue = setTimeout(miniDiffuse, 25);
+  }
+  function miniDiffuse() {
+    diffusionPrevue = null;
+    if (mode !== 'host' || !miniState || !miniMod) return;
+    if (!miniMod.redact && netKind === 'online' && onlineLien && onlineLien.diffuser) {
+      var tout = JSON.stringify(miniState);
+      var aJour = hostPeers.every(function (p) { return !p.connected || p.dernierEtat === tout; });
+      if (!aJour && onlineLien.diffuser({ t: 'state', state: miniState })) {
+        hostPeers.forEach(function (p) { if (p.connected) p.dernierEtat = tout; });
+        return;
       }
+      if (aJour) return;
+    }
+    hostPeers.forEach(function (peer) {
+      if (!peer.connected) return;
+      var vue = miniRedactFor(peer.playerIndex);
+      var txt = JSON.stringify(vue);
+      if (peer.dernierEtat === txt) return;
+      if (peer.net.send({ t: 'state', state: vue }) !== false) peer.dernierEtat = txt;
     });
   }
 
-  /* Envoie l'état initial (ou de reprise) du jeu en cours à un invité. */
+  /* Envoie l'état initial (ou de reprise) du jeu en cours à un invité,
+     avec la conversation déjà échangée. */
   function sendInitTo(peer) {
+    peer.dernierEtat = null;
+    if (chatLog.length) peer.net.send({ t: 'chat', msgs: chatLog.slice(-40) });
     if (currentGame !== 'mots' && miniState) {
       peer.net.send({
         t: 'init', game: currentGame,
@@ -1701,7 +1934,7 @@
       (gameStarted() ? false : hostPeers.length >= maxGuests()));
     $('btn-host-wifi').classList.toggle('hidden', enLigne);
     $('host-lobby-hint').textContent = enLigne
-      ? 'Chacun peut rejoindre quand il veut, tant que la partie n’est pas lancée.'
+      ? 'Chacun peut rejoindre quand il veut : un retardataire jouera à la partie suivante.'
       : 'Invitez chaque joueur l’un après l’autre.';
     if (enLigne) $('host-code-big').textContent = onlineCode || '······';
   }
@@ -1719,22 +1952,33 @@
 
   function updateNetBanner() {
     if (mode === 'host') {
-      var off = hostPeers.filter(function (p) { return !p.connected; });
-      if (gameStarted() && off.length) {
-        setNetBanner(true, off.map(function (p) { return p.name; }).join(', ') +
-          ' — déconnecté' + (off.length > 1 ? 's' : '') + '.');
-      } else {
-        setNetBanner(false);
+      // la reconnexion au relais a la priorité sur ce bandeau
+      if (netKind === 'online' && onlineLien && !onlineLien.ferme && !onlineLien.estOuvert()) return;
+      var off = hostPeers.filter(function (p) { return !p.connected && !p.parti; });
+      var partis = hostPeers.filter(function (p) { return p.parti; });
+      var morceaux = [];
+      if (off.length) {
+        morceaux.push(off.map(function (p) { return p.name; }).join(', ') +
+          ' — déconnecté' + (off.length > 1 ? 's' : '') + ', on l’attend');
       }
+      if (partis.length) {
+        morceaux.push(partis.map(function (p) { return p.name; }).join(', ') +
+          (partis.length > 1 ? ' ont quitté' : ' a quitté'));
+      }
+      if (gameStarted() && morceaux.length) setNetBanner(true, morceaux.join(' · ') + '.');
+      else setNetBanner(false);
     }
   }
 
   function attachPeerHandlers(peer) {
-    peer.net.onMessage = function (msg) {
+    var net = peer.net;
+    net.onMessage = function (msg) {
+      if (peer.net !== net) return; // ancienne connexion, remplacée depuis
       // un message qui arrive prouve que le lien est vivant : si le pair
       // avait été marqué déconnecté (micro-coupure), on le réintègre et on
       // lui renvoie l'état à jour
-      if (!peer.connected && hostPeers.indexOf(peer) !== -1 && msg.t !== 'hello') {
+      if (!peer.connected && !peer.parti && hostPeers.indexOf(peer) !== -1 &&
+          msg.t !== 'hello' && msg.t !== 'quitte') {
         peer.connected = true;
         updateNetBanner();
         renderBadgesSafe();
@@ -1742,9 +1986,12 @@
       }
       hostHandleMessage(peer, msg);
     };
-    peer.net.onOpen = function () { /* attend le « hello » de l'invité */ };
-    peer.net.onClose = function () {
+    net.onOpen = function () { /* attend le « hello » de l'invité */ };
+    net.onClose = function () {
+      if (peer.net !== net) return; // ancienne connexion, remplacée depuis
       peer.connected = false;
+      var enAttente = salleAttente.indexOf(peer);
+      if (enAttente !== -1) { salleAttente.splice(enAttente, 1); majFinReseau(); return; }
       // dans le salon (partie non lancée) : on retire le pair, sinon il
       // compte comme un fantôme (« partie complète », prénom occupé…)
       if (!gameStarted()) {
@@ -1762,58 +2009,112 @@
     if (state && document.querySelector('#screen-game.active')) render();
   }
 
+  /* Un invité est refusé : il l'apprend, et son téléphone raccroche. */
+  function congedie(peer, msg) {
+    peer.net.send({ t: 'err', msg: msg });
+    peer.net.send({ t: 'adieu', msg: msg, refus: true });
+    peer.net.close();
+  }
+
+  /* Admet un invité dans le salon et lui remet son jeton de siège. */
+  function remetSiege(peer) {
+    if (!peer.jeton) peer.jeton = tireJeton();
+    peer.net.send({ t: 'siege', jeton: peer.jeton, nom: peer.name, code: onlineCode || '' });
+  }
+
   function hostHandleMessage(peer, msg) {
     if (msg.t === 'hello') {
-      if (!gameStarted()) {
-        // Salon : nouvel invité
-        if (hostPeers.indexOf(peer) === -1) {
-          if (hostPeers.length >= maxGuests()) {
-            peer.net.send({ t: 'err', msg: 'La partie est complète.' });
-            peer.net.close();
-            return;
-          }
-          peer.name = uniqueName(msg.name);
-          peer.connected = true;
-          hostPeers.push(peer);
+      // Le même téléphone redit bonjour (sa connexion a été rétablie, ou
+      // l'hôte revient d'une coupure) : il retrouve simplement sa place.
+      if (hostPeers.indexOf(peer) !== -1) {
+        var etaitAbsent = !peer.connected;
+        peer.connected = true;
+        peer.parti = false;
+        if (invitePeer === peer) invitePeer = null;
+        remetSiege(peer);
+        if (gameStarted()) {
+          sendInitTo(peer);
+          if (etaitAbsent) { updateNetBanner(); renderBadgesSafe(); if (currentGame !== 'mots') miniRender(); }
         } else {
-          peer.connected = true;
+          broadcastLobby();
+          if (document.querySelector('#screen-host.active')) renderLobby();
         }
+        return;
+      }
+      // Un téléphone qui revient avec son jeton de siège reprend SA place,
+      // même si l'hôte croit encore l'autre connexion vivante (elle traîne).
+      var jeton = typeof msg.jeton === 'string' ? msg.jeton : '';
+      var match = null;
+      if (jeton) {
+        for (var i = 0; i < hostPeers.length; i++) {
+          if (hostPeers[i].jeton && hostPeers[i].jeton === jeton) { match = hostPeers[i]; break; }
+        }
+      }
+      if (!match && !gameStarted()) {
+        // Salon : nouvel invité
+        if (hostPeers.length >= maxGuests()) {
+          congedie(peer, 'La partie est complète.');
+          return;
+        }
+        peer.nomTape = String(msg.name || '').slice(0, 14);
+        peer.name = uniqueName(msg.name);
+        peer.connected = true;
+        hostPeers.push(peer);
+        remetSiege(peer);
         if (invitePeer === peer) invitePeer = null;
         broadcastLobby();
         hostShowLobby();
         return;
       }
-      // Partie en cours : reconnexion d'un joueur existant (par prénom)
-      var match = null;
-      for (var i = 0; i < hostPeers.length; i++) {
-        if (!hostPeers[i].connected && normName(hostPeers[i].name) === normName(msg.name)) {
-          match = hostPeers[i];
-          break;
+      // Partie en cours, pas de jeton : le prénom, pour une place vraiment
+      // libre (téléphone qui a tout oublié, autre navigateur…).
+      if (!match) {
+        var nm = normName(msg.name);
+        for (var k = 0; k < hostPeers.length; k++) {
+          var hp = hostPeers[k];
+          if (!hp.connected && (normName(hp.name) === nm || (hp.nomTape && normName(hp.nomTape) === nm))) {
+            match = hp;
+            break;
+          }
         }
       }
       if (!match) {
-        var off = hostPeers.filter(function (p) { return !p.connected; })
-          .map(function (p) { return p.name; });
-        peer.net.send({
-          t: 'err',
-          msg: off.length
-            ? 'Partie en cours : indiquez exactement le même prénom qu’au début (' +
-              off.join(', ') + ').'
-            : 'Partie en cours et aucun joueur à remplacer.'
-        });
-        peer.net.close();
+        // Un ami arrive en retard : il patiente en salle d'attente et entre
+        // à la partie suivante (revanche ou changement de jeu).
+        if (salleAttente.indexOf(peer) === -1) {
+          if (hostPeers.length + salleAttente.length >= 12) {
+            congedie(peer, 'Le salon est plein.');
+            return;
+          }
+          peer.nomTape = String(msg.name || '').slice(0, 14);
+          peer.name = uniqueName(msg.name);
+          peer.enAttente = true;
+          salleAttente.push(peer);
+          toast('⏳ ' + peer.name + ' attend la prochaine partie.');
+        }
+        peer.connected = true;
+        remetSiege(peer);
+        peer.net.send({ t: 'lobby', names: lobbyNames(), attente: true });
         // ne pas laisser l'hôte bloqué sur « Connexion en cours… » : retour au jeu
         if (document.querySelector('#screen-host.active')) hostBackToGame();
-        toast(off.length
-          ? 'Prénom inconnu : l’invité doit reprendre son prénom (' + off.join(', ') + ').'
-          : 'Un téléphone a tenté de rejoindre, mais personne n’est à remplacer.');
+        majFinReseau();
         return;
       }
-      match.net.close();
-      match.net = peer.net;
+      if (match.net !== peer.net) {
+        var vieux = match.net;
+        match.net = peer.net;       // d'abord : l'ancienne connexion ne compte plus
+        try { vieux.close(); } catch (e) {}
+      }
       match.connected = true;
+      match.parti = false;
       attachPeerHandlers(match);
       if (invitePeer === peer) invitePeer = null;
+      remetSiege(match);
+      if (!gameStarted()) {
+        broadcastLobby();
+        if (document.querySelector('#screen-host.active')) renderLobby();
+        return;
+      }
       sendInitTo(match);
       updateNetBanner();
       if (document.querySelector('#screen-host.active')) hostBackToGame();
@@ -1822,8 +2123,51 @@
     }
 
     // Message de discussion d'un invité : l'hôte le range et le rediffuse
+    // (sans laisser un téléphone inonder la partie)
     if (msg.t === 'chat') {
+      if (hostPeers.indexOf(peer) === -1) return;
+      var now = Date.now();
+      peer.chatT = (peer.chatT || []).filter(function (t) { return now - t < 10000; });
+      if (peer.chatT.length >= 8) {
+        peer.net.send({ t: 'err', msg: 'Doucement ! Trop de messages d’un coup.' });
+        return;
+      }
+      peer.chatT.push(now);
       chatAjoute(peer.name || 'Invité', msg.txt);
+      return;
+    }
+
+    // Un invité a quitté volontairement (et non perdu le réseau)
+    if (msg.t === 'quitte') {
+      var at = salleAttente.indexOf(peer);
+      if (at !== -1) { salleAttente.splice(at, 1); majFinReseau(); return; }
+      if (hostPeers.indexOf(peer) === -1) return;
+      peer.parti = true;
+      peer.connected = false;
+      revanches = revanches.filter(function (n) { return n !== peer.name; });
+      if (!gameStarted()) {
+        hostPeers.splice(hostPeers.indexOf(peer), 1);
+        broadcastLobby();
+        if (document.querySelector('#screen-host.active')) renderLobby();
+      } else {
+        toast(peer.name + ' a quitté la partie.');
+        updateNetBanner();
+        renderBadgesSafe();
+        if (currentGame !== 'mots') miniRender();
+        majFinReseau();
+      }
+      return;
+    }
+
+    // Un invité réclame une revanche depuis l'écran de fin
+    if (msg.t === 'revanche') {
+      if (hostPeers.indexOf(peer) === -1 || !peer.name) return;
+      if (revanches.indexOf(peer.name) === -1) {
+        revanches.push(peer.name);
+        toast('🔁 ' + peer.name + ' veut la revanche !');
+        window.GG.sfx.play('notify');
+      }
+      majFinReseau();
       return;
     }
 
@@ -1891,7 +2235,8 @@
     $('host-step-wifi').classList.remove('hidden');
     try {
       $('wifi-ssid').value = localStorage.getItem('gg-wifi-ssid') || $('wifi-ssid').value;
-      $('wifi-pass').value = localStorage.getItem('gg-wifi-pass') || $('wifi-pass').value;
+      // le mot de passe Wi-Fi n'est jamais enregistré sur le téléphone
+      localStorage.removeItem('gg-wifi-pass');
     } catch (e) {}
   }
 
@@ -1909,7 +2254,6 @@
     $('wifi-done').classList.remove('hidden');
     try {
       localStorage.setItem('gg-wifi-ssid', ssid);
-      localStorage.setItem('gg-wifi-pass', pass);
     } catch (e) {}
   }
 
@@ -2013,6 +2357,37 @@
    * ================================================================= */
 
   function guestHandleMessage(msg) {
+    // l'hôte nous réserve une place : on garde le jeton pour la retrouver
+    if (msg.t === 'siege') {
+      guestSiege = { code: onlineCode || '', jeton: String(msg.jeton || ''), nom: String(msg.nom || '') };
+      if (msg.nom) guestNom = String(msg.nom);
+      if (netKind === 'online' && onlineCode) {
+        ecris('gg-siege', { code: onlineCode, jeton: guestSiege.jeton, nom: guestSiege.nom, ts: Date.now() });
+      }
+      return;
+    }
+    // l'hôte arrête la partie, ou refuse ce téléphone
+    if (msg.t === 'adieu') {
+      var motif = String(msg.msg || 'La partie est terminée.');
+      if (msg.refus && !gameStarted()) {
+        if (guestNet) { try { guestNet.close(); } catch (e) {} guestNet = null; }
+        if (netKind === 'online') {
+          onlineFerme();
+          showError('online-error', motif);
+          $('online-step-lobby').classList.add('hidden');
+          $('online-step-code').classList.remove('hidden');
+        } else {
+          showError('join-error', motif);
+        }
+        mode = null;
+        return;
+      }
+      try { localStorage.removeItem('gg-siege'); } catch (e) {}
+      if (guestNet) { try { guestNet.close(); } catch (e) {} guestNet = null; }
+      quitToHome();
+      toast(motif);
+      return;
+    }
     if (msg.t === 'chat') {
       var avant = chatLog.length;
       chatLog = (msg.msgs || []).slice(-CHAT_MAX);
@@ -2028,24 +2403,36 @@
         (msg.names || []).map(function (n, i) {
           return '<div class="lobby-row">' + (i === 0 ? '👑 ' : '🟢 ') + esc(n) + '</div>';
         }).join('');
-      $(enLigne ? 'online-waiting' : 'join-waiting').textContent =
-        '⏳ Connecté ! En attente du début de la partie…';
+      $(enLigne ? 'online-waiting' : 'join-waiting').textContent = msg.attente
+        ? '⏳ La partie est déjà lancée : vous jouerez à la suivante. Restez sur cet écran !'
+        : '⏳ Connecté ! En attente du début de la partie…';
       return;
     }
     if (msg.t === 'init') {
-      currentGame = msg.game || 'mots';
+      var jeuSuivant = msg.game || 'mots';
+      // on change de jeu : la table à jetons quittée rend d'abord la pile
+      if (jeuSuivant !== currentGame && miniMod && miniMod.cashout && miniState) {
+        try { miniMod.cashout(miniState, miniMe); } catch (e) {}
+        updateWallet();
+      }
+      guestRevanche = false;
+      currentGame = jeuSuivant;
       waitingHost = false;
+      setNetBanner(false);
       clearTimeout(waitingTimer);
       clearTimeout(pairingTimer);
       setNetBanner(false);
       showOverlay('overlay-end', false);
       if (currentGame === 'mots') {
+        miniState = null;
+        miniMod = null;
         state = msg.state;
         myFixedIndex = msg.you || 1;
         pending = [];
         selected = -1;
         enterGame();
       } else {
+        state = null;
         miniMod = window.GG.byId[currentGame];
         if (!miniMod) {
           // versions décalées : ce téléphone ne connaît pas encore ce jeu
@@ -2122,7 +2509,8 @@
     };
     var name = ($('join-name').value.trim() || 'Joueur').slice(0, 14);
     guestNet.onOpen = function () {
-      guestNet.send({ t: 'hello', name: name });
+      // le jeton de siège (s'il y en a un) rend sa place à un joueur qui revient
+      guestNet.send({ t: 'hello', name: name, jeton: guestSiege && guestSiege.jeton ? guestSiege.jeton : undefined });
     };
     $('join-step-name').classList.add('hidden');
     $('join-step-scan').classList.remove('hidden');
@@ -2211,6 +2599,20 @@
 
   /* ---------- reconnexion ---------- */
   function reconnect() {
+    // En ligne : on relance la connexion au relais, sans quitter la partie
+    if (netKind === 'online' && (mode === 'host' || mode === 'guest')) {
+      if (onlineLien && !onlineLien.ferme) {
+        setNetBanner(true, 'Reconnexion…');
+        onlineLien.reveil();
+        return;
+      }
+      if (onlineCode) {
+        setNetBanner(true, 'Reconnexion…');
+        if (mode === 'guest') guestOnlineConnect(onlineCode, guestNom, true);
+        else hostOnlineOuvre(onlineCode, onlineCle, true);
+        return;
+      }
+    }
     if (mode === 'host') {
       hostShowLobby();
     } else if (mode === 'guest') {
@@ -2239,8 +2641,20 @@
     updateWallet();
     stopScanner();
     autoOffer = null; // une vieille invitation ne doit jamais être rejouée
-    hostPeers.forEach(function (p) { p.net.close(); });
+    // on prévient les autres : un départ voulu n'est pas une coupure
+    if (mode === 'host') {
+      envoiATous({ t: 'adieu', msg: 'L’hôte a arrêté la partie.' });
+      if (netKind !== 'online') salleAttente.forEach(function (p) { p.net.send({ t: 'adieu', msg: 'L’hôte a arrêté la partie.' }); });
+    }
+    if (mode === 'guest' && guestNet && guestNet.isOpen()) guestNet.send({ t: 'quitte' });
+    hostPeers.concat(salleAttente).forEach(function (p) { try { p.net.close(); } catch (e) {} });
     hostPeers = [];
+    salleAttente = [];
+    revanches = [];
+    guestRevanche = false;
+    guestSiege = null;
+    clearTimeout(diffusionPrevue);
+    diffusionPrevue = null;
     if (invitePeer) { invitePeer.net.close(); invitePeer = null; }
     if (guestNet) { guestNet.close(); guestNet = null; }
     state = null;
@@ -2262,7 +2676,7 @@
     clearTimeout(miniTimer);
     clearTimeout(pairingTimer);
     ['overlay-pass', 'overlay-joker', 'overlay-confirm', 'overlay-history',
-     'overlay-menu', 'overlay-end'].forEach(function (id) { showOverlay(id, false); });
+     'overlay-menu', 'overlay-switch', 'overlay-end'].forEach(function (id) { showOverlay(id, false); });
     setNetBanner(false);
     chatReset();
     onlineFerme();
@@ -2302,11 +2716,7 @@
     if (!t) return;
     chatLog.push({ n: nom, t: t, h: heureCourte() });
     if (chatLog.length > CHAT_MAX) chatLog.shift();
-    if (mode === 'host') {
-      hostPeers.forEach(function (peer) {
-        if (peer.connected) peer.net.send({ t: 'chat', msgs: chatLog.slice(-40) });
-      });
-    }
+    if (mode === 'host') envoiATous({ t: 'chat', msgs: chatLog.slice(-40) });
     chatRecu();
   }
 
@@ -2410,10 +2820,38 @@
     if (onlineLien) { try { onlineLien.close(); } catch (e) {} }
     onlineLien = null;
     onlineCode = '';
+    onlineCle = '';
   }
 
+  /* Le lien d'invitation dit aussi QUI invite et à QUOI (carte d'accueil). */
   function lienDePartie(code) {
-    return appBaseUrl() + '#c=' + code;
+    var q = '?jeu=' + encodeURIComponent(pendingGame || currentGame || '') +
+      '&de=' + encodeURIComponent(hostName || '');
+    return appBaseUrl() + q + '#c=' + code;
+  }
+
+  function texteInvitation() {
+    var nom = gameLabel();
+    return (hostName ? hostName + ' t’invite' : 'Je t’invite') +
+      (nom ? ' à jouer à ' + nom : ' à jouer') + ' sur GGgames ! 🎲\n\n' +
+      'Touche ce lien pour rejoindre la partie : ' + lienDePartie(onlineCode) + '\n\n' +
+      '(ou, dans l’appli : « Rejoindre avec un code » → ' + onlineCode + ')';
+  }
+
+  /* Clé de ce téléphone auprès du relais : une connexion fantôme laissée
+     par un changement de réseau lui cède la place. */
+  function cleAppareil() {
+    var c = lis('gg-cle-appareil', '');
+    if (typeof c !== 'string' || c.length < 8) { c = tireJeton(); ecris('gg-cle-appareil', c); }
+    return c;
+  }
+
+  /* Le jeton de siège connu pour ce code (en mémoire, ou gardé 24 h). */
+  function siegePour(code) {
+    if (guestSiege && guestSiege.code === code && guestSiege.jeton) return guestSiege;
+    var sv = lis('gg-siege', null);
+    if (sv && sv.code === code && sv.jeton && Date.now() - (sv.ts || 0) < 86400000) return sv;
+    return null;
   }
 
   /* L'hôte ouvre un salon en ligne : le code s'affiche, les invités arrivent. */
@@ -2423,16 +2861,37 @@
     mode = 'host';
     hostPeers = [];
     invitePeer = null;
-    onlineFerme();
+    revanches = [];
     $('host-step-name').classList.add('hidden');
     $('host-step-wait').classList.remove('hidden');
     $('host-error').classList.add('hidden');
     $('host-step-wait').querySelector('.waiting').textContent = '⏳ Ouverture de la partie…';
+    hostOnlineOuvre(null, null, false);
+  }
 
-    onlineLien = window.GG.Online.heberger({
-      onPret: function (code) {
-        onlineCode = code;
+  /* Ouvre (ou rouvre, après une coupure ou un rechargement : même code, même
+     clé) le salon de l'hôte sur le relais. */
+  function hostOnlineOuvre(code, cle, enJeu) {
+    onlineFerme();
+    var lien = window.GG.Online.heberger({
+      code: code || undefined,
+      cle: cle || undefined,
+      onPret: function (c) {
+        onlineCode = c;
+        if (enJeu || gameStarted()) {
+          setNetBanner(false);
+          updateNetBanner();
+          hostPeers.forEach(function (p) { if (p.connected) sendInitTo(p); });
+          sauvePartie();
+          return;
+        }
         hostShowLobby();
+      },
+      onRetour: function () {
+        // de retour après une coupure : chacun reçoit l'état à jour
+        if (gameStarted()) hostPeers.forEach(function (p) { if (p.connected) sendInitTo(p); });
+        else broadcastLobby();
+        updateNetBanner();
       },
       onPair: function (pair) {
         // nouveau téléphone dans le salon : on attend son « bonjour »,
@@ -2441,19 +2900,24 @@
         attachPeerHandlers(peer);
       },
       onEtat: function (txt) {
-        if (txt) setNetBanner(true, txt); else setNetBanner(false);
+        if (txt) setNetBanner(true, txt === 'Reconnexion…' ? 'Reconnexion au serveur…' : txt);
+        else { setNetBanner(false); updateNetBanner(); }
       },
       onErreur: function (txt, definitif) {
-        if (definitif) {
-          showError('host-error', txt);
-          $('host-step-wait').classList.add('hidden');
-          $('host-step-name').classList.remove('hidden');
-          onlineFerme();
-        } else {
-          toast(txt);
+        if (!definitif) { toast(txt); return; }
+        if (gameStarted()) {
+          setNetBanner(true, txt);
+          return;
         }
+        showError('host-error', txt);
+        $('host-step-wait').classList.add('hidden');
+        $('host-step-name').classList.remove('hidden');
+        onlineFerme();
       }
     });
+    onlineLien = lien;
+    onlineCle = lien ? lien.cle : '';
+    if (code) onlineCode = code;
   }
 
   /* Un invité rejoint avec le code annoncé. */
@@ -2466,24 +2930,34 @@
     }
     if (!window.GG.Online.disponible()) { showRelaisSettings(); return; }
 
-    netKind = 'online';
-    mode = 'guest';
-    if (guestNet) { try { guestNet.close(); } catch (e) {} }
-    guestNet = null;
-    onlineFerme();
-
     $('online-step-code').classList.add('hidden');
     $('online-step-lobby').classList.remove('hidden');
     $('online-error').classList.add('hidden');
     $('online-lobby').classList.add('hidden');
     $('online-waiting').textContent = '⏳ Connexion à la partie…';
+    guestOnlineConnect(code, nom, !!siegePour(code));
+  }
+
+  /* Connexion (ou reconnexion) d'un invité : un seul « bonjour » par
+     connexion, avec le jeton de siège s'il en a un. */
+  function guestOnlineConnect(code, nom, reprise) {
+    netKind = 'online';
+    mode = 'guest';
+    if (guestNet) { try { guestNet.close(); } catch (e) {} }
+    guestNet = null;
+    onlineFerme();
+    onlineCode = code;
+    guestNom = nom;
 
     onlineLien = window.GG.Online.rejoindre({
       code: code,
+      cle: cleAppareil(),
+      reprise: reprise,
       onPair: function (pair) {
         guestNet = pair;
         pair.onMessage = guestHandleMessage;
         pair.onClose = function () {
+          if (guestNet !== pair) return;
           if (gameStarted()) {
             setNetBanner(true, 'Connexion perdue.');
             waitingHost = false;
@@ -2491,12 +2965,18 @@
             if (currentGame === 'mots') render();
           }
         };
-        pair.onOpen = function () { pair.send({ t: 'hello', name: nom }); };
-        // le lien est déjà ouvert quand le pair naît
-        pair.onOpen();
+        // le relais appelle onOpen à chaque connexion (une seule fois chacune)
+        pair.onOpen = function () {
+          var siege = siegePour(code);
+          pair.send({ t: 'hello', name: (siege && siege.nom) || guestNom, jeton: siege ? siege.jeton : undefined });
+        };
       },
       onEtat: function (txt) {
-        if (txt) $('online-waiting').textContent = '⏳ ' + txt;
+        if (gameStarted()) {
+          if (txt) setNetBanner(true, txt); else setNetBanner(false);
+        } else if (txt) {
+          $('online-waiting').textContent = '⏳ ' + txt;
+        }
       },
       onErreur: function (txt, definitif) {
         if (!definitif) { toast(txt); return; }
@@ -2505,12 +2985,28 @@
         $('online-step-lobby').classList.add('hidden');
         $('online-step-code').classList.remove('hidden');
         onlineFerme();
+        mode = null;
       }
     });
   }
 
-  function showOnlineJoin(codePreRempli) {
+  function showOnlineJoin(codePreRempli, invit) {
     netKind = 'online';
+    // la carte d'invitation : qui invite, et à quoi (depuis le lien reçu)
+    var carte = $('online-invit');
+    if (carte) {
+      var info = invit && invit.jeu ? catInfo(invit.jeu) : null;
+      if (invit && (invit.de || info)) {
+        carte.innerHTML = '<span class="oi-ic">' + (info ? info.icone : '🎲') + '</span>' +
+          '<span class="oi-tx"><span class="oi-t">' +
+          (invit.de ? '<strong>' + esc(invit.de) + '</strong> vous invite' : 'On vous invite') +
+          '</span><span class="oi-s">' + (info ? esc(info.nom) : 'Partie en ligne') + '</span></span>';
+        if (info) carte.setAttribute('data-jeu', info.id); else carte.removeAttribute('data-jeu');
+        carte.classList.remove('hidden');
+      } else {
+        carte.classList.add('hidden');
+      }
+    }
     $('online-step-code').classList.remove('hidden');
     $('online-step-lobby').classList.add('hidden');
     $('online-error').classList.add('hidden');
@@ -2651,8 +3147,8 @@
       try {
         var orphan = JSON.parse(localStorage.getItem('gg-poker-open') || 'null');
         var aReprendre = lisSauvegarde();
-        var memeTable = aReprendre && aReprendre.type === 'mini' && aReprendre.state &&
-          orphan && aReprendre.state.gameId === orphan.gameId;
+        var memeTable = aReprendre && (aReprendre.type === 'mini' || aReprendre.type === 'reseau') &&
+          aReprendre.state && orphan && aReprendre.state.gameId === orphan.gameId;
         if (orphan && orphan.invested && !memeTable) {
           window.GG.wallet.add(orphan.invested);
           localStorage.removeItem('gg-poker-open');
@@ -2746,10 +3242,13 @@
       chatEnvoyer(ev.target.value);
       ev.target.value = '';
     });
+    $('btn-host-whatsapp').addEventListener('click', function () {
+      // WhatsApp s'ouvre avec le message prêt à partir (ou WhatsApp Web)
+      var url = 'https://wa.me/?text=' + encodeURIComponent(texteInvitation());
+      try { window.open(url, '_blank', 'noopener'); } catch (e) { location.href = url; }
+    });
     $('btn-host-share-code').addEventListener('click', function () {
-      var texte = 'Je t’invite à jouer sur GGgames !\n\n' +
-        'Code de la partie : ' + onlineCode + '\n' +
-        'Ou touche simplement ce lien : ' + lienDePartie(onlineCode);
+      var texte = texteInvitation();
       if (navigator.share) {
         navigator.share({ title: 'GGgames — partie en ligne', text: texte })
           .catch(function () {});
@@ -2972,20 +3471,30 @@
 
     // Fin de partie
     $('btn-end-new').addEventListener('click', function () {
+      if (mode === 'guest') { demandeRevanche(); return; }
+      if (mode === 'host') { hostRejoue(currentGame); return; }
       if (currentGame === 'mots') newGameSamePlayers(); else miniRematch();
     });
+    $('btn-end-switch').addEventListener('click', ouvreChangeJeu);
+    $('btn-switch-close').addEventListener('click', function () { showOverlay('overlay-switch', false); });
     $('btn-end-home').addEventListener('click', quitToHome);
 
     // Invitation reçue en scannant le QR avec l'appareil photo du téléphone :
     // l'URL contient le code (#j=...) → on ouvre directement l'écran « rejoindre ».
     // (au chargement, mais aussi si l'app était déjà ouverte : hashchange)
     function handleInviteHash() {
-      // lien d'une partie EN LIGNE : #c=PLUME7 → écran « rejoindre avec un code »
+      // lien d'une partie EN LIGNE : ?jeu=poker&de=Loïc#c=PLUME7 → écran
+      // « rejoindre » avec la carte d'invitation (qui invite, à quel jeu)
       if (location.hash && location.hash.indexOf('#c=') === 0) {
-        var court = location.hash.slice(3).toUpperCase().replace(/[^A-Z0-9]/g, '');
-        history.replaceState(null, '', location.pathname + location.search);
+        var court = location.hash.slice(3).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+        var invit = null;
+        try {
+          var q = new URLSearchParams(location.search);
+          if (q.get('jeu') || q.get('de')) invit = { jeu: q.get('jeu') || '', de: (q.get('de') || '').slice(0, 14) };
+        } catch (e) {}
+        history.replaceState(null, '', location.pathname);
         if (gameStarted() || !court) return;
-        showOnlineJoin(court);
+        showOnlineJoin(court, invit);
         return;
       }
       if (!(location.hash && location.hash.indexOf('#j=') === 0)) return;

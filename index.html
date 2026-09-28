@@ -4,7 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>GGgames</title>
-  <meta name="description" content="GGgames : des jeux à plusieurs, entièrement hors ligne — mots, Puissance 4, pendu, poker, bataille navale…">
+  <meta name="description" content="GGgames : 24 jeux entre amis, sur un seul téléphone ou chacun chez soi — Words, poker, quiz, Manoir, Puissance 4, bataille navale…">
+  <!-- aperçu du lien d'invitation (WhatsApp, SMS, Messenger…) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="GGgames">
+  <meta property="og:title" content="🎲 On se fait une partie sur GGgames ?">
+  <meta property="og:description" content="Touchez le lien pour rejoindre la partie : 24 jeux entre amis, sans compte, sans pub.">
+  <meta property="og:image" content="https://lgelectricite.github.io/Appli-scrabble/icons/icon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#0a0b1c">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/favicon.png">
@@ -261,7 +270,8 @@
       <div id="host-online-box" class="hidden">
         <p class="code-label">Code de la partie</p>
         <div class="code-big" id="host-code-big">······</div>
-        <button class="btn big" id="btn-host-share-code">📤 Envoyer le code et le lien</button>
+        <button class="btn big primary" id="btn-host-whatsapp">💬 Inviter sur WhatsApp</button>
+        <button class="btn big" id="btn-host-share-code">📤 Autres applications</button>
         <p class="hint">Vos amis touchent « 🌍 Rejoindre avec un code » sur l’accueil
           et tapent ce code — de n’importe où. Il reste valable tant que vous
           gardez cet écran ou la partie ouverts.</p>
@@ -377,6 +387,7 @@
   <!-- ============ EN LIGNE : REJOINDRE AVEC UN CODE ============ -->
   <section id="screen-online" class="screen">
     <h2>🌍 Rejoindre avec un code</h2>
+    <div class="online-invit hidden" id="online-invit"></div>
     <div class="net-step" id="online-step-code">
       <label>Votre prénom
         <input type="text" id="online-name" maxlength="14" placeholder="Prénom" value="Joueur 2">
@@ -555,8 +566,20 @@
       <h2 id="end-titre">Fin de partie</h2>
       <h1 id="end-winner"></h1>
       <div id="end-detail"></div>
+      <p class="end-revanches hidden" id="end-revanches"></p>
       <button class="btn big primary" id="btn-end-new">Nouvelle partie</button>
+      <button class="btn big hidden" id="btn-end-switch">🎲 Changer de jeu</button>
       <button class="btn link" id="btn-end-home">Retour à l’accueil</button>
+    </div>
+  </div>
+
+  <!-- l'hôte choisit le jeu suivant, sans perdre la bande -->
+  <div id="overlay-switch" class="overlay sheet hidden">
+    <div class="overlay-card scroll">
+      <h2>🎲 On joue à quoi ?</h2>
+      <p class="hint">Tout le monde reste connecté : la partie suivante s’ouvre chez chacun.</p>
+      <div class="grille-jeux" id="switch-jeux"></div>
+      <button class="btn link" id="btn-switch-close">Annuler</button>
     </div>
   </div>
 

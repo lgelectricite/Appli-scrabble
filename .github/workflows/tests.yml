@@ -29,4 +29,4 @@ jobs:
       - name: Adversaires IA (parties tout-IA de chaque jeu)
         run: node tests/test_bots.js
       - name: Relais des parties en ligne
-        run: npm install ws --no-save && node tests/test_relais.js
+        run: npm install ws --no-save && node tests/test_relais.js && node tests/test_relais_v2.js
