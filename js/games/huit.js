@@ -693,6 +693,7 @@
         v = el._hu = { id: s.id, manche: -1, coups: -1, me: me, sel8: undefined, main: null };
       }
       var nouvelleDonne = v.manche !== s.manche && !s.coups && !s.finished;
+      var animer = !GG.fx.reduced();
       var ev = (v.manche === s.manche && (s.coups || 0) > v.coups) ? s.dernier : null;
       var W = Math.max(280, Math.min(el.clientWidth || 380, 660));
       // mêmes seuils que la feuille de style (@media) : grandes cartes quand
@@ -715,10 +716,11 @@
       html += '<div class="hu-sieges">' + autres.map(function (i) {
         var pl = s.players[i];
         var nb = pl.cards !== undefined ? pl.cards : (pl.hand ? pl.hand.length : 0);
+        // quelques dos de cartes en éventail (décor léger : de simples éléments CSS)
         var dos = '';
-        var nd = Math.min(nb, 5);
+        var nd = Math.min(nb, 4);
         for (var d = 0; d < nd; d++) {
-          dos += '<span class="hu-dos-mini" style="--d:' + (d - (nd - 1) / 2) + '">' + GG.carteDos({ classe: 'hu-jc-mini' }) + '</span>';
+          dos += '<i class="hu-dos-mini" style="--d:' + (d - (nd - 1) / 2) + '"></i>';
         }
         return '<div class="hu-siege' + (i === s.current ? ' turn' : '') + (nb === 1 ? ' une' : '') +
           '" data-p="' + i + '" style="width:' + largSiege + 'px" aria-label="' + esc(pl.name) + ' : ' + nb + ' carte' + (nb > 1 ? 's' : '') + '">' +
@@ -750,7 +752,8 @@
         GG.carteDos({ classe: 'hu-jc-l' }) + '</span>' +
         '<small>' + (mine && s.pending2 > 0 ? 'Piocher +' + s.pending2 : mine && !s.hasDrawn ? 'Piocher' : pileN + ' cartes') + '</small></button>' +
         '<div class="ha-top hu-defausse">' + dessous +
-        '<span class="ha-card big hu-dessus" style="--t:' + inclin + 'deg">' + carteHtml(topC, 'hu-jc-l') + '</span>' +
+        '<span class="ha-card big hu-dessus' + (animer && (nouvelleDonne || (ev && ev.t === 'play')) ? ' hu-cache' : '') +
+        '" style="--t:' + inclin + 'deg">' + carteHtml(topC, 'hu-jc-l') + '</span>' +
         tagCoul +
         (s.pending2 > 0 ? '<span class="hu-dette" aria-live="polite">+' + s.pending2 + '</span>' : '') +
         '</div></div>';
@@ -787,8 +790,10 @@
           var cle = c.r + c.s;
           var neuve = !!ancienne && !ancienne[cle];
           if (neuve) nouvelles[cle] = true;
+          // cartes distribuées ou piochées : cachées jusqu'à l'arrivée de leur vol
+          var cachee = animer && (nouvelleDonne || (neuve && ev && ev.p === me && (ev.t === 'draw' || ev.oubli)));
           return '<button class="ha-card hu-carte' + (mine ? (ok ? ' ok' : ' off') : '') + (sel8 === o.i ? ' sel' : '') +
-            (neuve ? ' neuve' : '') + '" data-i="' + o.i + '" data-k="' + esc(cle) + '" style="left:' + pz.x + 'px;top:' + pz.y +
+            (neuve ? ' neuve' : '') + (cachee ? ' hu-cache' : '') + '" data-i="' + o.i + '" data-k="' + esc(cle) + '" style="left:' + pz.x + 'px;top:' + pz.y +
             'px;--rot:' + pz.rot + 'deg;z-index:' + (j + 1) + '" aria-label="' + esc(nomCarte(c)) + (ok ? ', jouable' : '') + '">' +
             carteHtml(c, 'hu-jc') + '</button>';
         }).join('') + '</div>';
@@ -836,8 +841,11 @@
       // la table occupe tout l'écran : la main se cale en bas, comme au café
       var jeuEl = el.querySelector('.hu-jeu');
       if (jeuEl && el.getBoundingClientRect) {
-        var haut = el.getBoundingClientRect().top + (root.scrollY || 0);
-        var dispo = Math.round(vh - haut - 10);
+        if (v.hautPour !== vh + 'x' + vw) {
+          v.haut = el.getBoundingClientRect().top + (root.scrollY || 0);
+          v.hautPour = vh + 'x' + vw;
+        }
+        var dispo = Math.round(vh - v.haut - 10);
         if (dispo > 300) jeuEl.style.minHeight = dispo + 'px';
       }
 
@@ -960,10 +968,15 @@
       // ---------- effets : ce qui vient de changer, une seule fois ----------
       var memMain = {};
       main.forEach(function (c) { memMain[c.r + c.s] = true; });
-      if (nouvelleDonne) {
-        animerDonne(el, s, me, v);
-      } else if (ev) {
-        animerEvenement(el, s, me, ev, v, nouvelles);
+      if (nouvelleDonne || ev) {
+        var gen = v.gen = (v.gen || 0) + 1;
+        var effets = function () {
+          // un rendu plus récent a pris la main (il gère ses propres effets)
+          if (v.gen !== gen || !el.querySelector('.hu-jeu')) return;
+          if (nouvelleDonne) animerDonne(el, s, me, v);
+          else animerEvenement(el, s, me, ev, v, nouvelles);
+        };
+        if (animer && root.requestAnimationFrame) root.requestAnimationFrame(effets); else effets();
       }
       v.manche = s.manche;
       v.coups = s.coups || 0;
@@ -996,6 +1009,7 @@
     var sieges = el.querySelectorAll('.hu-siege');
     if (!pioche || fx().reduced()) {
       son('shuffle', { volume: 0.6 });
+      el.querySelectorAll('.hu-cache').forEach(function (x) { x.classList.remove('hu-cache'); });
       return;
     }
     son('shuffle', { volume: 0.6 });

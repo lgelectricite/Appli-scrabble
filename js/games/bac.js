@@ -225,7 +225,7 @@
   var NIVEAUX_IA = {
     facile: { remplit: 0.5, part: [0, 0.3], etourdi: 0.04 },
     moyen: { remplit: 0.72, part: [0, 0.8], etourdi: 0.02 },
-    difficile: { remplit: 0.92, part: [0.5, 1], etourdi: 0 }
+    difficile: { remplit: 0.92, part: [0.6, 1], etourdi: 0 }
   };
   /* la feuille de l'IA : des trous (selon son niveau) et, rarement, une
      étourderie de mauvaise lettre — comme sous la pression du chrono.
@@ -783,7 +783,7 @@
     roue.style.transform = 'rotate(' + angle.toFixed(2) + 'deg)';
     son('whoosh', { volume: 0.5 });
     // un « tic » à chaque lettre qui passe sous la flèche (freinage de la roue)
-    var K = tours * n + i, tics = Math.min(K, 36);
+    var K = tours * n + i, tics = Math.min(K, 18);
     if (duree > 300) {
       for (var k = 1; k <= tics; k++) {
         var t = 1 - Math.pow(1 - k / tics, 1 / 3);
@@ -858,7 +858,7 @@
     html += '<div class="bac-champs">' + ids.map(function (id, c) {
       var val = (s.answers[me] || [])[c];
       if (val === undefined) val = brouillon[c] || '';
-      return '<label class="bac-field"><span class="bac-field-ic">' + icCat(id) + '</span><span class="bac-field-nom">' +
+      return '<label class="bac-field" style="--k:' + c + '"><span class="bac-field-ic">' + icCat(id) + '</span><span class="bac-field-nom">' +
         esc(nomCat(id)) + '</span><input type="text" data-cat="' + c + '" maxlength="30" autocomplete="off" autocapitalize="words" ' +
         'spellcheck="false" placeholder="' + (tourner ? '…' : esc(L) + '…') + '" value="' + esc(val) + '"' +
         (sub ? ' disabled' : '') + '></label>';
@@ -913,7 +913,7 @@
     } else {
       lancerMinuteur(o);
     }
-    if (!sub) GG.fx.stagger(el.querySelectorAll('.bac-field'), { gap: 45, max: 420 });
+    if (!sub) el.querySelector('.bac-champs').classList.add('entre'); // entrée échelonnée en CSS
   }
 
   function statuts(o) {

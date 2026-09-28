@@ -607,7 +607,7 @@ if (!only || only === 'bac') {
     // (taux de doublons parmi les cases remplies des deux côtés)
     const dbl = { facile: [0, 0], difficile: [0, 0] };
     LTR2.forEach(L => {
-      for (let k = 0; k < 60; k++) {
+      for (let k = 0; k < 150; k++) {
         const ref = bac._botSheet(L, null, 'moyen').map(bac._cle);
         ['facile', 'difficile'].forEach(niv => bac._botSheet(L, null, niv).map(bac._cle).forEach((x, c) => {
           if (x && ref[c]) { dbl[niv][1]++; if (x === ref[c]) dbl[niv][0]++; }

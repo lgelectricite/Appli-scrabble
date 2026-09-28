@@ -210,3 +210,7 @@
   .bac-cats { grid-template-columns: 1fr 1fr; }
   .bac-hero-l { display: none; }
 }
+
+/* entrée échelonnée des champs (animation CSS, légère) */
+.bac-champs.entre .bac-field { animation: bacChamp .4s var(--doux) both; animation-delay: calc(var(--k, 0) * 45ms); }
+@keyframes bacChamp { from { opacity: 0; transform: translateY(12px); } }

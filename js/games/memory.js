@@ -416,12 +416,15 @@
 
       // ---------- avant la partie : thème et taille ----------
       if (!s.pret && !s.startTs && !s.finished) {
+        el._memDom = null;
         rendreConfig(el, ctx, s, me, v);
         v.coups = s.coups || 0;
         return;
       }
 
       var mine = me === s.current && !s.finished;
+      // plusieurs joueurs sur un même téléphone : on nomme celui qui joue
+      var partage = ctx.mode === 'local' && !s.niveauIA && s.players.length > 1;
       var nouveau = (s.coups || 0) !== v.coups;
       if (!v.ancre || nouveau) v.ancre = { t: Date.now() };
       var themeId = theme(s.theme);
@@ -429,66 +432,137 @@
 
       // ---------- une grille qui tient dans l'écran ----------
       var dim = disposition(el, s.cards.length);
-      var html = '<div class="mem-jeu" style="--mc:' + dim.s + 'px;--mg:' + dim.g + 'px">';
       var tries = s.players[s.current] ? s.players[s.current].tries : 0;
-      html += '<div class="mem-barre">' +
-        '<span class="mem-pastille mem-chrono" id="mem-timer" aria-label="Chrono">⏱️ ' + chrono(tempsJeu(s, v)) + '</span>' +
-        '<span class="mem-pastille mem-tour' + (mine ? ' moi' : '') + '" role="status">' +
-        (s.finished ? 'Toutes les paires sont trouvées !'
-          : mine ? 'À vous de jouer !' : 'Au tour de ' + GG.esc(s.players[s.current].name) + '…') + '</span>' +
-        '<span class="mem-pastille mem-essais">🎯 ' + tries + '</span></div>';
-      if (s.defi) html += '<p class="mem-defi-tag">🗓️ Défi du jour · ' + GG.esc(th.nom) + '</p>';
-      html += '<div class="mem-board mem-t-' + themeId + '" style="grid-template-columns:repeat(' + dim.cols + ',var(--mc))">';
-      var aRetourner = [], aRabattre = [];
-      s.cards.forEach(function (c, i) {
-        var faceUp = c.matched || s.up.indexOf(i) !== -1;
-        var vuUp = !!v.up[i];
-        var cls = 'mem-card';
-        if (c.matched && v.faites[i]) cls += ' fait';
-        else if (faceUp && vuUp) cls += ' up';
-        else if (faceUp && !vuUp) aRetourner.push(i);
-        else if (!faceUp && vuUp) { cls += ' up'; aRabattre.push(i); }
-        if (c.matched) cls += ' trouvee';
-        var visage = c.e == null ? '' : (th.svg ? drapeau(c.e) : '<span class="mem-emoji">' + GG.esc(c.e) + '</span>');
-        html += '<button class="' + cls + '" data-i="' + i + '" aria-label="' +
-          (faceUp ? 'Carte ' + (i + 1) + ' retournée' : 'Carte ' + (i + 1) + ' cachée') + '"' +
-          (c.matched ? ' disabled' : '') + '><span class="mem-inner"><span class="mem-dos"></span>' +
-          '<span class="mem-face">' + visage + '</span></span></button>';
-      });
-      html += '</div>';
-      if (s.players.length > 1) {
-        html += '<div class="mem-scores">' + s.players.map(function (p, i) {
+      var texteTour = s.finished ? 'Toutes les paires sont trouvées !'
+        : partage ? 'À ' + GG.esc(s.players[s.current].name) + ' de jouer !'
+          : mine ? 'À vous de jouer !' : 'Au tour de ' + GG.esc(s.players[s.current].name) + '…';
+      function visage(c) {
+        return c.e == null ? '' : (th.svg ? drapeau(c.e) : '<span class="mem-emoji">' + GG.esc(c.e) + '</span>');
+      }
+      function scoresHtml() {
+        return s.players.map(function (p, i) {
           return '<span class="mem-sc' + (i === s.current && !s.finished ? ' turn' : '') + '">' + GG.esc(p.name) +
             ' · <b>' + p.pairs + '</b> · ' + p.tries + ' essai' + (p.tries > 1 ? 's' : '') + '</span>';
-        }).join('') + '</div>';
+        }).join('');
       }
-      html += '</div>';
-      el.innerHTML = html;
+      // état visuel voulu pour chaque carte, et ce qui doit s'animer
+      var aRetourner = [], aRabattre = [];
+      var etats = s.cards.map(function (c, i) {
+        var faceUp = c.matched || s.up.indexOf(i) !== -1;
+        var vuUp = !!v.up[i];
+        if (c.matched && v.faites[i]) return 'fait';
+        if (faceUp && !vuUp) { aRetourner.push(i); return 'up'; }
+        if (!faceUp && vuUp) { aRabattre.push(i); return ''; }
+        return faceUp ? 'up' : '';
+      });
+
+      // La grille n'est reconstruite que si sa forme change ; sinon on met à
+      // jour les cartes en place (48 cartes : bien plus léger, et le
+      // retournement 3D n'est qu'une transition CSS sur la classe « up »).
+      var cleDom = s.id + ':' + s.cards.length + ':' + themeId + ':' + dim.cols + ':' + dim.s + ':' + s.players.length + ':' + (s.defi || '');
+      var board = el.querySelector('.mem-board');
+      var reconstruire = el._memDom !== cleDom || !board || !el.querySelector('.mem-jeu');
+      el._memCtx = { ctx: ctx, s: s, mine: mine, v: v };
+      if (reconstruire) {
+        var html = '<div class="mem-jeu" style="--mc:' + dim.s + 'px;--mg:' + dim.g + 'px">';
+        html += '<div class="mem-barre">' +
+          '<span class="mem-pastille mem-chrono" id="mem-timer" aria-label="Chrono">⏱️ ' + chrono(tempsJeu(s, v)) + '</span>' +
+          '<span class="mem-pastille mem-tour' + (mine ? ' moi' : '') + '" role="status">' + texteTour + '</span>' +
+          '<span class="mem-pastille mem-essais">🎯 ' + tries + '</span></div>';
+        if (s.defi) html += '<p class="mem-defi-tag">🗓️ Défi du jour · ' + GG.esc(th.nom) + '</p>';
+        html += '<div class="mem-board mem-t-' + themeId + '" style="grid-template-columns:repeat(' + dim.cols + ',var(--mc))">';
+        s.cards.forEach(function (c, i) {
+          // une carte qui doit pivoter part de sa position précédente
+          var depart = aRetourner.indexOf(i) !== -1 ? '' : aRabattre.indexOf(i) !== -1 ? 'up' : etats[i];
+          html += '<button class="mem-card' + (depart ? ' ' + depart : '') + (c.matched ? ' trouvee' : '') +
+            '" data-i="' + i + '" style="--k:' + i + '" aria-label="Carte ' + (i + 1) + '"' + (c.matched ? ' disabled' : '') +
+            '><span class="mem-inner"><span class="mem-dos"></span><span class="mem-face">' + visage(c) + '</span></span></button>';
+        });
+        html += '</div>';
+        if (s.players.length > 1) html += '<div class="mem-scores">' + scoresHtml() + '</div>';
+        html += '</div>';
+        el.innerHTML = html;
+        el._memDom = cleDom;
+        board = el.querySelector('.mem-board');
+        // un seul écouteur pour toute la grille : il lit l'état le plus récent
+        board.addEventListener('click', function (ev) {
+          var card = ev.target.closest ? ev.target.closest('.mem-card') : null;
+          if (!card || !board.contains(card)) return;
+          var cur = el._memCtx;
+          var idx = parseInt(card.getAttribute('data-i'), 10);
+          if (el._memGel && Date.now() < el._memGel.fin && idx === el._memGel.i) return;
+          if (!cur.mine) { GG.fx.shake(card, 0.4); return; }
+          if (cur.s.cards[idx] && cur.s.cards[idx].matched) return;
+          if (cur.v.verrou && Date.now() < cur.v.verrou) return;
+          cur.v.verrou = Date.now() + 180;
+          el._memTap = idx;
+          GG.haptic('light');
+          cur.ctx.act({ t: 'flip', i: idx });
+        });
+        if (aRetourner.length || aRabattre.length) void board.offsetWidth; // l'état de départ est posé
+      } else {
+        var tour = el.querySelector('.mem-tour');
+        tour.innerHTML = texteTour;
+        tour.classList.toggle('moi', mine);
+        el.querySelector('.mem-essais').textContent = '🎯 ' + tries;
+        var sc = el.querySelector('.mem-scores');
+        if (sc) sc.innerHTML = scoresHtml();
+        var boutons = board.children;
+        s.cards.forEach(function (c, i) {
+          var b = boutons[i];
+          if (!b) return;
+          var face = b.querySelector('.mem-face');
+          var voulu = visage(c);
+          if (voulu && face.innerHTML !== voulu) face.innerHTML = voulu;
+          if (aRetourner.indexOf(i) === -1 && aRabattre.indexOf(i) === -1) {
+            b.classList.toggle('up', etats[i] === 'up');
+            b.classList.toggle('fait', etats[i] === 'fait');
+          }
+          b.classList.toggle('trouvee', !!c.matched);
+          b.disabled = !!c.matched;
+        });
+      }
 
       // ---------- effets : retourner, rabattre, envoler les paires ----------
       var F = GG.fx;
-      function carte(i) { return el.querySelector('.mem-card[data-i="' + i + '"]'); }
+      function carte(i) { return board.children[i] || null; }
       var d = s.dernier;
       if (nouveau && d && d.t === 'config') {
         // la grille vient d'être distribuée : les cartes arrivent une à une
-        F.stagger(el.querySelectorAll('.mem-card'), { gap: 22, max: 650, from: 'down' });
+        // (animation CSS, confiée au compositeur : fluide même sur un petit téléphone)
+        board.classList.add('distrib');
+        setTimeout(function () { board.classList.remove('distrib'); }, 1400);
         GG.sfx.play('deal', { volume: 0.6 });
       }
-      if (aRetourner.length || aRabattre.length) {
-        void el.offsetWidth; // l'état de départ est posé : la transition peut jouer
-        aRetourner.forEach(function (i) { var b = carte(i); if (b) b.classList.add('up'); });
-        aRabattre.forEach(function (i) { var b = carte(i); if (b) b.classList.remove('up'); });
-        if (aRetourner.length) GG.sfx.play('flip', { volume: 0.7, pitch: 0.95 + Math.random() * 0.1 });
+      function pivot(b) {
+        b.classList.add('pivot');
+        setTimeout(function () { b.classList.remove('pivot'); }, 560);
       }
+      aRetourner.forEach(function (i) { var b = carte(i); if (b) { pivot(b); b.classList.add('up'); } });
+      aRabattre.forEach(function (i) { var b = carte(i); if (b) { pivot(b); b.classList.remove('up'); } });
+      if (aRetourner.length) GG.sfx.play('flip', { volume: 0.7, pitch: 0.95 + Math.random() * 0.1 });
+      // une carte rabattue perd son image une fois le pivot fini (rien ne reste dans le DOM)
+      s.cards.forEach(function (c, i) {
+        if (c.e == null && etats[i] === '') {
+          var b = carte(i);
+          if (b && b.querySelector('.mem-face').innerHTML) {
+            setTimeout(function () {
+              var cur = el._memCtx.s;
+              if (b.isConnected && cur.cards[i] && cur.cards[i].e == null && !b.classList.contains('up')) b.querySelector('.mem-face').innerHTML = '';
+            }, 520);
+          }
+        }
+      });
       if (nouveau && d && d.t === 'paire') {
         var nPaire = [d.i, d.j];
+        var volHtml = '<span class="mem-vol" style="--mc:' + dim.s + 'px">' + visage(s.cards[d.i]) + '</span>';
         setTimeout(function () {
           var b1 = carte(nPaire[0]), b2 = carte(nPaire[1]);
           if (!b1 || !b2) return;
           b1.classList.add('brille'); b2.classList.add('brille');
           GG.sfx.play(d.serie >= 2 ? 'combo' : 'correct', { level: Math.min(8, d.serie) });
           GG.haptic('success');
-          F.burst(b2, { count: 18, shape: 'star' });
+          F.burst(b2, { count: 14, shape: 'star' });
           if (d.serie >= 2) F.floatText(b2, 'Série ×' + d.serie + ' !', { color: '#ffc23d', size: 22 });
           // la paire s'envole vers le score du joueur (pastille de l'en-tête)
           var badge = document.querySelectorAll('#mini-players .player-badge')[d.p];
@@ -496,13 +570,14 @@
           setTimeout(function () {
             [b1, b2].forEach(function (b, k) {
               if (!b.isConnected) return;
-              F.flyTo(b, cible, { duration: 620 + k * 90, arc: 0.3, scaleTo: 0.25, rotate: k ? 20 : -20 }).then(function () {
+              F.flyTo(b, cible, { html: volHtml, duration: 620 + k * 90, arc: 0.3, scaleTo: 0.25, rotate: k ? 20 : -20 }).then(function () {
                 if (k) {
                   GG.sfx.play('coin', { volume: 0.8 });
                   F.floatText(cible, '+1', { color: '#2fd67b', size: 26 });
                   if (badge) F.pop(badge, 1.15);
                 }
               });
+              b.classList.remove('brille');
               b.classList.add('fait');
             });
           }, 380);
@@ -529,14 +604,13 @@
         el._memRabat = setTimeout(function () {
           paireRatee.forEach(function (i) {
             var b = carte(i);
-            if (b && b.isConnected) b.classList.remove('up');
+            if (b && b.isConnected) { pivot(b); b.classList.remove('up'); }
             delete v.up[i];
           });
         }, 1250);
       }
       v.coups = s.coups || 0;
 
-      // ---------- gestes ----------
       // au raté, le tour passe sans que la grille bouge : on ignore un instant
       // la dernière carte touchée pour qu'un double-appui ne retourne pas une
       // carte du joueur suivant
@@ -544,19 +618,6 @@
         el._memGel = { fin: Date.now() + 450, i: el._memTap };
       }
       el._memCur = s.current;
-      el.querySelectorAll('.mem-card').forEach(function (card) {
-        card.addEventListener('click', function () {
-          var idx = parseInt(card.getAttribute('data-i'), 10);
-          if (el._memGel && Date.now() < el._memGel.fin && idx === el._memGel.i) return;
-          if (!mine) { F.shake(card, 0.4); return; }
-          if (s.cards[idx] && s.cards[idx].matched) return;
-          if (v.verrou && Date.now() < v.verrou) return;
-          v.verrou = Date.now() + 180;
-          el._memTap = idx;
-          GG.haptic('light');
-          ctx.act({ t: 'flip', i: idx });
-        });
-      });
       // chrono vivant
       if (!s.finished && s.startTs) {
         el._memTimer = setInterval(function () {
@@ -568,6 +629,9 @@
           }
           t.textContent = '⏱️ ' + chrono(tempsJeu(s, v));
         }, 1000);
+      } else {
+        var tf = el.querySelector('#mem-timer');
+        if (tf) tf.textContent = '⏱️ ' + chrono(tempsJeu(s, v));
       }
     },
 
@@ -586,11 +650,13 @@
 
   /* meilleure grille pour n cartes dans W × H : la plus grande carte possible */
   function calculDisposition(n, W, H, g) {
-    var best = { cols: 4, s: 0 };
+    var best = { cols: 4, s: 0 }, note = 0;
     for (var cols = 3; cols <= 8; cols++) {
       var rows = Math.ceil(n / cols);
       var s = Math.floor(Math.min((W - (cols - 1) * g) / cols, (H - (rows - 1) * g) / rows));
-      if (s > best.s) best = { cols: cols, s: s };
+      // une grille aux rangées complètes est plus belle : on la préfère à taille presque égale
+      var n2 = s * (n % cols === 0 ? 1 : 0.94);
+      if (n2 > note) { note = n2; best = { cols: cols, s: s }; }
     }
     best.s = Math.min(best.s, 110);
     best.g = g;
