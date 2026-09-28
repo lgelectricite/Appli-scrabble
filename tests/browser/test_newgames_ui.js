@@ -114,30 +114,34 @@ function check(n, c, e) {
   await p.waitForSelector('[data-f="1"]', { timeout: 15000 });
   check('Mots fléchés : lancement direct, sans écran de config',
     await p.locator('#screen-mini.active').count() === 1);
-  check('5 forces proposées avec progression', await p.locator('[data-f]').count() === 5 &&
-    /40 grilles/.test(await p.textContent('#mini-area')));
+  check('5 forces proposées avec progression', await p.locator('#mini-area [data-f]').count() === 5 &&
+    /1 000 grilles/.test(await p.textContent('#mini-area')));
+  check('défi du jour proposé', await p.locator('[data-jour]').count() === 1);
   await p.click('[data-f="1"]');
-  await p.waitForSelector('.fx-grid', { timeout: 15000 });
-  check('grille n°1 force 1 affichée', /Grille n°1 · force 1/.test(await p.textContent('#mini-area')));
+  await p.waitForSelector('.gx-grille', { timeout: 15000 });
+  check('grille n°1 force 1 affichée', /Force 1 · n°1/.test(await p.textContent('#mini-area')));
   check('grille PLEINE : cases-lettres ET cases-définitions',
-    await p.locator('.fx-cell').count() >= 22 && await p.locator('.fx-def').count() >= 8);
-  check('les flèches sont dans les cases', await p.locator('.fx-ar').count() >= 10);
+    await p.locator('.gx-c').count() >= 30 && await p.locator('.gx-d').count() >= 12);
+  check('les flèches sont dans les cases', await p.locator('.gx-fl').count() >= 15);
   check('un mot proposé d’office, définition en grand',
-    await p.locator('.fx-defbar').count() === 1 &&
-    await p.locator('.fx-cell.selw').count() >= 2);
+    await p.locator('.gx-bandeau .gx-txt').count() === 1 &&
+    await p.locator('.gx-c.sel').count() >= 2);
   // résout le mot sélectionné en tapant sur le clavier à l'écran
   const flAnswer = await p.evaluate(() => {
-    const el = document.getElementById('mini-area');
-    return GG.byId.fleches._loadGrid(1, 0).words[el._flSel].w;
+    const V = document.getElementById('mini-area')._gx;
+    return GG.byId.fleches._grille(1, 0).mots[V.sel.w].w;
   });
-  for (const chF of flAnswer) await p.click('.fx-key[data-k="' + chF + '"]');
+  for (const chF of flAnswer) await p.click('.gx-k[data-k="' + chF + '"]');
   await p.waitForTimeout(400);
   check('mot tapé dans la grille → validé et verrouillé',
-    await p.locator('.fx-cell.won').count() >= flAnswer.length);
+    await p.locator('.gx-c.ok').count() >= flAnswer.length);
   // toucher une case-définition sélectionne bien son mot
-  await p.locator('.fx-def').first().click();
+  const dh = p.locator('.gx-dh:not(.fini)').first();
+  const box = await dh.boundingBox();
+  await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await p.waitForTimeout(150);
-  check('case-définition → mot sélectionné', await p.locator('.fx-cell.selw').count() >= 2);
+  check('case-définition → mot sélectionné', await p.locator('.gx-dh.sel').count() === 1 &&
+    await p.locator('.gx-c.sel').count() >= 2);
 
   // ---------- Bonbons : pur solitaire, lancement direct, un échange gagnant ----------
   console.log('--- Bonbons (solo) ---');

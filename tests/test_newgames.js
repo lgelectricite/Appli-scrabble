@@ -211,100 +211,94 @@ const got = huit._drawCards(g, 0, 2);
 check('défausse rebattue pour repiocher', got === 2 && g.discard.length === 1 &&
   g.discard.length + g.pile.length + g.players[0].hand.length + g.players[1].hand.length === totalBefore);
 
-/* ================= MOTS FLÉCHÉS ================= */
+/* ================= MOTS FLÉCHÉS (V2) ================= */
 console.log('--- Mots fléchés ---');
-require(ROOT + '/js/games/croises.js');
 require(ROOT + '/js/games/fleches-data.js');
 const fleches = require(ROOT + '/js/games/fleches.js');
 const FL_PF = fleches._PAR_FORCE;
-check('200 grilles dans la base (5 forces × ' + FL_PF + ')',
-  GG.FLECHES_GRILLES.length === 5 * FL_PF, GG.FLECHES_GRILLES.length);
+check('au moins 1 000 grilles par force (' + FL_PF + ')', FL_PF >= 1000);
 // intégrité : VRAIS fléchés — grille pleine, définitions dans les cases,
 // chaque flèche part de la case voisine du mot, croisements cohérents
-let flBad = 0, flDef = 0, flTotal = 0, flOrn = 0, flCells = 0;
+let flBad = 0, flDef = 0, flTotal = 0, flPerdues = 0, flCells = 0, flTrop = 0;
+const flTailles = [];
 for (let f = 1; f <= 5; f++) {
-  for (let gn = 0; gn < FL_PF; gn++) {
-    const grid = fleches._loadGrid(f, gn);
+  for (let gn = 0; gn < 12; gn++) {
+    const grid = fleches._grille(f, gn);
     if (!grid) { flBad++; continue; }
-    const NC = grid.w * grid.h;
+    if (gn === 0) flTailles.push(grid.w * grid.h);
+    const NC = grid.w * grid.h, W = grid.w;
     flCells += NC;
     const cellMap = {};
-    const defCells = new Set();
-    for (const w of grid.words) {
+    const defCells = {};
+    for (const w of grid.mots) {
       flTotal++;
-      if (w.def && w.def !== 'Mot mystère…') flDef++;
+      if (w.def) flDef++;
       // la case-définition est bien la voisine du départ (droite ou coudée)
-      const attendu = w.dir === 'h'
-        ? [w.cells[0] - 1, w.cells[0] - grid.w]
-        : [w.cells[0] - grid.w, w.cells[0] - 1];
-      if (attendu.indexOf(w.defCell) === -1 || w.defCell < 0) flBad++;
-      defCells.add(w.defCell);
+      const attendu = { hd: w.cells[0] - 1, hc: w.cells[0] - W, vd: w.cells[0] - W, vc: w.cells[0] - 1 }[w.fleche];
+      if (attendu !== w.defCell || w.defCell < 0 || (w.dir === 'h') !== (w.fleche[0] === 'h')) flBad++;
+      defCells[w.defCell] = (defCells[w.defCell] || 0) + 1;
       w.cells.forEach((c, k) => {
         if (c < 0 || c >= NC) flBad++;
         if (cellMap[c] && cellMap[c] !== w.w[k]) flBad++;
         cellMap[c] = w.w[k];
       });
     }
-    // une case-définition n'est jamais une lettre
-    for (const dc of defCells) if (cellMap[dc]) flBad++;
-    // grille PLEINE : lettre, définition, ou (rare) case ornée
-    for (let c = 0; c < NC; c++) {
-      if (!cellMap[c] && !defCells.has(c)) flOrn++;
-    }
-    // pas de superposition colinéaire
-    for (let a2 = 0; a2 < grid.words.length; a2++) {
-      for (let b2 = a2 + 1; b2 < grid.words.length; b2++) {
-        const A = grid.words[a2], B = grid.words[b2];
-        if (A.dir === B.dir && A.cells.some(c => B.cells.includes(c))) flBad++;
-      }
-    }
+    // une case-définition n'est jamais une lettre, et porte 1 ou 2 définitions
+    for (const dc in defCells) { if (cellMap[dc]) flBad++; if (defCells[dc] > 2) flTrop++; }
+    // grille PLEINE : chaque case est une lettre d’un mot ou une case-définition utilisée
+    for (let c = 0; c < NC; c++) if (!cellMap[c] && !defCells[c]) flPerdues++;
     // toute suite de 2+ lettres correspond à un mot déclaré (rien d'accidentel)
     const runs = [];
     for (let r = 0; r < grid.h; r++) {
       let c = 0;
-      while (c < grid.w) {
-        if (!cellMap[r * grid.w + c]) { c++; continue; }
+      while (c < W) {
+        if (!cellMap[r * W + c]) { c++; continue; }
         let txt = ''; const s0 = c;
-        while (c < grid.w && cellMap[r * grid.w + c]) { txt += cellMap[r * grid.w + c]; c++; }
-        if (txt.length >= 2) runs.push(txt + '@' + (r * grid.w + s0) + 'h');
+        while (c < W && cellMap[r * W + c]) { txt += cellMap[r * W + c]; c++; }
+        if (txt.length >= 2) runs.push(txt + '@' + (r * W + s0) + 'h');
       }
     }
-    for (let c = 0; c < grid.w; c++) {
+    for (let c = 0; c < W; c++) {
       let r = 0;
       while (r < grid.h) {
-        if (!cellMap[r * grid.w + c]) { r++; continue; }
+        if (!cellMap[r * W + c]) { r++; continue; }
         let txt = ''; const s0 = r;
-        while (r < grid.h && cellMap[r * grid.w + c]) { txt += cellMap[r * grid.w + c]; r++; }
-        if (txt.length >= 2) runs.push(txt + '@' + (s0 * grid.w + c) + 'v');
+        while (r < grid.h && cellMap[r * W + c]) { txt += cellMap[r * W + c]; r++; }
+        if (txt.length >= 2) runs.push(txt + '@' + (s0 * W + c) + 'v');
       }
     }
-    const posEnc = new Set(grid.words.map(w2 =>
-      w2.w + '@' + w2.cells[0] + (w2.dir === 'v' ? 'v' : 'h')));
+    const posEnc = new Set(grid.mots.map(w2 => w2.w + '@' + w2.cells[0] + (w2.dir === 'v' ? 'v' : 'h')));
     if (runs.length !== posEnc.size || runs.some(x => !posEnc.has(x))) flBad++;
   }
 }
-check('les 200 grilles sont de VRAIS fléchés cohérents', flBad === 0, flBad);
+check('60 grilles (5 forces) : de VRAIS fléchés cohérents', flBad === 0, flBad);
 check('chaque mot a sa définition (' + flTotal + ' mots)', flDef === flTotal, flTotal - flDef);
-check('cases ornées rares (' + flOrn + ' sur ' + flCells + ')', flOrn <= flCells * 0.13, flOrn);
-check('les forces montent en taille', (() => {
-  const t1 = fleches._loadGrid(1, 0), t5 = fleches._loadGrid(5, 0);
-  return t1.w === 7 && t1.h === 8 && t5.w === 8 && t5.h === 12 &&
-    t1.words.length < t5.words.length;
-})());
+check('aucune case perdue (0 case ornée sur ' + flCells + ')', flPerdues === 0, flPerdues);
+check('jamais plus de 2 définitions par case', flTrop === 0, flTrop);
+check('les forces montent en taille', flTailles.every((t, i) => i === 0 || t > flTailles[i - 1]), flTailles);
+check('grille déterministe', fleches._grille(3, 77).sol === fleches._grille(3, 77).sol &&
+  fleches._grille(3, 77).sol !== fleches._grille(3, 78).sol);
 g = fleches.create(['A', 'B']);
 check('phase de choix de la force', g.phase === 'setup');
 check('force réservée à l’hôte', !fleches.apply(g, 1, { t: 'force', f: 1 }).ok);
 fleches.apply(g, 0, { t: 'force', f: 2, g: 7 });
-check('grille n°8 de force 2 chargée', g.force === 2 && g.gnum === 7 && g.words.length >= 7);
+check('grille n°8 de force 2 chargée', g.force === 2 && g.gnum === 7 && g.words.length >= 20);
 const fw = g.words[0];
 check('mauvaise longueur refusée', !fleches.apply(g, 0, { t: 'claim', i: 0, text: 'X' }).ok);
 fleches.apply(g, 1, { t: 'claim', i: 0, text: fw.w.toLowerCase() });
-check('mot trouvé : points = longueur', fw.foundBy === 1 && g.players[1].points === fw.w.length);
+check('mot trouvé : points = longueur', fw.ok && fw.by === 1 && g.players[1].points === fw.w.length);
 const redF = fleches.redact(g, 0);
 check('solutions non trouvées masquées (réseau)',
-  redF.words.every((w, i) => i === 0 ? w.w === fw.w : w.w === undefined));
-for (let i = 1; i < g.words.length; i++) fleches.apply(g, 0, { t: 'claim', i, text: g.words[i].w });
-check('grille finie', g.finished === true && g.durationSec >= 1);
+  redF.words.every((w, i) => i === 0 ? w.w === fw.w : (w.ok || w.w === undefined)));
+let flTimer = null;
+for (let i = 1; i < g.words.length; i++) {
+  if (g.words[i].ok) continue;
+  const rr = fleches.apply(g, 0, { t: 'claim', i, text: g.words[i].w });
+  if (rr.timer) flTimer = rr.timer;
+}
+check('grille complète → célébration puis fin', g.complete && !!flTimer && !g.finished);
+fleches.apply(g, -1, flTimer.action);
+check('grille finie', g.finished === true && g.durationSec >= 1 && fleches.over(g));
 
 
 /* ================= BONBONS (match-3) ================= */

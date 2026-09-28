@@ -151,50 +151,52 @@ function check(n, c, e) {
 
   await p.click('#btn-mini-menu'); await p.click('#btn-menu-quit'); await p.click('#btn-confirm-yes');
 
-  // Mots croisés solo : sélectionne une définition, répond via la base
-  require(ROOT + '/js/games/registry.js');
-  const croises = require(ROOT + '/js/games/croises.js');
-  const defMap = {};
-  for (const lvl of ['facile', 'moyen', 'difficile']) {
-    for (const e of croises._DB[lvl]) {
-      const i = e.indexOf('|');
-      defMap[e.slice(i + 1)] = e.slice(0, i);
-    }
-  }
+  // Mots croisés solo (V2) : on écrit DANS la grille, au clavier de l’écran
   await p.click('.game-tile[data-g="croises"]');
   await p.waitForSelector('[data-lvl="facile"]', { timeout: 20000 });
   check('Mots croisés : lancement direct, sans écran de config',
     await p.locator('#screen-mini.active').count() === 1);
   await p.click('[data-lvl="facile"]');
-  await p.waitForSelector('.cr-grid', { timeout: 20000 });
-  check('grille 9×9 affichée', await p.locator('.cr-cell').count() === 81);
-  const actives = await p.locator('.cr-cell[data-i]').count();
-  check('cases blanches présentes', actives >= 20, actives);
-  const nbDefs = await p.locator('.cr-def').count();
-  check('au moins 6 définitions listées', nbDefs >= 6, nbDefs);
-  check('sections → et ↓', /Horizontalement/.test(await p.textContent('#mini-area')) &&
-    /Verticalement/.test(await p.textContent('#mini-area')));
-  // sélectionne la 1re définition et répond juste (réponse retrouvée dans la base)
-  const defBtn = p.locator('.cr-def:not(.found)').first();
-  const defTxt = (await defBtn.textContent()).replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\)$/, '');
-  const answer = defMap[defTxt];
-  check('définition retrouvée dans la base', !!answer, defTxt);
-  await defBtn.click();
-  await p.waitForSelector('#cr-guess');
-  check('cases du mot surlignées', await p.locator('.cr-cell.sel').count() >= 3);
-  // mauvaise réponse d'abord : erreur comptée
-  const mauvais = (answer[0] === 'A' ? 'B' : 'A') + answer.slice(1);
-  await p.fill('#cr-guess', mauvais);
-  await p.click('[data-a="try"]');
+  await p.waitForSelector('.gx-grille', { timeout: 20000 });
+  const nCases = await p.locator('.gx-cr .gx-c').count() + await p.locator('.gx-cr .gx-n').count();
+  check('grille 8×8 affichée', nCases === 64, nCases);
+  const actives = await p.locator('.gx-cr .gx-c').count();
+  check('grille dense : au moins 45 cases blanches', actives >= 45, actives);
+  check('numérotation classique en marge (I… et 1…)',
+    await p.locator('.gx-rom').count() === 8 && await p.locator('.gx-num').count() === 8 &&
+    (await p.textContent('.gx-rom')).trim() === 'I');
+  // la liste des définitions, dans un tiroir
+  await p.click('[data-a="liste"]');
+  await p.waitForSelector('.gx-tiroir:not(.gx-cache)');
+  const nbDefs = await p.locator('.gx-ld').count();
+  check('au moins 12 définitions listées', nbDefs >= 12, nbDefs);
+  check('sections → et ↓', /Horizontalement/.test(await p.textContent('.gx-liste')) &&
+    /Verticalement/.test(await p.textContent('.gx-liste')));
+  await p.click('[data-a="fermer"]');
+  // le premier mot est proposé d’office, sa définition en grand au-dessus du clavier
+  check('définition courante dans le bandeau', (await p.textContent('.gx-txt')).length > 3);
+  check('cases du mot surlignées', await p.locator('.gx-c.sel').count() >= 2);
+  const cible = await p.evaluate(() => {
+    const V = document.getElementById('mini-area')._gx;
+    const g = GG.byId.croises._grille(V.s.level, V.s.gnum);
+    return { w: V.sel.w, mot: g.mots[V.sel.w].w };
+  });
+  // mauvaise réponse d’abord : le mot tremble, l’erreur est comptée, les lettres fausses s’effacent
+  const mauvais = cible.mot.split('').map(ch => ch === 'Z' ? 'Y' : 'Z').join('');
+  for (const ch of mauvais) await p.click('.gx-k[data-k="' + ch + '"]');
   await p.waitForTimeout(300);
-  check('mauvaise réponse signalée', /ne convient pas/.test(await p.textContent('#mini-area')));
-  await p.fill('#cr-guess', answer.toLowerCase());
-  await p.click('[data-a="try"]');
+  const apres = await p.evaluate((w) => {
+    const V = document.getElementById('mini-area')._gx;
+    return { err: V.s.players[0].errors, lettres: V.s.words[w].cells.map(c => V.s.saisie[c]).join('') };
+  }, cible.w);
+  check('mauvaise réponse : erreur comptée et lettres fausses effacées', apres.err === 1 && apres.lettres === '', apres);
+  // puis la bonne
+  for (const ch of cible.mot) await p.click('.gx-k[data-k="' + ch + '"]');
   await p.waitForTimeout(300);
-  check('mot validé : définition colorée', await p.locator('.cr-def.found').count() === 1);
-  check('lettres révélées dans la grille', await p.evaluate(() =>
-    [...document.querySelectorAll('.cr-cell[data-i]')].filter(c => c.style.background && c.textContent.trim()).length >= 3));
-  check('points et erreurs affichés', /❌1/.test((await p.textContent('.mem-stats')).replace(/\s/g, '')));
+  check('mot validé : ses cases s’illuminent', await p.locator('.gx-c.ok').count() >= cible.mot.length);
+  check('lettres écrites dans la grille', await p.evaluate((mot) =>
+    [...document.querySelectorAll('.gx-c.ok .gx-l')].map(e => e.textContent).join('').includes(mot[0]), cible.mot));
+  check('points affichés', /★ \d+/.test(await p.textContent('.gx-score')));
 
   await browser.close();
   console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests réflexion UI OK.');
