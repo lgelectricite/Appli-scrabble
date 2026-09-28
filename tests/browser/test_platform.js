@@ -77,6 +77,7 @@ function check(n, c, e) {
   // Yams solo rapide : lancer et marquer
   await p.click('.game-tile[data-g="yams"]');
   await p.click('#btn-mini-hotseat');
+  await p.locator('#mini-count .count-btn[data-n="1"]').click(); // seul (par défaut : 2)
   await p.click('#btn-mini-start');
   await p.waitForSelector('#screen-mini.active');
   await p.click('[data-a="roll"]');
@@ -98,12 +99,22 @@ function check(n, c, e) {
   const btnW = await p.locator('#mini-count .count-btn').first()
     .evaluate(e => e.getBoundingClientRect().width);
   check('boutons du nombre de joueurs larges (' + Math.round(btnW) + 'px)', btnW > 70, btnW);
+  await p.locator('#mini-count .count-btn[data-n="1"]').click(); // seul (par défaut : 2)
   await p.click('#btn-mini-start');
   await p.waitForSelector('#screen-mini.active');
+  // V2 : on choisit d'abord le thème et la taille de la grille
+  await p.waitForSelector('.mem-config');
+  await p.click('.mem-theme[data-th="animaux"]');
+  await p.click('[data-a="go"]');
+  await p.waitForSelector('.mem-barre');
+  await p.waitForTimeout(2000); // la distribution animée
   await p.locator('.mem-card').nth(0).click();
+  await p.waitForTimeout(250);
   await p.locator('.mem-card').nth(1).click();
-  const st = await p.textContent('.mem-stats');
-  check('essais et chrono affichés en direct', /1 essai/.test(st) && /⏱/.test(st), st);
+  await p.waitForFunction(() => /🎯 1/.test(document.querySelector('.mem-barre').textContent),
+    null, { timeout: 5000 }).catch(() => {});
+  const st = await p.textContent('.mem-barre');
+  check('essais et chrono affichés en direct', /🎯 1/.test(st) && /⏱/.test(st), st);
   await p.click('#btn-mini-menu');
   await p.click('#btn-menu-quit');
   await p.click('#btn-confirm-yes');

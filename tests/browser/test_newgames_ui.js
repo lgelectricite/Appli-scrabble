@@ -44,6 +44,7 @@ function check(n, c, e) {
   console.log('--- Quiz (solo) ---');
   await p.click('.game-tile[data-g="quiz"]');
   await p.click('#btn-mini-hotseat');
+  await p.locator('#mini-count .count-btn[data-n="1"]').click(); // seul (par défaut : 2)
   await p.click('#btn-mini-start');
   // écran de choix du thème d'abord
   await p.waitForSelector('.qz-theme[data-th]', { timeout: 15000 });

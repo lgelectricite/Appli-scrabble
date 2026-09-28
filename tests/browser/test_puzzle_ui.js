@@ -43,6 +43,7 @@ function check(n, c, e) {
   // Mots mêlés solo : trouve un mot en lisant la grille à l'écran
   await p.click('.game-tile[data-g="meles"]');
   await p.click('#btn-mini-hotseat');
+  await p.locator('#mini-count .count-btn[data-n="1"]').click(); // seul (par défaut : 2)
   await p.click('#btn-mini-start');
   await p.waitForSelector('#screen-mini.active');
   await p.waitForSelector('[data-lvl="facile"]', { timeout: 20000 });
@@ -81,11 +82,13 @@ function check(n, c, e) {
   // Mot Mystère solo : essais ILLIMITÉS, on résout le mot comme un joueur
   await p.click('.game-tile[data-g="motus"]');
   await p.click('#btn-mini-hotseat');
+  await p.locator('#mini-count .count-btn[data-n="1"]').click(); // seul (par défaut : 2)
   await p.click('#btn-mini-start');
   await p.waitForSelector('#screen-mini.active');
   await p.waitForSelector('[data-lvl="facile"]', { timeout: 20000 });
   await p.click('[data-lvl="facile"]');
   await p.waitForSelector('.mot-kb', { timeout: 20000 });
+  await p.waitForTimeout(450); // le clavier s’arme 350 ms après son apparition
   // V2 : la première lettre est offerte ; on tape le mot ENTIER (la lettre
   // offerte retapée est absorbée, comme au jeu télévisé)
   const motValide = () => p.evaluate(() => {
@@ -140,6 +143,7 @@ function check(n, c, e) {
   check('bouton « Mot suivant » proposé', await p.locator('#mot-next').count() === 1);
   await p.click('#mot-next');
   await p.waitForSelector('.mot-kb', { timeout: 8000 });
+  await p.waitForTimeout(450);
   check('mot n°2 lancé, grille vierge', /Mot n°2/.test(await p.textContent('#mini-area')) &&
     await p.locator('.mot-row').count() === 1);
   await p.click('#btn-mini-menu'); await p.click('#btn-menu-quit'); await p.click('#btn-confirm-yes');
@@ -152,6 +156,7 @@ function check(n, c, e) {
   await p.waitForSelector('[data-lvl="facile"]', { timeout: 20000 });
   await p.click('[data-lvl="facile"]');
   await p.waitForSelector('.mot-kb', { timeout: 20000 });
+  await p.waitForTimeout(450); // le clavier s’arme 350 ms après son apparition
   for (const L of await motValide()) await p.locator('.mot-key[data-k="' + L + '"]').click();
   await p.locator('.mot-key[data-k="OK"]').click();
   await p.waitForTimeout(400);
@@ -193,26 +198,26 @@ function check(n, c, e) {
   // le premier mot est proposé d’office, sa définition en grand au-dessus du clavier
   check('définition courante dans le bandeau', (await p.textContent('.gx-txt')).length > 3);
   check('cases du mot surlignées', await p.locator('.gx-c.sel').count() >= 2);
-  const cible = await p.evaluate(() => {
+  const cibleCr = await p.evaluate(() => {
     const V = document.getElementById('mini-area')._gx;
     const g = GG.byId.croises._grille(V.s.level, V.s.gnum);
     return { w: V.sel.w, mot: g.mots[V.sel.w].w };
   });
   // mauvaise réponse d’abord : le mot tremble, l’erreur est comptée, les lettres fausses s’effacent
-  const mauvais = cible.mot.split('').map(ch => ch === 'Z' ? 'Y' : 'Z').join('');
+  const mauvais = cibleCr.mot.split('').map(ch => ch === 'Z' ? 'Y' : 'Z').join('');
   for (const ch of mauvais) await p.click('.gx-k[data-k="' + ch + '"]');
   await p.waitForTimeout(300);
   const apres = await p.evaluate((w) => {
     const V = document.getElementById('mini-area')._gx;
     return { err: V.s.players[0].errors, lettres: V.s.words[w].cells.map(c => V.s.saisie[c]).join('') };
-  }, cible.w);
+  }, cibleCr.w);
   check('mauvaise réponse : erreur comptée et lettres fausses effacées', apres.err === 1 && apres.lettres === '', apres);
   // puis la bonne
-  for (const ch of cible.mot) await p.click('.gx-k[data-k="' + ch + '"]');
+  for (const ch of cibleCr.mot) await p.click('.gx-k[data-k="' + ch + '"]');
   await p.waitForTimeout(300);
-  check('mot validé : ses cases s’illuminent', await p.locator('.gx-c.ok').count() >= cible.mot.length);
+  check('mot validé : ses cases s’illuminent', await p.locator('.gx-c.ok').count() >= cibleCr.mot.length);
   check('lettres écrites dans la grille', await p.evaluate((mot) =>
-    [...document.querySelectorAll('.gx-c.ok .gx-l')].map(e => e.textContent).join('').includes(mot[0]), cible.mot));
+    [...document.querySelectorAll('.gx-c.ok .gx-l')].map(e => e.textContent).join('').includes(mot[0]), cibleCr.mot));
   check('points affichés', /★ \d+/.test(await p.textContent('.gx-score')));
 
   await browser.close();
