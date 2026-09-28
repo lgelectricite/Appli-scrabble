@@ -31,7 +31,12 @@ function check(n, c, e) {
   await p.waitForSelector('.qz-theme[data-th]', { timeout: 15000 });
   check('choix du thème proposé (≥ 2 thèmes)', await p.locator('.qz-theme[data-th]').count() >= 2);
   await p.click('.qz-theme[data-th="melange"]');
+  check('difficulté, nombre de questions et chrono proposés',
+    await p.locator('[data-k="diff"]').count() === 4 && await p.locator('[data-k="nb"]').count() === 3 &&
+    await p.locator('[data-k="chrono"]').count() >= 3);
+  await p.click('[data-a="go"]');
   await p.waitForSelector('.qz-q', { timeout: 15000 });
+  check('chrono affiché', await p.locator('.qz-timer').count() === 1);
   check('question affichée avec 4 choix', await p.locator('.qz-choice[data-i]').count() === 4);
   for (let qn = 0; qn < 10; qn++) {
     await p.locator('.qz-choice[data-i]').first().click();

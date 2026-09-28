@@ -190,5 +190,67 @@ console.log('--- L’Imposteur : les mots ---');
   check('300 manches tout-IA menées au bout', parties === 300, parties);
 }
 
+/* ================= LE QUIZ ================= */
+console.log('--- Le Quiz : les questions ---');
+{
+  const Q = require(ROOT + '/js/games/quiz.js');
+  const B = Q._BANK.map(e => e.split('|'));
+  // doublons de sens (l'audit en comptait 42 paires) : même bonne réponse
+  // et question voisine (mots en commun)
+  const STOP = new Set('LE LA LES UN UNE DES DE DU D L A AU AUX EN ET EST QUEL QUELLE QUELS QUELLES QUI QUE QU COMBIEN DANS SUR PAR POUR SON SA SES IL ELLE CE CETTE CES ON NE PAS PLUS OU S Y T ETAIT'.split(' '));
+  const mots = s => new Set(s.toUpperCase().replace(/Œ/g, 'OE').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w)));
+  const T = B.map(p => ({ q: p[0], g: norm(p[1]), t: mots(p[0]) }));
+  const doubles = [];
+  for (let a = 0; a < T.length; a++) for (let b = a + 1; b < T.length; b++) {
+    if (T[a].g !== T[b].g) continue;
+    let inter = 0;
+    T[a].t.forEach(w => { if (T[b].t.has(w)) inter++; });
+    if (inter / (T[a].t.size + T[b].t.size - inter || 1) >= 0.4) doubles.push(T[a].q + ' / ' + T[b].q);
+  }
+  check('aucun doublon de sens (même réponse, question voisine)', !doubles.length, doubles.slice(0, 5));
+  // Séries : l'audit trouvait 90 % des questions sur 11 séries
+  const ser = B.filter(p => p[5] === 'series');
+  const freq = {};
+  ser.forEach(p => {
+    new Set(p[0].split(/[\s,?«»:()’.]+/).slice(1).filter(w => /^[A-ZÉ][a-zà-ÿ]{3,}/.test(w)))
+      .forEach(w => { if (w !== 'Game') freq[w] = (freq[w] || 0) + 1; }); // « Game » : Game of Thrones ET Squid Game
+  });
+  const tri = Object.keys(freq).sort((x, y) => freq[y] - freq[x]);
+  console.log('    séries : ' + ser.length + ' questions ; les plus citées : ' + tri.slice(0, 5).map(w => w + ' ' + freq[w]).join(', '));
+  check('séries : aucune série ne dépasse 5 % du thème', freq[tri[0]] <= ser.length * 0.05, tri[0] + ' ' + freq[tri[0]]);
+  const rec = B.filter(p => /r$/.test(p[6]));
+  console.log('    ' + B.length + ' questions, dont ' + rec.length + ' sur des faits depuis 2016');
+  check('au moins 200 questions sur des faits récents (depuis 2016)', rec.length >= 200, rec.length);
+  const themes = Q._THEMES.filter(t => t.id !== 'melange' && t.id !== 'recent');
+  check('chaque thème couvre les trois niveaux (au moins 8 questions difficiles)',
+    themes.every(t => [1, 2, 3].every(n => B.filter(p => p[5] === t.id && p[6][0] === String(n)).length >= 8)),
+    themes.map(t => t.id + ':' + [1, 2, 3].map(n => B.filter(p => p[5] === t.id && p[6][0] === String(n)).length).join('/')).join(' '));
+  // chaque difficulté se tire dans chaque thème, 20 questions
+  let tirages = true;
+  Q._THEMES.forEach(t => Q._DIFFS.forEach(d => {
+    const qs = Q._buildQuestions(t.id, d.id, 20);
+    if (qs.length !== 20 || new Set(qs.map(x => x.q)).size !== 20) tirages = false;
+  }));
+  check('chaque thème × chaque difficulté : 20 questions distinctes', tirages);
+  const dur = [];
+  ['facile', 'difficile'].forEach(d => {
+    let s = 0;
+    for (let k = 0; k < 30; k++) Q._buildQuestions('melange', d, 10).forEach(x => { s += x.niv; });
+    dur.push(s / 300);
+  });
+  check('« facile » tire des questions faciles, « difficile » des difficiles', dur[0] < 1.2 && dur[1] > 2.8, dur);
+  // rejouabilité : pas de question revue d'une partie à l'autre
+  const store = {};
+  global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
+  const vues = new Set();
+  let revues = 0;
+  for (let k = 0; k < 8; k++) {
+    Q._buildQuestions('melange', 'progressif', 20).forEach(x => { if (vues.has(x.q)) revues++; vues.add(x.q); });
+  }
+  delete global.localStorage;
+  check('8 parties de 20 questions d’affilée : aucune question revue', revues === 0, revues);
+}
+
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nContenu des jeux de soirée OK.');
 process.exit(failures ? 1 : 0);
