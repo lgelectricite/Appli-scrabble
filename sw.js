@@ -1,13 +1,14 @@
 /* Service worker : rend l'application utilisable entièrement hors ligne.
-   - Le dictionnaire (3 Mo) vit dans son propre cache : il n'est PAS
-     retéléchargé à chaque mise à jour de l'application (seulement quand
-     DICO change).
+   - Les listes de mots (dictionnaire 3,4 Mo, mots courants 0,5 Mo) vivent
+     dans leur propre cache : elles ne sont PAS retéléchargées à chaque mise
+     à jour de l'application (seulement quand DICO change).
    - La page (index.html) est prise sur le réseau d'abord quand il y en a,
      pour qu'une nouvelle version s'affiche vite ; le cache prend le relais
      hors ligne. Tout le reste : cache d'abord. */
-var CACHE = 'gggames-v52';
-var DICO = 'gggames-dico-1';
-var DICO_URL = 'data/mots.txt';
+var CACHE = 'gggames-v53';
+var DICO = 'gggames-dico-2';
+var DICO_URLS = ['data/mots.txt', 'data/mots-courants.txt'];
+var DICO_RE = /\/data\/(mots|mots-courants)\.txt$/;
 
 var ASSETS = [
   './',
@@ -49,6 +50,7 @@ var ASSETS = [
   'vendor/jsQR.js',
   'js/scrabble.js',
   'js/ai.js',
+  'js/ai-worker.js',
   'js/net.js',
   'js/games/registry.js',
   'js/fx.js',
@@ -99,10 +101,12 @@ self.addEventListener('install', function (event) {
         }));
       }),
       caches.open(DICO).then(function (cache) {
-        return cache.match(DICO_URL).then(function (deja) {
-          if (deja) return null;
-          return cache.add(new Request(DICO_URL, { cache: 'reload' }));
-        });
+        return Promise.all(DICO_URLS.map(function (u) {
+          return cache.match(u).then(function (deja) {
+            if (deja) return null;
+            return cache.add(new Request(u, { cache: 'reload' }));
+          });
+        }));
       })
     ]).then(function () {
       return self.skipWaiting();
@@ -130,14 +134,16 @@ function estLaPage(url) {
 self.addEventListener('fetch', function (event) {
   if (event.request.method !== 'GET') return;
   var url = new URL(event.request.url);
-  // le dictionnaire : son cache à lui
-  if (url.origin === self.location.origin && /\/data\/mots\.txt$/.test(url.pathname)) {
+  // les listes de mots : leur cache à elles
+  var m = url.origin === self.location.origin && url.pathname.match(DICO_RE);
+  if (m) {
+    var cle = 'data/' + m[1] + '.txt';
     event.respondWith(
       caches.open(DICO).then(function (cache) {
-        return cache.match(DICO_URL).then(function (hit) {
+        return cache.match(cle).then(function (hit) {
           if (hit) return hit;
           return fetch(event.request).then(function (resp) {
-            if (resp.ok) cache.put(DICO_URL, resp.clone());
+            if (resp.ok) cache.put(cle, resp.clone());
             return resp;
           });
         });

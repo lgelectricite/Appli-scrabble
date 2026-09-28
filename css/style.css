@@ -820,7 +820,8 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-we
 #overlay-pass .pass-av { font-size: 64px; display: block; margin-bottom: 6px; animation: flotte 3s ease-in-out infinite; }
 
 /* fin de partie : la célébration */
-#overlay-end .overlay-card { padding-top: 26px; overflow: hidden; }
+/* les rayons ne débordent pas, mais une longue fin reste lisible en défilant */
+#overlay-end .overlay-card { padding-top: 26px; overflow-x: hidden; overflow-y: auto; }
 #overlay-end .fin-trophee {
   display: block; font-size: 76px; line-height: 1; margin: 0 auto 4px;
   filter: drop-shadow(0 10px 18px rgba(255, 190, 40, .45));

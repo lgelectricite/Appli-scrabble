@@ -3356,7 +3356,18 @@
         if (pre.ok) {
           var badWord = invalidWord(pre.words);
           if (badWord) {
-            peer.net.send({ t: 'err', msg: '« ' + badWord + ' » n’est pas dans le dictionnaire.' });
+            // l'hôte compte les essais (l'invité dont le dictionnaire n'est
+            // pas encore arrivé ne peut pas réessayer sans limite)
+            var refus = S.refuseMove ? S.refuseMove(state, peer.playerIndex, badWord) : null;
+            var suite = !refus || !refus.ok ? ''
+              : refus.perdu ? ' Tour perdu.'
+                : ' Encore ' + refus.restants + ' essai' + (refus.restants > 1 ? 's' : '') + ' ce tour-ci.';
+            peer.net.send({ t: 'err', msg: '« ' + badWord + ' » n’est pas dans le dictionnaire.' + suite });
+            if (refus && refus.ok) {
+              broadcastState();
+              render();
+              if (state.over) showEnd();
+            }
             return;
           }
         }
@@ -3500,6 +3511,14 @@
       names.push(peer.name);
     });
     if (pendingGame === 'mots') {
+      // l'hôte arbitre les mots : jamais de partie sans son dictionnaire
+      if (!dict) {
+        toast('Chargement du dictionnaire…');
+        loadDict().then(hostStartGame).catch(function () {
+          toast('Impossible de charger le dictionnaire : vérifiez la connexion, puis réessayez.');
+        });
+        return;
+      }
       currentGame = 'mots';
       state = S.newGame(names);
       pending = [];
