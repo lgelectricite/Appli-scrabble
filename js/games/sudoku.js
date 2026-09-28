@@ -582,7 +582,7 @@
     }
     var solved = L.ok;
     for (var j = 0; j < 81; j++) if (!L.v[j]) { solved = false; break; }
-    return { solved: solved, tier: solved ? tier : 9, used: used };
+    return { solved: solved, tier: solved ? tier : 9, used: used, grid: L.v };
   }
 
   /* La grille correspond-elle au niveau demandé ? */
@@ -1216,7 +1216,8 @@
     _TECH: TECH,
     _LEVELS: LEVELS,
     _fmtClock: fmtClock,
-    _migre: migre
+    _migre: migre,
+    _dig: dig
   };
 
   /* Après un bon chiffre : lignes / colonnes / boîtes terminées, chiffre

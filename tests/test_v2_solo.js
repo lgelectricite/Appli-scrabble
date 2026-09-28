@@ -87,6 +87,16 @@ if (QUOI === 'tout' || QUOI === 'sudoku') {
     for (let k = 0; k < 30; k++) { const r = sudoku._rate(sudoku._makePuzzle('expert').puzzle); if (r.tier !== 3) return false; }
     return true;
   })());
+  // le « joueur humain » qui classe les grilles ne se trompe jamais : sur des grilles minimales
+  // (les plus dures), chaque chiffre qu'il déduit est celui de la solution, résolue ou non
+  check('les techniques humaines ne déduisent jamais un faux chiffre (300 grilles minimales)', (() => {
+    const rnd = sudoku._mulberry(5);
+    for (let k = 0; k < 300; k++) {
+      const sol = sudoku._fullGrid(rnd), r = sudoku._rate(sudoku._dig(sol, 17, rnd).puzzle);
+      if (r.grid.some((v, i) => v && v !== sol[i])) return false;
+    }
+    return true;
+  })());
   // réserve de secours : grilles classées, transformées sans changer leur logique
   check('réserve de secours : chaque grille unique et du bon niveau', (() => {
     for (const lvl in sudoku._RESERVE) {
