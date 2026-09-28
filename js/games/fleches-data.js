@@ -465,7 +465,7 @@
       placed.push({ wi: cd.wi, r: r, c: c, dir: 0 });
       var res = false;
       if (c + L >= W) res = seg(r, W, -1, false);
-      else {
+      else if (canEnd(c + L, r)) { // (le mot vertical fermé ici ne doit pas être celui qu’on vient de poser)
         var t3 = putD(r, c + L);
         res = seg(r, c + L + 1, FL ? c + L : -1, false);
         if (!res) unD(r, c + L, t3);
@@ -561,9 +561,9 @@
 
   /* plusieurs essais (graines dérivées), puis réglages assouplis si besoin :
      toujours une grille, toujours la même pour une graine donnée */
-  function remplir(P, cfg, graine) {
-    var essais = cfg.essais || 30;
-    for (var a = 0; a < essais + 30; a++) {
+  function remplir(P, cfg, graine, depart) {
+    var essais = cfg.essais || 30, pas = 0;
+    for (var a = depart || 0; a < essais + 30; a++) {
       var o = {
         mode: cfg.mode, W: cfg.W, H: cfg.H, pref: cfg.pref, K: cfg.K, maxSteps: cfg.maxSteps,
         pen2: cfg.pen2, pD: cfg.pD, lo: cfg.lo, maxB: cfg.maxB, minCroise: cfg.minCroise, penV: cfg.penV,
@@ -575,7 +575,8 @@
         if (cfg.maxB) o.maxB = Math.round(cfg.maxB * 1.15);
       }
       var g = generer(P, o);
-      if (g.ok) { g.essai = a; return g; }
+      pas += g.steps;
+      if (g.ok) { g.essai = a; g.pas = pas; return g; }
     }
     return null;
   }
@@ -627,12 +628,40 @@
      mots, le vocabulaire et la difficulté des définitions */
   var FORCES = [
     null,
-    { W: 7, H: 9, maxLen: 5, rares: false, pref: [0, 0.6, 0.25, 1.2, 1.2, 0.8], K: 4, maxSteps: 800, pen2: 0.3, pD: 0.1, lo: [0.45, 0.75, 0.3, 1.4], defs: [1, 0, 0] },
+    { W: 8, H: 8, maxLen: 5, rares: false, pref: [0, 0.6, 0.25, 1.2, 1.2, 0.8], K: 4, maxSteps: 800, pen2: 0.3, pD: 0.1, lo: [0.45, 0.75, 0.3, 1.4], defs: [1, 0, 0] },
     { W: 8, H: 10, maxLen: 7, rares: false, pref: [0, 0.6, 0.2, 0.9, 1.1, 1.1, 0.9, 0.6], K: 4, maxSteps: 800, pen2: 0.25, pD: 0.1, lo: [0.45, 0.75, 0.35, 1.4], defs: [0.6, 0.4, 0] },
-    { W: 9, H: 11, maxLen: 8, rares: true, pref: [0, 0.5, 0.15, 0.6, 1, 1.2, 1.3, 1.1, 0.8], K: 4, maxSteps: 800, pen2: 0.25, pD: 0.08, lo: [0.45, 0.7, 0.4, 1.5], defs: [0.2, 0.6, 0.2] },
+    { W: 9, H: 12, maxLen: 8, rares: true, pref: [0, 0.5, 0.15, 0.6, 1, 1.2, 1.3, 1.1, 0.8], K: 4, maxSteps: 800, pen2: 0.25, pD: 0.08, lo: [0.45, 0.7, 0.4, 1.5], defs: [0.2, 0.6, 0.2] },
     { W: 10, H: 12, maxLen: 9, rares: true, pref: [0, 0.4, 0.1, 0.4, 0.8, 1.2, 1.5, 1.5, 1.3, 1.1], K: 4, maxSteps: 600, pen2: 0.2, pD: 0.07, lo: [0.45, 0.7, 0.4, 1.6], defs: [0, 0.4, 0.6] },
-    { W: 10, H: 13, maxLen: 9, rares: true, pref: [0, 0.3, 0.03, 0.2, 0.7, 1.2, 1.6, 1.8, 1.6, 1.4], K: 4, maxSteps: 600, pen2: 0.15, pD: 0.06, lo: [0.45, 0.7, 0.4, 1.8], defs: [0, 0.15, 0.85] }
+    { W: 10, H: 14, maxLen: 9, rares: true, pref: [0, 0.3, 0.03, 0.2, 0.7, 1.2, 1.6, 1.8, 1.6, 1.4], K: 4, maxSteps: 600, pen2: 0.15, pD: 0.06, lo: [0.45, 0.7, 0.4, 1.8], defs: [0, 0.15, 0.85] }
   ];
+  /* Raccourcis : pour les grilles n°0 à 999 de chaque force, la tentative
+     réussie quand la première est laborieuse (calculée une fois pour toutes par
+     tests/test_grilles.js : RACCOURCIS=1 node tests/test_grilles.js). Ce ne sont
+     pas des grilles stockées : juste « commencer à l’essai n° a » (base 36),
+     ce qui borne le calcul de chaque grille à quelques milliers de pas. */
+  var RACCOURCIS_TXT = {
+    1: 'h:5,1l:6,1u:5,2q:5,3p:5,4c:b,53:5,6n:5,8q:5,ao:6,bl:6,c2:6,e9:5,lt:5,n7:8,n8:5,nj:6,oo:5',
+    2: 'a:6,h:5,1x:5,5q:5,60:5,62:5,6h:5,aa:7,ah:7,b3:5,bq:5,bx:5,cv:5,dh:5,dq:7,e4:5,ek:6,ep:6,fu:5,gh:5,gk:7,go:5,gt:5,id:5,m1:5,m8:5,mk:7,of:6,os:6,pf:6,pi:6,pt:6,q8:5,qd:d,qw:5',
+    3: '1:b,9:7,e:5,k:9,w:8,15:6,17:9,1d:6,1r:7,23:b,2h:7,2v:6,2z:5,3c:6,3h:7,3l:5,3s:5,3v:7,47:7,4r:8,51:5,5c:5,5p:h,5u:5,60:5,62:5,66:5,6c:5,6j:5,6u:5,6z:5,7g:5,7r:9,7z:5,83:6,86:5,87:5,8r:c,8s:5,9b:5,9k:7,9m:l,9s:k,9t:8,a0:d,a3:5,aa:5,ag:7,ai:5,az:5,b8:5,be:5,bk:5,bs:5,bw:6,c3:5,c7:7,ck:6,cm:8,co:6,ct:6,d1:6,d4:9,dd:5,dt:8,ei:6,en:7,eq:6,ez:e,f1:5,fo:5,fr:5,gc:5,gj:5,h1:5,h2:7,h4:c,h8:6,ha:9,hs:5,ht:7,hu:5,hy:5,i8:9,ic:a,ig:7,j5:5,jk:6,jr:6,jv:6,jz:9,k5:7,k6:7,k9:b,kf:b,kk:6,km:5,kt:5,kz:5,l5:5,l7:5,lh:8,lj:6,lk:5,lm:9,lp:5,ls:5,lv:6,m1:6,m7:7,m9:d,mf:5,mk:7,n6:8,ng:5,nm:7,nn:5,o7:d,o8:5,of:5,om:5,p0:a,p3:7,p6:5,p8:c,pa:b,pc:8,pn:5,pr:9,q7:5,qd:6,qe:7,qg:6,qi:7,qs:5,qw:7,r0:5,r4:b,rj:9,rl:8,rp:7',
+    4: '4:9,5:f,6:d,d:e,j:8,k:7,q:h,r:8,13:b,19:j,1e:8,1n:6,1q:b,22:c,28:8,2i:c,2l:7,2o:9,2s:7,2u:8,2z:9,33:b,34:6,39:7,3c:c,3i:9,3j:8,3l:a,3n:9,3v:7,43:9,46:e,4c:i,4o:6,4r:9,4w:7,4z:7,50:9,52:h,54:7,55:e,56:b,5e:c,5j:c,5k:8,5n:9,5r:7,5x:7,5y:a,67:c,6b:a,6e:6,6h:n,6l:7,6t:a,6w:d,6z:8,70:9,71:6,73:d,7e:7,7f:b,7j:9,7m:7,7p:7,7u:7,7y:d,7z:6,82:7,84:7,8a:8,8j:g,8m:9,8o:i,8p:c,8u:8,8w:b,90:g,94:9,95:7,97:d,9b:b,9c:8,9d:9,9h:p,9o:e,9s:9,9x:b,a4:d,ac:b,ad:b,ai:c,aj:b,am:k,ap:7,b8:7,b9:7,ba:b,bd:g,bf:6,bg:k,bk:a,bn:c,br:d,bv:8,bw:t,c7:j,c8:6,cb:7,cp:7,cu:7,d4:f,d5:6,da:b,de:7,dh:8,dj:f,dk:n,dr:f,dz:9,e1:f,e7:c,eo:7,ep:9,eq:8,eu:9,ev:7,ew:n,f4:9,f9:h,fc:b,ff:c,fj:j,fm:b,fv:9,fy:7,g3:7,g9:f,ga:k,ge:7,gg:f,gk:h,gm:h,gs:b,gt:9,gu:a,gx:c,gy:7,h0:7,hm:h,hq:9,hr:7,hz:i,i1:a,i3:9,i7:l,i9:i,ib:6,ie:k,ih:7,ij:7,ir:9,is:a,it:9,iv:d,iz:7,j5:6,j7:8,j8:k,j9:m,ja:7,je:l,jf:a,jj:h,jq:8,jt:7,jy:e,k3:c,k4:8,k8:8,kf:d,ko:9,ky:7,l2:a,l3:9,l6:h,l7:9,l8:a,lb:h,ld:8,lt:f,lu:d,lx:d,ly:8,mb:9,mf:7,mn:8,mo:8,mq:6,mr:9,mu:7,my:e,mz:8,n0:7,n1:b,n3:e,na:c,ng:a,ni:d,nn:7,no:a,ny:7,o2:j,o4:j,o6:7,o8:8,oa:h,oe:9,og:9,oi:6,oj:7,ol:8,os:g,ou:k,oy:a,oz:6,p0:9,p2:h,p5:7,pc:a,pv:8,px:d,q8:9,q9:f,qa:8,qf:e,qg:l,qh:7,qi:9,qk:l,qm:a,qv:c,qw:b,r3:8,r4:j,r6:9,r8:a,r9:9,ra:8,rr:b',
+    5: '2:8,3:a,6:b,a:i,e:a,f:7,g:o,h:a,j:h,k:c,l:9,r:k,s:d,u:a,v:b,y:p,z:b,11:9,13:k,19:6,1c:b,1f:g,1g:d,1h:g,1i:b,1k:v,1m:b,1o:b,1p:a,1s:j,1v:9,1z:8,24:7,26:d,28:x,2a:l,2b:d,2g:8,2h:7,2j:a,2l:y,2n:8,2p:8,2u:8,2x:h,2y:h,2z:b,33:a,34:j,35:7,36:b,39:7,3j:b,3m:d,3n:e,3p:c,3s:12,3t:g,3v:g,3z:7,42:7,43:m,45:p,46:a,47:c,48:d,49:n,4e:9,4f:a,4h:c,4j:e,4k:m,4m:a,4r:z,4s:7,4t:c,4v:a,52:p,57:b,59:7,5b:a,5f:n,5g:g,5r:8,5u:8,62:7,65:9,66:7,69:j,6a:9,6b:d,6c:f,6k:7,6l:g,6m:8,6s:p,6x:8,6z:n,70:k,72:e,74:n,76:c,77:e,79:6,7c:g,7d:9,7l:c,7o:i,7p:b,7t:i,7u:9,7y:9,80:f,86:9,87:h,88:g,8a:7,8d:9,8e:6,8f:c,8g:8,8j:a,8n:7,8p:6,8q:9,8w:i,8x:7,94:7,96:m,97:9,9c:i,9d:g,9h:c,9i:s,9j:v,9k:o,9m:a,9o:q,9p:a,9s:b,9t:b,a1:7,a5:e,a6:k,a9:7,aa:8,ab:7,am:d,ap:c,au:6,aw:m,ax:7,b0:c,b2:o,b3:7,b6:v,b9:a,ba:q,bf:a,bg:f,bk:g,bl:a,bo:7,bp:a,bs:b,bu:6,bw:e,bx:y,by:8,c2:i,c3:8,c6:t,c8:b,cb:e,cf:m,ci:9,ck:e,cl:8,cn:h,cq:7,cr:d,cs:y,ct:d,cx:f,cz:h,d4:6,d6:a,d7:7,d8:e,db:b,dj:g,dk:a,dl:6,dp:c,dx:k,dz:f,e0:9,e3:d,e5:9,e8:c,e9:7,ea:c,ee:i,ef:9,ei:p,ej:6,el:f,em:8,ep:w,eq:8,er:b,ev:9,f0:b,f1:g,f5:8,f8:b,fc:e,fe:l,fg:g,fi:6,fj:a,ft:6,fv:e,fw:b,fy:e,fz:a,g0:c,g1:a,ga:7,gb:8,gc:b,ge:7,gf:z,gj:a,gr:7,gv:9,gy:b,h2:7,h4:6,h7:7,h8:s,hb:e,hd:8,hf:j,hg:7,hh:a,hl:e,hp:i,hq:9,hr:9,hs:7,ht:j,hv:j,hx:a,hz:a,i1:7,i5:9,i6:a,ib:8,ic:8,ie:7,io:m,ip:h,ir:9,it:i,iu:g,iz:8,j1:9,j4:k,j6:8,ja:6,jd:7,ji:b,jm:c,jn:7,jq:8,jt:9,jw:18,jx:j,k0:8,k1:c,k9:8,ke:c,ki:c,kj:m,kn:a,ko:j,kr:a,ku:e,kv:6,kx:8,kz:i,l5:9,lb:9,lc:a,le:q,lf:e,lh:7,lk:h,lm:a,lo:b,lq:g,lr:c,ls:e,lt:f,lu:q,ly:i,m2:8,m4:r,m7:b,m8:g,mb:i,mc:e,me:k,mf:c,mo:b,mp:t,mq:7,mt:8,mu:6,mw:a,mx:6,my:8,n1:9,n3:c,n9:u,na:7,nb:k,ne:i,ng:a,nh:y,nk:8,nm:7,nn:8,no:m,nr:h,ns:7,nt:7,nu:b,ny:f,o0:8,o3:a,o6:o,o7:h,o9:o,oa:9,og:c,ol:b,om:t,on:u,oo:e,ou:8,p2:c,p3:a,p5:8,p9:n,pa:e,pb:9,pd:b,pe:a,pf:8,pg:7,pk:a,pp:c,ps:a,pt:f,pu:7,pv:t,px:e,py:h,pz:b,q1:a,q2:8,q5:k,q6:e,q8:d,qi:b,qk:f,ql:7,qm:w,qp:k,qu:c,qw:b,qx:h,qz:b,r6:d,r7:7,r9:k,ra:d,rc:b,rf:c,rg:w,ri:g,rk:8,rm:l,rn:f,rp:a'
+  };
+  var RACCOURCIS = null;
+  function raccourci(f, num) {
+    if (!RACCOURCIS) {
+      RACCOURCIS = {};
+      Object.keys(RACCOURCIS_TXT).forEach(function (k) {
+        var t = {};
+        RACCOURCIS_TXT[k].split(',').forEach(function (p) {
+          if (!p) return;
+          var q = p.split(':');
+          t[parseInt(q[0], 36)] = parseInt(q[1], 36);
+        });
+        RACCOURCIS[k] = t;
+      });
+    }
+    return (RACCOURCIS[f] && RACCOURCIS[f][num]) || 0;
+  }
   function prepFleches(f) {
     var F = FORCES[f];
     return preparer('fl' + f, function (w, rare) {
@@ -645,7 +674,7 @@
     if (!F) return null;
     var cle = jour ? 'fleches|jour|' + jour : 'fleches|' + f + '|' + num;
     var graine = hash(cle);
-    var g = remplir(prepFleches(f), { mode: 'fleches', W: F.W, H: F.H, pref: F.pref, K: F.K, maxSteps: F.maxSteps, pen2: F.pen2, pD: F.pD, lo: F.lo, essais: 30 }, graine);
+    var g = remplir(prepFleches(f), { mode: 'fleches', W: F.W, H: F.H, pref: F.pref, K: F.K, maxSteps: F.maxSteps, pen2: F.pen2, pD: F.pD, lo: F.lo, essais: 30 }, graine, jour ? 0 : raccourci(f, num));
     if (!g) return null;
     var W = F.W, mots = g.mots, parCase = {};
     for (var i = 0; i < mots.length; i++) {
@@ -664,7 +693,7 @@
     var courtes = mots.map(function (m) { return parCase[m.defCell] > 1 ? 18 : 34; });
     choisirDefs(mots, F.defs, rng(graine ^ 0x5bd1e995), courtes);
     var cases = g.cases.replace(/[A-Z]/g, '.');
-    return { w: W, h: F.H, cases: cases, sol: g.cases, mots: mots };
+    return { w: W, h: F.H, cases: cases, sol: g.cases, mots: mots, pas: g.pas, essai: g.essai };
   }
   /* la définition dont le mot part vers la droite occupe le haut de la case */
   function dessus(m) { return m.fleche === 'hd' || m.fleche === 'vc'; }
@@ -1609,7 +1638,7 @@
     jourSemaine: jourSemaine, dateLisible: dateLisible, chrono: chrono, duree: duree,
     lexique: lexique, preparer: preparer, generer: generer, remplir: remplir, choisirDefs: choisirDefs,
     FORCES: FORCES, NIVEAUX: NIVEAUX, ROMAINS: ROMAINS, FLECHES: FLECHES, PEN: PEN,
-    grilleFleches: grilleFleches, grilleCroises: grilleCroises, dessus: dessus,
+    grilleFleches: grilleFleches, grilleCroises: grilleCroises, dessus: dessus, raccourci: raccourci, prepFleches: prepFleches,
     demarrer: demarrer, appliquer: appliquer, masquer: masquer, tempsJeu: tempsJeu, etoiles: etoiles,
     police: police, jouer: jouer
   };
@@ -4061,7 +4090,7 @@
     'SANG|Liquide rouge|Hémoglobine|Lignée',
     'SANS|Privé de|Dépourvu de|… cesse',
     'SANTE|Forme|Bien-être|À la vôtre !',
-    'SAPEUR|Pompier|Soldat du génie|… pompier',
+    'SAPEUR|Pompier|Soldat du génie|Terrassier militaire',
     'SAPIN|Conifère de Noël|Résineux|Cercueil, en argot',
     'SAPINS|Conifères de Noël|Résineux|Cercueils, en argot',
     'SARDINE|Poisson en boîte|Galon de caporal|Piquet de tente',
