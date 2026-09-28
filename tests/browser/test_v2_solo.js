@@ -197,7 +197,7 @@ async function testSudoku(browser) {
   }
   check('ligne / colonne / bloc terminé : la vague de lumière passe', vague);
   await p.waitForSelector('#overlay-end:not(.hidden)', { timeout: 5000 });
-  check('grille résolue au pavé : fin célébrée par la coque (« Bravo ! »)', /Bravo/.test(await p.textContent('#end-titre')));
+  check('grille résolue au pavé : fin célébrée par la coque (« Victoire ! »)', /Bravo|Victoire/.test(await p.textContent('#end-titre')));
   check('résumé : temps, erreurs, indices', /Temps/.test(await p.textContent('#end-detail')) &&
     /Indices/.test(await p.textContent('#end-detail')));
   await p.click('#btn-end-new');

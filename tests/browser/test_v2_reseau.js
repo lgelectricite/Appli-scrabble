@@ -309,9 +309,10 @@ function mandataire(portEcoute, portRelais) {
   console.log('--- Homonymes : deux « Joueur » ---');
   {
     const { H, G } = await table('huit', 'Hôte', ['Joueur', 'Joueur']);
-    await lancer(H, G);
-    const noms = await H.page.textContent('#mini-players');
+    // le salon montre les prénoms attribués (le jeu peut masquer les badges)
+    const noms = await H.page.textContent('#lobby-list');
     check('le second devient « Joueur 2 »', /Joueur 2/.test(noms), noms);
+    await lancer(H, G);
     const J2 = G[1];
     await J2.page.reload();
     await J2.page.waitForSelector('#catalog .game-tile');

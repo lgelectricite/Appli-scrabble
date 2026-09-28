@@ -40,6 +40,10 @@ function check(n, c, e) {
   await p.click('.game-tile[data-g="imposteur"]');
   await p.click('#btn-mini-hotseat');
   await p.click('#btn-mini-start');
+  // V2 : réglages de la manche, puis la donne ; la carte se retourne à l'appui
+  await p.waitForSelector('[data-a="deal"]', { timeout: 15000 });
+  await p.click('[data-a="deal"]');
+  if (await p.locator('#overlay-pass:not(.hidden)').count()) await p.click('#btn-pass-ready');
   await p.waitForSelector('.imp-word', { timeout: 15000 });
   check('Imposteur : mot secret distribué hors-ligne', true);
   await p.click('#btn-mini-menu'); await p.click('#btn-menu-quit'); await p.click('#btn-confirm-yes');

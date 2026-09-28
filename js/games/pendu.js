@@ -785,6 +785,9 @@
       tried.forEach(function (L) { if (v.tried.indexOf(L) === -1) { if (revealed.indexOf(L) === -1) nouvelleFausse = L; } });
       var ancien = v.rev.split(',');
       revealed.forEach(function (r, i) { if (lettreSure(r) && !ancien[i]) nouvelles.push(i); });
+      // la lettre envoyée a été jouée : on peut taper la suivante tout de suite
+      // (le garde-fou de 250 ms ne sert qu'en attendant la réponse de l'hôte)
+      if (tried.length > v.tried.length) v.envoi = 0;
       v.errs = errs;
       v.tried = tried.slice();
       v.rev = revealed.map(function (r) { return lettreSure(r); }).join(',');

@@ -37,6 +37,7 @@ function answerFor(questionText) {
   await p.click('.game-tile[data-g="manoir"]');
   check('description 12 joueurs', (await p.textContent('#mini-setup-desc')).includes('12'));
   await p.click('#btn-mini-hotseat');
+  await p.locator('#mini-count .count-btn[data-n="1"]').click(); // seul (par défaut : 2)
   await p.click('#btn-mini-start');
   await p.waitForSelector('#screen-mini.active');
   check('thème sombre appliqué', await p.evaluate(() =>
