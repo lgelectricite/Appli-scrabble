@@ -63,7 +63,8 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
   async function lanceLocal(p, jeu, noms) {
     await p.click('.game-tile[data-g="' + jeu + '"]');
     await p.click('#btn-mini-hotseat');
-    if (noms.length > 2) await p.click('#mini-count .count-btn:nth-child(' + (noms.length - (jeu === 'yams' ? 0 : 1)) + ')');
+    const nb = p.locator('#mini-count .count-btn[data-n="' + noms.length + '"]');
+    if (await nb.count()) await nb.click();
     for (let i = 0; i < noms.length; i++) await p.fill('#mini-name-' + (i + 1), noms[i]);
     await p.click('#btn-mini-start');
     await p.waitForSelector('#screen-mini.active');
@@ -389,6 +390,126 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
       check('solo : jamais d’écran de passage', await p.locator('#overlay-pass:not(.hidden)').count() === 0);
       await capture(p, 'bataille_solo');
       await sansDebord(p, 'Bataille solo');
+      await p._ctx.close();
+    }
+  }
+
+  /* ======================= YAMS ======================= */
+  if (joue('yams')) {
+    const espionY = p => p.evaluate(() => {
+      const m = GG.byId.yams, ap = m.apply;
+      m.apply = function (s) { window.__ym = s; return ap.apply(this, arguments); };
+    });
+    const etat = (p, f) => p.evaluate(f);
+    for (const [w, h] of [[412, 780], [360, 640]]) {
+      console.log('--- Yams contre 3 IA (' + w + '×' + h + ') ---');
+      const p = await nouvelle(w, h);
+      await espionY(p);
+      await lanceSolo(p, 'yams', 'difficile', 3);
+      await p.waitForSelector('.ym-v2');
+      const onglets = await p.textContent('.ym-onglets');
+      check('BUG 5 : noms complets (« 🤖 Margot », plus « 🤖 Margo »)', /🤖 Margot/.test(onglets) && /🤖 Suzette/.test(onglets), onglets);
+      check('les onglets remplacent les pastilles de la coque', await p.locator('#mini-players.hidden').count() === 1);
+      const tronque = await p.evaluate(() => [...document.querySelectorAll('.ym-on-nom')].some(e => e.scrollWidth > e.clientWidth + 1));
+      check('aucun nom coupé à l’écran', !tronque);
+      check('5 vrais dés en 3D (6 faces chacun)', await p.locator('.ym-cube').count() === 5 && await p.locator('.ym-f').count() === 30);
+      // BUG 1 : double appui sur « Lancer »
+      await p.locator('[data-a="roll"]').click();
+      await p.locator('[data-a="roll"]').click({ force: true, noWaitAfter: true }).catch(() => {});
+      await attendre(80);
+      check('BUG 1 corrigé : double appui = UN seul lancer', await etat(p, () => window.__ym.rolls) === 2);
+      check('les dés roulent et rebondissent', await p.locator('.ym-de.roule').count() === 5);
+      await p.waitForSelector('[data-a="roll"]:not([disabled])');
+      // garder un dé : il se range dans « Gardés »
+      await p.locator('.ym-piste .ym-de[data-die="0"]').click();
+      check('dé gardé rangé de côté', await p.locator('.ym-gardes .ym-de[data-die="0"].garde').count() === 1);
+      // BUG 5 : cases de 44 px, aperçu des points, choix confirmé
+      const hauteurs = await p.evaluate(() => [...document.querySelectorAll('.ym-ligne')].map(e => e.getBoundingClientRect().height));
+      check('BUG 5 : 13 cases de 44 px ou plus', hauteurs.length === 13 && Math.min.apply(null, hauteurs) >= 44, Math.min.apply(null, hauteurs));
+      check('aperçu des points possibles dans chaque case libre', await p.locator('.ym-ligne.possible').count() === 13);
+      const couleurZero = await p.evaluate(() => {
+        const z = document.querySelector('.ym-ligne.possible.nul b');
+        return z ? getComputedStyle(z).color : 'aucun';
+      });
+      check('un 0 possible n’est pas rouge', !/rgb\(2[0-9]{2}, [0-9]{1,2}, [0-9]{1,2}\)/.test(couleurZero), couleurZero);
+      check('sous-total vers 63 affiché', /\/63/.test(await p.textContent('.ym-sous')));
+      await p.locator('.ym-ligne.possible[data-cat="chance"]').click();
+      check('BUG 5 : un seul appui ne marque PAS la case', await etat(p, () => window.__ym.players[0].sheet.chance) === null &&
+        await p.locator('.ym-ligne.choisie').count() === 1 && await p.locator('[data-a="marque"]').count() === 1);
+      await capture(p, 'yams_' + w + '_choix');
+      await sansDebord(p, 'Yams choix d’une case');
+      await p.click('[data-a="marque"]');
+      check('confirmé : la case est marquée', await etat(p, () => window.__ym.players[0].sheet.chance) !== null);
+      // annulation du dernier choix (avant que l’IA suivante lance)
+      if (await p.locator('[data-a="annule"]').count()) {
+        await p.click('[data-a="annule"]', { timeout: 500 }).catch(() => {});
+        const annule = await etat(p, () => window.__ym.players[0].sheet.chance === null && window.__ym.current === 0);
+        check('« Annuler mon choix » : la case redevient libre', annule || await etat(p, () => window.__ym.current !== 0));
+        if (annule) await p.locator('.ym-ligne.possible[data-cat="chance"]').dblclick();
+      }
+      // l’IA joue : ses dés restent visibles, son choix est annoncé
+      await p.waitForFunction(() => window.__ym.current === 0 && window.__ym.rolls === 3, null, { timeout: 30000 });
+      check('les IA ont joué leur tour', await etat(p, () => window.__ym.players.slice(1).every(q => Object.values(q.sheet).some(v => v !== null))));
+      await capture(p, 'yams_' + w + '_retour');
+      if (w === 412) {
+        // BUG 8 : vitesse rapide — l’attente entre deux tours humains
+        const attente = async () => {
+          await p.waitForSelector('[data-a="roll"]:not([disabled])');
+          await p.click('[data-a="roll"]');
+          await p.waitForSelector('.ym-ligne.possible');
+          const libre = await etat(p, () => ['un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'brelan', 'carre', 'full', 'psuite', 'gsuite', 'yams', 'chance']
+            .find(c => window.__ym.players[0].sheet[c] === null));
+          const t0 = Date.now();
+          await p.locator('.ym-ligne.possible[data-cat="' + libre + '"]').dblclick();
+          await p.waitForFunction(() => window.__ym.current === 0 && window.__ym.rolls === 3, null, { timeout: 40000 });
+          return (Date.now() - t0) / 1000;
+        };
+        const tNormal = await attente();
+        await p.click('[data-a="vitesse"]');
+        check('bouton ⏩ : mode rapide', await etat(p, () => window.__ym.rapide === true));
+        const tRapide = await attente();
+        mesure('Yams contre 3 IA, attente réelle entre deux tours', tNormal.toFixed(1) + ' s en normal, ' + tRapide.toFixed(1) + ' s en rapide (avant : 19,5 s)');
+        check('BUG 8 : attente < 12 s en normal et < 4,5 s en rapide', tNormal < 12 && tRapide < 4.5, [tNormal, tRapide]);
+        // « Yams ! » fêté (dés truqués le temps d’un lancer)
+        await p.waitForSelector('[data-a="roll"]:not([disabled])');
+        await p.evaluate(() => { window.__r = Math.random; Math.random = () => 0.99; });
+        await p.click('[data-a="roll"]');
+        await p.evaluate(() => { Math.random = window.__r; });
+        await p.waitForSelector('.ym-table.yams', { timeout: 3000 });
+        check('« YAMS ! » fêté (texte, confettis, table qui brille)', await p.evaluate(() =>
+          [...document.querySelectorAll('[data-gg-fx]')].some(e => /YAMS/.test(e.textContent)) || !!document.querySelector('canvas[data-gg-fx]')));
+        await capture(p, 'yams_412_yams');
+        // secouer pour lancer (capteur simulé)
+        await p.locator('.ym-ligne.possible').first().dblclick();
+        await p.waitForFunction(() => window.__ym.current === 0 && window.__ym.rolls === 3, null, { timeout: 20000 });
+        await p.click('[data-a="secouer"]');
+        await p.waitForSelector('[data-a="roll"]:not([disabled])');
+        await p.evaluate(() => {
+          const ev = () => { const e = new Event('devicemotion'); e.accelerationIncludingGravity = { x: 28, y: 4, z: 9 }; window.dispatchEvent(e); };
+          ev(); setTimeout(ev, 120);
+        });
+        await attendre(300);
+        check('📳 secouer le téléphone lance les dés', await etat(p, () => window.__ym.rolls) === 2);
+        await p.evaluate(() => GG.reglages.set('yams-secouer', false));
+      }
+      await attendre(900); // dés retombés
+      await sansDebord(p, 'Yams');
+      await p._ctx.close();
+    }
+    {
+      console.log('--- Yams à deux sur un téléphone ---');
+      const p = await nouvelle(360, 640);
+      await espionY(p);
+      await lanceLocal(p, 'yams', ['Léa', 'Marc']);
+      await p.click('[data-a="roll"]');
+      await p.waitForSelector('.ym-ligne.possible');
+      await p.locator('.ym-ligne.possible[data-cat="chance"]').dblclick();
+      check('double toucher sur une case = choisir puis confirmer', await etat(p, () => window.__ym.players[0].sheet.chance) !== null);
+      check('Marc peut annuler le choix de Léa avant de lancer', /Annuler le choix de Léa/.test(await p.textContent('[data-a="annule"]')));
+      await p.click('[data-a="annule"]');
+      check('annulé : c’est de nouveau à Léa, avec ses dés', await etat(p, () => window.__ym.current === 0 && window.__ym.rolls === 2));
+      await capture(p, 'yams_360_deux');
+      await sansDebord(p, 'Yams à deux');
       await p._ctx.close();
     }
   }

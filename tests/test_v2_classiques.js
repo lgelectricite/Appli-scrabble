@@ -424,5 +424,107 @@ if (joue('bataille')) {
   check('Bataille difficile bat moyen nettement', wD >= 0.62 * ND);
 }
 
+/* ================= YAMS ================= */
+const DELAI_IA = 0.925; // délai moyen de la coque entre deux actions d’IA (0,65 à 1,2 s)
+if (joue('yams')) {
+  const ym = require(ROOT + '/js/games/yams.js');
+  console.log('--- Yams : bug 1 (double appui sur « Lancer ») ---');
+  let g = ym.create(['Léa', 'Marc']);
+  check('niveaux déclarés', JSON.stringify(ym.niveaux) === '["facile","moyen","difficile"]');
+  check('1er lancer accepté', ym.apply(g, 0, { t: 'roll', n: 3 }).ok && g.rolls === 2);
+  check('BUG 1 corrigé : un 2e « lancer » identique (double appui) est ignoré',
+    !ym.apply(g, 0, { t: 'roll', n: 3 }).ok && g.rolls === 2);
+  const avant = g.dice.slice();
+  ym.apply(g, 0, { t: 'hold', i: 0 }); ym.apply(g, 0, { t: 'hold', i: 1 });
+  ym.apply(g, 0, { t: 'roll', n: 2 });
+  check('les dés gardés ne bougent pas', g.dice[0] === avant[0] && g.dice[1] === avant[1] && g.rolls === 1);
+  const g2 = ym.create(['a']); ym.apply(g2, 0, { t: 'roll', n: 3 });
+  const d2 = g2.dice.slice();
+  ym.apply(g2, 0, { t: 'roll', n: 2, keep: [true, false, true, false, false] });
+  check('« lancer en gardant » en une seule action (IA plus rapide)', g2.dice[0] === d2[0] && g2.dice[2] === d2[2] && g2.held[0] && !g2.held[1]);
+  check('dés gardés invalides refusés', !ym.apply(g2, 0, { t: 'roll', n: 1, keep: 'x' }).ok);
+
+  console.log('--- Yams : choix confirmé et annulation du dernier choix ---');
+  ym.apply(g, 0, { t: 'score', cat: 'chance' });
+  const pts = g.players[0].sheet.chance;
+  check('case marquée, main à Marc', pts !== null && g.current === 1);
+  check('Marc (pas encore lancé) ou Léa peuvent annuler', g.annulable && g.annulable.player === 0);
+  const g3 = GG.clone(g);
+  check('annulation : la case redevient libre, Léa rejoue avec SES dés', ym.apply(g, 0, { t: 'annule' }).ok &&
+    g.players[0].sheet.chance === null && g.current === 0 && g.rolls === 1 && g.dice.join() === g3.annulable.dice.join());
+  ym.apply(g3, 1, { t: 'roll', n: 3 });
+  check('après le 1er lancer du joueur suivant, plus d’annulation', !ym.apply(g3, 0, { t: 'annule' }).ok);
+  const g4 = ym.create(['a', 'b', 'c']);
+  ym.apply(g4, 0, { t: 'roll', n: 3 }); ym.apply(g4, 0, { t: 'score', cat: 'chance' });
+  check('un tiers ne peut pas annuler le choix d’un autre', !ym.apply(g4, 2, { t: 'annule' }).ok);
+
+  console.log('--- Yams : vitesse contre l’ordinateur (bug 8) ---');
+  g = ym.create(['Vous', '🤖 Margot', '🤖 Ernest', '🤖 Suzette']);
+  check('« rapide » refusé hors partie contre l’ordinateur', !ym.apply(g, 0, { t: 'vitesse', rapide: true }).ok);
+  g.niveauIA = 'difficile';
+  ym.apply(g, 0, { t: 'roll', n: 3 }); ym.apply(g, 0, { t: 'score', cat: 'chance' });
+  check('« rapide » activable à tout moment en solo', ym.apply(g, 0, { t: 'vitesse', rapide: true }).ok && g.rapide);
+  const a1 = ym.bot(GG.clone(g), 1, {});
+  check('en mode rapide, l’IA joue tout son tour en UNE action', a1 && a1.t === 'auto');
+  const avantAuto = Object.values(g.players[1].sheet).filter(v => v !== null).length;
+  check('tour automatique accepté', ym.apply(g, 1, a1).ok && g.current === 2 &&
+    Object.values(g.players[1].sheet).filter(v => v !== null).length === avantAuto + 1 &&
+    g.journal && g.journal.etapes.length >= 1);
+  check('le joueur humain ne peut pas demander « auto »', (() => { const h = ym.create(['a', 'b']); h.niveauIA = 'moyen'; h.rapide = true; return !ym.apply(h, 0, { t: 'auto' }).ok; })());
+  // actions d’IA par tour, et attente entre deux tours humains contre 3 IA
+  function actionsParTour(niveau, rapide) {
+    let actions = 0, tours = 0;
+    for (let k = 0; k < (RAPIDE ? 5 : 20); k++) {
+      const s = ym.create(['🤖 a', '🤖 b']); s.niveauIA = niveau; s.rapide = rapide;
+      let garde = 0;
+      while (!s.finished && garde++ < 400) {
+        const i = s.current;
+        const a = ym.bot(GG.clone(s), i, { niveau });
+        if (a.t === 'auto' && i === 0) { ym.apply(s, i, ym._decision(s, i, niveau).t === 'roll' ? { t: 'roll', n: 3 } : a); continue; }
+        ym.apply(s, i, a);
+        if (i === 1) { actions++; if (a.t === 'score' || a.t === 'auto') tours++; }
+      }
+    }
+    return actions / tours;
+  }
+  const apt = actionsParTour('difficile', false), aptR = actionsParTour('difficile', true);
+  mesure('Yams : actions d’IA par tour', apt.toFixed(2) + ' en normal (avant ≈ 7 : chaque dé gardé était une action), ' + aptR.toFixed(2) + ' en rapide');
+  mesure('Yams contre 3 IA : attente entre deux tours humains', (3 * apt * DELAI_IA).toFixed(1) + ' s en normal, ' +
+    (3 * aptR * DELAI_IA).toFixed(1) + ' s en rapide (avant : 19,5 s)');
+  check('Yams : attente contre 3 IA < 12 s en normal, < 4 s en rapide', 3 * apt * DELAI_IA < 12 && 3 * aptR * DELAI_IA < 4);
+
+  console.log('--- Yams : fin, gagnants, sécurité ---');
+  g = ym.create(['<img src=x onerror=alert(1)>', 'B']);
+  while (!g.finished) ym.apply(g, g.current, ym.bot(GG.clone(g), g.current, { niveau: 'moyen' }));
+  const t0 = ym._total(g.players[0]), t1 = ym._total(g.players[1]);
+  check('gagnants() = le meilleur total', JSON.stringify(ym.gagnants(g)) === JSON.stringify(t0 === t1 ? [] : [t0 > t1 ? 0 : 1]));
+  check('récapitulatif échappé', ym.summary(g).indexOf('<img') === -1);
+
+  console.log('--- Yams : niveaux d’IA mesurés (score moyen en solo) ---');
+  const NY = RAPIDE ? 40 : 200;
+  const moyY = {};
+  ['facile', 'moyen', 'difficile'].forEach(niv => {
+    let tot = 0, bonus = 0, yams = 0, tmax = 0;
+    for (let k = 0; k < NY; k++) {
+      const s = ym.create(['a']);
+      while (!s.finished) {
+        const t = Date.now();
+        const a = ym.bot(s, 0, { niveau: niv });
+        tmax = Math.max(tmax, Date.now() - t);
+        ym.apply(s, 0, a);
+      }
+      tot += ym._total(s.players[0]);
+      const h = ['un', 'deux', 'trois', 'quatre', 'cinq', 'six'].reduce((x, c) => x + s.players[0].sheet[c], 0);
+      if (h >= 63) bonus++;
+      if (s.players[0].sheet.yams === 50) yams++;
+    }
+    moyY[niv] = tot / NY;
+    mesure('Yams ' + niv, moyY[niv].toFixed(1) + ' points en moyenne sur ' + NY + ' parties (bonus ' + pct(bonus, NY) +
+      ', yams ' + pct(yams, NY) + ', décision la plus longue ' + tmax + ' ms)');
+  });
+  check('Yams : facile < moyen < difficile', moyY.facile + 40 < moyY.moyen && moyY.moyen + 8 < moyY.difficile, moyY);
+  check('Yams difficile : plus de 220 points en moyenne', moyY.difficile > 220, moyY.difficile);
+}
+
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 des classiques OK.');
 process.exit(failures ? 1 : 0);

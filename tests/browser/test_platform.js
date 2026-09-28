@@ -80,9 +80,11 @@ function check(n, c, e) {
   await p.click('#btn-mini-start');
   await p.waitForSelector('#screen-mini.active');
   await p.click('[data-a="roll"]');
-  await p.waitForSelector('.yams-pick');
-  await p.locator('.yams-pick').last().click(); // « chance »
-  const filled = await p.locator('.yams-sheet td.filled').count();
+  // V2 : on choisit une case (points possibles affichés), puis on confirme
+  await p.waitForSelector('.ym-ligne.possible');
+  await p.locator('.ym-ligne.possible[data-cat="chance"]').click();
+  await p.click('[data-a="marque"]');
+  const filled = await p.locator('.ym-ligne.pleine').count();
   check('Yams : case marquée', filled === 1, filled);
   await p.click('#btn-mini-menu');
   await p.click('#btn-menu-quit');
