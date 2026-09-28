@@ -137,7 +137,8 @@ check('4 joueurs : 5 cartes chacun', g.players.every(p => p.hand.length === 5));
 check('hors tour refusé', !huit.apply(g, (g.current + 1) % 4, { t: 'draw' }).ok);
 // main truquée pour tester les effets
 g = huit.create(['A', 'B', 'C']);
-g.current = 0; g.dir = 1;
+// main truquée : on neutralise aussi l'effet éventuel de la 1re carte (un 2 retourné)
+g.current = 0; g.dir = 1; g.pending2 = 0;
 g.discard = [{ r: '5', s: '♠' }];
 g.players[0].hand = [{ r: '5', s: '♥' }, { r: 'V', s: '♠' }, { r: 'A', s: '♠' },
   { r: '2', s: '♠' }, { r: '8', s: '♦' }, { r: '9', s: '♦' }];
@@ -185,7 +186,7 @@ huit.apply(g, 1, { t: 'pass' });
 check('passe après pioche', g.current === 2);
 // victoire et score
 g = huit.create(['A', 'B']);
-g.current = 0;
+g.current = 0; g.pending2 = 0;
 g.discard = [{ r: '5', s: '♠' }];
 g.players[0].hand = [{ r: '5', s: '♦' }];
 g.players[1].hand = [{ r: '8', s: '♠' }, { r: 'R', s: '♥' }, { r: '7', s: '♣' }, { r: 'A', s: '♦' }];
