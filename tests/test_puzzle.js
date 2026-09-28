@@ -67,11 +67,12 @@ for (const lvl of ['facile', 'moyen', 'difficile']) {
     w.cells.every((c, k) => built.grid[c] === w.w[k])));
   check(lvl + ' : toutes les cases remplies', built.grid.every(ch => /^[A-Z]$/.test(ch)));
 }
-// niveaux : tailles, nombres de mots, répartition des directions
-check('niveaux : 9×9/7, 11×11/10, 13×13/13', (() => {
+// niveaux (V2 : grilles en hauteur pour le téléphone, cases ≥ 32 px) :
+// 7×8, 8×9, 9×10, de plus en plus de mots, et un mot mystère
+check('niveaux : 7×8, 8×9, 9×10, de plus en plus de mots, mot mystère', (() => {
   const a = meles._buildGrid('facile'), b = meles._buildGrid('moyen'), c = meles._buildGrid('difficile');
-  return a.size === 9 && a.words.length === 7 && b.size === 11 && b.words.length === 10 &&
-    c.size === 13 && c.words.length === 13;
+  return a.cols === 7 && a.rows === 8 && b.cols === 8 && b.rows === 9 && c.cols === 9 && c.rows === 10 &&
+    a.words.length >= 6 && c.words.length >= 9 && !!a.mystere && !!c.mystere;
 })());
 check('facile : mélange garanti d’horizontaux ET de verticaux', (() => {
   for (let t = 0; t < 10; t++) {
@@ -95,7 +96,7 @@ check('les mots viennent de la liste des mots courants', (() => {
 })());
 g = meles.create(['A', 'B']);
 meles.apply(g, 0, { t: 'level', l: 'facile' }, { dict });
-check('partie lancée', g.phase === 'play' && g.words.length === 7);
+check('partie lancée', g.phase === 'play' && g.words.length >= 6);
 const w0 = g.words[0];
 r = meles.apply(g, 1, { t: 'claim', a: w0.cells[0], b: w0.cells[w0.cells.length - 1] });
 check('mot revendiqué', r.ok && w0.foundBy === 1 && g.players[1].found === 1);
@@ -107,7 +108,8 @@ check('mot à l’envers accepté', r.ok && w1.foundBy === 0);
 g.words.forEach(w => {
   if (w.foundBy === -1) meles.apply(g, 0, { t: 'claim', a: w.cells[0], b: w.cells[w.cells.length - 1] });
 });
-check('tous trouvés → fin', g.finished === true);
+check('tous trouvés → révélation du mot mystère, puis fin', g.phase === 'mystere' &&
+  meles.apply(g, -1, { t: 'fin' }).ok && g.finished === true);
 check('lignes brisées refusées', (() => {
   const t = meles.create(['A']);
   meles.apply(t, 0, { t: 'level', l: 'facile' }, { dict });
@@ -125,19 +127,25 @@ g = motus.create(['A', 'B']);
 motus.apply(g, 0, { t: 'level', l: 'facile' }, { dict });
 check('mot de 5 lettres choisi', g.secret.length === 5 && dict.set.has(g.secret));
 check('secret pris dans les mots courants', GG.MOTS_COURANTS.indexOf(g.secret) !== -1, g.secret);
+check('V2 : la première lettre est offerte (publique)', g.first === g.secret[0] &&
+  motus.redact(g, 1).first === g.secret[0]);
+// pour la suite, un secret connu (les essais doivent commencer par sa 1re lettre)
+g.secret = 'CHIEN'; g.first = 'C';
 // tableau COMMUN, chacun son tour : A commence
 check('A commence (tour par tour)', motus.turnOf(g) === 0);
 check('hors tour refusé', !motus.apply(g, 1, { t: 'guess', w: 'CHIEN' }, { dict }).ok);
-r = motus.apply(g, 0, { t: 'guess', w: 'ZZZZZ' }, { dict });
-check('mot hors dictionnaire refusé', !r.ok);
-const g1 = g.secret === 'CHIEN' ? 'PLAGE' : 'CHIEN';
+r = motus.apply(g, 0, { t: 'guess', w: 'CZZZZ' }, { dict });
+check('mot hors dictionnaire refusé', !r.ok && /dictionnaire/.test(r.error), r.error);
+r = motus.apply(g, 0, { t: 'guess', w: 'PLAGE' }, { dict });
+check('V2 : un essai qui ne commence pas par la lettre offerte est refusé', !r.ok && /commence par/.test(r.error), r.error);
+const g1 = 'CHAUD';
 r = motus.apply(g, 0, { t: 'guess', w: g1.toLowerCase() }, { dict });
 check('essai valide accepté (minuscules OK), essai PARTAGÉ avec auteur',
   r.ok && g.tries.length === 1 && g.tries[0].by === 0 && g.tries[0].word === g1);
 check('le tour passe à B', motus.turnOf(g) === 1);
 check('mot déjà proposé refusé', !motus.apply(g, 1, { t: 'guess', w: g1 }, { dict }).ok);
 // essais ILLIMITÉS : bien plus de 6 propositions possibles
-const pool5 = GG.MOTS_COURANTS.filter(w => w.length === 5 && w !== g.secret && w !== g1);
+const pool5 = GG.MOTS_COURANTS.filter(w => w.length === 5 && w[0] === 'C' && w !== g.secret && w !== g1);
 for (let k = 0; k < 9; k++) {
   const rr = motus.apply(g, g.turn, { t: 'guess', w: pool5[k] }, { dict });
   if (!rr.ok) { failures++; console.log('  FAIL essai illimité n°' + (k + 2) + ' refusé : ' + rr.error); break; }

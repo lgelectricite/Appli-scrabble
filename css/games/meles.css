@@ -1,21 +1,185 @@
 /* ===== GGgames V2 — Mots mêlés =====
+   Un plateau clair posé sur la table (cadre aux couleurs du jeu, relief,
+   ombre) ; les mots trouvés sont surlignés par des gélules translucides,
+   chacune de sa couleur, dessinées SOUS les lettres (toujours lisibles).
+   La gélule de sélection suit le doigt.
    Styles propres à ce jeu (chargés après css/style.css). */
 
-/* ===== Mots mêlés ===== */
-.mel-grid {
-  display: grid; gap: 2px;
-  max-width: min(94vw, 56vh); margin: 4px auto 8px;
-  user-select: none;
+.mel-jeu, .mel-accueil { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.mel-jeu {
+  /* une case : la largeur de l'écran, et la hauteur pour garder la liste visible */
+  --c: max(32px, min(52px, calc((100vw - 34px) / var(--cols)), calc((100vh - 398px) / var(--rows))));
 }
+
+/* ---- bandeau ---- */
+.mel-barre { display: flex; align-items: center; gap: 6px; margin: 2px 0 8px; }
+.mel-barre-esp { flex: 1; }
+.mel-pill {
+  font-family: var(--f-titre); font-weight: 600; font-size: 14px; white-space: nowrap;
+  padding: 5px 11px; border-radius: 999px; color: var(--txt);
+  background: var(--glass-2); border: 1px solid var(--stroke);
+}
+.mel-theme-pill { overflow: hidden; text-overflow: ellipsis; min-width: 0; background: linear-gradient(135deg, rgba(196, 113, 245, .3), rgba(250, 113, 205, .25)); border-color: rgba(250, 113, 205, .5); }
+.mel-chrono { font-variant-numeric: tabular-nums; min-width: 72px; text-align: center; }
+
+/* ---- le plateau ---- */
+.mel-plateau {
+  position: relative; width: calc(var(--c) * var(--cols) + 16px); margin: 0 auto; padding: 8px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #fbf8ff, #efe8ff);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 0 0 3px rgba(196, 113, 245, .85), 0 6px 0 #6d2f9a, 0 14px 30px rgba(3, 4, 20, .5), inset 0 2px 0 #fff;
+  animation: melPlateau .5s var(--ressort) both;
+}
+@keyframes melPlateau { from { opacity: 0; transform: translateY(14px) scale(.95); } }
+.mel-traits { position: absolute; left: 8px; top: 8px; width: calc(var(--c) * var(--cols)); height: calc(var(--c) * var(--rows)); overflow: visible; pointer-events: none; will-change: transform; }
+.mel-grid { position: relative; display: grid; width: calc(var(--c) * var(--cols)); z-index: 1; touch-action: none; will-change: transform; }
 .mel-cell {
-  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-  background: var(--card); border: 1px solid var(--ink-10); border-radius: 4px; cursor: pointer;
-  font-size: clamp(11px, 3.4vw, 18px); font-weight: 700;
+  height: var(--c); display: flex; align-items: center; justify-content: center;
+  font-family: var(--f-titre); font-weight: 600; font-size: calc(var(--c) * .56); line-height: 1;
+  color: #2b2257; cursor: pointer;
+  animation: melCase .35s ease both; animation-delay: var(--d, 0ms);
 }
-.mel-cell.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.mel-words { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+@keyframes melCase { from { opacity: 0; transform: scale(.4); } }
+.mel-cell.ancre { color: #fff; }
+.mel-cell.ancre::before {
+  content: ''; position: absolute; width: calc(var(--c) * .8); height: calc(var(--c) * .8); border-radius: 50%; z-index: -1;
+  background: #c471f5; box-shadow: 0 0 0 3px rgba(196, 113, 245, .35);
+}
+.mel-cell { position: relative; }
+
+/* les gélules : un trait épais aux bouts ronds */
+.mel-trait {
+  fill: none; stroke: var(--c); stroke-width: .74; stroke-linecap: round; opacity: .5;
+  stroke-dasharray: var(--l) 99; stroke-dashoffset: 0;
+}
+.mel-trait.neuf { animation: melTrace .45s var(--doux) both; }
+@keyframes melTrace { from { stroke-dashoffset: var(--l); opacity: .9; } }
+.mel-sel { fill: none; stroke: transparent; stroke-width: .8; stroke-linecap: round; }
+.mel-sel.on { stroke: rgba(196, 113, 245, .55); }
+.mel-sel.rate { stroke: rgba(255, 77, 94, .6); animation: melRate .45s ease; }
+@keyframes melRate { 20%, 60% { transform: translateX(-.12px); } 40%, 80% { transform: translateX(.12px); } }
+
+/* fin : les lettres restantes s'allument, dans l'ordre */
+.mel-cell.restante { color: #fff; }
+.mel-cell.restante::after {
+  content: ''; position: absolute; inset: 7%; border-radius: 30%; z-index: -1;
+  background: linear-gradient(135deg, #c471f5, #fa71cd); box-shadow: 0 2px 8px rgba(196, 113, 245, .6);
+  animation: melAllume .5s var(--ressort) both; animation-delay: calc(var(--k, 0) * 140ms + 250ms);
+}
+@keyframes melAllume { from { opacity: 0; transform: scale(.2); } }
+.mel-jeu.fete .mel-plateau { animation: melFete .8s var(--ressort); }
+@keyframes melFete { 40% { transform: scale(1.02) rotate(-.6deg); } }
+
+/* ---- le mot mystère ---- */
+.mel-mystere {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 8px;
+  margin: 10px auto 2px; padding: 5px 8px; max-width: 470px; min-height: 46px; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(196, 113, 245, .18), rgba(250, 113, 205, .12));
+  border: 1px solid rgba(250, 113, 205, .38);
+}
+.mel-mystere:empty { display: none; }
+.mel-mys-t { font-family: var(--f-titre); font-weight: 600; font-size: 15px; white-space: nowrap; }
+.mel-mys-cases { display: inline-flex; gap: 3px; }
+.mel-mys-case {
+  width: min(22px, calc((100vw - 190px) / 11)); height: 27px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--f-titre); font-weight: 600; font-size: 16px; color: #2b2257;
+  background: rgba(255, 255, 255, .12); border-bottom: 3px solid rgba(255, 255, 255, .35);
+}
+.mel-mys-case.ok { background: linear-gradient(180deg, #fff, #f1e6ff); border-bottom-color: #a86ad6; animation: melLettre .45s var(--ressort) both; animation-delay: calc(var(--i) * 90ms); }
+@keyframes melLettre { from { transform: translateY(-10px) scale(.5); opacity: 0; } }
+.mel-mys-btn {
+  min-height: 36px; padding: 4px 12px; border-radius: 12px; font-weight: 800; font-size: 14px; cursor: pointer;
+  color: #3a1050; background: linear-gradient(180deg, #ffe066, #ffb52e); border: 1px solid rgba(255, 255, 255, .5);
+  box-shadow: 0 2px 0 #b8741a;
+}
+.mel-mys-bonus { font-weight: 800; font-size: 14px; color: #ffe066; }
+.mel-mys-form { display: flex; gap: 6px; width: 100%; justify-content: center; }
+.mel-mys-form input {
+  width: min(220px, 60vw); height: 40px; padding: 0 10px; border-radius: 12px; font-size: 18px; letter-spacing: 2px;
+  font-family: var(--f-titre); text-transform: uppercase; color: var(--txt); text-align: center;
+  background: rgba(0, 0, 0, .25); border: 2px solid var(--stroke-2); outline: none; user-select: text; -webkit-user-select: text;
+}
+.mel-mys-form input:focus { border-color: #fa71cd; }
+.mel-vol {
+  display: inline-flex; width: 26px; height: 30px; align-items: center; justify-content: center; border-radius: 7px;
+  font-family: var(--f-titre); font-weight: 600; font-size: 18px; color: #fff;
+  background: linear-gradient(135deg, #c471f5, #fa71cd);
+}
+
+.mel-msg { margin: 6px 4px 2px; text-align: center; font-size: 14.5px; font-weight: 700; color: var(--txt-2); }
+.mel-msg:empty { display: none; }
+.mel-msg strong { color: var(--txt); }
+
+/* ---- la liste des mots ---- */
+.mel-words { display: flex; flex-wrap: wrap; gap: 5px 6px; justify-content: center; margin: 4px 0 6px; }
 .mel-word {
-  background: var(--card); border: 1px solid var(--ink-16); border-radius: 8px; padding: 3px 10px;
-  font-size: 13px; font-weight: 700; letter-spacing: 1px;
+  position: relative; padding: 3px 9px; border-radius: 999px; font-family: var(--f-titre); font-weight: 600; font-size: 13.5px; letter-spacing: .6px;
+  color: var(--txt); background: var(--glass-2); border: 1px solid var(--stroke);
+  transition: background .3s, color .3s, opacity .3s;
 }
-.mel-word.found { text-decoration: line-through; }
+.mel-word.found {
+  color: rgba(255, 255, 255, .7); text-decoration: line-through; text-decoration-thickness: 2px;
+  background: color-mix(in srgb, var(--c) 35%, transparent); border-color: var(--c);
+}
+.mel-word.found::before {
+  content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px;
+  background: var(--c);
+}
+.mel-word.par::after {
+  content: ''; position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--p); border: 1.5px solid var(--bg-1);
+}
+.mel-word.pop { animation: melPop .5s var(--ressort); }
+@keyframes melPop { 40% { transform: scale(1.22); } }
+
+.mel-joueurs { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 4px 0; }
+.mel-joueurs:empty { display: none; }
+.mel-joueur { padding: 4px 11px; border-radius: 999px; font-size: 14px; font-weight: 800; background: var(--glass-2); border: 2px solid var(--c); }
+.mel-joueur.tour { box-shadow: 0 0 0 3px rgba(255, 194, 61, .35); animation: melTour 1.2s ease-in-out infinite; }
+@keyframes melTour { 50% { transform: scale(1.05); } }
+.mel-jeu.attente .mel-grid { opacity: .6; }
+.mel-fin { margin-top: 6px; }
+.mel-fin:empty { display: none; }
+
+/* ---- accueil ---- */
+.mel-accueil { max-width: 470px; margin: 0 auto; }
+.mel-deco { display: flex; justify-content: center; gap: 6px; margin: 4px 0 12px; }
+.mel-deco span {
+  width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+  font-family: var(--f-titre); font-weight: 600; font-size: 24px; color: #2b2257;
+  background: linear-gradient(180deg, #fbf8ff, #efe8ff); box-shadow: 0 3px 0 #6d2f9a, 0 0 0 2px rgba(196, 113, 245, .8);
+  animation: melCase .5s var(--ressort) both; animation-delay: calc(var(--i) * 90ms);
+}
+.mel-deco span:nth-child(2), .mel-deco span:nth-child(3) { background: linear-gradient(135deg, #e3b3ff, #ffb3e6); }
+.mel-jour {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; text-align: left;
+  border-radius: 20px; color: #fff; touch-action: manipulation;
+  background: linear-gradient(135deg, #c471f5, #fa71cd);
+  border: 1px solid rgba(255, 255, 255, .3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 5px 0 #7a2a8f, 0 12px 26px rgba(196, 113, 245, .3);
+  transition: transform .12s var(--doux), box-shadow .12s;
+}
+.mel-jour:active { transform: translateY(3px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 2px 0 #7a2a8f; }
+.mel-jour-ic { font-size: 30px; }
+.mel-jour-tx { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.mel-jour-t { font-family: var(--f-titre); font-size: 20px; font-weight: 600; }
+.mel-jour-s { font-size: 14px; font-weight: 700; opacity: .95; }
+.mel-jour-go { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .22); }
+.mel-titre-choix { margin: 14px 2px 6px; font-size: 13px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--txt-3); }
+.mel-themes { display: flex; flex-wrap: wrap; gap: 6px; max-height: 24vh; overflow-y: auto; padding: 2px; }
+.mel-theme {
+  min-height: 38px; padding: 6px 11px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 700;
+  color: var(--txt); background: var(--glass); border: 1.5px solid var(--stroke); touch-action: manipulation;
+}
+.mel-theme.actif { background: linear-gradient(135deg, #c471f5, #fa71cd); border-color: transparent; color: #fff; }
+.mel-lvls { gap: 8px; margin: 0 0 8px; }
+.mel-lvls .btn.big.mel-lvl { min-height: 58px; animation: melCase .45s var(--ressort) both; animation-delay: calc(var(--i) * 70ms); }
+.mel-lvl-t { font-size: 17px; }
+
+@media (max-height: 700px) {
+  .mel-mystere { margin-top: 7px; padding: 5px 8px; }
+  .mel-word { font-size: 13px; padding: 2px 8px; }
+  .mel-barre { margin-bottom: 6px; }
+}
