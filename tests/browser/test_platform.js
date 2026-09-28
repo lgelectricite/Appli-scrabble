@@ -178,6 +178,8 @@ function check(n, c, e) {
   check('bateaux de l’hôte invisibles chez l’invité', guestAimShips === 0, guestAimShips);
 
   // l'hôte tire une case ; l'invité voit le résultat sur SA flotte
+  // (la carte n'est « prête » qu'un instant après son affichage : anti double-appui)
+  await host.waitForSelector('.bn-grid.aim[data-pret="1"]');
   await host.locator('.bn-grid.aim .bn-cell').first().click();
   await guest.waitForFunction(() =>
     document.querySelectorAll('.bn-cell.hit, .bn-cell.miss').length >= 1, null, { timeout: 8000 });

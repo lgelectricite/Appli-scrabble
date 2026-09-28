@@ -227,5 +227,202 @@ if (joue('morpion')) {
   });
 }
 
+/* ================= BATAILLE NAVALE ================= */
+if (joue('bataille')) {
+  const bn = require(ROOT + '/js/games/bataille.js');
+  const N = 10;
+  const pret = s => { bn.apply(s, 0, { t: 'ready' }); bn.apply(s, 1, { t: 'ready' }); };
+  function seTouchent(board) {
+    for (let a = 0; a < board.ships.length; a++) {
+      for (let b = a + 1; b < board.ships.length; b++) {
+        for (const i of board.ships[a].cells) {
+          for (const j of board.ships[b].cells) {
+            if (Math.abs(Math.floor(i / N) - Math.floor(j / N)) <= 1 && Math.abs(i % N - j % N) <= 1) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+  console.log('--- Bataille : flottes au hasard (bug 9) ---');
+  let touchent = 0, malFormees = 0;
+  const NF = RAPIDE ? 400 : 2000;
+  for (let k = 0; k < NF; k++) {
+    const f = bn._randomFleet();
+    if (seTouchent(f)) touchent++;
+    const tailles = f.ships.map(s => s.size).join(',');
+    if (tailles !== '5,4,3,3,2' || Object.keys(f.cells).length !== 17) malFormees++;
+  }
+  mesure('Bataille : flottes au hasard dont des navires se touchent', touchent + '/' + NF + ' (avant : 80,5 %)');
+  check('Bataille : aucune flotte au hasard n’a de navires qui se touchent', touchent === 0);
+  check('Bataille : flottes toujours complètes (5 navires, 17 cases)', malFormees === 0);
+
+  console.log('--- Bataille : règles au choix ---');
+  let g = bn.create(['Léa', 'Marc']);
+  check('par défaut : un tir par tour, navires écartés, série en 3',
+    !g.opts.rejoue && !g.opts.colles && g.opts.manches === 3);
+  check('règles modifiables avant que quiconque soit prêt', bn.apply(g, 1, { t: 'regles', colles: true, manches: 5 }).ok &&
+    g.opts.colles && g.opts.manches === 5);
+  check('série inconnue refusée', !bn.apply(g, 0, { t: 'regles', manches: 2 }).ok);
+  // placement manuel : collés permis → on peut coller deux navires
+  const b0 = g.boards[0];
+  const autre = b0.ships[1];
+  const place = (s, r, c, h) => bn.apply(g, 0, { t: 'place', s, r, c, h });
+  check('placement hors grille refusé', !place(4, 9, 9, true).ok);
+  const occupe = autre.cells[0];
+  check('placement sur un autre navire refusé',
+    !bn.apply(g, 0, { t: 'place', s: 4, r: Math.floor(occupe / N), c: occupe % N, h: true }).ok);
+  // on met le torpilleur juste à côté d’un navire (si possible) : accepté en « collés permis »
+  let colle = null;
+  for (let r = 0; r < N && !colle; r++) for (let c = 0; c < N - 1 && !colle; c++) {
+    const cl = [r * N + c, r * N + c + 1];
+    const libre = cl.every(i => g.boards[0].cells[i] === undefined || g.boards[0].cells[i] === 4);
+    const voisin = cl.some(i => [-1, 1, -N, N].some(d => g.boards[0].cells[i + d] !== undefined && g.boards[0].cells[i + d] !== 4 &&
+      Math.abs((i + d) % N - i % N) <= 1));
+    if (libre && voisin) colle = { r, c };
+  }
+  check('navires collés acceptés quand la règle le permet', colle && place(4, colle.r, colle.c, true).ok);
+  check('le navire a bien bougé', g.boards[0].ships[4].r === colle.r && g.boards[0].ships[4].c === colle.c &&
+    g.boards[0].cells[colle.r * N + colle.c] === 4);
+  check('repasser en « écartés » replace la flotte qui ne l’est plus', bn.apply(g, 0, { t: 'regles', colles: false }).ok &&
+    !seTouchent(g.boards[0]) && bn._flotteValide(g.boards[0], false));
+  check('en « écartés », coller un navire est refusé', (() => {
+    const cible = g.boards[0].ships[0].cells[0], r = Math.floor(cible / N), c = cible % N;
+    for (const [rr, cc] of [[r - 1, c], [r + 1, c], [r, c - 2], [r, c + 1]]) {
+      if (rr < 0 || rr >= N || cc < 0 || cc >= N - 1) continue;
+      const res = bn.apply(g, 0, { t: 'place', s: 4, r: rr, c: cc, h: true });
+      if (res.ok) return false;
+    }
+    return true;
+  })());
+  bn.apply(g, 0, { t: 'ready' });
+  check('règles figées dès qu’un joueur est prêt', !bn.apply(g, 1, { t: 'regles', rejoue: true }).ok);
+  check('placement refusé une fois prêt', !bn.apply(g, 0, { t: 'shuffle' }).ok);
+
+  console.log('--- Bataille : bug 2 (le tireur voit son résultat avant de passer la main) ---');
+  g = bn.create(['Léa', 'Marc']);
+  pret(g);
+  const eau = (s, cible) => { for (let i = 0; i < N * N; i++) if (s.boards[cible].cells[i] === undefined && !s.shots[cible][i]) return i; };
+  const tir = bn.apply(g, 0, { t: 'fire', i: eau(g, 1) });
+  check('tir à l’eau : la main NE passe PAS tout de suite', g.current === 0 && g.attente === true);
+  check('sur un téléphone, l’écran reste celui du tireur', bn.turnOf(g) === 0 && bn.viewerOf(g) === 0);
+  check('le résultat reste affiché ≈ 1,2 s (minuteur « suite »)', tir.timer && tir.timer.action.t === 'suite' &&
+    tir.timer.ms >= 1000 && tir.timer.ms <= 1600, tir.timer);
+  check('le dernier tir dit QUI a tiré', g.dernier.tireur === 0 && g.dernier.cible === 1 && g.dernier.res === 'eau');
+  check('pas de second tir pendant l’affichage', !bn.apply(g, 0, { t: 'fire', i: eau(g, 1) }).ok);
+  check('l’adversaire ne peut pas « passer » à la place du tireur', !bn.apply(g, 1, { t: 'suite' }).ok);
+  check('un vieux minuteur (autre tir) ne fait rien', bn.apply(g, -1, { t: 'suite', n: 999 }).ok && g.current === 0);
+  check('bouton « Passer le téléphone » : la main passe', bn.apply(g, 0, { t: 'suite' }).ok && g.current === 1 && !g.attente);
+  check('le minuteur qui arrive ensuite ne fait rien (et ne râle pas)',
+    bn.apply(g, -1, tir.timer.action).ok && g.current === 1);
+  const touche = Object.keys(g.boards[0].cells).map(Number)[0];
+  bn.apply(g, 1, { t: 'fire', i: touche });
+  check('règle classique : même touché, la main passe après l’affichage', g.attente && g.current === 1 && g.dernier.res !== 'eau');
+  const vueTireur = bn.redact(g, 1), vueCible = bn.redact(g, 0);
+  check('le tireur apprend « touché » sans savoir quel navire', vueTireur.dernier.navire === undefined);
+  check('la cible sait quel navire est touché', vueCible.dernier.navire === g.boards[0].cells[touche]);
+  bn.apply(g, -1, { t: 'suite', n: g.nTirs });
+  check('le minuteur passe la main', g.current === 0);
+
+  console.log('--- Bataille : variante « touché = on rejoue » et secret des flottes ---');
+  g = bn.create(['A', 'B']);
+  bn.apply(g, 0, { t: 'regles', rejoue: true });
+  pret(g);
+  const cibleB = Object.keys(g.boards[1].cells).map(Number);
+  bn.apply(g, 0, { t: 'fire', i: cibleB[0] });
+  check('touché = on rejoue, sans attendre', g.current === 0 && !g.attente);
+  const red = bn.redact(g, 1);
+  check('en jeu, la flotte adverse ne circule pas (cases, positions)', Object.keys(red.boards[0].cells).length === 0 &&
+    red.boards[0].ships.every(s => s.sunk || (s.r === undefined && s.cells.length === 0)));
+  cibleB.slice(1).forEach(i => bn.apply(g, 0, { t: 'fire', i }));
+  check('manche gagnée', g.finished && g.winner === 0 && g.players[0].wins === 1);
+  const redFin = bn.redact(g, 1);
+  check('fin de manche : le perdant revoit les deux flottes', Object.keys(redFin.boards[0].cells).length === 17 &&
+    Object.keys(redFin.boards[1].cells).length === 17 && redFin.boards[0].ships.every(s => s.r !== undefined));
+  check('manche suivante : le perdant commence', bn.apply(g, 0, { t: 'again' }).ok && (pret(g), g.current === 1) && g.manche === 2);
+
+  console.log('--- Bataille : série et fin de partie ---');
+  g = bn.create(['A', 'B']);
+  bn.apply(g, 0, { t: 'regles', manches: 1, rejoue: true });
+  pret(g);
+  let fin = null;
+  Object.keys(g.boards[1].cells).map(Number).forEach(i => { fin = bn.apply(g, 0, { t: 'fire', i }); });
+  check('série en 1 gagnée → minuteur de fin (le temps de voir)', g.serieGagnee && fin.timer && fin.timer.action.t === 'fin');
+  check('« manche suivante » refusée', !bn.apply(g, 0, { t: 'again' }).ok);
+  check('fin de partie : over() et gagnants()', bn.apply(g, -1, { t: 'fin' }).ok && bn.over(g) &&
+    JSON.stringify(bn.gagnants(g)) === '[0]');
+  const nomPiege = bn.create(['<b onclick=x>', 'B']);
+  nomPiege.players[0].wins = 3; nomPiege.fini = true;
+  check('récapitulatif échappé', bn.summary(nomPiege).indexOf('<b onclick') === -1);
+
+  console.log('--- Bataille : IA contre l’humain ---');
+  g = bn.create(['Vous', '🤖 Margot']);
+  g.niveauIA = 'difficile';
+  check('l’IA attend que l’humain ait réglé et placé', bn.bot(GG.clone(g), 1, { niveau: 'difficile' }) === null);
+  bn.apply(g, 0, { t: 'ready' });
+  check('puis elle se déclare prête', JSON.stringify(bn.bot(GG.clone(g), 1, {})) === '{"t":"ready"}');
+  bn.apply(g, 1, { t: 'ready' });
+  bn.apply(g, 0, { t: 'fire', i: eau(g, 1) });
+  bn.apply(g, 0, { t: 'suite' });
+  const aIA = bn.bot(GG.clone(g), 1, { niveau: 'difficile' });
+  bn.apply(g, 1, aIA);
+  check('en solo, le tir de l’IA rend la main sans attente', g.current === 0 && !g.attente);
+  // fair-play : l’IA joue pareil sur la vue expurgée (elle ne lit pas les secrets)
+  const vue = bn.redact(g, 1);
+  vue.boards[0].cells = {};
+  const iRed = bn._tir(vue, 1, 'difficile');
+  check('l’IA vise sans connaître la flotte adverse', iRed >= 0 && !g.shots[0][iRed]);
+
+  console.log('--- Bataille : niveaux d’IA mesurés (tirs pour couler une flotte) ---');
+  function tirsPourCouler(niveau, colles) {
+    const s = bn.create(['a', 'b']);
+    s.opts.colles = colles;
+    if (colles) s.boards[1] = bn._randomFleet();
+    pret(s);
+    let n = 0;
+    while (!s.finished && n < 100) {
+      s.current = 0; s.attente = false;
+      const a = bn.bot(s, 0, { niveau });
+      bn.apply(s, 0, a); n++;
+    }
+    return n;
+  }
+  const NM = RAPIDE ? 60 : 300;
+  const moy = {};
+  ['facile', 'moyen', 'difficile'].forEach(niv => {
+    let tot = 0, pire = 0;
+    for (let k = 0; k < NM; k++) { const n = tirsPourCouler(niv, false); tot += n; pire = Math.max(pire, n); }
+    moy[niv] = tot / NM;
+    mesure('Bataille ' + niv, moy[niv].toFixed(1) + ' tirs en moyenne pour couler toute la flotte (pire : ' + pire + ', sur ' + NM + ' flottes)');
+  });
+  check('Bataille difficile : ≈ 44 tirs (densité de probabilité)', moy.difficile <= 48, moy.difficile);
+  {
+    let tot = 0;
+    for (let k = 0; k < NM; k++) tot += tirsPourCouler('difficile', true);
+    mesure('Bataille difficile, règle « collés permis » (sans déduire les abords des épaves)',
+      (tot / NM).toFixed(1) + ' tirs en moyenne');
+    check('Bataille difficile sans déduction : toujours ≈ 44 tirs', tot / NM <= 50, tot / NM);
+  }
+  check('Bataille : difficile < moyen < facile', moy.difficile < moy.moyen && moy.moyen < moy.facile, moy);
+  check('Bataille facile : nettement plus lent', moy.facile >= moy.moyen + 8, moy);
+  // duel réel (un tir par tour) : difficile contre moyen
+  let wD = 0;
+  const ND = RAPIDE ? 40 : 200;
+  for (let k = 0; k < ND; k++) {
+    const s = bn.create(['a', 'b']);
+    pret(s);
+    s.current = k % 2;
+    const niv = ['difficile', 'moyen'];
+    let garde = 0;
+    while (!s.finished && garde++ < 500) {
+      const a = bn.bot(s, s.current, { niveau: niv[s.current] });
+      bn.apply(s, s.current, a);
+    }
+    if (s.winner === 0) wD++;
+  }
+  mesure('Bataille difficile contre moyen', wD + ' victoires sur ' + ND + ' (' + pct(wD, ND) + ')');
+  check('Bataille difficile bat moyen nettement', wD >= 0.62 * ND);
+}
+
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 des classiques OK.');
 process.exit(failures ? 1 : 0);

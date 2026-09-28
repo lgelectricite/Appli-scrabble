@@ -257,6 +257,9 @@ console.log('--- Bataille navale ---');
 g = bataille.create(['A', 'B']);
 check('17 cases de bateaux chacun',
   Object.keys(g.boards[0].cells).length === 17 && Object.keys(g.boards[1].cells).length === 17);
+// V2 : la règle classique « un tir par tour » est celle par défaut ; la
+// variante « touché = on rejoue » se choisit avant que quiconque soit prêt
+check('variante « touché = on rejoue » au choix', bataille.apply(g, 0, { t: 'regles', rejoue: true }).ok && g.opts.rejoue);
 bataille.apply(g, 0, { t: 'ready' });
 bataille.apply(g, 1, { t: 'ready' });
 check('phase de jeu lancée', g.phase === 'play' && g.current === 0);

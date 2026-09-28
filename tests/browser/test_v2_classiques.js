@@ -239,6 +239,160 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
     }
   }
 
+  /* ======================= BATAILLE NAVALE ======================= */
+  if (joue('bataille')) {
+    // le test garde une référence à l’état d’autorité pour viser juste
+    const espion = p => p.evaluate(() => {
+      const m = GG.byId.bataille, ap = m.apply;
+      m.apply = function (s) { window.__bn = s; return ap.apply(this, arguments); };
+    });
+    const etat = (p, f) => p.evaluate(f);
+    for (const [w, h] of [[412, 780], [360, 640]]) {
+      console.log('--- Bataille navale à deux sur un téléphone (' + w + '×' + h + ') ---');
+      const p = await nouvelle(w, h);
+      await espion(p);
+      await lanceLocal(p, 'bataille', ['Léa', 'Marc']);
+      await p.waitForSelector('.bn-grid.placement');
+      check('placement : ma flotte, 17 cases, 5 navires dessinés',
+        await p.locator('.bn-cell.ship').count() === 17 && await p.locator('.bn-navire').count() === 5);
+      check('mer animée (vagues)', await p.evaluate(() =>
+        getComputedStyle(document.querySelector('.bn-grid'), '::before').animationName === 'bn-houle'));
+      check('3 réglages : série, tirs, navires', await p.locator('.bn-regle').count() === 3);
+      await p.click('[data-r="rejoue"]');
+      check('réglage « touché = rejoue » appliqué', await etat(p, () => window.__bn.opts.rejoue === true));
+      await p.click('[data-r="rejoue"]');
+      check('retour à la règle classique « un tir par tour »', await etat(p, () => window.__bn.opts.rejoue === false));
+      await capture(p, 'bataille_' + w + '_placement');
+      await sansDebord(p, 'Bataille placement');
+      const bouton = await p.locator('[data-a="ready"]').boundingBox();
+      check('« Je suis prêt » visible sans défiler', bouton && bouton.y + bouton.height <= h, bouton);
+      // glisser le torpilleur vers une place libre et valide
+      const cible = await etat(p, () => {
+        const b = window.__bn.boards[0], N = 10;
+        const occ = {};
+        b.ships.forEach((s, k) => { if (k !== 4) s.cells.forEach(i => { occ[i] = 1; }); });
+        const pres = i => [-11, -10, -9, -1, 0, 1, 9, 10, 11].some(d => {
+          const j = i + d; if (j < 0 || j >= 100) return false;
+          if (Math.abs(j % N - i % N) > 1) return false;
+          return occ[j];
+        });
+        const t = b.ships[4];
+        for (let r = 0; r < N - (t.h ? 0 : 1); r++) for (let c = 0; c < N - (t.h ? 1 : 0); c++) {
+          if (r === t.r && c === t.c) continue;
+          const i2 = t.h ? r * N + c + 1 : (r + 1) * N + c;
+          if (!pres(r * N + c) && !pres(i2)) return { r, c, h: t.h, r0: t.r, c0: t.c };
+        }
+        return null;
+      });
+      check('une place libre existe pour le torpilleur', !!cible);
+      if (cible) {
+        const grille = await p.locator('.bn-grid.placement').boundingBox();
+        const t = grille.width / 10;
+        await p.mouse.move(grille.x + (cible.c0 + 0.5) * t, grille.y + (cible.r0 + 0.5) * t);
+        await p.mouse.down();
+        await p.mouse.move(grille.x + (cible.c + 0.5) * t, grille.y + (cible.r + 0.5) * t, { steps: 8 });
+        check('glisser : l’ombre de la place visée est verte', await p.locator('.bn-ombre.ok').count() === 1);
+        await p.mouse.up();
+        await attendre(200);
+        check('placement MANUEL : le navire glissé est déplacé', await etat(p, () =>
+          [window.__bn.boards[0].ships[4].r, window.__bn.boards[0].ships[4].c].join()) === [cible.r, cible.c].join());
+      }
+      const avantRot = await etat(p, () => window.__bn.boards[0].ships.map(s => s.h).join());
+      for (let s = 0; s < 5; s++) {
+        await p.locator('.bn-navire[data-s="' + s + '"]').click();
+        await attendre(120);
+        if (await etat(p, () => window.__bn.boards[0].ships.map(x => x.h).join()) !== avantRot) break;
+      }
+      check('toucher un navire le fait pivoter', await etat(p, () => window.__bn.boards[0].ships.map(x => x.h).join()) !== avantRot);
+      await p.click('[data-a="shuffle"]');
+      check('« Au hasard » : flotte toujours écartée', await etat(p, () => {
+        const b = window.__bn.boards[0];
+        return b.ships.every((s, a) => b.ships.every((t, k) => k <= a || s.cells.every(i => t.cells.every(j =>
+          Math.abs(Math.floor(i / 10) - Math.floor(j / 10)) > 1 || Math.abs(i % 10 - j % 10) > 1))));
+      }));
+      await p.click('[data-a="ready"]');
+      await p.waitForSelector('#overlay-pass:not(.hidden)');
+      check('écran de passage vers Marc pour SON placement', /Marc/.test(await p.textContent('#pass-name')));
+      await p.click('#btn-pass-ready');
+      await p.click('[data-a="ready"]');
+      await p.waitForSelector('#overlay-pass:not(.hidden)');
+      await p.click('#btn-pass-ready');
+      await p.waitForSelector('.bn-grid.aim[data-pret="1"]');
+      check('carte adverse dans le brouillard', await p.locator('.bn-grid.cible .bn-cell.brume').count() === 100);
+      check('aucun navire adverse visible', await p.locator('.bn-grid.cible .bn-navire, .bn-grid.cible .bn-cell.ship').count() === 0);
+      // BUG 2 : Léa tire à l’eau
+      const eau = await etat(p, () => { for (let i = 0; i < 100; i++) if (window.__bn.boards[1].cells[i] === undefined) return i; });
+      await p.locator('.bn-grid.aim .bn-cell[data-i="' + eau + '"]').click();
+      check('le tir part avec sa traînée (obus en vol)', await p.waitForSelector('[data-gg-fx="vol"] .bn-obus',
+        { timeout: 500, state: 'attached' }).then(() => true, () => false));
+      await attendre(700);
+      check('BUG 2 corrigé : le tireur voit SON résultat (pas d’écran de passage tout de suite)',
+        await p.locator('#overlay-pass:not(.hidden)').count() === 0 && await p.locator('.bn-resultat.res-eau').count() === 1);
+      check('éclaboussure sur la carte adverse', await p.locator('.bn-grid.cible .bn-cell.miss').count() === 1);
+      check('bouton « Passer le téléphone à Marc »', /Passer le téléphone à Marc/.test(await p.textContent('[data-a="suite"]')));
+      await capture(p, 'bataille_' + w + '_resultat');
+      await sansDebord(p, 'Bataille résultat du tir');
+      await p.waitForSelector('#overlay-pass:not(.hidden)', { timeout: 3000 });
+      check('≈ 1,2 s plus tard, passage du téléphone à Marc', /Marc/.test(await p.textContent('#pass-name')));
+      await p.click('#btn-pass-ready');
+      const msgMarc = await p.textContent('.bn-msg');
+      check('Marc lit QUI a tiré et le résultat', /Léa a tiré en [A-J]\d+ : à l’eau/.test(msgMarc) && /À toi de tirer, Marc/.test(msgMarc), msgMarc);
+      check('le tir de Léa est encadré sur la flotte de Marc', await p.locator('.bn-grid.mienne .bn-cell.last.miss').count() === 1);
+      await capture(p, 'bataille_' + w + '_marc');
+      if (w === 412) {
+        // on finit la manche : Léa coule tout, Marc tire à l’eau (bouton « passer »)
+        const cibles = await etat(p, () => Object.keys(window.__bn.boards[1].cells).map(Number));
+        let k = 0, coules = 0, sombreVu = false;
+        for (let tour = 0; tour < 80 && k < cibles.length; tour++) {
+          await p.waitForSelector('.bn-grid.aim[data-pret="1"]', { timeout: 5000 });
+          const quiTire = await etat(p, () => window.__bn.current);
+          const i = quiTire === 0 ? cibles[k++] : await etat(p, () => {
+            for (let j = 99; j >= 0; j--) if (window.__bn.boards[0].cells[j] === undefined && !window.__bn.shots[0][j]) return j;
+          });
+          await p.locator('.bn-grid.aim .bn-cell[data-i="' + i + '"]').click();
+          if (await etat(p, () => window.__bn.finished)) break;
+          await attendre(520);
+          const c2 = await p.locator('.bn-grid.cible .bn-navire.coule').count();
+          if (c2 > coules) { coules = c2; if (await p.locator('.bn-navire.sombre').count()) sombreVu = true; }
+          await p.click('[data-a="suite"]');
+          await p.waitForSelector('#overlay-pass:not(.hidden)');
+          await p.click('#btn-pass-ready');
+        }
+        check('navire coulé : l’épave apparaît et sombre', sombreVu && coules >= 1, { coules, sombreVu });
+        await p.waitForSelector('.bn-flotte-fin', { timeout: 5000 });
+        check('fin de manche annoncée', /Léa gagne la manche/.test(await p.textContent('.bn-titre')));
+        check('fin de manche : les DEUX flottes sont révélées (le perdant revoit la sienne)',
+          await p.locator('.bn-flotte-fin').count() === 2 && await p.locator('.bn-flotte-fin .bn-navire').count() === 10);
+        await attendre(900);
+        await capture(p, 'bataille_412_finmanche');
+        await sansDebord(p, 'Bataille fin de manche');
+        await p.click('[data-a="again"]');
+        await p.waitForSelector('.bn-grid.placement');
+        check('manche 2 : retour au placement, règles rappelées', await p.locator('.bn-resume').count() === 1);
+      }
+      await p._ctx.close();
+    }
+    {
+      console.log('--- Bataille navale contre l’IA difficile ---');
+      const p = await nouvelle(412, 780);
+      await espion(p);
+      await lanceSolo(p, 'bataille', 'difficile');
+      await p.waitForSelector('.bn-grid.placement');
+      await attendre(1500);
+      check('l’IA attend que l’humain soit prêt', await etat(p, () => !window.__bn || window.__bn.phase === 'place'));
+      await p.click('[data-a="ready"]');
+      await p.waitForSelector('.bn-grid.aim[data-pret="1"]', { timeout: 5000 });
+      const eau = await etat(p, () => { for (let i = 0; i < 100; i++) if (window.__bn.boards[1].cells[i] === undefined) return i; });
+      await p.locator('.bn-grid.aim .bn-cell[data-i="' + eau + '"]').click();
+      await p.waitForFunction(() => /Margot a (tiré|touché|coulé)/.test(document.querySelector('.bn-msg').textContent), null, { timeout: 6000 });
+      check('solo : l’IA répond et le message dit qu’elle a tiré', true);
+      check('solo : jamais d’écran de passage', await p.locator('#overlay-pass:not(.hidden)').count() === 0);
+      await capture(p, 'bataille_solo');
+      await sansDebord(p, 'Bataille solo');
+      await p._ctx.close();
+    }
+  }
+
   await browser.close();
   console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 des classiques (navigateur) OK.');
   process.exit(failures ? 1 : 0);
