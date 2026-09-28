@@ -2035,7 +2035,7 @@
   function brancher(racine) {
     function act(a) {
       // anti double-appui : le même geste, sur la même cible, pas deux fois en 350 ms
-      var now = Date.now(), cle = a.t + ':' + (a.k || '') + ':' + (a.piste !== undefined ? a.piste : '');
+      var now = Date.now(), cle = a.t + ':' + (a.k || '') + ':' + (a.piste !== undefined ? a.piste : '') + ':' + (a.text || '');
       if (racine._busyK === cle && now - (racine._busy || 0) < 350) return false;
       racine._busy = now;
       racine._busyK = cle;
