@@ -56,7 +56,7 @@ check('valeurs des lettres de l’IA = règles du moteur',
     AI.NOMBRE[i] === S.DISTRIBUTION[l][0]));
 
 console.log('--- Liste noire ---');
-['YOUPIN', 'BICOT', 'GOUINE', 'NEGRE', 'SALOPE', 'CONNARD', 'MERDE', 'ENCULE', 'PUTE', 'ZOB', 'CUL']
+['YOUPIN', 'BICOT', 'GOUINE', 'NEGRE', 'SALOPE', 'CONNARD', 'MERDE', 'ENCULE', 'PUTE', 'ZOB', 'CUL', 'FION', 'TRAVELO']
   .forEach(w => check('interdit à l’IA : ' + w, AI.estInterdit(w)));
 ['PEDALE', 'CHIEN', 'PISSENLIT', 'CONSEIL', 'CULTURE', 'BITUME', 'PUTOIS', 'CONTE', 'NEGRIER', 'MERLE']
   .forEach(w => check('autorisé : ' + w, !AI.estInterdit(w)));

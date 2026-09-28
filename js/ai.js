@@ -68,7 +68,8 @@
     'PISSE', 'PISSES', 'PISSER', 'PISSENT', 'PISSEUR', 'PISSEURS', 'PISSEUSES?', 'PISSOTIERES?',
     'PISSOIRS?', 'PISSAT', 'PISSATS', 'PISSEUX', 'PISSOUS?', 'BAISEURS?', 'BAISEUSES?',
     'TROUDUCS?', 'SODOMISER', 'PORNOS?', 'CUNNI[A-Z]*', 'FELLATION[A-Z]*', 'PARTOUZ[A-Z]*',
-    'SALOPER', 'SALOPERIES?', 'GOUDOUS?'
+    'SALOPER', 'SALOPERIES?', 'GOUDOUS?', 'FIONS?', 'CHATTES?', 'CHIENNASSES?', 'TRAVELOS?', 'SALOPIOTS?',
+    'DEGUEUL[A-Z]*', 'ZIZIS?'
   ];
   var RE_INTERDIT = new RegExp('^(' + MOTIFS_INTERDITS.join('|') + ')$');
   function estInterdit(mot) { return RE_INTERDIT.test(mot); }

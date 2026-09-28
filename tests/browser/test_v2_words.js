@@ -246,7 +246,7 @@ async function attendsMaMain(page, ms) {
   console.log('  → processeur ×4 : plus longue tâche du fil principal pendant le tour de l’IA : ' +
     Math.round(pire) + ' ms ; calcul de l’IA (Worker) : ' + ms + ' ms');
   check('[bug 2] processeur ×4 : l’écran ne fige pas pendant le tour de l’IA (< 250 ms)', pire < 250, longues);
-  check('coach : « le meilleur coup était… » après un coup', /meilleur coup/.test(coach), coach);
+  check('coach : « meilleur coup : … » après un coup', /[Mm]eilleur coup/.test(coach), coach);
 
   // [bug 5] historique : les points ne chevauchent pas la ligne suivante
   await p.waitForSelector('#overlay-end:not(.hidden)', { timeout: 15000 });
@@ -256,7 +256,7 @@ async function attendsMaMain(page, ms) {
   check('[bug 5] fin : points retirés / ajoutés détaillés',
     /(lettres restantes|lettres des autres|aucune lettre restante)/.test(finTexte), finTexte.slice(0, 300));
   check('fin : statistiques (meilleur mot, moyenne, scrabbles)',
-    /pts\/coup/.test(finTexte) && /scrabble/.test(finTexte) && await p.locator('#end-detail .fs-carte').count() === 2);
+    /Meilleur mot/.test(finTexte) && /\/coup/.test(finTexte) && await p.locator('#end-detail .fs-table tbody tr').count() === 2);
   await p.click('#btn-end-home');
   // l'historique se lit dans une partie en cours : on en relance une courte
   await p.click('.game-tile[data-g="mots"]');

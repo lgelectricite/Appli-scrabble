@@ -1408,11 +1408,8 @@
     if (!b) return;
     var mot = (b.words && b.words[0] && b.words[0].word) || b.principal || '';
     var texte;
-    if (h.type === 'move' && h.points >= b.total) texte = 'Bravo : c’était le meilleur coup possible (' + h.points + ' pts) !';
-    else {
-      texte = 'Le meilleur coup était <b>' + esc(mot) + '</b> (' + b.total + ' pts)' +
-        (h.type === 'move' ? ' — vous : ' + h.points + ' pts.' : '.');
-    }
+    if (h.type === 'move' && h.points >= b.total) texte = 'Bravo, le meilleur coup possible !';
+    else texte = 'Meilleur coup : <b>' + esc(mot) + '</b> (' + b.total + ' pts)';
     coach.messages[h.player] = texte;
   }
 
@@ -1735,11 +1732,11 @@
     if (fd) {
       (fd.detail || []).forEach(function (d) { parJoueur[d.player] = d; });
       if (fd.reason === 'playout') {
-        lines.push('<p class="fin-raison">🏁 <b>' + esc(state.players[fd.finisher].name) + '</b> a posé toutes ses ' +
-          'lettres, sac vide : la valeur des lettres restant aux autres passe dans son score.</p>');
+        lines.push('<p class="fin-raison">🏁 <b>' + esc(state.players[fd.finisher].name) + '</b> a posé toutes ' +
+          'ses lettres : celles des autres lui reviennent.</p>');
       } else {
-        lines.push('<p class="fin-raison">🏁 Chaque joueur a passé trois fois de suite : chacun perd la ' +
-          'valeur de ses lettres restantes.</p>');
+        lines.push('<p class="fin-raison">🏁 Chacun a passé trois fois de suite : les lettres restantes ' +
+          'sont déduites.</p>');
       }
     }
     var ranked = state.players.map(function (p, i) { return { name: p.name, score: p.score, i: i }; })
@@ -1751,7 +1748,7 @@
       if (d) {
         if (d.delta < 0) {
           detail = (d.avant | 0) + ' <span class="moins">− ' + (-d.delta) + '</span> (lettres restantes : ' +
-            (d.lettres || []).map(function (l) { return l === '?' ? '★' : esc(l); }).join(' ') + ')';
+            (d.lettres || []).map(function (l) { return l === '?' ? '★' : esc(l); }).join('') + ')';
         } else if (d.delta > 0) {
           detail = (d.avant | 0) + ' <span class="plus">+ ' + d.delta + '</span> (lettres des autres)';
         } else {
@@ -1762,18 +1759,18 @@
         esc(r.name) + '</span>' + (detail ? '<span class="fl-d">' + detail + '</span>' : '') +
         '</span><strong>' + r.score + ' pt' + (Math.abs(r.score) > 1 ? 's' : '') + '</strong></div>');
     });
-    // statistiques de la partie
+    // statistiques de la partie : une ligne par joueur
     var st = S.stats(state);
-    lines.push('<div class="fin-stats"><h3>📊 Statistiques de la partie</h3><div class="fs-grille">' +
+    lines.push('<div class="fin-stats"><table class="fs-table" aria-label="Statistiques de la partie"><thead><tr>' +
+      '<th>📊 Stats</th><th title="Meilleur mot">⭐ Meilleur mot</th><th title="Points par coup">Moy.</th>' +
+      '<th title="Scrabbles">🎉</th></tr></thead><tbody>' +
       state.players.map(function (p, i) {
         var s = st[i];
-        return '<div class="fs-carte"><span class="fs-nom">' + esc(p.name) + '</span>' +
-          '<span class="fs-l">⭐ ' + (s.meilleur ? '<b>' + esc(s.meilleur.mot) + '</b> ' + s.meilleur.points + ' pts' : '—') +
-          '</span><span class="fs-l">⌀ <b>' + String(s.moyenne).replace('.', ',') + '</b> pts/coup</span>' +
-          '<span class="fs-l">🎉 <b>' + s.scrabbles + '</b> scrabble' + (s.scrabbles > 1 ? 's' : '') + '</span>' +
-          (s.refus ? '<span class="fs-l">❌ ' + s.refus + ' refusé' + (s.refus > 1 ? 's' : '') + '</span>' : '') +
-          '</div>';
-      }).join('') + '</div></div>');
+        return '<tr><th>' + esc(p.name) + '</th><td>' +
+          (s.meilleur ? '<b>' + esc(s.meilleur.mot) + '</b> ' + s.meilleur.points : '—') + '</td><td>' +
+          String(s.moyenne).replace('.', ',') + '</td><td>' + s.scrabbles +
+          (s.refus ? ' <small title="mots refusés">(' + s.refus + '✗)</small>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>');
     det.innerHTML = lines.join('');
     var w = $('end-winner');
     var gagnants = S.gagnants(state);
