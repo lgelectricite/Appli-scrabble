@@ -1316,11 +1316,12 @@
       if (action.t === 'start') {
         // aventure solo : la carte des niveaux, sur ce téléphone
         if (state.players.length !== 1) return { ok: false, error: 'Les niveaux se jouent en solo.' };
-        if (state.phase !== 'setup' && state.phase !== 'result') {
+        if (state.phase !== 'setup' && state.phase !== 'result' && state.goal) {
           return { ok: false, error: 'Un niveau est déjà en cours.' };
         }
         var lvl = action.lvl | 0;
         if (lvl < 1 || lvl > 100000) return { ok: false, error: 'Niveau inconnu.' };
+        // (une partie de l'ancienne version, sans objectif, se remplace sans discussion)
         monteNiveau(state, p, lvl);
         return { ok: true };
       }
@@ -1646,7 +1647,8 @@
     var s = ctx.state;
     el._bbCtx = ctx;
     var soloLocal = s.players.length === 1;
-    if (s.phase === 'setup') {
+    // une partie de l'ancienne version (sans objectif) : retour à la carte
+    if (s.phase === 'setup' || (s.solo && !s.goal)) {
       el._bb = null;
       if (soloLocal) rendCarte(el, ctx);
       else rendCourse(el, ctx);
@@ -1739,6 +1741,8 @@
    * RENDU — 4. l'écran de jeu (DOM persistant, animé pièce par pièce)
    * ================================================================ */
   function posCss(i) { return 'translate(' + (COLC[i] * 100) + '%,' + (ROWC[i] * 100) + '%)'; }
+  /* pose une position (mémorisée : on n'écrit dans le style que si elle change) */
+  function poseTr(e, tr) { if (e._tr !== tr) { e.style.transform = tr; e._tr = tr; } }
   function posXY(r, c) { return 'translate(' + (c * 100) + '%,' + (r * 100) + '%)'; }
 
   function texteObjectif(s) {
@@ -1823,7 +1827,7 @@
     var holes = s.holes || ZEROS, tiles = V.tiles.children, ingr = s.goal && s.goal.k === 'ingr';
     for (var i = 0; i < NN; i++) {
       var t = tiles[i], r = ROWC[i], c = COLC[i];
-      if (holes[i]) { t.className = 'bb-tile trou'; continue; }
+      if (holes[i]) { if (t.className !== 'bb-tile trou') t.className = 'bb-tile trou'; continue; }
       var dehors = function (rr, cc) { return rr < 0 || cc < 0 || rr >= N || cc >= N || holes[rr * N + cc]; };
       var cls = 'bb-tile' + ((r + c) % 2 ? ' alt' : '');
       if (dehors(r - 1, c) && dehors(r, c - 1)) cls += ' ctl';
@@ -1833,7 +1837,7 @@
       if (jelly[i] > 0) cls += ' j' + Math.min(2, jelly[i] | 0);
       if (block[i] > 0) cls += ' b' + Math.min(2, block[i] | 0);
       if (ingr && dehors(r + 1, c)) cls += ' sortie';
-      t.className = cls;
+      if (t.className !== cls) t.className = cls; // rien ne bouge : rien à repeindre
     }
   }
 
@@ -1866,12 +1870,13 @@
     return e;
   }
   function majPiece(e, t, s, i) {
-    e.setAttribute('data-i', i);
-    e.setAttribute('data-t', tDe(t));
-    e.style.transform = posCss(i);
+    if (e.getAttribute('data-i') !== String(i)) e.setAttribute('data-i', i);
+    var dt = tDe(t);
+    if (e.getAttribute('data-t') !== dt) e.setAttribute('data-t', dt);
+    poseTr(e, posCss(i));
     var c = e.firstChild, cls = 'bb-candy ' + spriteDe(t, s) + (s === 3 ? ' envel' : (t === ARC ? ' magique' : ''));
     if (c.className !== cls) c.className = cls;
-    e.classList.remove('sel', 'bb-hint');
+    if (e.classList.contains('sel') || e.classList.contains('bb-hint')) e.classList.remove('sel', 'bb-hint');
   }
   function pieceEn(V, i) {
     for (var id in V.pos) if (V.pos[id] === i) return V.map[id];
@@ -2328,7 +2333,7 @@
     if (!ea || !eb) return attends(V, 60);
     var idA = ea.getAttribute('data-id'), idB = eb.getAttribute('data-id');
     if (st.kind === 'match') {
-      ea.style.transform = posCss(st.b); eb.style.transform = posCss(st.a);
+      poseTr(ea, posCss(st.b)); poseTr(eb, posCss(st.a));
       anime(ea, [{ transform: posCss(st.a) }, { transform: posCss(st.b) }], { duration: 170 / V.speed, easing: 'cubic-bezier(.4,0,.2,1)' });
       anime(eb, [{ transform: posCss(st.b) }, { transform: posCss(st.a) }], { duration: 170 / V.speed, easing: 'cubic-bezier(.4,0,.2,1)' });
       V.pos[idA] = st.b; V.pos[idB] = st.a;
@@ -2531,7 +2536,7 @@
       for (var q = 1; q < imgs.length; q++) if (imgs[q].offset <= imgs[q - 1].offset) imgs[q].offset = Math.min(1, imgs[q - 1].offset + 0.0001);
       imgs[0].offset = 0; imgs[imgs.length - 1].offset = 1;
       var finale = ch[ch.length - 1][1];
-      e.style.transform = posCss(finale);
+      poseTr(e, posCss(finale));
       e.setAttribute('data-i', finale);
       V.pos[id] = finale;
       anime(e, imgs, { duration: total, delay: t0, easing: 'linear', fill: 'backwards' });
@@ -2574,7 +2579,7 @@
         var id = x[0], i = x[1], e = V.map[id];
         if (!e) return;
         var avant = V.pos[id];
-        e.style.transform = posCss(i);
+        poseTr(e, posCss(i));
         e.setAttribute('data-i', i);
         V.pos[id] = i;
         if (avant !== i) {

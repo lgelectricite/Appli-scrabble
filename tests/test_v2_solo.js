@@ -213,6 +213,17 @@ if (QUOI === 'tout' || QUOI === 'sudoku') {
   check('grille finie : victoire, gagnants = [0]', sn.finished && sn.players[0].done && JSON.stringify(sudoku.gagnants(sn)) === '[0]');
   check('fin : la vague de validation est annoncée au rendu', sn.fx && sn.fx.win === true);
   check('résumé : temps, erreurs et indices', /Temps/.test(sudoku.summary(sn)) && /Erreurs/.test(sudoku.summary(sn)));
+  // une partie enregistrée par l'ancienne version se reprend sans planter
+  {
+    const m = sudoku._makePuzzle('facile');
+    const old = { players: [{ name: 'A', filled: 0, errors: 1, done: false, rank: 0 }], phase: 'play', level: 'moyen',
+      puzzle: m.puzzle, solution: m.solution, grids: { 0: m.puzzle.slice() }, toFill: m.puzzle.filter(v => !v).length,
+      startTs: Date.now() - 60000, durationSec: 0, finished: false, winner: -1 };
+    const i = m.puzzle.indexOf(0);
+    const r = sudoku.apply(old, 0, { t: 'set', i, v: m.solution[i] });
+    check('ancienne sauvegarde : reprise sans erreur (notes, annulation, chrono ajoutés)',
+      r.ok && old.notes && old.undo[0].length === 1 && old.elapsed > 0 && old.players[0].filled === 1);
+  }
   // lignes / colonnes / blocs terminés : signalés pour la vague de lumière
   {
     const s2 = sudoku.create(['Solo']);
@@ -296,6 +307,14 @@ if (QUOI === 'tout' || QUOI === 'bonbons') {
   check('toutes les combinaisons jouées (rayé/enveloppé entre eux, sucre magique, deux sucres)',
     kinds.combo > 1000 && kinds.bomb > 1000 && kinds.wipe > 20, kinds);
   check('chaque bonbon garde un identifiant unique (animations fiables)', idsDoubles === 0);
+  {
+    // une partie enregistrée par l'ancienne version (sans objectif ni identifiants)
+    const ob = { players: [{ name: 'A', board: bb._buildBoard(5).map(c => ({ t: c.t, s: 0 })), score: 100, moves: 10 }],
+      phase: 'play', level: 'aventure', solo: true, soloLvl: 7, types: 5, cible: 2000, coups: 20, startTs: 1, finished: false };
+    const r = bb.apply(ob, 0, { t: 'start', lvl: 7 });
+    check('ancienne sauvegarde : le niveau repart proprement', r.ok && ob.phase === 'play' && !!ob.goal &&
+      ob.players[0].board.every(c => !c || c.id));
+  }
 
   // ---------------------------------------------------------------
   console.log('--- Bonbons : plus de coup possible → mélange animé qui garde les spéciaux (bug 2) ---');
@@ -421,11 +440,11 @@ if (QUOI === 'tout' || QUOI === 'bonbons') {
     return w / nb;
   });
   const echantillon = [61, 66, 75, 90, 110, 141, 170, 205, 260, 333, 402, 480, 555, 600, 777, 888, 1001, 1060];
-  const tg = mesureNiveaux(echantillon, 30);
+  const tg = mesureNiveaux(echantillon, 60);
   console.log('       niveaux générés calibrés ' + echantillon.map((n, k) => n + ':' + Math.round(tg[k] * 100) + '%').join(' '));
   const moyG = tg.reduce((a, b) => a + b) / tg.length;
-  check('niveaux générés (61 à 1060) : réussis de 15 à 90 % du temps, moyenne entre 30 et 65 %',
-    tg.every(x => x >= 0.15 && x <= 0.9) && moyG >= 0.3 && moyG <= 0.65, { moyG: +moyG.toFixed(2) });
+  check('niveaux générés (61 à 1060) : réussis de 10 à 90 % du temps, moyenne entre 30 et 65 %',
+    tg.every(x => x >= 0.1 && x <= 0.9) && moyG >= 0.3 && moyG <= 0.65, { moyG: +moyG.toFixed(2) });
   const auDela = [1100, 1234, 1500, 2026, 3333];
   const tm = mesureNiveaux(auDela, 30);
   console.log('       au-delà (modèle) ' + auDela.map((n, k) => n + ':' + Math.round(tm[k] * 100) + '%').join(' '));

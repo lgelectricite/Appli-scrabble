@@ -894,6 +894,29 @@
     state.fx = null;
   }
 
+  /* Une partie enregistrée par l'ancienne version (sans notes, annulation ni
+     chrono cumulé) est complétée pour se reprendre sans heurt. */
+  function migre(state) {
+    if (!state || state.phase !== 'play' || state.notes) return state;
+    state.notes = {}; state.bad = {}; state.lock = {}; state.undo = {};
+    state.players.forEach(function (q, i) {
+      var g = state.grids[i] || (state.puzzle || []).slice();
+      state.grids[i] = g;
+      state.notes[i] = g.map(function () { return 0; });
+      state.bad[i] = g.map(function () { return 0; });
+      state.lock[i] = g.map(function () { return 0; });
+      state.undo[i] = [];
+      q.hints = q.hints || 0;
+    });
+    state.maxErr = 0; // l'ancienne version ne limitait pas les erreurs
+    state.elapsed = Math.max(0, Math.min(maintenant() - (state.startTs || maintenant()), 3600000));
+    state.lastTs = maintenant();
+    state.paused = false;
+    state.tech = state.tech || [];
+    state.n = state.n || 0;
+    return state;
+  }
+
   /* fin de la partie (victoire ou trop d'erreurs) */
   function termine(state) {
     state.finished = true;
@@ -1011,6 +1034,7 @@
     apply: function (state, player, action) {
       if (state.finished) return { ok: false, error: 'Partie terminée.' };
       if (!action || typeof action !== 'object') return { ok: false, error: 'Action inconnue.' };
+      migre(state);
       var maxErr = action.err === 0 || action.err === '0' ? 0 : 3;
       if (action.t === 'level' || action.t === 'daily') {
         if (state.phase !== 'setup') return { ok: false, error: 'Niveau déjà choisi.' };
@@ -1170,7 +1194,7 @@
      * Rendu
      * ================================================================ */
     render: function (el, ctx) {
-      var s = ctx.state;
+      var s = migre(ctx.state);
       el._sdkCtx = ctx;
       if (s.phase === 'setup') { rendAccueil(el, ctx); return; }
       rendJeu(el, ctx);
@@ -1191,7 +1215,8 @@
     _RESERVE: RESERVE,
     _TECH: TECH,
     _LEVELS: LEVELS,
-    _fmtClock: fmtClock
+    _fmtClock: fmtClock,
+    _migre: migre
   };
 
   /* Après un bon chiffre : lignes / colonnes / boîtes terminées, chiffre
