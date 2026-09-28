@@ -403,6 +403,9 @@
 #end-detail .final-line { padding: 6px 12px; margin: 4px 0; }
 #end-detail .fl-d { line-height: 1.3; }
 #end-detail .fin-raison { margin: 2px 0 6px; font-size: 14px; line-height: 1.4; }
+/* la carte de fin de Words (détail + statistiques) peut dépasser sur un petit
+   écran : elle défile au lieu de couper « Retour à l’accueil » */
+body[data-jeu="mots"] #overlay-end .overlay-card { overflow-y: auto; overscroll-behavior: contain; }
 
 /* ===== options de partie (écrans de configuration) ===== */
 #ai-level { display: grid; grid-template-columns: 1fr 1fr; }
@@ -440,4 +443,11 @@
   #rack { min-height: var(--t); }
   #screen-game .rack-tile { height: var(--t); }
   #actions .btn.action { min-height: 50px; padding-top: 4px; padding-bottom: 4px; }
+  /* fin de partie compacte : trophée plus petit, statistiques resserrées */
+  body[data-jeu="mots"] #overlay-end .overlay-card { padding-top: 14px; }
+  body[data-jeu="mots"] #overlay-end .fin-trophee { font-size: 58px; }
+  body[data-jeu="mots"] #overlay-end .fin-rayons { top: 44px; }
+  body[data-jeu="mots"] #end-winner { margin: 2px 0 6px; font-size: 27px; }
+  #end-detail .fin-stats { margin-top: 6px; }
+  #end-detail .fs-table th, #end-detail .fs-table td { padding: 4px 6px; }
 }

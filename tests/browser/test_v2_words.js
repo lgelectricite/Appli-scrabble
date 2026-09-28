@@ -479,6 +479,16 @@ async function attendsMaMain(page, ms) {
   check('[bug 3] partie finie quand chaque joueur a passé trois fois de suite',
     /trois fois de suite/.test(await d.textContent('#end-detail')));
   check('pas de débordement (fin de partie)', await debordement(d) <= 0);
+  // sur un écran de 360×640, la carte de fin défile jusqu'à « Retour à l'accueil »
+  await d.setViewportSize({ width: 360, height: 640 });
+  await attends(300);
+  const accueil = await d.evaluate(() => {
+    const carte = document.querySelector('#overlay-end .overlay-card');
+    carte.scrollTop = carte.scrollHeight;
+    const c = carte.getBoundingClientRect(), b = document.getElementById('btn-end-home').getBoundingClientRect();
+    return { visible: b.top >= c.top - 1 && b.bottom <= c.bottom + 1 && b.bottom <= innerHeight, bas: b.bottom, carte: c.bottom };
+  });
+  check('fin à 360×640 : « Retour à l’accueil » atteignable', accueil.visible, accueil);
   await ctxD.close();
 
   // repli : pas de Web Worker → l'IA calcule sur le fil principal, la partie continue
