@@ -980,19 +980,21 @@
 
   /* taille de police qui fait tenir un texte dans une boîte : on MESURE le
      texte (canevas) avec la vraie police ; hors navigateur, estimation */
-  var MESURE = null;
+  var MESURE = null, LARGEURS = {}, POLICE_PX = 0;
   function largeur(txt, px) {
     if (MESURE === null) {
       try { MESURE = document.createElement('canvas').getContext('2d') || false; } catch (e) { MESURE = false; }
     }
     if (!MESURE) return txt.length * px * 0.6;
-    MESURE.font = '700 ' + px + 'px "Nunito Variable", system-ui, sans-serif';
-    return MESURE.measureText(txt).width;
+    var cle = px + '|' + txt;
+    if (LARGEURS[cle] !== undefined) return LARGEURS[cle];
+    if (POLICE_PX !== px) { MESURE.font = '700 ' + px + 'px "Nunito Variable", system-ui, sans-serif'; POLICE_PX = px; }
+    return (LARGEURS[cle] = MESURE.measureText(txt).width);
   }
   function police(txt, larg, haut, max, min) {
-    var mots = String(txt).split(/\s+/);
+    var mots = String(txt).replace(/’/g, '’ ').split(/\s+/); // on peut couper après une apostrophe
     for (var f = max; f >= min; f -= 0.5) {
-      var maxL = Math.floor(haut / (f * 1.06));
+      var maxL = Math.floor(haut / (f * 1.04));
       if (maxL < 1) continue;
       var lignes = 1, cur = 0, esp = largeur(' ', f), ok = true;
       for (var i = 0; i < mots.length; i++) {
@@ -1012,7 +1014,7 @@
     V.racine.querySelectorAll('.gx-d').forEach(function (d) {
       var hs = d.querySelectorAll('.gx-dt'), n = hs.length;
       if (!n) return;
-      var h = (n > 1 ? (S - 2) / 2 : S - 2) - 3;
+      var h = (n > 1 ? (S - 2) / 2 : S - 2) - 2.5;
       hs.forEach(function (t) {
         var f = police(t.textContent, S - 7, h, 13, 8.5);
         t.style.fontSize = (f || 8.5) + 'px';
@@ -1336,8 +1338,8 @@
   /* construit la partie (une fois par grille) */
   function construire(el, ctx, jeu, gid) {
     var s = ctx.state, V = { gid: gid, jeu: jeu, s: s, ctx: ctx, sel: null, cale: false };
-    // largeur utile pour les cases : vue (bord 2) − marge du plateau (24) − cadre (6)
-    var dispo = Math.max(240, (el.clientWidth || 360) - 32);
+    // largeur utile pour les cases : vue (bord 2) − marge du plateau (12) − cadre (6)
+    var dispo = Math.max(240, (el.clientWidth || 360) - 20);
     V.S = jeu.taille(s, dispo);
     el.innerHTML =
       '<div class="gx gx-' + jeu.id + '" style="--s:' + V.S + 'px">' +
@@ -1397,7 +1399,7 @@
     });
     ajusterPolices(V);
     try {
-      if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(function () { ajusterPolices(V); });
+      if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(function () { LARGEURS = {}; POLICE_PX = 0; ajusterPolices(V); });
     } catch (e) { /* ancien navigateur */ }
     V.vu = { saisie: s.saisie.slice(), ok: s.words.map(function (w) { return w.ok; }), aide: s.aide.slice() };
     V.evN = s.ev ? s.ev.n : 0;
@@ -1488,9 +1490,11 @@
         V.lettres[i].textContent = l;
         if (l && !V.vu.saisie[i]) neuves.push(ce);
       }
-      var cls = 'gx-c' + (dansSel[i] ? ' sel' : '') + (i === cur && !s.complete ? ' cur' : '') +
-        (okCase[i] ? ' ok' : '') + (s.aide[i] ? ' aide' : '');
-      if (ce.className !== cls) ce.className = cls;
+      // (on bascule chaque état séparément : les classes d’animation en cours restent)
+      etat(ce, 'sel', !!dansSel[i]);
+      etat(ce, 'cur', i === cur && !s.complete);
+      etat(ce, 'ok', !!okCase[i]);
+      etat(ce, 'aide', !!s.aide[i]);
     }
     // définitions : mot courant, mots trouvés (barrés)
     Object.keys(V.moitie).forEach(function (k) {
@@ -1533,11 +1537,16 @@
     if (!V.cale) caler(V);
     else if (suivre) suivreCourant(V, true);
   }
-  function rejouer(el, cls) { // relance une animation CSS
+  function etat(el, cls, oui) {
+    if (el.classList.contains(cls) !== oui) el.classList.toggle(cls, oui);
+  }
+  var DUREES = { pop: 450, brille: 1500, barre: 600, tremble: 550, revele: 650 };
+  function rejouer(el, cls) { // relance une animation CSS, puis la retire
     el.classList.remove(cls);
     void el.offsetWidth;
     el.classList.add(cls);
-    setTimeout(function () { el.classList.remove(cls); }, 700);
+    clearTimeout(el['_t' + cls]);
+    el['_t' + cls] = setTimeout(function () { el.classList.remove(cls); }, DUREES[cls] || 700);
   }
   function jouerEvenement(V, ev) {
     var s = V.s;

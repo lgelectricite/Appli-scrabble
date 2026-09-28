@@ -248,7 +248,9 @@
         var ws = parDef[i].slice().sort(function (a, b) { return (M().dessus(s.words[a]) ? 0 : 1) - (M().dessus(s.words[b]) ? 0 : 1); });
         // (la taille de chaque texte est ajustée ensuite, en le mesurant)
         html += '<div class="gx-d n' + ws.length + '" data-c="' + i + '" data-d="' + ws.join(',') + '">' + ws.map(function (wi) {
-          return '<div class="gx-dh" data-w="' + wi + '"><span class="gx-dt" lang="fr">' + GG.esc(s.words[wi].def) + '</span></div>';
+          // (espace de largeur nulle après l’apostrophe : « d’Amérique » peut passer à la ligne)
+          return '<div class="gx-dh" data-w="' + wi + '"><span class="gx-dt" lang="fr">' +
+            GG.esc(s.words[wi].def).replace(/’/g, '’\u200b') + '</span></div>';
         }).join('') + '</div>';
       } else {
         html += '<div class="gx-d gx-orn" data-c="' + i + '"></div>';
@@ -260,7 +262,7 @@
   var JEU = {
     id: 'fleches',
     /* des cases assez grandes pour lire les définitions (on déplace la grille au besoin) */
-    taille: function (s, dispo) { return Math.max(48, Math.min(60, Math.floor(dispo / s.w))); },
+    taille: function (s, dispo) { return Math.max(s.force <= 2 ? 46 : 50, Math.min(60, Math.floor(dispo / s.w))); },
     zoomLecture: function () { return 1; },
     titre: function (s) {
       return s.jour ? '🗓️ Défi du jour' : 'Force ' + s.force + ' · n°' + (s.gnum + 1);
