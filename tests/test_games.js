@@ -537,21 +537,38 @@ console.log('--- Le Manoir ---');
 /* ================= L'IMPOSTEUR ================= */
 console.log('--- L’Imposteur ---');
 // base de paires saine
-check('au moins 150 paires de mots', imposteur._PAIRS.length >= 150, imposteur._PAIRS.length);
+check('au moins 300 paires de mots', imposteur._PAIRS.length >= 300, imposteur._PAIRS.length);
 check('paires bien formées (2 mots distincts)', imposteur._PAIRS.every(e => {
   const p = e.split('|');
   return p.length === 2 && p[0] && p[1] && p[0] !== p[1];
 }));
+check('10 catégories d’au moins 30 paires, 3 niveaux',
+  imposteur._CATEGORIES.filter(c => c.id !== 'tout').every(c =>
+    imposteur._PAIRES.filter(p => p.cat === c.id).length >= 30) &&
+  [1, 2, 3].every(n => imposteur._PAIRES.some(p => p.niv === n)));
+{
+  const QUASI = ['CROCODILE|ALLIGATOR', 'MER|OCÉAN', 'POLICIER|GENDARME', 'ROI|EMPEREUR', 'HÔPITAL|CLINIQUE',
+    'PRISON|CACHOT', 'ÉGLISE|CATHÉDRALE', 'LAC|ÉTANG', 'ÉCHARPE|FOULARD', 'VACHE|TAUREAU', 'COIFFEUR|BARBIER',
+    'ORAGE|TEMPÊTE', 'PORT|QUAI', 'NUAGE|BROUILLARD', 'RIVIÈRE|CANAL', 'CHÂTEAU|PALAIS', 'ÉCHELLE|ESCABEAU',
+    'BOUTEILLE|CARAFE', 'COURSE|RANDONNÉE', 'LAPIN|LIÈVRE'];
+  const set = new Set(imposteur._PAIRS.map(e => e.split('|').sort().join('|')));
+  const restes = QUASI.filter(q => set.has(q.split('|').sort().join('|')));
+  check('aucune paire de quasi-synonymes', restes.length === 0, restes);
+}
 check('nombre d’imposteurs : 1 puis 2 puis 3',
   imposteur._nbImposteurs(3) === 1 && imposteur._nbImposteurs(5) === 1 &&
   imposteur._nbImposteurs(6) === 2 && imposteur._nbImposteurs(8) === 2 &&
   imposteur._nbImposteurs(9) === 3 && imposteur._nbImposteurs(12) === 3);
 
 g = imposteur.create(['A', 'B', 'C', 'D', 'E']);
+check('réglages d’abord (catégorie, niveau, variantes)', g.phase === 'setup');
+check('seul l’hôte distribue', !imposteur.apply(g, 1, { t: 'deal' }).ok);
+imposteur.apply(g, 0, { t: 'deal', opts: { cat: 'animaux', niv: 'facile', debat: 60 } });
+check('mots distribués dans la catégorie choisie', g.phase === 'reveal' && g.paireCat === 'animaux');
 check('5 joueurs → 1 imposteur', g.players.filter(p => p.role === 'imposteur').length === 1);
 check('les civils partagent un mot, l’imposteur a l’autre', g.players.every(p =>
   p.word === (p.role === 'imposteur' ? g.pair[1] : g.pair[0])));
-check('phase découverte du mot', g.phase === 'reveal');
+check('double appui sur « Distribuer » : sans effet', imposteur.apply(g, 0, { t: 'deal' }).ok && g.phase === 'reveal');
 // redaction : mots et camps invisibles, même le sien
 let redImp = imposteur.redact(g, 0);
 check('mon mot visible, ceux des autres non',
@@ -560,43 +577,55 @@ check('mon mot visible, ceux des autres non',
 check('AUCUN camp visible (on ignore son propre camp)',
   redImp.players.every(p => p.role === undefined));
 check('la paire de mots ne circule pas', redImp.pair === undefined);
-// tout le monde mémorise
 check('indice avant l’heure refusé', !imposteur.apply(g, 0, { t: 'clue', text: 'x' }).ok);
 for (let i = 0; i < 5; i++) imposteur.apply(g, i, { t: 'seen' });
 check('tous ont vu → phase indices', g.phase === 'clue' && g.order.length === 5);
-// indices dans l'ordre
+check('minuteur d’indice : échéance stockée dans l’état', g.ech && g.ech.fin > Date.now() && /^clue:/.test(g.ech.k));
+check('le temps n’est pas écoulé : expiration refusée', !imposteur.apply(g, -1, { t: 'expire', k: g.ech.k }).ok);
+// on revoit son mot à tout moment (après « J'ai mémorisé »)
+check('son mot reste consultable après « J’ai mémorisé »', imposteur.redact(g, 2).players[2].word === g.players[2].word);
 check('hors tour refusé', !imposteur.apply(g, g.order[1], { t: 'clue', text: 'test' }).ok);
 const sp0 = g.order[0];
 check('indice de 2 mots refusé', !imposteur.apply(g, sp0, { t: 'clue', text: 'deux mots' }).ok);
 check('indice = son propre mot refusé',
   !imposteur.apply(g, sp0, { t: 'clue', text: g.players[sp0].word.toLowerCase() }).ok);
-for (let k = 0; k < 5; k++) imposteur.apply(g, g.order[k], { t: 'clue', text: 'indice' + k });
-check('5 indices → phase vote', g.phase === 'vote' && g.tours[0].length === 5);
+// un absent : l'hôte le passe
+check('seul l’hôte fait passer un absent', !imposteur.apply(g, 3, { t: 'skip', k: g.ech.k }).ok);
+imposteur.apply(g, 0, { t: 'skip', k: g.ech.k });
+check('absent passé : son tour est noté, on continue', g.orderPos === 1 && g.tours[0][0].passe === true);
+for (let k = 1; k < 5; k++) imposteur.apply(g, g.order[k], { t: 'clue', text: 'indice' + k });
+check('5 indices → débat minuté', g.phase === 'debat' && g.ech && /^debat:/.test(g.ech.k));
+check('seul l’hôte abrège le débat', !imposteur.apply(g, 2, { t: 'finDebat' }).ok);
+imposteur.apply(g, 0, { t: 'finDebat' });
+check('puis le vote', g.phase === 'vote');
 // votes : l'imposteur est démasqué
 const impIdx = g.players.findIndex(p => p.role === 'imposteur');
 check('vote pour soi refusé', !imposteur.apply(g, impIdx, { t: 'vote', for: impIdx }).ok);
+redImp = imposteur.redact(g, (impIdx + 1) % 5);
+check('pendant le vote, chacun revoit son mot', redImp.players[(impIdx + 1) % 5].word === g.players[(impIdx + 1) % 5].word);
 for (let i = 0; i < 5; i++) {
   imposteur.apply(g, i, { t: 'vote', for: i === impIdx ? (impIdx + 1) % 5 : impIdx });
 }
 check('imposteur éliminé → victoire des civils',
   g.phase === 'end' && g.winner === 'civils' && !g.players[impIdx].alive);
+check('bulletins gardés pour l’animation du dépouillement', g.lastResult.ballots.length === 5);
 check('civils +3 points', g.players.every((p, i) =>
   p.score === (p.role === 'civil' ? 3 : 0)));
 check('fin de manche : mots et camps révélés', (() => {
   const r = imposteur.redact(g, 1);
   return r.pair && r.players.every(p => p.role);
 })());
-// nouvelle manche : scores conservés
 imposteur.apply(g, 0, { t: 'again' });
-check('nouvelle manche, scores conservés', g.manche === 2 && g.phase === 'reveal' &&
-  g.players.some(p => p.score === 3));
+check('nouvelle manche, scores conservés, mêmes réglages', g.manche === 2 && g.phase === 'reveal' &&
+  g.players.some(p => p.score === 3) && g.opts.cat === 'animaux');
 // victoire de l'imposteur : élimination de civils jusqu'à égalité (3 joueurs)
 g = imposteur.create(['A', 'B', 'C']);
+imposteur.apply(g, 0, { t: 'deal', opts: { debat: 0 } });
 for (let i = 0; i < 3; i++) imposteur.apply(g, i, { t: 'seen' });
 for (let k = 0; k < 3; k++) imposteur.apply(g, g.order[k], { t: 'clue', text: 'x' + k });
+check('sans débat : vote direct', g.phase === 'vote');
 const imp3 = g.players.findIndex(p => p.role === 'imposteur');
 const civ3 = g.players.map((p, i) => i).filter(i => i !== imp3);
-// tout le monde vote contre un civil
 for (let i = 0; i < 3; i++) {
   imposteur.apply(g, i, { t: 'vote', for: i === civ3[0] ? civ3[1] : civ3[0] });
 }
@@ -605,6 +634,7 @@ check('1 imposteur vs 1 civil → l’imposteur gagne',
   g.players[imp3].score === 5);
 // égalité des voix : personne n'est éliminé, on rejoue un tour
 g = imposteur.create(['A', 'B', 'C']);
+imposteur.apply(g, 0, { t: 'deal', opts: { debat: 0 } });
 for (let i = 0; i < 3; i++) imposteur.apply(g, i, { t: 'seen' });
 for (let k = 0; k < 3; k++) imposteur.apply(g, g.order[k], { t: 'clue', text: 'y' + k });
 imposteur.apply(g, 0, { t: 'vote', for: 1 });
@@ -616,20 +646,53 @@ check('seul l’hôte relance le tour', !imposteur.apply(g, 1, { t: 'next' }).ok
 imposteur.apply(g, 0, { t: 'next' });
 check('nouveau tour d’indices à 3', g.phase === 'clue' && g.order.length === 3 &&
   g.tours.length === 2);
-// pendant le vote : votes des autres masqués, drapeau « a voté » visible
-g = imposteur.create(['A', 'B', 'C']);
-for (let i = 0; i < 3; i++) imposteur.apply(g, i, { t: 'seen' });
+// l'hôte clôt un vote bloqué par un absent
 for (let k = 0; k < 3; k++) imposteur.apply(g, g.order[k], { t: 'clue', text: 'z' + k });
 imposteur.apply(g, 1, { t: 'vote', for: 0 });
 redImp = imposteur.redact(g, 0);
 check('vote d’autrui masqué mais signalé', redImp.players[1].vote === undefined &&
   redImp.players[1].hasVoted === true && redImp.players[2].hasVoted === false);
+check('seul l’hôte clôt le vote', !imposteur.apply(g, 2, { t: 'clore' }).ok);
+imposteur.apply(g, 0, { t: 'clore' });
+check('vote clos : les voix exprimées suffisent', g.phase !== 'vote' && !g.players[0].alive);
 // hotseat : viewerOf suit celui qui doit agir en secret
 g = imposteur.create(['A', 'B', 'C', 'D']);
+imposteur.apply(g, 0, { t: 'deal' });
 check('viewerOf : premier joueur sans mot vu', imposteur.viewerOf(g) === 0);
 imposteur.apply(g, 0, { t: 'seen' });
 check('viewerOf passe au suivant', imposteur.viewerOf(g) === 1);
-
+// indices à l'oral : pas de téléphone à passer, n'importe qui enchaîne
+g = imposteur.create(['A', 'B', 'C', 'D']);
+imposteur.apply(g, 0, { t: 'deal', opts: { oral: true, debat: 0 } });
+for (let i = 0; i < 4; i++) imposteur.apply(g, i, { t: 'seen' });
+check('à l’oral : personne ne prend le téléphone', imposteur.turnOf(g) === -1);
+imposteur.apply(g, 2, { t: 'clue', oral: true, n: 0 });
+check('à l’oral : « a parlé » fait passer au suivant', g.orderPos === 1 && g.tours[0][0].oral);
+check('double appui sur « a parlé » : sans effet', imposteur.apply(g, 2, { t: 'clue', oral: true, n: 0 }).ok && g.orderPos === 1);
+// Mister White
+g = imposteur.create(['A', 'B', 'C', 'D', 'E']);
+imposteur.apply(g, 0, { t: 'deal', opts: { white: true, debat: 0 } });
+const wIdx = g.players.findIndex(p => p.role === 'white');
+check('Mister White : un joueur sans mot', wIdx !== -1 && g.players[wIdx].word === '' &&
+  g.players.filter(p => p.role === 'imposteur').length === 1);
+check('Mister White se sait sans mot, les autres l’ignorent',
+  imposteur.redact(g, wIdx).players[wIdx].role === 'white' &&
+  imposteur.redact(g, (wIdx + 1) % 5).players[wIdx].role === undefined);
+for (let i = 0; i < 5; i++) imposteur.apply(g, i, { t: 'seen' });
+check('Mister White ne parle jamais en premier', g.players[g.order[0]].role !== 'white');
+for (let k = 0; k < 5; k++) imposteur.apply(g, g.order[k], { t: 'clue', text: 'w' + k });
+for (let i = 0; i < 5; i++) imposteur.apply(g, i, { t: 'vote', for: i === wIdx ? (wIdx + 1) % 5 : wIdx });
+check('Mister White éliminé : il tente de deviner', g.phase === 'white' && imposteur.viewerOf(g) === wIdx);
+check('seul Mister White devine', !imposteur.apply(g, (wIdx + 1) % 5, { t: 'guess', text: 'x' }).ok);
+check('pendant qu’il devine, le mot des civils reste caché', imposteur.redact(g, wIdx).pair === undefined);
+imposteur.apply(g, wIdx, { t: 'guess', text: 'le ' + g.pair[0].toLowerCase() });
+check('mot deviné : Mister White gagne (+6)', g.phase === 'end' && g.winner === 'whiteDevine' && g.players[wIdx].score === 6);
+// série : fin et gagnants
+imposteur.apply(g, 0, { t: 'terminer' });
+check('l’hôte termine la série : fin de partie', imposteur.over(g) === true);
+check('gagnants : le meilleur score', JSON.stringify(imposteur.gagnants(g)) === JSON.stringify([wIdx]));
+check('classement final lisible (nom, espace, points)', /Mister|pts/.test(imposteur.summary(g)) &&
+  !/<\/span><strong>/.test(imposteur.summary(g)));
 
 /* ===== Petit Bac : le juge de l'IA connaît ses catégories ===== */
 {

@@ -138,5 +138,57 @@ console.log('--- Le Manoir : les affaires ---');
   check('6 parties d’affilée : aucune énigme revue', doublons === 0, doublons);
 }
 
+/* ================= L'IMPOSTEUR ================= */
+console.log('--- L’Imposteur : les mots ---');
+{
+  const I = require(ROOT + '/js/games/imposteur.js');
+  const P = I._PAIRES, A = I._ASSOC;
+  check('au moins 300 paires', P.length >= 300, P.length);
+  const cats = I._CATEGORIES.filter(c => c.id !== 'tout');
+  check('10 catégories, 30 paires au moins chacune',
+    cats.length >= 10 && cats.every(c => P.filter(p => p.cat === c.id).length >= 30),
+    cats.map(c => c.id + ':' + P.filter(p => p.cat === c.id).length).join(' '));
+  check('trois niveaux représentés (au moins 25 paires chacun)',
+    [1, 2, 3].every(n => P.filter(p => p.niv === n).length >= 25),
+    [1, 2, 3].map(n => P.filter(p => p.niv === n).length));
+  const vues = new Set(), doubles = [];
+  P.forEach(p => { const k = [p.a, p.b].sort().join('|'); if (vues.has(k)) doubles.push(k); vues.add(k); });
+  check('aucune paire en double', !doubles.length, doubles);
+  const mots = new Set();
+  P.forEach(p => { mots.add(p.a); mots.add(p.b); });
+  const sans = [...mots].filter(m => !A[m] || A[m].length < 6);
+  check('chaque mot a au moins 6 associations pour l’ordinateur', !sans.length, sans);
+  const invalides = [];
+  Object.keys(A).forEach(m => A[m].forEach(a => { if (!I._clueOk(a, m)) invalides.push(m + ':' + a); }));
+  check('toutes les associations sont des indices valables (un mot, sans le mot secret)', !invalides.length, invalides);
+  // l'ordinateur donne des indices sur SON mot (l'audit en trouvait 51 % hors sujet)
+  let total = 0, surMot = 0, parties = 0;
+  const clone = o => JSON.parse(JSON.stringify(o));
+  for (let g = 0; g < 300; g++) {
+    const names = Array.from({ length: 3 + (g % 3) }, (_, k) => '🤖 ' + k);
+    const st = I.create(names);
+    I.apply(st, 0, { t: 'deal', opts: { white: g % 2 === 0, debat: 0 } });
+    let pas = 0;
+    while (st.phase !== 'end' && pas++ < 300) {
+      if (st.phase === 'result') { I.apply(st, 0, { t: 'next' }); continue; }
+      let agi = false;
+      for (let i = 0; i < st.players.length && !agi; i++) {
+        const a = I.bot(clone(st), i);
+        if (!a) continue;
+        if (a.t === 'clue' && st.players[i].role !== 'white') {
+          total++;
+          if ((A[st.players[i].word] || []).map(I._norm).includes(I._norm(a.text))) surMot++;
+        }
+        agi = I.apply(st, i, a).ok;
+      }
+      if (!agi) break;
+    }
+    if (st.phase === 'end') parties++;
+  }
+  console.log('    indices de l’ordinateur sur son propre mot : ' + Math.round(100 * surMot / total) + ' % (' + total + ' indices)');
+  check('au moins 95 % des indices de l’ordinateur portent sur son propre mot', surMot / total >= 0.95, [surMot, total]);
+  check('300 manches tout-IA menées au bout', parties === 300, parties);
+}
+
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nContenu des jeux de soirée OK.');
 process.exit(failures ? 1 : 0);
