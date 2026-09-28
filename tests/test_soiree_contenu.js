@@ -252,5 +252,37 @@ console.log('--- Le Quiz : les questions ---');
   check('8 parties de 20 questions d’affilée : aucune question revue', revues === 0, revues);
 }
 
+/* ================= LE PLUS PROCHE ================= */
+console.log('--- Le Plus Proche : les questions ---');
+{
+  const P = require(ROOT + '/js/games/proche.js');
+  const B = P._BANK.map(e => e.split('|'));
+  const annees = B.filter(p => p[2] === 'année').length;
+  const cats = {};
+  B.forEach(p => { cats[p[4]] = (cats[p[4]] || 0) + 1; });
+  console.log('    ' + B.length + ' questions sourcées, ' + annees + ' dates (' + Math.round(100 * annees / B.length) + ' %), catégories : ' +
+    Object.keys(cats).map(c => c + ' ' + cats[c]).join(', '));
+  check('au moins 150 questions, chacune avec sa source', B.length >= 150 && B.every(p => p[3] && p[3].length >= 3));
+  check('très peu de dates (l’audit en comptait 18 %) : moins de 5 %', annees / B.length < 0.05, annees);
+  check('huit catégories variées (au moins 7 questions chacune)', Object.keys(cats).length === 8 && Object.keys(cats).every(c => cats[c] >= 7), cats);
+  // l'audit : 31 % de questions connues ou calculables, la Garonne contestée
+  const connues = [/minutes compte une journée/, /cases compte un échiquier/, /planètes compte/, /États composent/, /mois dure une grossesse/,
+    /pattes possède une araignée/, /trous compte un parcours/, /pays compte l.Union/, /régions compte/, /départements compte/,
+    /arrondissements compte/, /touches compte un piano/, /grille de sudoku/, /Garonne/, /cases compte le plateau/, /jours (compte|dans) une année/, /secondes.*minute/];
+  const trouvees = B.filter(p => connues.some(r => r.test(p[0]))).map(p => p[0]);
+  check('aucune question « connue » ou calculable, pas de Garonne contestée', !trouvees.length, trouvees);
+  check('des réponses à estimer de toutes tailles (au moins 3 au-delà du million, 30 sous 100)',
+    B.filter(p => +p[1] >= 1e6).length >= 3 && B.filter(p => +p[1] < 100).length >= 30,
+    [B.filter(p => +p[1] >= 1e6).length, B.filter(p => +p[1] < 100).length]);
+  // rejouabilité : trois parties d'affilée sans revoir une question
+  const store = {};
+  global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
+  const vues = new Set();
+  let revues = 0;
+  for (let k = 0; k < 3; k++) P._tirer(10).forEach(q => { if (vues.has(q.q)) revues++; vues.add(q.q); });
+  delete global.localStorage;
+  check('3 parties de 10 manches d’affilée : aucune question revue', revues === 0, revues);
+}
+
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nContenu des jeux de soirée OK.');
 process.exit(failures ? 1 : 0);

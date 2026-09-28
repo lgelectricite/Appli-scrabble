@@ -191,49 +191,104 @@ console.log('--- Quiz ---');
 
 /* ================= LE PLUS PROCHE ================= */
 console.log('--- Le Plus Proche ---');
-check('banque : au moins 80 questions', proche._BANK.length >= 80, proche._BANK.length);
-check('banque : nombres entiers valides', proche._BANK.every(e => {
-  const p = e.split('|');
-  return p.length === 3 && /^\d+$/.test(p[1]);
-}));
-check('banque : pas de doublon',
-  new Set(proche._BANK.map(e => e.split('|')[0])).size === proche._BANK.length);
-g = proche.create(['A', 'B']);
-check('8 manches tirées', g.qs.length === 8, g.qs.length);
-const a0 = g.qs[0].a;
-check('estimation invalide refusée', !proche.apply(g, 0, { t: 'guess', n: 'abc' }).ok);
-proche.apply(g, 0, { t: 'guess', n: String(a0) });      // exact
-red = proche.redact(g, 1);
-check('réponses masquées pendant la manche',
-  red.qs.every(q => q.a === undefined) && red.players[0].guess === undefined &&
-  red.players[0].hasGuessed === true);
-proche.apply(g, 1, { t: 'guess', n: String(a0 + 10) }); // à 10
-check('révélation : exact +5, l’autre 0',
-  g.phase === 'reveal' && g.players[0].score === 5 && g.players[1].score === 0 &&
-  g.reveal.exact === true && g.reveal.winners.join() === '0');
-proche.apply(g, 0, { t: 'next' });
-// égalité : mêmes distances
-const a1 = g.qs[1].a;
-// écart symétrique toujours valide, même quand la réponse est petite
-const ec = a1 > 5 ? 5 : 1;
-if (a1 - ec >= 0) {
-  proche.apply(g, 0, { t: 'guess', n: String(a1 + ec) });
-  proche.apply(g, 1, { t: 'guess', n: String(a1 - ec) });
-  check('égalité : +3 chacun', g.players[0].score === 8 && g.players[1].score === 3,
-    [a1, g.players.map(p => p.score)]);
-} else {
-  proche.apply(g, 0, { t: 'guess', n: String(a1 + 1) });
-  proche.apply(g, 1, { t: 'guess', n: String(a1 + 3) });
-  check('égalité : +3 chacun', true); // réponse 0 : pas d'égalité possible, cas ignoré
+{
+  const B = proche._BANK;
+  check('banque : au moins 150 questions', B.length >= 150, B.length);
+  check('banque : réponse entière, unité, source et catégorie partout', B.every(e => {
+    const p = e.split('|');
+    return p.length === 5 && /^\d+$/.test(p[1]) && p[2] && p[3].length >= 3 && proche._CATEGORIES[p[4]];
+  }), B.find(e => { const p = e.split('|'); return p.length !== 5 || !/^\d+$/.test(p[1]); }));
+  check('banque : pas de doublon', new Set(B.map(e => e.split('|')[0])).size === B.length);
+  let g = proche.create(['A', 'B', 'C']);
+  check('phase de réglages', g.phase === 'setup');
+  check('réglages réservés à l’hôte', !proche.apply(g, 1, { t: 'go', opts: {} }).ok);
+  check('estimation avant le lancement refusée', !proche.apply(g, 0, { t: 'guess', n: '5' }).ok);
+  check('nombre de manches invalide refusé', !proche.apply(g, 0, { t: 'go', opts: { nb: 7 } }).ok);
+  let res = proche.apply(g, 0, { t: 'go', opts: { nb: 8, chrono: 45 } });
+  check('lancement : 8 manches, chrono de 45 s (échéance dans l’état)',
+    res.ok && g.qs.length === 8 && g.phase === 'guess' && g.ech.fin - g.debut === 45000 && res.timer && res.timer.action.t === 'expire');
+  check('tirage varié : jamais deux fois la même catégorie d’affilée, au plus une date',
+    g.qs.every((q, k) => k === 0 || q.cat !== g.qs[k - 1].cat) && g.qs.filter(q => q.unit === 'année').length <= 1,
+    g.qs.map(q => q.cat).join(' '));
+  // question connue pour mesurer les points
+  g.qs[0] = { q: 'Test', a: 1000, unit: 'm', src: 'Source test', cat: 'geo' };
+  check('estimation invalide refusée', !proche.apply(g, 0, { t: 'guess', n: 'abc' }).ok && !proche.apply(g, 0, { t: 'guess', n: '-5' }).ok);
+  check('espaces et points de milliers acceptés', proche._lireNombre('1 000') === 1000 && proche._lireNombre('2.500') === 2500);
+  proche.apply(g, 0, { t: 'guess', n: '1000' });
+  check('estimation déjà donnée refusée', !proche.apply(g, 0, { t: 'guess', n: '5' }).ok);
+  let red = proche.redact(g, 1);
+  check('réseau : réponse et source masquées pendant la manche', red.qs[0].a === undefined && red.qs[0].src === undefined);
+  check('réseau : manches à venir masquées', red.qs[3].q === undefined);
+  check('réseau : estimations d’autrui masquées, drapeau visible', red.players[0].guess === null && red.players[0].hasGuessed === true);
+  check('compteur d’attente juste : 1 estimation sur 3', red.players.filter(p => p.hasGuessed).length === 1);
+  proche.apply(g, 1, { t: 'guess', n: '1500' });
+  g.debut -= 1000;
+  proche.apply(g, 2, { t: 'guess', n: '2500' });
+  check('révélation dès la dernière estimation', g.phase === 'reveal' && g.reveal.answer === 1000 && g.reveal.src === 'Source test');
+  check('points selon la distance : exact 100 + 30 + 50, à mi-chemin 50, au-delà du double 0',
+    g.players[0].score === 180 && g.players[1].score === 50 && g.players[2].score === 0, g.players.map(p => p.score));
+  check('la réponse circule après la révélation', proche.redact(g, 2).qs[0].a === 1000);
+  check('dates : 25 ans d’écart = 50 points', proche._points(1842, { a: 1817, unit: 'année' }) === 50 &&
+    proche._points(1900, { a: 1817, unit: 'année' }) === 0);
+  check('seul l’hôte enchaîne', !proche.apply(g, 1, { t: 'next', k: 0 }).ok);
+  res = proche.apply(g, 0, { t: 'next', k: 0 });
+  check('manche suivante, estimations remises à zéro', res.ok && g.idx === 1 && g.players.every(p => p.guess === null) && res.timer);
+  check('double appui sur « suivant » sans effet', proche.apply(g, 0, { t: 'next', k: 0 }).ok && g.idx === 1);
+  // un absent : le chrono tranche
+  proche.apply(g, 0, { t: 'guess', n: String(g.qs[1].a) });
+  check('fin de chrono prématurée ignorée', proche.apply(g, -1, { t: 'expire', k: g.ech.k }).ok && g.phase === 'guess');
+  g.ech.fin = Date.now() - 10;
+  proche.apply(g, -1, { t: 'expire', k: g.ech.k });
+  check('chrono écoulé : on révèle sans les absents (0 point)', g.phase === 'reveal' && g.reveal.gains[1] === 0 && g.reveal.gains[0] >= 180);
+  proche.apply(g, 0, { t: 'next', k: 1 });
+  proche.apply(g, 1, { t: 'guess', n: '3' });
+  check('« ne plus attendre » réservé à l’hôte', !proche.apply(g, 1, { t: 'skip', k: g.ech.k }).ok);
+  check('« ne plus attendre » : l’hôte révèle', proche.apply(g, 0, { t: 'skip', k: g.ech.k }).ok && g.phase === 'reveal');
+  while (!g.finished) {
+    if (g.phase === 'guess') g.players.forEach((p, i) => { if (p.guess === null) proche.apply(g, i, { t: 'guess', n: String(g.qs[g.idx].a + i) }); });
+    else proche.apply(g, 0, { t: 'next', k: g.idx });
+  }
+  check('partie finie après 8 manches', g.finished === true && proche.over(g));
+  check('podium final', /🥇/.test(proche.summary(g)) && /🏆/.test(proche.summary(g)));
+  const gg2 = proche.gagnants(g);
+  check('gagnants : le meilleur score', Array.isArray(gg2) && (gg2.length === 0 || g.players[gg2[0]].score === Math.max(...g.players.map(p => p.score))));
+
+  // ----- un seul téléphone : on se le passe -----
+  let h = proche.create(['A', 'B', 'C']);
+  proche.apply(h, 0, { t: 'go', opts: { mode: 'secret', chrono: 45 } });
+  check('un téléphone : pas de chrono', h.opts.chrono === 0 && h.ech === null);
+  proche.apply(h, 0, { t: 'guess', n: '10' });
+  check('un téléphone : l’écran passe au suivant', proche.viewerOf(h) === 1);
+  proche.apply(h, 1, { t: 'guess', n: '20' });
+  proche.apply(h, 2, { t: 'guess', n: '30' });
+  check('un téléphone : la révélation reste chez le dernier', h.phase === 'reveal' && proche.viewerOf(h) === 2);
+  check('un téléphone : le dernier peut enchaîner', proche.apply(h, 2, { t: 'next', k: 0 }).ok && h.idx === 1);
+
+  // ----- niveaux de l'ordinateur -----
+  const mes = {};
+  ['facile', 'moyen', 'difficile'].forEach(nv => {
+    let pts = 0, n = 0;
+    for (let k = 0; k < 60; k++) {
+      const st = proche.create(['🤖 x', '🤖 y']);
+      proche.apply(st, 0, { t: 'go', opts: { nb: 10 } });
+      while (!st.finished) {
+        if (st.phase === 'guess') { for (let i = 0; i < 2; i++) { const a = proche.bot(JSON.parse(JSON.stringify(st)), i, { niveau: nv }); if (a) proche.apply(st, i, a); } }
+        else proche.apply(st, 0, { t: 'next', k: st.idx });
+      }
+      st.players.forEach(p => { pts += p.score; n += 10; });
+    }
+    mes[nv] = Math.round(pts / n);
+  });
+  console.log('    ordinateur (points par manche) : ' + JSON.stringify(mes));
+  check('niveaux de l’ordinateur réellement différents', mes.facile < mes.moyen && mes.moyen < mes.difficile, mes);
+
+  // ----- reprise d'une partie V1 -----
+  const v1 = { players: [{ name: 'A', score: 3, guess: null }, { name: 'B', score: 0, guess: null }],
+    qs: [{ q: 'x', a: 10, unit: 'm' }, { q: 'y', a: 20, unit: 'm' }], idx: 0, phase: 'guess', reveal: null, finished: false };
+  proche.apply(v1, 0, { t: 'guess', n: '10' });
+  proche.apply(v1, 1, { t: 'guess', n: '12' });
+  check('reprise d’une partie V1 : elle continue', v1.phase === 'reveal' && proche.apply(v1, 0, { t: 'next' }).ok && v1.idx === 1);
 }
-for (let m = g.idx; m < g.qs.length; m++) {
-  if (g.phase === 'reveal') proche.apply(g, 0, { t: 'next' });
-  if (g.finished) break;
-  proche.apply(g, 0, { t: 'guess', n: '1' });
-  proche.apply(g, 1, { t: 'guess', n: '2' });
-}
-if (g.phase === 'reveal') proche.apply(g, 0, { t: 'next' });
-check('partie finie après 8 manches', g.finished === true);
 
 /* ================= 8 AMÉRICAIN ================= */
 console.log('--- 8 américain ---');

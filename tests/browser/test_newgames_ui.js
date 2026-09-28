@@ -59,7 +59,13 @@ function check(n, c, e) {
   await p.click('.game-tile[data-g="proche"]');
   await p.click('#btn-mini-hotseat');
   await p.click('#btn-mini-start');
+  await p.waitForSelector('[data-a="go"]', { timeout: 15000 });
+  check('réglages : nombre de manches', await p.locator('[data-k="nb"]').count() === 3);
+  await p.click('[data-a="go"]');
+  await p.waitForTimeout(200);
+  await passIfNeeded();
   await p.waitForSelector('#pr-guess', { timeout: 15000 });
+  check('pavé numérique géant (12 touches)', await p.locator('.pr-touche').count() === 12);
   await p.fill('#pr-guess', '100');
   await p.click('[data-a="guess"]');
   await p.waitForTimeout(150);
