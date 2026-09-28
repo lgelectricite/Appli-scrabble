@@ -1,31 +1,200 @@
 /* ===== GGgames V2 — Bataille navale =====
-   Styles propres à ce jeu (chargés après css/style.css). */
+   Deux cartes marines : la mienne (navires dessinés, vus de dessus) et
+   celle de l’adversaire, dans le brouillard. La mer ondule (un seul calque
+   déplacé par transformation : peu coûteux). */
 
-/* ================= Bataille navale ================= */
-.bn-grid {
-  display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px;
-  /* borné par la hauteur d'écran : les 2 grilles tiennent sans défiler */
-  max-width: min(92vw, 42vh);
-  margin: 2px auto 4px;
+.bn-v2 { max-width: 470px; margin: 0 auto; touch-action: manipulation; }
+.bn-msg { min-height: 42px; margin: 2px 2px 6px; font-size: 15px; line-height: 1.4; }
+.bn-msg b { color: var(--txt); }
+.bn-cache { color: var(--txt-3); font-size: 13.5px; }
+.bn-label {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  margin: 8px 4px 4px; font-size: 13.5px; font-weight: 800; color: var(--txt-2);
 }
-.bn-grid.small { max-width: min(66vw, 30vh); }
-.bn-cell {
-  aspect-ratio: 1; background: #b8d4ea; border-radius: 3px;
+.bn-label span { font-size: 12.5px; font-weight: 700; color: var(--txt-3); white-space: nowrap; }
+.bn-resume {
+  margin: 0 0 4px; padding: 7px 12px; border-radius: 12px; text-align: center;
+  font-size: 13px; font-weight: 700; color: var(--txt-2);
+  background: var(--glass); border: 1px solid var(--stroke);
+}
+
+/* ---- réglages de la partie (avant que quiconque soit prêt) :
+   trois pastilles, chaque toucher passe au choix suivant ---- */
+.bn-regles { display: flex; gap: 6px; margin: 0 0 4px; }
+.bn-regle {
+  flex: 1 1 0; min-width: 0; min-height: 48px; padding: 5px 4px; border-radius: 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  font-family: var(--f-titre); font-size: 14px; font-weight: 600; color: var(--txt); line-height: 1.15;
+  background: var(--glass-2); border: 1.5px solid var(--stroke-2); cursor: pointer; touch-action: manipulation;
+  transition: transform .15s var(--ressort), background .2s;
+}
+.bn-regle small {
+  font-family: var(--f-texte); font-size: 12px; font-weight: 800; color: var(--txt-3);
+  white-space: nowrap;
+}
+.bn-regle:active { transform: scale(.94); background: var(--glass-3); }
+.bn-aide { text-align: center; margin: 6px 0 0; font-size: 13.5px; }
+
+/* ---- plateaux et coordonnées ---- */
+.bn-plateau.grand {
+  display: grid; grid-template-columns: 18px 1fr; grid-template-rows: 18px auto; gap: 2px;
+  width: min(100%, calc(40vh + 20px)); margin: 0 auto;
+}
+/* placement : la grille prend la place qui reste, boutons toujours visibles */
+.bn-v2.ph-place .bn-plateau.grand { width: min(100%, calc(100vh - 330px)); width: min(100%, calc(100dvh - 330px)); }
+.bn-lettres { display: grid; grid-template-columns: repeat(10, 1fr); }
+.bn-chiffres { display: grid; grid-template-rows: repeat(10, 1fr); }
+.bn-lettres span, .bn-chiffres span {
   display: flex; align-items: center; justify-content: center;
-  font-size: clamp(8px, 2.6vw, 14px); color: #1d4568;
+  font-family: var(--f-titre); font-size: 12px; font-weight: 600; color: var(--txt-3);
+}
+.bn-plateau.grand .bn-grid { grid-column: 2; grid-row: 2; }
+.bn-plateau.petit { width: min(62vw, 24vh); margin: 0 auto; }
+
+/* ---- la mer ---- */
+.bn-grid {
+  position: relative; display: grid; grid-template-columns: repeat(10, 1fr); grid-auto-rows: 1fr;
+  aspect-ratio: 1; border-radius: 10px; overflow: hidden; isolation: isolate;
+  background: linear-gradient(165deg, #2a8ad6 0%, #1363b0 45%, #0b3f82 100%);
+  box-shadow: 0 0 0 2px rgba(120, 190, 255, .4), 0 12px 26px rgba(0, 0, 0, .45), inset 0 0 26px rgba(0, 20, 70, .55);
+}
+.bn-grid.small { border-radius: 8px; }
+.bn-grid::before {
+  content: ''; position: absolute; left: -60px; top: -30px; right: -60px; bottom: -30px; z-index: 0; pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='28'%3E%3Cpath d='M0 14 Q15 6 30 14 T60 14' fill='none' stroke='white' stroke-opacity='.17' stroke-width='2'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='38'%3E%3Cpath d='M4 30 Q12 25 20 30' fill='none' stroke='white' stroke-opacity='.12' stroke-width='1.6'/%3E%3C/svg%3E");
+  background-size: 60px 28px, 44px 38px;
+  animation: bn-houle 7s linear infinite;
+  will-change: transform;
+}
+@keyframes bn-houle { to { transform: translate(60px, 0); } }
+/* brouillard qui dérive au-dessus de la carte adverse */
+.bn-grid.cible::after {
+  content: ''; position: absolute; inset: -40%; z-index: 4; pointer-events: none; opacity: .5;
+  background:
+    radial-gradient(40% 30% at 30% 40%, rgba(220, 230, 250, .22), transparent 70%),
+    radial-gradient(35% 25% at 70% 65%, rgba(220, 230, 250, .18), transparent 70%);
+  animation: bn-brume 14s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes bn-brume { to { transform: translate(18%, -12%); } }
+
+/* ---- les cases ---- */
+.bn-cell {
+  position: relative; z-index: 1; min-width: 0;
+  box-shadow: inset 0 0 0 .5px rgba(170, 215, 255, .22);
+}
+/* la carte adverse est dans le brouillard : seules les cases déjà visées
+   laissent voir la mer, bien bleue */
+.bn-grid.cible { background: linear-gradient(165deg, #2a8ad6 0%, #1363b0 45%, #0b3f82 100%); }
+.bn-cell.brume {
+  background:
+    radial-gradient(120% 90% at 30% 25%, rgba(236, 242, 252, .22), transparent 60%),
+    linear-gradient(160deg, rgba(128, 146, 180, .78), rgba(88, 104, 140, .74));
 }
 .bn-grid.aim .bn-cell { cursor: crosshair; }
-.bn-cell.ship { background: #6f7f8d; color: #fff; }
-.bn-cell.hit { background: var(--danger); color: #fff; }
-.bn-cell.miss { background: #3a6d99; color: #cfe6ff; }
+.bn-grid.aim .bn-cell.brume:hover { background: rgba(190, 210, 240, .6); }
+.bn-grid.aim .bn-cell.brume:active, .bn-cell.vise { background: rgba(255, 90, 90, .55) !important; }
+.bn-cell.abord::after {
+  content: ''; position: absolute; inset: 42%; border-radius: 50%; background: rgba(255, 255, 255, .4);
+}
+/* à l’eau : une éclaboussure blanche */
+.bn-cell.miss::after {
+  content: ''; position: absolute; inset: 27%; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 28%, rgba(255, 255, 255, .55) 31% 44%, transparent 47%);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .35);
+}
+/* touché : le feu */
+.bn-cell.hit::after {
+  content: ''; position: absolute; inset: 10%; border-radius: 50%; z-index: 2;
+  background: radial-gradient(circle at 50% 58%, #fff6c2 0 16%, #ffb020 30%, #ff4a24 54%, rgba(255, 40, 20, 0) 72%);
+  animation: bn-feu .55s ease-in-out infinite alternate;
+}
+@keyframes bn-feu { to { transform: scale(1.12) translateY(-4%); filter: brightness(1.25); } }
+.bn-cell.hit.coule::after {
+  inset: 22%; animation: none; opacity: .9;
+  background: radial-gradient(circle, #ffb35c 0 20%, #b3261e 45%, rgba(40, 10, 10, .0) 72%);
+}
+.bn-cell.arrive::after { opacity: 0 !important; animation: none !important; }
+.bn-cell.pop { animation: bn-pop .45s var(--ressort); z-index: 3; }
+@keyframes bn-pop { 40% { transform: scale(1.5); } }
 .bn-cell.last {
-  box-shadow: inset 0 0 0 2px var(--ink);
+  z-index: 3; box-shadow: inset 0 0 0 2px #ffe066;
   animation: bn-last .9s ease-in-out infinite alternate;
-  z-index: 1;
 }
-@keyframes bn-last {
-  from { box-shadow: inset 0 0 0 2px var(--ink); }
-  to { box-shadow: inset 0 0 0 4px var(--tile-new); }
+@keyframes bn-last { to { box-shadow: inset 0 0 0 3px #fff3a0, 0 0 10px rgba(255, 224, 102, .8); } }
+
+/* ---- les navires (vus de dessus) ---- */
+.bn-navire { position: absolute; z-index: 0; padding: .4%; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0, 10, 40, .5)); }
+.bn-navire svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.bn-navire .coque { fill: #a3b1c6; stroke: #36445c; stroke-width: 5; }
+.bn-navire.t0 .coque { fill: #8e9cb2; }
+.bn-navire.t3 .coque { fill: #4f5f78; stroke: #222c3d; }
+.bn-navire .k { fill: #738198; stroke: #36445c; stroke-width: 4; }
+.bn-navire.t3 .k { fill: #384559; }
+.bn-navire .p { fill: #d7e0ec; stroke: #36445c; stroke-width: 3; }
+.bn-navire .canon { stroke: #36445c; stroke-width: 7; stroke-linecap: round; }
+.bn-navire .piste { stroke: #fff; stroke-width: 4; stroke-dasharray: 22 16; opacity: .85; }
+.bn-navire .l { stroke: #a6b6cc; stroke-width: 5; stroke-linecap: round; }
+.bn-navire.coule { filter: grayscale(.5) brightness(.5) sepia(.35); opacity: .9; }
+.bn-navire.sombre { animation: bn-sombre 1.3s var(--doux) both; }
+@keyframes bn-sombre {
+  from { filter: none; opacity: 1; transform: scale(1.08); }
+  40% { filter: brightness(1.6); }
 }
-.bn-label { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 3px 0 1px; }
-#screen-mini .bn-label + .bn-grid + .bn-label { margin-top: 6px; }
+.bn-grid.placement .bn-navire {
+  z-index: 2; pointer-events: auto; cursor: grab; touch-action: none;
+  transition: filter .2s;
+}
+.bn-grid.placement .bn-navire::after {
+  content: ''; position: absolute; inset: -3px; border-radius: 12px;
+  border: 1.5px dashed rgba(255, 255, 255, .0); transition: border-color .2s;
+}
+.bn-navire.saisi {
+  z-index: 5 !important; cursor: grabbing;
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, .55)) brightness(1.12);
+}
+.bn-navire.saisi::after { border-color: rgba(255, 255, 255, .7) !important; }
+.bn-ombre { position: absolute; z-index: 1; border-radius: 8px; border: 2px dashed; pointer-events: none; }
+.bn-ombre.ok { border-color: #5dffa0; background: rgba(93, 255, 160, .2); }
+.bn-ombre.ko { border-color: #ff5d6c; background: rgba(255, 93, 108, .22); }
+.bn-ombre.cachee { display: none; }
+
+/* ---- l’obus et le résultat ---- */
+.bn-obus {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 24%, #ffd23f 44%, #ff6a00 68%, transparent 72%);
+  box-shadow: 0 0 12px 4px rgba(255, 160, 40, .75);
+}
+.bn-zone-tir { position: relative; }
+.bn-resultat {
+  position: absolute; left: 50%; top: 52%; z-index: 6; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 12px 24px; border-radius: 20px; white-space: nowrap;
+  background: rgba(10, 14, 40, .86); border: 2px solid rgba(255, 255, 255, .3);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .5);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  transform: translate(-50%, -50%);
+  animation: bn-res .5s var(--ressort) .46s both;
+}
+.bn-resultat b { font-family: var(--f-titre); font-size: 26px; font-weight: 600; }
+.bn-resultat small { font-size: 13px; font-weight: 800; color: var(--txt-2); letter-spacing: 1px; }
+.bn-resultat.haut { top: 30%; }
+.bn-resultat.bas { top: 76%; }
+.bn-resultat.res-eau { border-color: rgba(120, 200, 255, .7); }
+.bn-resultat.res-touche { border-color: rgba(255, 140, 60, .8); }
+.bn-resultat.res-coule { border-color: rgba(255, 210, 63, .9); background: rgba(60, 12, 20, .88); }
+@keyframes bn-res { from { opacity: 0; transform: translate(-50%, -50%) scale(.5); } }
+.bn-passe { margin: 10px 0 2px; }
+
+/* ---- fin de manche : les deux flottes ---- */
+.bn-titre { margin: 4px 0 0; }
+.bn-score { margin: 4px 0 8px; color: var(--txt-2); }
+.bn-score b { font-family: var(--f-titre); font-size: 20px; color: var(--txt); }
+.bn-serie { font-size: 13px; color: var(--txt-3); }
+.bn-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bn-flotte-fin { min-width: 0; }
+.bn-flotte-fin .bn-label { justify-content: center; font-size: 13px; margin: 2px 0 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bn-flotte-fin .bn-plateau.petit { width: 100%; }
+.bn-stat { margin: 5px 0 0; text-align: center; font-size: 12.5px; font-weight: 700; color: var(--txt-3); }

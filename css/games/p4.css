@@ -1,20 +1,167 @@
 /* ===== GGgames V2 — Puissance 4 =====
-   Styles propres à ce jeu (chargés après css/style.css). */
+   Un plateau de plastique bleu brillant, percé de 42 trous qui laissent
+   voir la nuit ; les jetons glissent DERRIÈRE la façade (on les voit passer
+   de trou en trou quand ils tombent). */
 
-/* ================= Puissance 4 ================= */
+.p4-v2 { max-width: 440px; margin: 0 auto; touch-action: manipulation; }
+
+/* ---- série : choix du nombre de manches, puis compteur ---- */
+.p4-serie {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 44px; margin: 2px 2px 0;
+}
+.p4-serie.choix { justify-content: center; font-weight: 800; color: var(--txt-2); font-size: 14.5px; }
+.p4-serie-btn {
+  width: 44px; height: 44px; border-radius: 50%; cursor: pointer; touch-action: manipulation;
+  font-family: var(--f-titre); font-size: 19px; font-weight: 600; color: var(--txt);
+  background: var(--glass-2); border: 1.5px solid var(--stroke-2);
+  transition: transform .18s var(--ressort), background .2s;
+}
+.p4-serie-btn:active { transform: scale(.9); }
+.p4-serie-btn.on {
+  color: #3a1400; border-color: transparent; background: var(--jeu-grad);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .5);
+}
+.p4-pips { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 13.5px; }
+.p4-pips b {
+  font-weight: 800; color: var(--txt-2); max-width: 118px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 3px;
+}
+.p4-pips i {
+  flex: none; width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid var(--stroke-2); background: rgba(0, 0, 0, .2);
+}
+.p4-pips i.on { border-color: rgba(255, 255, 255, .6); animation: p4-pip .5s var(--ressort) both; }
+.p4-pips i.on.red { background: radial-gradient(circle at 35% 30%, #ffa097, #e0242f); }
+.p4-pips i.on.yellow { background: radial-gradient(circle at 35% 30%, #fff1a0, #f0a500); }
+@keyframes p4-pip { from { transform: scale(0); } }
+.p4-manche {
+  flex: none; font-family: var(--f-titre); font-weight: 600; font-size: 13px; color: var(--txt-3);
+  padding: 3px 10px; border-radius: 999px; background: var(--glass); border: 1px solid var(--stroke);
+}
+.p4-msg { min-height: 24px; margin: 4px 4px 6px; }
+.p4-msg b { color: var(--txt); }
+
+/* ---- le plateau ---- */
+.p4-plateau { position: relative; margin: 0 auto; }
+.p4-apercu {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  padding: 0 3.95%; margin-bottom: 2px; pointer-events: none;
+}
+.p4-fant {
+  display: block; width: 74%; margin: 0 auto; aspect-ratio: 1; border-radius: 50%;
+  opacity: 0; transform: translateY(8px) scale(.7);
+  transition: opacity .15s, transform .22s var(--ressort);
+}
+.p4-fant.on { opacity: .95; transform: none; }
 .p4-board {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
-  background: var(--teal); border: 2px solid var(--ink); border-radius: 12px; padding: 8px;
-  max-width: 430px; margin: 0 auto;
-  box-shadow: 0 4px 0 var(--ink);
+  position: relative; aspect-ratio: 760 / 660; border-radius: 4.5% / 5.2%;
+  box-shadow: 0 7px 0 #102a86, 0 22px 34px rgba(0, 0, 0, .5);
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
 }
-.p4-cell {
-  aspect-ratio: 1; background: var(--paper-bg); border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
-  box-shadow: inset 0 2px 4px rgba(44, 34, 24, .35);
+.p4-grille {
+  position: absolute; left: 3.947%; right: 3.947%; top: 4.545%; bottom: 4.545%;
+  display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 1fr);
 }
-.p4-cell.win { box-shadow: 0 0 0 3px var(--tile-new), inset 0 2px 4px rgba(44, 34, 24, .35); }
-.p4-disc { width: 86%; height: 86%; border-radius: 50%; display: inline-block; }
-.p4-disc.mini { width: 16px; height: 16px; vertical-align: middle; }
-.p4-disc.red { background: radial-gradient(circle at 35% 30%, #ff7b66, #cf2f1c); }
-.p4-disc.yellow { background: radial-gradient(circle at 35% 30%, #ffe98a, #e0a800); }
+.p4-cell { position: relative; cursor: pointer; }
+.p4-board[data-pret="0"] .p4-cell { cursor: default; }
+.p4-front {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2;
+  pointer-events: none; display: block;
+}
+.p4-colhl {
+  position: absolute; z-index: 3; pointer-events: none;
+  top: 3.2%; bottom: 3.2%; width: calc(92.106% / 7);
+  left: calc(3.947% + var(--c, 0) * 92.106% / 7);
+  border-radius: 999px; opacity: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, .05));
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .18);
+  transition: opacity .15s, left .12s var(--doux);
+}
+.p4-colhl.on { opacity: 1; }
+
+/* ---- les jetons ---- */
+.p4-disc {
+  position: absolute; left: 6%; top: 6%; width: 88%; height: 88%; z-index: 1;
+  border-radius: 50%; display: block;
+}
+.p4-disc.red, .p4-fant.red {
+  background:
+    radial-gradient(circle, transparent 0 50%, rgba(110, 0, 12, .38) 53%, transparent 61%),
+    radial-gradient(circle, rgba(120, 0, 15, .28) 0 16%, transparent 17%),
+    radial-gradient(circle at 34% 27%, #ffb0a6 0%, #ff4d4d 30%, #da1c2c 66%, #8f0d1a 100%);
+  box-shadow: inset 0 -5px 8px rgba(60, 0, 8, .45), inset 0 4px 5px rgba(255, 255, 255, .35);
+}
+/* le jaune porte en plus un soleil en relief : on reconnaît les jetons même
+   sans distinguer les couleurs */
+.p4-disc.yellow, .p4-fant.yellow {
+  background:
+    radial-gradient(circle, transparent 0 50%, rgba(140, 80, 0, .35) 53%, transparent 61%),
+    repeating-conic-gradient(from 0deg, rgba(150, 85, 0, .22) 0 12deg, transparent 12deg 30deg),
+    radial-gradient(circle at 34% 27%, #fff6c4 0%, #ffd83a 32%, #f3a500 68%, #a86600 100%);
+  box-shadow: inset 0 -5px 8px rgba(90, 45, 0, .45), inset 0 4px 5px rgba(255, 255, 255, .45);
+}
+.p4-disc.mini {
+  position: relative; left: auto; top: auto; display: inline-block;
+  width: 18px; height: 18px; vertical-align: -3px; margin-right: 4px;
+}
+/* repère du dernier coup : un point lumineux au cœur du jeton */
+.p4-disc.last::after {
+  content: ''; position: absolute; inset: 37%; border-radius: 50%;
+  background: rgba(255, 255, 255, .9); box-shadow: 0 0 10px 2px rgba(255, 255, 255, .8);
+  animation: p4-dernier 1.8s ease-in-out infinite;
+}
+@keyframes p4-dernier { 50% { transform: scale(.6); opacity: .55; } }
+
+/* la chute : de trou en trou, puis deux petits rebonds */
+.p4-disc.drop { animation: p4-chute var(--t, .4s) linear both; }
+@keyframes p4-chute {
+  0% { transform: translateY(calc(var(--r, 1) * -113.6%)); animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
+  62% { transform: translateY(0); animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+  77% { transform: translateY(-13%); animation-timing-function: cubic-bezier(.6, 0, .9, .5); }
+  89% { transform: translateY(0); animation-timing-function: ease-out; }
+  95% { transform: translateY(-3.5%); animation-timing-function: ease-in; }
+  100% { transform: translateY(0); }
+}
+
+/* ---- l’alignement gagnant ---- */
+.p4-disc.win { animation: p4-brille .8s ease-in-out infinite alternate; }
+.p4-disc.win.drop { animation: p4-chute var(--t, .4s) linear both, p4-brille .8s ease-in-out var(--t, .4s) infinite alternate; }
+@keyframes p4-brille {
+  to { filter: brightness(1.45) saturate(1.25); box-shadow: inset 0 0 16px 4px rgba(255, 255, 255, .75), inset 0 -5px 8px rgba(0, 0, 0, .3); }
+}
+.p4-ligne { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; overflow: visible; }
+.p4-ligne line {
+  stroke: #fff; stroke-width: 16; stroke-linecap: round; opacity: 0;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  filter: drop-shadow(0 0 10px rgba(255, 230, 120, .95));
+}
+.p4-anneau { fill: none; stroke: #ffe066; stroke-width: 7; opacity: 0; }
+.p4-v2.trace .p4-ligne line { animation: p4-trace .55s var(--doux) .15s forwards; }
+.p4-v2.trace .p4-anneau { animation: p4-anneau 1s ease-in-out infinite alternate; }
+.p4-v2.trace.deja .p4-ligne line { animation: none; opacity: .92; stroke-dashoffset: 0; }
+@keyframes p4-trace { from { opacity: .95; } to { opacity: .92; stroke-dashoffset: 0; } }
+@keyframes p4-anneau { from { opacity: .35; } to { opacity: 1; } }
+
+/* ---- les pieds du plateau ---- */
+.p4-pieds { display: flex; justify-content: space-between; padding: 0 6%; height: 16px; margin-top: 3px; }
+.p4-pieds i {
+  display: block; width: 16%; height: 100%;
+  background: linear-gradient(180deg, #2b5fe0, #163a9c);
+  clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%);
+  border-radius: 2px;
+}
+.p4-v2 .mini-actions { margin-top: 14px; }
+
+/* case d’arrivée du jeton visé (vue à travers le trou) */
+.p4-cell.cible::before {
+  content: ''; position: absolute; left: 10%; top: 10%; width: 80%; height: 80%; z-index: 1;
+  border-radius: 50%; border: 3px dashed rgba(255, 255, 255, .6);
+  animation: p4-cible 1.2s linear infinite;
+}
+@keyframes p4-cible { to { transform: rotate(360deg); } }
+/* l’IA réfléchit : trois points qui sautillent */
+.p4-points i { font-style: normal; display: inline-block; animation: p4-saut 1s ease-in-out infinite; }
+.p4-points i:nth-child(2) { animation-delay: .15s; }
+.p4-points i:nth-child(3) { animation-delay: .3s; }
+@keyframes p4-saut { 30% { transform: translateY(-4px); } 60% { transform: none; } }

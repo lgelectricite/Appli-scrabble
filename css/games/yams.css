@@ -1,24 +1,231 @@
 /* ===== GGgames V2 — Yams =====
-   Styles propres à ce jeu (chargés après css/style.css). */
+   Une piste de dés en feutre bordeaux, de vrais dés en 3D (six faces,
+   points creusés, le 1 rouge) qui roulent et rebondissent ; une feuille
+   de score en deux colonnes, cases de 44 px au moins. */
 
-/* ================= Yams ================= */
-.yams-dice { display: flex; justify-content: center; gap: 8px; margin: 6px 0; }
-.yams-die {
-  font-size: 44px; line-height: 1; padding: 4px 2px 0;
-  background: #fff; color: var(--ink); border: 2px solid var(--ink);
-  border-radius: 12px; cursor: pointer; min-width: 54px;
-  box-shadow: 0 3px 0 var(--ink);
+.ym-v2 { max-width: 480px; margin: 0 auto; touch-action: manipulation; }
+
+/* ---- onglets des joueurs ---- */
+.ym-onglets { display: flex; gap: 6px; margin: 0 0 12px; }
+.ym-onglet {
+  position: relative; flex: 1 1 0; min-width: 0; min-height: 48px; padding: 4px 6px; border-radius: 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+  font-size: 12.5px; font-weight: 800; color: var(--txt-2);
+  background: var(--glass); border: 1.5px solid var(--stroke); cursor: pointer; touch-action: manipulation;
+  transition: transform .3s var(--ressort), border-color .25s;
 }
-.yams-die.held { background: var(--tile-new); transform: translateY(-4px); }
-.yams-sheet { overflow-x: auto; margin-top: 8px; }
-.yams-sheet table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.yams-sheet td, .yams-sheet th { padding: 4px 6px; border-bottom: 1px solid var(--ink-10); text-align: center; }
-.yams-sheet td:first-child { text-align: left; }
-.yams-sheet th.turn { color: var(--accent); }
-.yams-sheet td.filled { font-weight: 700; }
-.yams-sheet td.empty { opacity: .4; }
-.yams-sheet tr.total td { font-weight: 800; border-top: 2px solid var(--ink); }
-.yams-pick {
-  background: var(--accent); color: var(--accent-ink); border: none; border-radius: 6px;
-  padding: 3px 10px; font-size: 13px; font-weight: 700; cursor: pointer;
+.ym-on-nom { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ym-onglet b { font-family: var(--f-titre); font-size: 19px; font-weight: 600; color: var(--txt); line-height: 1.1; }
+.ym-onglet.tour { border-color: var(--or); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, .3); }
+.ym-onglet.tour::after {
+  content: ''; position: absolute; left: 50%; bottom: -5px; width: 22px; height: 4px; margin-left: -11px;
+  border-radius: 4px; background: var(--or); animation: ym-tour 1.2s ease-in-out infinite;
+}
+@keyframes ym-tour { 50% { opacity: .35; width: 12px; margin-left: -6px; } }
+.ym-onglet.vu { background: linear-gradient(var(--bg-2), var(--bg-2)) padding-box, var(--jeu-grad) border-box; border-color: transparent; color: var(--txt); }
+
+/* ---- la piste ---- */
+.ym-table {
+  position: relative; padding: 8px 8px 10px; border-radius: 22px;
+  background:
+    radial-gradient(120% 90% at 50% 20%, rgba(255, 255, 255, .08), transparent 60%),
+    linear-gradient(180deg, #7a1730 0%, #5a0f22 100%);
+  box-shadow: inset 0 0 0 3px rgba(255, 196, 120, .25), inset 0 0 0 5px rgba(0, 0, 0, .25),
+    inset 0 10px 24px rgba(0, 0, 0, .45), 0 10px 26px rgba(0, 0, 0, .45), 0 0 0 5px #3a1a10, 0 0 0 7px #6b3b1f;
+  margin: 6px 6px 0;
+}
+.ym-table::before { /* surpiqûre dorée */
+  content: ''; position: absolute; inset: 7px; border-radius: 16px; pointer-events: none;
+  border: 1.5px dashed rgba(255, 200, 120, .35);
+}
+.ym-gardes, .ym-piste { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); justify-items: center; }
+.ym-gardes {
+  min-height: 56px; padding: 4px 0 3px; margin: 0 4px;
+  border-bottom: 1px solid rgba(255, 200, 120, .18);
+}
+.ym-etiq {
+  position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); padding: 0 8px;
+  font-size: 12px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase;
+  color: rgba(255, 220, 170, .7); background: #6a1329; border-radius: 6px;
+}
+.ym-piste { min-height: 76px; align-items: center; padding-top: 8px; }
+.ym-slot { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; }
+.ym-gardes .ym-slot.vide::before {
+  content: ''; width: 44px; height: 44px; border-radius: 12px;
+  border: 1.5px dashed rgba(255, 220, 170, .22);
+}
+.ym-legende {
+  display: block; margin: 4px auto 0; text-align: center;
+  font-size: 12.5px; font-weight: 800; color: rgba(255, 225, 190, .85);
+}
+.ym-table.passe .ym-de { opacity: .6; filter: saturate(.6); }
+.ym-vite {
+  position: absolute; right: 10px; top: -14px; z-index: 3;
+  padding: 5px 11px; border-radius: 999px; min-height: 30px;
+  font-family: var(--f-titre); font-size: 13px; font-weight: 600; color: var(--txt-2);
+  background: var(--solid-2); border: 1.5px solid var(--stroke-2); cursor: pointer; touch-action: manipulation;
+}
+.ym-vite.on { color: #3a1400; background: var(--grad-or); border-color: transparent; }
+
+/* ---- les dés en 3D ---- */
+.ym-de {
+  --t: 46px;
+  position: relative; width: var(--t); height: var(--t); margin: 0; padding: 0; border: 0;
+  background: none; cursor: pointer; perspective: 380px; touch-action: manipulation;
+  transform: translate(var(--ox, 0), var(--oy, 0)) rotate(var(--oz, 0));
+  -webkit-tap-highlight-color: transparent;
+}
+.ym-gardes .ym-de { transform: none; }
+.ym-de:disabled { cursor: default; }
+.ym-de.vide { visibility: hidden; }
+.ym-cube {
+  position: relative; display: block; width: 100%; height: 100%;
+  transform-style: preserve-3d; transform: rotateX(var(--fx)) rotateY(var(--fy));
+}
+.ym-f {
+  position: absolute; inset: 0; border-radius: 19%; display: block;
+  background-color: #fdfaf2; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  box-shadow: inset 0 0 0 1px rgba(80, 50, 20, .12), inset -3px -4px 7px rgba(140, 100, 50, .28), inset 2px 2px 4px rgba(255, 255, 255, .9);
+  --p: #23263d;
+}
+.ym-f.f1 { transform: translateZ(calc(var(--t) / 2)); }
+.ym-f.f6 { transform: rotateY(180deg) translateZ(calc(var(--t) / 2)); }
+.ym-f.f3 { transform: rotateY(90deg) translateZ(calc(var(--t) / 2)); }
+.ym-f.f4 { transform: rotateY(-90deg) translateZ(calc(var(--t) / 2)); }
+.ym-f.f2 { transform: rotateX(90deg) translateZ(calc(var(--t) / 2)); }
+.ym-f.f5 { transform: rotateX(-90deg) translateZ(calc(var(--t) / 2)); }
+.ym-f.f1 { background-image: radial-gradient(circle at 50% 50%, #d8203a 0 13%, rgba(120, 0, 20, .4) 14%, transparent 16%); }
+.ym-f.f2, .ym-mini-de.d2 {
+  background-image: radial-gradient(circle at 27% 27%, var(--p) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 73% 73%, var(--p) 0 9%, transparent 10.5%);
+}
+.ym-f.f3, .ym-mini-de.d3 {
+  background-image: radial-gradient(circle at 26% 26%, var(--p) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 50% 50%, var(--p) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 74% 74%, var(--p) 0 9%, transparent 10.5%);
+}
+.ym-f.f4, .ym-mini-de.d4 {
+  background-image: radial-gradient(circle at 27% 27%, var(--p) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 73% 27%, var(--p) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 27% 73%, var(--p) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 73% 73%, var(--p) 0 9%, transparent 10.5%);
+}
+.ym-f.f5, .ym-mini-de.d5 {
+  background-image: radial-gradient(circle at 26% 26%, var(--p) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 74% 26%, var(--p) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 50% 50%, var(--p) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 26% 74%, var(--p) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 74% 74%, var(--p) 0 9%, transparent 10.5%);
+}
+.ym-f.f6, .ym-mini-de.d6 {
+  background-image: radial-gradient(circle at 28% 24%, var(--p) 0 8.5%, transparent 10%),
+    radial-gradient(circle at 72% 24%, var(--p) 0 8.5%, transparent 10%),
+    radial-gradient(circle at 28% 50%, var(--p) 0 8.5%, transparent 10%),
+    radial-gradient(circle at 72% 50%, var(--p) 0 8.5%, transparent 10%),
+    radial-gradient(circle at 28% 76%, var(--p) 0 8.5%, transparent 10%),
+    radial-gradient(circle at 72% 76%, var(--p) 0 8.5%, transparent 10%);
+}
+/* ombre portée sur le feutre */
+.ym-de::before {
+  content: ''; position: absolute; left: 8%; right: 0; bottom: -7px; height: 12px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, .45), transparent); transform: translateZ(-1px);
+}
+.ym-de.garde .ym-f { background-color: #fff1c9; box-shadow: inset 0 0 0 2px #ffc23d, inset -3px -4px 7px rgba(170, 110, 20, .3), inset 2px 2px 4px rgba(255, 255, 255, .9); }
+.ym-de.garde::after {
+  content: ''; position: absolute; left: 50%; bottom: -9px; width: 18px; height: 4px; margin-left: -9px;
+  border-radius: 3px; background: #ffc23d; box-shadow: 0 0 8px #ffc23d;
+}
+/* le lancer : le dé tombe en tournant, rebondit deux fois */
+.ym-de.roule { animation: ym-rebond .72s linear var(--dl, 0ms) both; }
+.ym-de.roule .ym-cube { animation: ym-tourne .72s cubic-bezier(.12, .62, .28, 1) var(--dl, 0ms) both; }
+@keyframes ym-tourne {
+  from { transform: rotateX(calc(var(--fx) + 720deg)) rotateY(calc(var(--fy) + 450deg)) rotateZ(160deg); }
+  to { transform: rotateX(var(--fx)) rotateY(var(--fy)) rotateZ(0deg); }
+}
+@keyframes ym-rebond {
+  0% { transform: translate(calc(var(--ox) * 3 - 12px), -110px) rotate(var(--oz)) scale(1.2); opacity: 0; animation-timing-function: cubic-bezier(.5, 0, 1, .6); }
+  12% { opacity: 1; }
+  50% { transform: translate(var(--ox), var(--oy)) rotate(var(--oz)); animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+  66% { transform: translate(calc(var(--ox) + 4px), calc(var(--oy) - 16px)) rotate(var(--oz)); animation-timing-function: cubic-bezier(.6, 0, .9, .5); }
+  80% { transform: translate(calc(var(--ox) + 6px), var(--oy)) rotate(var(--oz)); animation-timing-function: ease-out; }
+  90% { transform: translate(calc(var(--ox) + 6px), calc(var(--oy) - 4px)) rotate(var(--oz)); animation-timing-function: ease-in; }
+  100% { transform: translate(var(--ox), var(--oy)) rotate(var(--oz)); }
+}
+.ym-table.yams { animation: ym-yams .9s ease-in-out 2; }
+@keyframes ym-yams { 50% { box-shadow: inset 0 0 0 3px #ffd23f, inset 0 0 40px rgba(255, 210, 63, .5), 0 0 30px rgba(255, 210, 63, .6), 0 0 0 5px #3a1a10, 0 0 0 7px #6b3b1f; } }
+
+/* ---- message et actions ---- */
+.ym-msg { min-height: 22px; margin: 8px 4px 6px; font-size: 15px; }
+.ym-msg b { color: var(--txt); }
+.ym-actions { display: flex; gap: 8px; align-items: stretch; }
+.ym-actions .btn.big { flex: 1; width: auto; min-height: 54px; }
+.ym-mini { flex: none; width: 54px; min-height: 54px; padding: 0; font-size: 22px; border-radius: 16px; }
+.ym-secoue { opacity: .75; }
+.ym-secoue.on { opacity: 1; background: var(--grad-or); border-color: transparent; }
+.ym-reste { margin-left: 4px; letter-spacing: 2px; font-size: 13px; color: #fff; }
+.ym-reste i { font-style: normal; opacity: .35; }
+.ym-annule { display: block; margin: 8px auto 0; }
+
+/* ---- la feuille de score ---- */
+.ym-feuille { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.ym-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ym-ligne {
+  display: flex; align-items: center; justify-content: space-between; gap: 4px;
+  min-height: 44px; margin: 0; padding: 3px 10px; border-radius: 12px; text-align: left;
+  font-family: var(--f-texte); font-size: 14px; font-weight: 700; color: var(--txt-2);
+  background: var(--glass); border: 1px solid var(--stroke); touch-action: manipulation;
+  transition: transform .15s var(--ressort), background .2s, border-color .2s;
+}
+.ym-nom { display: flex; flex-direction: column; justify-content: center; min-width: 0; line-height: 1.15; position: relative; }
+.ym-nom small { font-size: 12px; font-weight: 600; color: var(--txt-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ym-ligne b { flex: none; font-family: var(--f-titre); font-size: 18px; font-weight: 600; min-width: 34px; text-align: right; }
+.ym-ligne.libre b { color: var(--txt-3); }
+.ym-ligne.pleine { color: var(--txt-2); background: rgba(255, 255, 255, .035); }
+.ym-ligne.pleine b { color: var(--txt); }
+.ym-ligne.pleine.zero b { color: var(--txt-3); }
+.ym-ligne.possible { cursor: pointer; color: var(--txt); background: rgba(47, 214, 123, .1); border-color: rgba(47, 214, 123, .42); }
+.ym-ligne.possible b { color: #7dffb0; }
+.ym-ligne.possible.nul { background: var(--glass); border-color: var(--stroke-2); }
+.ym-ligne.possible.nul b { color: var(--txt-3); }
+.ym-ligne.possible:active { transform: scale(.97); }
+.ym-ligne.choisie {
+  color: #06301a; background: var(--grad-vert); border-color: transparent; transform: scale(1.03);
+  box-shadow: 0 6px 18px rgba(47, 214, 123, .35);
+}
+.ym-ligne.choisie b, .ym-ligne.choisie small { color: #06301a; }
+.ym-ligne.derniere { animation: ym-marque 1.1s var(--doux); }
+@keyframes ym-marque { from { background: rgba(255, 210, 63, .45); border-color: #ffd23f; transform: scale(1.06); } }
+.ym-mini-de {
+  display: inline-block; width: 16px; height: 16px; margin-right: 6px; vertical-align: -3px;
+  border-radius: 4px; background-color: #fdfaf2; --p: #23263d;
+}
+.ym-nom.haut { flex-direction: row; align-items: center; justify-content: flex-start; }
+.ym-mini-de.d1 { background-image: radial-gradient(circle, #d8203a 0 16%, transparent 19%); }
+.ym-sous, .ym-bonus, .ym-total {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap;
+  min-height: 40px; padding: 4px 10px; border-radius: 12px; font-size: 13.5px; font-weight: 800; color: var(--txt-2);
+}
+.ym-sous { background: rgba(255, 194, 61, .08); border: 1px solid rgba(255, 194, 61, .25); }
+.ym-sous b, .ym-bonus b, .ym-total b { font-family: var(--f-titre); font-size: 18px; font-weight: 600; color: var(--txt); }
+.ym-sous small { font-size: 13px; color: var(--txt-3); }
+.ym-barre { flex: 1 0 100%; height: 5px; border-radius: 5px; background: rgba(255, 255, 255, .1); overflow: hidden; margin-top: -2px; }
+.ym-barre i { display: block; height: 100%; border-radius: 5px; background: var(--grad-or); transition: width .6s var(--doux); }
+.ym-bonus.gagne { color: #3a2200; background: var(--grad-or); }
+.ym-bonus.gagne b { color: #3a2200; }
+.ym-total { margin-top: auto; min-height: 44px; background: var(--jeu-grad); color: #fff; }
+.ym-total span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.ym-total b { color: #fff; font-size: 22px; }
+
+@media (max-width: 380px) {
+  .ym-de { --t: 42px; }
+  .ym-ligne { padding: 3px 8px; font-size: 13.5px; }
+  .ym-nom small { display: none; }
+}
+@media (max-height: 700px) {
+  .ym-nom small { display: none; }
+  .ym-de { --t: 40px; }
+  .ym-gardes { min-height: 48px; }
+  .ym-piste { min-height: 62px; padding-top: 6px; }
+  .ym-onglets { margin-bottom: 8px; }
+  .ym-onglet { min-height: 44px; }
 }

@@ -47,12 +47,18 @@ function check(n, c, e) {
   await p.waitForSelector('#overlay-rules.hidden', { state: 'attached' });
   const cells = await p.locator('.p4-cell').count();
   check('grille 7×6', cells === 42, cells);
-  // Léa gagne en verticale : colonnes 0 (Léa) / 1 (Marc)
+  // Léa gagne en verticale : colonnes 0 (Léa) / 1 (Marc). Sur un seul
+  // téléphone, le plateau est gelé un instant après chaque jeton (anti
+  // double-appui) : on attend qu'il soit de nouveau prêt.
+  const p4Joue = async c => {
+    await p.waitForSelector('.p4-board[data-pret="1"]');
+    await p.locator('.p4-cell[data-col="' + c + '"]').first().click();
+  };
   for (let i = 0; i < 3; i++) {
-    await p.locator('.p4-cell[data-col="0"]').first().click();
-    await p.locator('.p4-cell[data-col="1"]').first().click();
+    await p4Joue(0);
+    await p4Joue(1);
   }
-  await p.locator('.p4-cell[data-col="0"]').first().click();
+  await p4Joue(0);
   await p.waitForSelector('.mini-msg');
   const msg = await p.textContent('#mini-area');
   check('victoire de Léa annoncée', msg.includes('Léa') && msg.includes('gagne'), msg.slice(0, 80));
@@ -74,9 +80,11 @@ function check(n, c, e) {
   await p.click('#btn-mini-start');
   await p.waitForSelector('#screen-mini.active');
   await p.click('[data-a="roll"]');
-  await p.waitForSelector('.yams-pick');
-  await p.locator('.yams-pick').last().click(); // « chance »
-  const filled = await p.locator('.yams-sheet td.filled').count();
+  // V2 : on choisit une case (points possibles affichés), puis on confirme
+  await p.waitForSelector('.ym-ligne.possible');
+  await p.locator('.ym-ligne.possible[data-cat="chance"]').click();
+  await p.click('[data-a="marque"]');
+  const filled = await p.locator('.ym-ligne.pleine').count();
   check('Yams : case marquée', filled === 1, filled);
   await p.click('#btn-mini-menu');
   await p.click('#btn-menu-quit');
@@ -172,6 +180,8 @@ function check(n, c, e) {
   check('bateaux de l’hôte invisibles chez l’invité', guestAimShips === 0, guestAimShips);
 
   // l'hôte tire une case ; l'invité voit le résultat sur SA flotte
+  // (la carte n'est « prête » qu'un instant après son affichage : anti double-appui)
+  await host.waitForSelector('.bn-grid.aim[data-pret="1"]');
   await host.locator('.bn-grid.aim .bn-cell').first().click();
   await guest.waitForFunction(() =>
     document.querySelectorAll('.bn-cell.hit, .bn-cell.miss').length >= 1, null, { timeout: 8000 });
