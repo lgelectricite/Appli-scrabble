@@ -172,21 +172,27 @@ function simPoker(nb) {
     pct(plancher) + ' des tournois (un seul pile-ou-face décide souvent de tout)');
   for (const niveau of ['facile', 'moyen', 'difficile']) {
     for (const nom of Object.keys(TRIV)) {
-      const t = tournois(TRIV[nom], niveau, nb);
+      // le « tapis à chaque main » se joue en peu de mains : on en fait 5 fois
+      // plus, c'est LA mesure qui compte (plancher théorique ~40 %)
+      const nt = nom === 'tapis à chaque main' ? nb * 5 : nb;
+      const t = tournois(TRIV[nom], niveau, nt);
       const c = cash(TRIV[nom], niveau, nb * (nom === "tapis à chaque main" ? 100 : 25));
-      res[niveau + ':' + nom] = { t, c };
+      res[niveau + ':' + nom] = { t, c, n: nt };
       console.log('  ' + niveau.padEnd(9) + ' · « ' + nom + ' » : gagne ' + pct(t) + ' des tournois (espérance ' +
         ((2 * t - 1) * 100).toFixed(0) + ' % de la cave) · cash game ' + (c >= 0 ? '+' : '') + c.toFixed(1) + ' bb/100');
     }
   }
+  // « perd de l'argent » = ne gagne PAS significativement plus d'un duel sur
+  // deux (test unilatéral à 95 % : 50 % + 1,64 écart-type de l'échantillon)
+  const pasGagnant = r => r.t < 0.5 + 1.64 * Math.sqrt(0.25 / r.n);
   ['moyen', 'difficile'].forEach(niveau => {
-    check(niveau + ' : « tapis à chaque main » perd de l’argent en tournoi (gagne < 50 % ; 78,8 % avant)',
-      res[niveau + ':tapis à chaque main'].t < 0.5, res[niveau + ':tapis à chaque main']);
+    check(niveau + ' : « tapis à chaque main » ne gagne pas plus d’un tournoi sur deux (78,8 % avant)',
+      pasGagnant(res[niveau + ':tapis à chaque main']), res[niveau + ':tapis à chaque main']);
     Object.keys(TRIV).forEach(nom => {
       check(niveau + ' : « ' + nom + ' » perd en cash game', res[niveau + ':' + nom].c < 0, res[niveau + ':' + nom]);
     });
   });
-  check('facile : « tapis à chaque main » ne gagne pas plus d’un duel sur deux', res['facile:tapis à chaque main'].t < 0.5,
+  check('facile : « tapis à chaque main » ne gagne pas plus d’un duel sur deux', pasGagnant(res['facile:tapis à chaque main']),
     res['facile:tapis à chaque main']);
   // à 4 : part des mains qui vont à l'abattage (16 % avant)
   ['facile', 'moyen', 'difficile'].forEach(niveau => {
@@ -253,14 +259,19 @@ function simJetons(mains) {
 
   const bj = require(ROOT + '/js/games/blackjack.js');
   console.log('--- Blackjack : la cagnotte suit la table au demi-jeton près ---');
-  store['gg-jetons'] = JSON.stringify({ n: 1000000, ts: Date.now(), vu: Date.now(), demi: 0 });
+  // on part SOUS le plafond (1 000 000) : sinon les premiers gains seraient
+  // écrêtés — voulu pour la cagnotte, mais ce n'est pas ce qu'on mesure ici
+  // (le jeu au hasard perd ~11 jetons par main : assez de marge vers 0 aussi)
+  store['gg-jetons'] = JSON.stringify({ n: 900000, ts: Date.now(), vu: Date.now(), demi: 0 });
   delete store['gg-bj-compte'];
   const t = bj.create(['Solo']);
   bj._regler(t, 0);
   const w0 = wallet.get();
-  let n = 0;
+  let n = 0, auPlafond = 0, aSec = 0;
   const nb = Math.min(mains, 50000);
   while (n < nb) {
+    if (wallet.get() >= wallet.PLAFOND) auPlafond++;
+    if (wallet.get() < 400) aSec++;
     if (t.phase === 'result') bj.apply(t, 0, { t: 'again' });
     bj.apply(t, 0, { t: 'bet', v: 1 + Math.floor(rnd() * 60) });
     bj._regler(bj.redact(t, 0), 0);
@@ -279,7 +290,8 @@ function simJetons(mains) {
   const attendu = w0 - p.engage + p.retour;
   const reel = wallet.get() + (wallet.demi() ? 0.5 : 0);
   console.log('  ' + nb + ' mains au hasard (doubles, séparations, assurances, abandons) : cagnotte ' + reel + ', attendu ' + attendu);
-  check('blackjack : la cagnotte = départ − misé + rendu, au demi-jeton près', reel === attendu, { reel, attendu });
+  if (auPlafond || aSec) console.log('  (mesure faussée : cagnotte au plafond ' + auPlafond + ' fois, presque à sec ' + aSec + ' fois)');
+  check('blackjack : la cagnotte = départ − misé + rendu, au demi-jeton près', reel === attendu, { reel, attendu, auPlafond, aSec });
 }
 
 /* ================= REPRISE / APPLI TUÉE / CASHOUT ================= */
