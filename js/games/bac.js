@@ -388,13 +388,14 @@
     },
 
     summary: function (state) {
-      var rows = state.players.map(function (p) { return { n: p.name, s: p.score }; })
+      var rows = state.players.map(function (p) { return { n: p.name, s: num(p.score) }; })
         .sort(function (a, b) { return b.s - a.s; });
       var top = rows.filter(function (r) { return r.s === rows[0].s; });
+      var nr = num(state.round);
       return rows.map(function (r) {
         return '<div class="final-line"><span>' + GG.esc(r.n) + '</span><strong>' +
           r.s + ' pts</strong></div>';
-      }).join('') + '<p class="hint">' + state.round + ' manche' + (state.round > 1 ? 's' : '') + ' · ' +
+      }).join('') + '<p class="hint">' + nr + ' manche' + (nr > 1 ? 's' : '') + ' · ' +
         catIds(state).length + ' catégories · lettres ' + GG.esc((state.used || []).join(' ')) + '</p>' +
         '<h1>🏆 ' + top.map(function (r) { return GG.esc(r.n); }).join(' & ') + '</h1>';
     },
@@ -636,7 +637,7 @@
     },
 
     render: function (el, ctx) {
-      var s = ctx.state;
+      var s = assainir(ctx.state);
       var me = ctx.me;
       var v = el._bac;
       if (!v || v.id !== s.id) v = el._bac = { id: s.id, brouillon: {}, votes: {}, vus: {}, t0: {} };
@@ -666,6 +667,33 @@
   Object.defineProperty(mod, '_BOT_LEX', { get: botLexCompat, enumerable: false });
 
   /* ======================= rendu ======================= */
+
+  /* ce qui doit être un nombre le redevient (l'état peut venir d'un hôte malveillant) */
+  function num(x) { x = +x; return isFinite(x) ? x : 0; }
+  function assainir(s) {
+    ['round', 'maxRounds', 'duration', 'echeance', 'ecrivain'].forEach(function (k) {
+      if (s[k] != null) s[k] = num(s[k]);
+    });
+    if (!s.duration) s.duration = DURATION;
+    if (!Array.isArray(s.players)) s.players = [];
+    s.players.forEach(function (p) { p.score = num(p.score); });
+    if (Array.isArray(s.gains)) s.gains = s.gains.map(num);
+    if (Array.isArray(s.scoreAvant)) s.scoreAvant = s.scoreAvant.map(num);
+    if (!Array.isArray(s.submitted)) s.submitted = [];
+    if (!Array.isArray(s.voted)) s.voted = [];
+    if (!s.answers || typeof s.answers !== 'object') s.answers = {};
+    if (Array.isArray(s.results)) {
+      s.results.forEach(function (l) {
+        if (Array.isArray(l)) l.forEach(function (r) {
+          if (!r || typeof r !== 'object') return;
+          r.pts = num(r.pts);
+          if (Array.isArray(r.par)) r.par = r.par.map(num);
+          if (Array.isArray(r.avec)) r.avec = r.avec.map(num);
+        });
+      });
+    }
+    return s;
+  }
 
   function esc(x) { return GG.esc(x); }
   function lettreSure(L) { return /^[A-Z]$/.test(L) ? L : '?'; }

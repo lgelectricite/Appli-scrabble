@@ -96,6 +96,22 @@
   }
 
   /* ---------------- outils ---------------- */
+  /* ce qui doit être un nombre le redevient (l'état peut venir d'un hôte malveillant) */
+  function num(x) { x = +x; return isFinite(x) ? x : 0; }
+  function assainir(s) {
+    ['current', 'durationSec', 'startTs', 'actifMs', 'coups', 'taille', 'serie'].forEach(function (k) {
+      if (s[k] != null) s[k] = num(s[k]);
+    });
+    if (!Array.isArray(s.players)) s.players = [];
+    s.players.forEach(function (p) { p.pairs = num(p.pairs); p.tries = num(p.tries); });
+    if (!Array.isArray(s.cards)) s.cards = [];
+    if (!Array.isArray(s.up)) s.up = [];
+    s.up = s.up.map(num);
+    if (s.dernier && typeof s.dernier === 'object') {
+      ['p', 'i', 'j', 'serie'].forEach(function (k) { if (s.dernier[k] != null) s.dernier[k] = num(s.dernier[k]); });
+    }
+    return s;
+  }
   /* un identifiant de thème venu de l'état n'est utilisé qu'après liste blanche */
   function theme(id) {
     return THEME_IDS.indexOf(id) !== -1 ? id : 'animaux';
@@ -108,17 +124,22 @@
     var m = Math.floor(sec / 60), s = sec % 60;
     return m + ':' + (s < 10 ? '0' : '') + s;
   }
+  /* multiplication 32 bits (Math.imul n'existe pas sur les très vieux navigateurs) */
+  var imul = Math.imul || function (a, b) {
+    var ah = (a >>> 16) & 0xffff, al = a & 0xffff, bh = (b >>> 16) & 0xffff, bl = b & 0xffff;
+    return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0);
+  };
   /* générateur pseudo-aléatoire à graine (défi du jour : même grille partout) */
   function graine(str) {
     var h = 2166136261;
-    for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = imul(h, 16777619); }
     return h >>> 0;
   }
   function mulberry(a) {
     return function () {
       a |= 0; a = (a + 0x6D2B79F5) | 0;
-      var t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      var t = imul(a ^ (a >>> 15), 1 | a);
+      t = (t + imul(t ^ (t >>> 7), 61 | t)) ^ t;
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
@@ -154,7 +175,7 @@
      même moment donnent la même réponse. */
   function hache(a, b, c) {
     var h = (a * 374761393 + b * 668265263 + c * 1274126177) | 0;
-    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    h = imul(h ^ (h >>> 13), 1274126177);
     h = h ^ (h >>> 16);
     return ((h >>> 0) % 10000) / 10000;
   }
@@ -236,14 +257,14 @@
     summary: function (state) {
       // classement : paires trouvées, puis moins d'essais
       var rows = state.players.map(function (p) {
-        return { n: p.name, s: p.pairs, t: p.tries };
+        return { n: p.name, s: num(p.pairs), t: num(p.tries) };
       }).sort(function (a, b) { return b.s - a.s || a.t - b.t; });
       var html = rows.map(function (r) {
         return '<div class="final-line"><span>' + GG.esc(r.n) + '</span><strong>' +
           r.s + ' paire' + (r.s > 1 ? 's' : '') + ' · ' + r.t + ' essai' +
           (r.t > 1 ? 's' : '') + '</strong></div>';
       }).join('');
-      html += '<p>⏱️ Partie bouclée en ' + fmt(state.durationSec) + '.</p>';
+      html += '<p>⏱️ Partie bouclée en ' + fmt(num(state.durationSec)) + '.</p>';
 
       if (state.players.length === 1) {
         // record personnel (sur ce téléphone) : moins d'essais, puis moins de temps
@@ -400,7 +421,7 @@
     },
 
     render: function (el, ctx) {
-      var s = ctx.state;
+      var s = assainir(ctx.state);
       var me = ctx.me;
       var v = el._mem;
       if (!v || v.id !== s.id) {

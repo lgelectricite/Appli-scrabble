@@ -556,12 +556,32 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
       h.players.forEach(pl => { pl.hand = [{ r: X, s: X }]; });
       huit.render(zone, { state: h, me: 1, mode: 'guest', act: rien });
       res['huit fin'] = zone.querySelectorAll('img, script').length;
+      // Champs censés être des nombres (scores, manche, pénalité, essais…) piégés eux aussi,
+      // au rendu comme dans le récapitulatif final (que l'invité calcule avec l'état de l'hôte)
+      const compte = html => { const d = document.createElement('div'); d.innerHTML = html; return d.querySelectorAll('img, script').length; };
+      const hn = huit.redact(huit.create(['A', 'B']), 1);
+      hn.manche = X; hn.pending2 = X; hn.pileCount = X; hn.lastGain = X;
+      hn.players.forEach(pl => { pl.score = X; pl.cards = X; });
+      huit.render(zone, { state: hn, me: 1, mode: 'guest', act: rien });
+      res['huit nombres'] = zone.querySelectorAll('img, script').length + compte(huit.summary(hn));
+      const mn = mem.create(['A', 'B']);
+      mn.pret = true; mn.durationSec = X; mn.players.forEach(pl => { pl.pairs = X; pl.tries = X; });
+      mem.render(zone, { state: mn, me: 1, mode: 'guest', act: rien });
+      res['memory nombres'] = zone.querySelectorAll('img, script').length + compte(mem.summary(mn));
+      ['intro', 'answers', 'result'].forEach(ph => {
+        const bn = bac.create(['A', 'B']);
+        bn.phase = ph; bn.letter = 'M'; bn.round = X; bn.maxRounds = X; bn.duration = X;
+        bn.players.forEach(pl => { pl.score = X; }); bn.gains = [X, X]; bn.scoreAvant = [X, X];
+        if (ph === 'result') bn.results = [bn.cats.map(() => ({ ans: 'Marc', pts: X })), bn.cats.map(() => ({ ans: '', pts: X, why: 'vide' }))];
+        bac.render(zone, { state: bn, me: 1, mode: 'guest', act: rien });
+        res['bac nombres ' + ph] = zone.querySelectorAll('img, script').length + compte(bac.summary(bn));
+      });
       zone.remove();
       return res;
     });
     await attendre(300);
     const xss = await p.evaluate(() => window.__xss);
-    check('lettre, noms, réponses, cartes piégés : aucune balise créée, aucun code exécuté',
+    check('lettre, noms, réponses, cartes, nombres piégés : aucune balise créée, aucun code exécuté',
       Object.values(r).every(n => n === 0) && xss === undefined, r);
     await p.context().close();
   }

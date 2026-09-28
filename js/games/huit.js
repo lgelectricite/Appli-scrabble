@@ -347,6 +347,29 @@
 
   /* ======================= rendu : outils ======================= */
 
+  /* Un hôte malveillant peut glisser n'importe quoi dans l'état : tout ce qui
+     doit être un nombre le redevient avant d'approcher le HTML ou un sélecteur. */
+  function num(x) { x = +x; return isFinite(x) ? x : 0; }
+  function assainir(s) {
+    ['manche', 'pending2', 'pileCount', 'coups', 'dir', 'current', 'winner', 'lastGain', 'annonce'].forEach(function (k) {
+      if (s[k] != null) s[k] = num(s[k]);
+    });
+    if (!Array.isArray(s.players)) s.players = [];
+    s.players.forEach(function (p) {
+      p.score = num(p.score);
+      if (p.cards !== undefined) p.cards = num(p.cards);
+      if (p.hand !== undefined && !Array.isArray(p.hand)) p.hand = [];
+    });
+    if (Array.isArray(s.detail)) s.detail = s.detail.map(num);
+    if (s.dernier && typeof s.dernier === 'object') {
+      ['p', 'n', 'pending', 'saute', 'oubli', 'sens'].forEach(function (k) {
+        if (s.dernier[k] != null) s.dernier[k] = num(s.dernier[k]);
+      });
+    }
+    if (!Array.isArray(s.discard) || !s.discard.length) s.discard = [{ r: '?', s: '?' }];
+    return s;
+  }
+
   function esc(s) { return GG.esc(s); }
 
   function carteHtml(c, classe) {
@@ -468,13 +491,14 @@
 
     summary: function (state) {
       var R = regles(state);
-      var rows = state.players.map(function (p) { return { n: p.name, s: p.score }; })
+      var rows = state.players.map(function (p) { return { n: p.name, s: num(p.score) }; })
         .sort(function (a, b) { return b.s - a.s; });
+      var nm = num(state.manche);
       return rows.map(function (r) {
         return '<div class="final-line"><span>' + esc(r.n) + '</span><strong>' +
           r.s + ' pts</strong></div>';
-      }).join('') + '<p class="hint">Partie en ' + R.cible + ' points · ' + state.manche + ' manche' +
-        (state.manche > 1 ? 's' : '') + '.</p><h1>🏆 ' +
+      }).join('') + '<p class="hint">Partie en ' + R.cible + ' points · ' + nm + ' manche' +
+        (nm > 1 ? 's' : '') + '.</p><h1>🏆 ' +
         rows.filter(function (r) { return r.s === rows[0].s; })
           .map(function (r) { return esc(r.n); }).join(' & ') + '</h1>';
     },
@@ -681,7 +705,7 @@
     },
 
     render: function (el, ctx) {
-      var s = ctx.state;
+      var s = assainir(ctx.state);
       var me = ctx.me;
       var R = regles(s);
       var n = s.players.length;
