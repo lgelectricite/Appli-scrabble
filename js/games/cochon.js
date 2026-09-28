@@ -157,7 +157,7 @@
     },
 
     summary: function (state) {
-      var rows = state.players.map(function (p, i) { return { n: p.name, s: p.total, i: i }; })
+      var rows = state.players.map(function (p, i) { return { n: p.name, s: +p.total || 0, i: i }; })
         .sort(function (a, b) { return b.s - a.s; });
       var g = mod.gagnants(state);
       return rows.map(function (r) {
@@ -231,6 +231,7 @@
   function gros(v, i, cls) {
     var faces = '';
     for (var f = 1; f <= 6; f++) faces += '<i class="pig-f f' + f + '"></i>';
+    v = v >= 1 && v <= 6 ? v | 0 : 0;
     var r = ROT[v || 6];
     return '<div class="pig-de' + cls + '" style="--fx:' + r[0] + 'deg;--fy:' + r[1] + 'deg;--dl:' + (i * 90) + 'ms" data-v="' + (v || 0) + '">' +
       '<span class="pig-cube">' + faces + '</span></div>';
@@ -242,7 +243,7 @@
     var enSolo = ctx.mode === 'local' && !!s.niveauIA;
     var hotseat = ctx.mode === 'local' && !s.niveauIA;
     var mine = ctx.me === s.current && !s.finished;
-    var nom = function (i) { return GG.esc(s.players[i].name); };
+    var nom = function (i) { return s.players[i] ? GG.esc(s.players[i].name) : '?'; };
     var avant = el._v2 && el._v2.jeu === 'cochon' && el._v2.id === s.id ? el._v2 : null;
     var dern = s.dernier;
     var nouveau = !!(avant && dern && dern.n > avant.n);
@@ -260,8 +261,9 @@
     // ---- la course vers 100 ----
     html += '<div class="pig-course">';
     s.players.forEach(function (p, i) {
-      var enJeu = i === s.current && !s.finished ? s.turnPoints : 0;
-      var pc = Math.min(100, p.total), pj = Math.min(100 - pc, enJeu);
+      // (nombres forcés : un état venu du réseau ne glisse rien dans la page)
+      var enJeu = i === s.current && !s.finished ? (+s.turnPoints || 0) : 0;
+      var pc = Math.min(100, +p.total || 0), pj = Math.min(100 - pc, enJeu);
       var ancien = totauxAvant && totauxAvant[i] !== undefined ? Math.min(100, totauxAvant[i]) : pc;
       html += '<div class="pig-couloir' + (i === s.current && !s.finished ? ' tour' : '') + (s.cible === i ? ' arrive' : '') +
         '" style="--c:' + COULEURS[i % 4] + '" data-p="' + i + '">' +
@@ -269,7 +271,7 @@
         '<span class="pig-piste"><i class="pig-rempli" style="width:' + ancien + '%" data-w="' + pc + '"></i>' +
         '<i class="pig-enjeu" style="left:' + pc + '%;width:' + pj + '%"></i>' +
         '<i class="pig-cochon" style="left:' + (pc + pj) + '%">🐷</i></span>' +
-        '<b class="pig-total">' + p.total + '</b></div>';
+        '<b class="pig-total">' + (+p.total || 0) + '</b></div>';
     });
     html += '</div>';
     if (s.cible >= 0 && !s.finished) {
@@ -285,17 +287,19 @@
     // ---- points du tour ----
     // suspense : tant que le dé roule, on affiche encore les points d’avant
     var gainDe = dern && dern.res === 'ok' && dern.des ? dern.des.reduce(function (a, b) { return a + b; }, 0) : 0;
-    var tpAff = roule && dern && dern.res === 'ok' && !fxReduit() ? s.turnPoints - gainDe : s.turnPoints;
+    var tpS = +s.turnPoints || 0;
+    var tpAff = roule && dern && dern.res === 'ok' && !fxReduit() ? tpS - (+gainDe || 0) : tpS;
     html += '<div class="pig-tour"><span>Points en jeu</span><b class="pig-tp">' + tpAff + '</b></div>';
     // ---- message ----
     var msg = '';
     if (dern && dern.player !== undefined && s.players[dern.player]) {
       var qui = nom(dern.player);
       if (dern.res === 'cochon') {
-        msg = '🐷 Cochon ! ' + qui + (dern.points ? ' perd ' + dern.points + ' point' + (dern.points > 1 ? 's' : '') + '.' : ' fait 1 d’entrée.');
+        var perdu = +dern.points || 0;
+        msg = '🐷 Cochon ! ' + qui + (perdu ? ' perd ' + perdu + ' point' + (perdu > 1 ? 's' : '') + '.' : ' fait 1 d’entrée.');
       }
       else if (dern.res === 'gros') msg = '🐷🐷 Gros cochon ! ' + qui + ' retombe à zéro.';
-      else if (dern.res === 'banque') msg = '💰 ' + qui + ' met ' + dern.points + ' points à l’abri.';
+      else if (dern.res === 'banque') msg = '💰 ' + qui + ' met ' + (+dern.points || 0) + ' points à l’abri.';
     }
     var suite = s.finished ? 'Partie terminée !' : mine
       ? (hotseat ? 'À toi, <b>' + nom(s.current) + '</b> : lance ou garde !' : 'À vous : lancez, ou gardez vos points.')
@@ -401,7 +405,7 @@
       } else if (d.res === 'banque') {
         sfx.play('coin');
         GG.haptic('success');
-        var couloir = el.querySelector('.pig-couloir[data-p="' + d.player + '"] .pig-total');
+        var couloir = el.querySelector('.pig-couloir[data-p="' + (d.player | 0) + '"] .pig-total');
         var depart = el.querySelector('.pig-tour');
         for (var k = 0; k < Math.min(6, 1 + Math.floor(d.points / 6)); k++) {
           (function (k2) {

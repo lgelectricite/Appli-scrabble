@@ -228,7 +228,7 @@
         .sort(function (a, b) { return b.s - a.s; });
       return rows.map(function (r) {
         return '<div class="final-line"><span>' + (r.i === 0 ? '✖️ ' : '⭕ ') + GG.esc(r.n) +
-          '</span><strong>' + r.s + ' manche' + (r.s > 1 ? 's' : '') + '</strong></div>';
+          '</span><strong>' + (r.s | 0) + ' manche' + (r.s > 1 ? 's' : '') + '</strong></div>';
       }).join('') + (g.length ? '<h3>🏆 ' + GG.esc(state.players[g[0]].name) + ' remporte la série !</h3>' : '');
     },
 
@@ -329,7 +329,7 @@
           for (var k = 0; k < nMan; k++) pips += '<i class="' + (k < s.players[i].wins ? 'on ' + SYM[i] : '') + '"></i>';
           html += '<span class="ttt-pips">' + (i === 1 ? pips : '') + '<b>' + GG.esc(s.players[i].name) + '</b>' +
             (i === 0 ? pips : '') + '</span>';
-          if (i === 0) html += '<span class="ttt-manche">Manche ' + (s.manche || 1) + '</span>';
+          if (i === 0) html += '<span class="ttt-manche">Manche ' + ((s.manche | 0) || 1) + '</span>';
         });
         html += '</div>';
       }
@@ -359,7 +359,7 @@
         var v = s.grid[i];
         var win = s.line.indexOf(i) !== -1;
         html += '<button class="ttt-cell' + (win ? ' win' : '') + (v ? ' pleine' : '') + '" data-i="' + i +
-          '" aria-label="Case ' + (i + 1) + (v ? ' : ' + v : '') + '">';
+          '" aria-label="Case ' + (i + 1) + (v ? (v === 'X' ? ' : X' : ' : O') : '') + '">';
         if (v) {
           var r2 = graine(s.id * 13 + (s.manche || 1) * 977 + i * 31 + 7);
           var parts = (v === 'X' ? traitX(r2) : traitO(r2)).split('|');
@@ -425,10 +425,10 @@
       var again = el.querySelector('[data-a="again"]');
       if (again) {
         setTimeout(function () { again.disabled = false; }, finManche ? 650 : 300);
-        again.addEventListener('click', function () { if (libre()) { el._tttJoue = true; ctx.act({ t: 'again' }); } });
+        again.addEventListener('click', function () { if (libre()) { el._tttJoue = true; sfx.play('select'); ctx.act({ t: 'again' }); } });
       }
       var fin = el.querySelector('[data-a="fin"]');
-      if (fin) fin.addEventListener('click', function () { if (libre()) { el._tttJoue = true; ctx.act({ t: 'fin' }); } });
+      if (fin) fin.addEventListener('click', function () { if (libre()) { el._tttJoue = true; sfx.play('select'); ctx.act({ t: 'fin' }); } });
 
       // ---- effets ----
       if (nouvellePage && avant) sfx.play('flip');

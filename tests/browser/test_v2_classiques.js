@@ -605,6 +605,177 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
     }
   }
 
+  /* ============ Sécurité : un état hostile (hôte malveillant) ============ */
+  if (!SEUL || SEUL === 'securite') {
+    console.log('--- Sécurité : rendu d’états piégés ---');
+    const p = await nouvelle(412, 780);
+    const res = await p.evaluate(() => {
+      const X = '<img src=x onerror="window.__xss=1">', Q = '" onmouseover="window.__xss=1" x="';
+      const out = {};
+      const essai = (id, prepare) => {
+        const m = GG.byId[id];
+        const s = m.create([X, X + '2']);
+        prepare(s);
+        const div = document.createElement('div');
+        div.style.cssText = 'position:absolute;left:-9999px;top:0;width:400px';
+        document.body.appendChild(div);
+        let erreur = null;
+        try { m.render(div, { state: s, me: 1, mode: 'guest', act: () => true }); } catch (e) { erreur = e.message; }
+        out[id] = { img: !!div.querySelector('img'), attr: !!div.querySelector('[onmouseover]'), erreur };
+        div.remove();
+      };
+      essai('p4', s => { s.manche = X; s.players[0].wins = X; s.coups = 3; s.roundOver = true; s.winner = 0; });
+      essai('morpion', s => { s.manche = X; s.grid[0] = Q; s.grid[1] = 'X'; s.coups = 2; });
+      essai('bataille', s => {
+        s.phase = 'play'; s.players.forEach(p => { p.ready = true; p.wins = X; });
+        s.dernier = { tireur: 0, cible: 1, idx: 5, res: Q, navire: X, n: 1 }; s.attente = true; s.current = 1; s.tirs = [X, X];
+      });
+      essai('yams', s => {
+        s.players[0].sheet.chance = X; s.players[1].sheet.un = Q; s.rolls = 2; s.dice = [X, 2, 3, 4, 5];
+        s.annulable = { player: 0, cat: Q, dice: [1, 2, 3, 4, 5], held: [false, false, false, false, false], rolls: 1 };
+        s.dernierChoix = { player: X, cat: 'chance', points: X, n: 1 };
+      });
+      essai('cochon', s => {
+        s.players[0].total = X; s.turnPoints = X; s.des = [X]; s.nLancers = 2;
+        s.dernier = { player: 0, des: [X], res: 'cochon', points: X, n: 2 }; s.cible = X;
+      });
+      out.xss = window.__xss === 1;
+      return out;
+    });
+    ['p4', 'morpion', 'bataille', 'yams', 'cochon'].forEach(id => {
+      check(id + ' : état piégé rendu (sans planter) sans balise ni attribut injectés',
+        !res[id].img && !res[id].attr && !res[id].erreur, res[id]);
+    });
+    check('aucun script injecté ne s’est exécuté', !res.xss);
+    await p._ctx.close();
+  }
+
+  /* ============ Reprise d’une partie (état seul, sans le DOM) ============ */
+  if (!SEUL || SEUL === 'reprise') {
+    console.log('--- Reprise des parties ---');
+    const reprise = async (jeu, prepare, verifie) => {
+      const p = await nouvelle(412, 780);
+      await lanceLocal(p, jeu, ['Léa', 'Marc']);
+      await prepare(p);
+      await attendre(500); // enregistrement (différé de 250 ms)
+      await p.reload();
+      await p.waitForSelector('#btn-reprise', { timeout: 5000 });
+      await p.click('#btn-reprise');
+      await p.waitForSelector('#screen-mini.active');
+      await passe(p);
+      const ok = await verifie(p);
+      check(jeu + ' : la partie reprend où elle en était', ok);
+      await sansDebord(p, jeu + ' après reprise');
+      await p._ctx.close();
+    };
+    await reprise('p4', async p => {
+      await p.locator('.p4-cell[data-col="3"]').first().click();
+    }, async p => await p.locator('.p4-disc:not(.mini)').count() === 1 && /Marc/.test(await p.textContent('.p4-msg')));
+    await reprise('morpion', async p => {
+      await p.locator('.ttt-cell[data-i="4"]').click();
+    }, async p => await p.locator('.ttt-sym.x').count() === 1);
+    await reprise('bataille', async p => {
+      await p.click('[data-a="ready"]'); await passe(p);
+      await p.click('[data-a="ready"]'); await passe(p);
+      await p.waitForSelector('.bn-grid.aim[data-pret="1"]');
+      await p.locator('.bn-grid.aim .bn-cell').first().click();
+    }, async p => {
+      // le minuteur est perdu à la reprise : le bouton « Passer » fait avancer
+      const b = await p.locator('[data-a="suite"]').count();
+      if (b) { await p.waitForSelector('[data-a="suite"]:not([disabled])'); await p.click('[data-a="suite"]'); await passe(p); }
+      return await p.locator('.bn-grid.mienne .bn-cell.last').count() === 1;
+    });
+    await reprise('yams', async p => {
+      await p.click('[data-a="roll"]');
+      await attendre(800);
+      await p.locator('.ym-piste .ym-de').first().click();
+    }, async p => await p.locator('.ym-gardes .ym-de.garde').count() === 1 && await p.locator('.ym-ligne.possible').count() === 13);
+    await reprise('cochon', async p => {
+      await p.evaluate(() => { window.__r = Math.random; Math.random = () => 0.55; });
+      await p.click('[data-a="roll"]');
+      await p.evaluate(() => { Math.random = window.__r; });
+    }, async p => (await p.textContent('.pig-tp')).trim() === '4');
+  }
+
+  /* ============ Bataille en ligne : la flotte adverse ne circule jamais ============ */
+  if (!SEUL || SEUL === 'enligne') {
+    console.log('--- Bataille navale en ligne (relais local) ---');
+    const { demarrer } = require('../relais-local.js');
+    const relais = await demarrer(8826);
+    const ctxH = await browser.newContext({ viewport: { width: 412, height: 780 } });
+    const ctxG = await browser.newContext({ viewport: { width: 360, height: 640 } });
+    // l’invitée enregistre tout ce qu’elle reçoit du réseau
+    await ctxG.addInitScript(() => {
+      const W = window.WebSocket;
+      window.__recus = [];
+      window.WebSocket = function (u, pr) {
+        const ws = pr ? new W(u, pr) : new W(u);
+        ws.addEventListener('message', e => { window.__recus.push(String(e.data)); });
+        return ws;
+      };
+      window.WebSocket.prototype = W.prototype;
+      ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'].forEach((k, i) => { window.WebSocket[k] = i; });
+    });
+    const hote = await ctxH.newPage(), invite = await ctxG.newPage();
+    for (const p of [hote, invite]) {
+      p.on('pageerror', e => { failures++; console.log('  FAIL JS : ' + e.message); });
+      await p.goto(URL);
+      await p.evaluate(u => localStorage.setItem('gg-relais', u), relais.url);
+      await p.reload();
+      await p.waitForSelector('#catalog .game-tile');
+    }
+    await hote.click('.game-tile[data-g="bataille"]');
+    await hote.click('#btn-mini-online');
+    await hote.fill('#host-name', 'Hugo');
+    await hote.click('#btn-host-create');
+    await hote.waitForSelector('#host-step-lobby:not(.hidden)', { timeout: 15000 });
+    const code = (await hote.textContent('#host-code-big')).trim();
+    await invite.click('#btn-home-online');
+    await invite.fill('#online-name', 'Nina');
+    await invite.fill('#online-code', code);
+    await invite.click('#btn-online-go');
+    await hote.waitForFunction(() => document.querySelectorAll('.lobby-row').length === 2, null, { timeout: 15000 });
+    await hote.click('#btn-host-start');
+    await hote.waitForSelector('.bn-grid.placement', { timeout: 15000 });
+    await invite.waitForSelector('.bn-grid.placement', { timeout: 15000 });
+    check('en ligne : chacun place SA flotte en même temps', await hote.locator('.bn-cell.ship').count() === 17 &&
+      await invite.locator('.bn-cell.ship').count() === 17);
+    await hote.click('[data-a="ready"]');
+    await invite.click('[data-a="ready"]');
+    await hote.waitForSelector('.bn-grid.aim[data-pret="1"]', { timeout: 10000 });
+    await hote.locator('.bn-grid.aim .bn-cell[data-i="44"]').click();
+    await invite.waitForFunction(() => document.querySelectorAll('.bn-grid.mienne .bn-cell.last').length === 1, null, { timeout: 8000 });
+    await invite.waitForSelector('.bn-grid.aim[data-pret="1"]', { timeout: 8000 });
+    check('en ligne : le tir de l’hôte arrive, puis la main passe à l’invitée', /Hugo a (tiré|touché|coulé)/.test(await invite.textContent('.bn-msg')));
+    await invite.locator('.bn-grid.aim .bn-cell[data-i="55"]').click();
+    await hote.waitForFunction(() => document.querySelectorAll('.bn-grid.mienne .bn-cell.last').length === 1, null, { timeout: 8000 });
+    const fuite = await invite.evaluate(() => {
+      let etats = 0, fuites = 0;
+      window.__recus.forEach(txt => {
+        let m; try { m = JSON.parse(txt); } catch (e) { return; }
+        const chercher = o => {
+          if (!o || typeof o !== 'object') return;
+          if (o.boards && o.players && o.shots) {
+            etats++;
+            if (!o.finished && !o.fini) {
+              const b = o.boards[0];
+              if (Object.keys(b.cells || {}).length) fuites++;
+              if (b.ships.some(s => !s.sunk && (s.r !== undefined || (s.cells && s.cells.length)))) fuites++;
+            }
+            return;
+          }
+          Object.keys(o).forEach(k => chercher(o[k]));
+        };
+        chercher(m);
+      });
+      return { etats, fuites };
+    });
+    check('en ligne : ' + fuite.etats + ' états reçus par l’invitée, AUCUNE position de la flotte de l’hôte', fuite.etats > 0 && fuite.fuites === 0, fuite);
+    await ctxH.close();
+    await ctxG.close();
+    await relais.arreter();
+  }
+
   await browser.close();
   console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 des classiques (navigateur) OK.');
   process.exit(failures ? 1 : 0);

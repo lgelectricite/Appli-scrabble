@@ -434,7 +434,7 @@
         .sort(function (a, b) { return b.s - a.s; });
       return rows.map(function (r) {
         return '<div class="final-line"><span>' + (r.i === 0 ? '🔴 ' : '🟡 ') + GG.esc(r.n) +
-          '</span><strong>' + r.s + ' manche' + (r.s > 1 ? 's' : '') + '</strong></div>';
+          '</span><strong>' + (r.s | 0) + ' manche' + (r.s > 1 ? 's' : '') + '</strong></div>';
       }).join('') + (g.length ? '<h3>🏆 ' + GG.esc(state.players[g[0]].name) + ' remporte la série !</h3>' : '');
     },
 
@@ -545,7 +545,7 @@
           }
           html += '<span class="p4-pips p' + i + '">' + (i === 1 ? pips : '') +
             '<b>' + GG.esc(s.players[i].name) + '</b>' + (i === 0 ? pips : '') + '</span>';
-          if (i === 0) html += '<span class="p4-manche">Manche ' + (s.manche || 1) + '</span>';
+          if (i === 0) html += '<span class="p4-manche">Manche ' + ((s.manche | 0) || 1) + '</span>';
         });
         html += '</div>';
       }
@@ -684,11 +684,12 @@
         again.addEventListener('click', function () {
           if (!libre()) return;
           el._p4Joue = true;
+          sfx.play('select');
           ctx.act({ t: 'again' });
         });
       }
       var fin = el.querySelector('[data-a="fin"]');
-      if (fin) fin.addEventListener('click', function () { if (libre()) { el._p4Joue = true; ctx.act({ t: 'fin' }); } });
+      if (fin) fin.addEventListener('click', function () { if (libre()) { el._p4Joue = true; sfx.play('select'); ctx.act({ t: 'fin' }); } });
 
       // ---- effets du coup qui vient d’être joué ----
       if (nouveau) {

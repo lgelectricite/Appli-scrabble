@@ -67,9 +67,13 @@
     }
     return 0;
   }
+  function nomCase(id) {
+    for (var k = 0; k < CATS.length; k++) if (CATS[k].id === id) return CATS[k].nom;
+    return '';
+  }
   function hautDe(p) {
     var u = 0;
-    UPPER.forEach(function (id) { if (p.sheet[id] !== null && p.sheet[id] !== undefined) u += p.sheet[id]; });
+    UPPER.forEach(function (id) { if (p.sheet[id] !== null && p.sheet[id] !== undefined) u += (+p.sheet[id] || 0); });
     return u;
   }
   function totalOf(p) {
@@ -77,6 +81,7 @@
     CATS.forEach(function (cat) {
       var v = p.sheet[cat.id];
       if (v === null || v === undefined) return;
+      v = +v || 0; // (un état venu du réseau pourrait contenir autre chose qu’un nombre)
       if (UPPER.indexOf(cat.id) !== -1) upper += v; else lower += v;
     });
     return upper + lower + (upper >= 63 ? 35 : 0);
@@ -483,6 +488,7 @@
   function deHTML(v, i, garde, cls, st) {
     var faces = '';
     for (var f = 1; f <= 6; f++) faces += '<i class="ym-f f' + f + '"></i>';
+    v = v >= 1 && v <= 6 ? v | 0 : 0;
     var rot = FACE_ROT[v || 1];
     return '<button class="ym-de' + (garde ? ' garde' : '') + (v ? '' : ' vide') + cls + '" data-die="' + i + '" style="' + st +
       ';--fx:' + rot[0] + 'deg;--fy:' + rot[1] + 'deg" aria-label="Dé ' + (i + 1) + (v ? ' : ' + v : '') +
@@ -547,7 +553,7 @@
     // tant que le joueur suivant n’a pas lancé, on laisse voir les dés du
     // tour précédent (atténués) : on comprend ce que l’autre a marqué
     var an = s.annulable;
-    var precedents = !rolled && an && an.dice && an.dice[0] > 0;
+    var precedents = !rolled && an && an.dice && an.dice[0] > 0 && !!s.players[an.player];
     var desAff = precedents ? an.dice : s.dice, gardesAff = precedents ? an.held : s.held;
     var r = graine(s.id + s.nLancers * 7919);
     html += '<div class="ym-table' + (precedents ? ' passe' : '') + '"><div class="ym-gardes">';
@@ -565,7 +571,7 @@
     if (precedents) {
       var pp0 = s.players[an.player];
       html += '<span class="ym-legende">' + GG.esc(pp0.name) + ' · ' +
-        CATS.filter(function (c) { return c.id === an.cat; })[0].nom + ' ' + pp0.sheet[an.cat] + '</span>';
+        nomCase(an.cat) + ' ' + (+pp0.sheet[an.cat] || 0) + '</span>';
     }
     if (enSolo) {
       html += '<button class="ym-vite' + (vite(s) ? ' on' : '') + '" data-a="vitesse" aria-pressed="' + vite(s) + '">⏩ ' +
@@ -581,7 +587,7 @@
     else if (s.rolls > 0) msg = 'Gardez des dés, relancez… ou marquez une case.';
     else msg = 'Plus de lancer : choisissez une case.';
     html += '<p class="mini-msg ym-msg">' + msg + '</p>';
-    var peutAnnuler = an && s.rolls === 3 && !s.finished &&
+    var peutAnnuler = an && s.players[an.player] && nomCase(an.cat) && s.rolls === 3 && !s.finished &&
       (ctx.mode === 'local' ? (hotseat || an.player === ctx.me) : an.player === ctx.me);
     html += '<div class="ym-actions">';
     if (sel && mine) {
@@ -599,7 +605,7 @@
       var pa = s.players[an.player];
       html += '<button class="btn small ym-annule" data-a="annule">↩ Annuler ' +
         (an.player === ctx.me && !hotseat ? 'mon choix' : 'le choix de ' + GG.esc(pa.name)) + ' (' +
-        CATS.filter(function (c) { return c.id === an.cat; })[0].nom + ' ' + pa.sheet[an.cat] + ')</button>';
+        nomCase(an.cat) + ' ' + (+pa.sheet[an.cat] || 0) + ')</button>';
     }
 
     // ---- la feuille de score ----
@@ -611,7 +617,7 @@
       if (val !== null) {
         cls += ' pleine' + (val === 0 ? ' zero' : '');
         if (s.dernierChoix && s.dernierChoix.player === vue && s.dernierChoix.cat === c.id) cls += ' derniere';
-        droite = '<b>' + val + '</b>';
+        droite = '<b>' + (+val || 0) + '</b>';
       } else if (jouable) {
         var pp = catScore(c.id, s.dice);
         cls += ' possible' + (pp ? '' : ' nul') + (sel === c.id ? ' choisie' : '');
@@ -767,12 +773,12 @@
     }
     if (nouveauChoix) {
       var dc = s.dernierChoix, cible = el.querySelector('.ym-ligne.derniere') ||
-        el.querySelector('.ym-onglet[data-vue="' + dc.player + '"]');
+        el.querySelector('.ym-onglet[data-vue="' + (dc.player | 0) + '"]');
       setTimeout(function () {
         if (el._ymGen !== gen) return;
         if (nouveauJournal || (!hotseat && dc.player !== ctx.me)) sfx.play(dc.points ? 'coin' : 'tock', { volume: 0.8 });
         if (cible) fx.floatText(cible, (dc.points ? '+' + dc.points : '0'), { color: dc.points ? '#7dffb0' : '#b9bde0', size: 24 });
-        var onglet = el.querySelector('.ym-onglet[data-vue="' + dc.player + '"]');
+        var onglet = el.querySelector('.ym-onglet[data-vue="' + (dc.player | 0) + '"]');
         if (onglet) fx.pop(onglet);
         var p2 = s.players[dc.player];
         if (UPPER.indexOf(dc.cat) !== -1 && hautDe(p2) >= 63 && hautDe(p2) - dc.points < 63) {

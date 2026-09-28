@@ -288,8 +288,8 @@
     summary: function (state) {
       var g = mod.gagnants(state);
       return state.players.map(function (p, i) {
-        var t = (state.tirs && state.tirs[i]) || 0, h = (state.touches && state.touches[i]) || 0;
-        return '<div class="final-line"><span>' + GG.esc(p.name) + '</span><strong>' + p.wins + ' manche' +
+        var t = +((state.tirs && state.tirs[i]) || 0) || 0, h = +((state.touches && state.touches[i]) || 0) || 0;
+        return '<div class="final-line"><span>' + GG.esc(p.name) + '</span><strong>' + (p.wins | 0) + ' manche' +
           (p.wins > 1 ? 's' : '') + '</strong></div>' +
           (t ? '<p class="hint">Dernière manche : ' + t + ' tirs, ' + Math.round(100 * h / t) + ' % au but</p>' : '');
       }).join('') + (g.length ? '<h3>🏆 ' + GG.esc(state.players[g[0]].name) + ' remporte la série !</h3>' : '');
@@ -516,7 +516,7 @@
     var fx = GG.fx, sfx = GG.sfx;
     var enSolo = ctx.mode === 'local' && solo(s);
     var hotseat = ctx.mode === 'local' && !solo(s);
-    var nom = function (i) { return GG.esc(s.players[i].name); };
+    var nom = function (i) { return s.players[i] ? GG.esc(s.players[i].name) : '?'; };
     var cle = s.id + ':' + (s.manche || 1);
     var avant = el._v2 && el._v2.jeu === 'bataille' && el._v2.cle === cle ? el._v2 : null;
     var vu = avant ? avant.vu : {};
@@ -578,11 +578,11 @@
       /* ---- fin de manche : les deux flottes se révèlent ---- */
       var w = s.winner;
       html += '<p class="mini-msg big-msg bn-titre">🏆 ' + nom(w) + (s.serieGagnee ? ' remporte la série !' : ' gagne la manche !') + '</p>' +
-        '<p class="mini-msg bn-score">' + nom(0) + ' <b>' + s.players[0].wins + '</b> — <b>' + s.players[1].wins + '</b> ' + nom(1) +
+        '<p class="mini-msg bn-score">' + nom(0) + ' <b>' + (s.players[0].wins | 0) + '</b> — <b>' + (s.players[1].wins | 0) + '</b> ' + nom(1) +
         ' <span class="bn-serie">(premier à ' + manches(s) + ')</span></p>' +
         '<div class="bn-duo">';
       [0, 1].forEach(function (k) {
-        var t2 = s.tirs[1 - k] || 0, h2 = s.touches[1 - k] || 0;
+        var t2 = (s.tirs[1 - k] | 0), h2 = (s.touches[1 - k] | 0);
         html += '<div class="bn-flotte-fin"><p class="bn-label">🚢 Flotte de ' + nom(k) + '</p>' +
           grille({ owner: k, voir: true, petit: true }) +
           '<p class="bn-stat">' + t2 + (t2 > 1 ? ' tirs reçus' : ' tir reçu') + ' · ' +
@@ -624,7 +624,8 @@
       var msg = '';
       if (dern) {
         var co = coord(dern.idx);
-        var nomNav = dern.navire !== undefined ? NOMS[dern.navire] : '';
+        // liste blanche : un état venu du réseau ne choisit pas ce qui s’affiche
+        var nomNav = (dern.navire | 0) === dern.navire && NOMS[dern.navire] ? NOMS[dern.navire] : '';
         if (dern.tireur === me) {
           msg = dern.res === 'eau' ? '🌊 En ' + co + ' : à l’eau.'
             : dern.res === 'coule' ? '☠️ Coulé ! Le ' + (nomNav || 'navire') + ' de ' + nom(opp) + ' sombre (' + co + ').'
@@ -650,7 +651,8 @@
       if (s.attente && dern && dern.tireur === me) {
         var lib = dern.res === 'eau' ? '🌊 À l’eau !' : dern.res === 'coule' ? '☠️ Coulé !' : '💥 Touché !';
         // le bandeau se pose loin de la case visée, pour la laisser voir
-        html += '<div class="bn-resultat res-' + dern.res + (dern.idx < 50 ? ' bas' : ' haut') + '"><b>' + lib +
+        html += '<div class="bn-resultat res-' + (dern.res === 'coule' || dern.res === 'touche' ? dern.res : 'eau') +
+          (dern.idx < 50 ? ' bas' : ' haut') + '"><b>' + lib +
           '</b><small>' + coord(dern.idx) + '</small></div>';
       }
       html += '</div>';
@@ -688,9 +690,9 @@
       b.addEventListener('click', function () {
         if (a === 'shuffle') { sfx.play('shuffle'); agir({ t: 'shuffle' }); }
         else if (a === 'ready') { sfx.play('select'); GG.haptic('medium'); agir({ t: 'ready' }); }
-        else if (a === 'suite') agir({ t: 'suite' });
-        else if (a === 'again') agir({ t: 'again' });
-        else if (a === 'fin') agir({ t: 'fin' });
+        else if (a === 'suite') { sfx.play('tap'); agir({ t: 'suite' }); }
+        else if (a === 'again') { sfx.play('select'); agir({ t: 'again' }); }
+        else if (a === 'fin') { sfx.play('select'); agir({ t: 'fin' }); }
       });
     });
     el.querySelectorAll('[data-r]').forEach(function (b) {
@@ -748,9 +750,9 @@
   /* L’obus part, file en laissant une traînée, puis le résultat éclate. */
   function animeTir(el, dern, me, s) {
     var fx = GG.fx, sfx = GG.sfx;
-    var grid = el.querySelector('.bn-grid[data-owner="' + dern.cible + '"]');
+    var grid = el.querySelector('.bn-grid[data-owner="' + (dern.cible | 0) + '"]');
     if (!grid) return;
-    var cell = grid.querySelector('.bn-cell[data-i="' + dern.idx + '"]');
+    var cell = grid.querySelector('.bn-cell[data-i="' + (dern.idx | 0) + '"]');
     if (!cell) return;
     var entrant = dern.cible === me;
     var depart;
@@ -795,7 +797,7 @@
         fx.burst(cell, { count: 26, shape: 'spark', colors: ['#ffd23f', '#ff7a1a', '#ff3b2f', '#ffffff'], spread: 1.1 });
         fx.shakeScreen(0.8);
         fx.floatText(cell, 'Coulé !', { color: '#ffd23f', size: 26 });
-        var epave = grid.querySelector('.bn-navire[data-s="' + dern.navire + '"]');
+        var epave = grid.querySelector('.bn-navire[data-s="' + (dern.navire | 0) + '"]');
         if (epave) epave.classList.add('sombre');
       }
     }, duree + 60);
