@@ -171,73 +171,110 @@ const redM = motus.redact(g, 0);
 check('secret masqué (redact), tableau public', redM.secret === undefined &&
   Array.isArray(redM.tries));
 
-/* ================= MOTS CROISÉS ================= */
+/* ================= MOTS CROISÉS (V2) ================= */
 console.log('--- Mots croisés ---');
+require(ROOT + '/js/games/fleches-data.js');
 const croises = require(ROOT + '/js/games/croises.js');
-// base de définitions
-let dbTotal = 0;
+const GR = GG.grilles;
+const LEXC = GR.lexique();
+// le lexique commun : les définitions fautives de l’audit ont disparu
+const defsDe = w => LEXC.defs[LEXC.index[w]] || [];
+check('FONDUE ne se définit plus par « fondu »', defsDe('FONDUE').length > 0 &&
+  defsDe('FONDUE').every(d => !/fondu/i.test(d)), defsDe('FONDUE'));
+check('FORTERESSE ne se définit plus par « forte »', defsDe('FORTERESSE').every(d => !/fort/i.test(d)), defsDe('FORTERESSE'));
+check('TEMOIGNAGE sans « témoin »', defsDe('TEMOIGNAGE').every(d => !/t[ée]moin/i.test(d)), defsDe('TEMOIGNAGE'));
+check('OCTAVE : intervalle de huit degrés (plus « huit notes d’écart »)',
+  defsDe('OCTAVE').some(d => /huit degrés/.test(d)) && defsDe('OCTAVE').every(d => !/notes d.écart/.test(d)), defsDe('OCTAVE'));
+// générateur : 60 grilles par niveau, VRAIES grilles denses, cohérentes
 for (const lvl of ['facile', 'moyen', 'difficile']) {
-  const seen = {};
-  let sain = true;
-  const max = lvl === 'facile' ? 7 : lvl === 'moyen' ? 9 : 11;
-  for (const e of croises._DB[lvl]) {
-    const p2 = e.indexOf('|');
-    const w = e.slice(0, p2), d = e.slice(p2 + 1);
-    if (!/^[A-Z]{3,}$/.test(w) || w.length > max || seen[w] || !d || d.length < 4) sain = false;
-    if (w.length > 3 && croises._norm(d).includes(w)) sain = false; // la déf. révèle le mot
-    seen[w] = true;
-    dbTotal++;
-  }
-  check('base ' + lvl + ' saine (' + croises._DB[lvl].length + ' défs)', sain);
-}
-check('plus de 700 définitions au total', dbTotal >= 700, dbTotal);
-// générateur : 60 grilles par niveau, toutes valides
-for (const lvl of ['facile', 'moyen', 'difficile']) {
-  const want = croises._LEVELS[lvl].n;
-  let allOk = true, minPlaced = 99;
+  let bad = 0, minCroise = 1, noirs = 0, cases = 0;
   for (let t = 0; t < 60; t++) {
-    const b = croises._buildGrid(lvl);
-    minPlaced = Math.min(minPlaced, b.words.length);
-    const cellMap = {};
-    for (const w of b.words) {
-      if (w.cells.length !== w.w.length || !w.num) allOk = false;
-      w.cells.forEach((c, k) => {
-        if (c < 0 || c >= b.size * b.size) allOk = false;
-        if (cellMap[c] && cellMap[c] !== w.w[k]) allOk = false; // conflit de croisement
-        cellMap[c] = w.w[k];
-      });
-      const others = b.words.filter(x => x !== w).flatMap(x => x.cells);
-      if (b.words.length > 1 && !w.cells.some(c => others.includes(c))) allOk = false; // mot isolé
+    const g = croises._grille(lvl, t);
+    if (!g) { bad++; continue; }
+    const N = g.w, sol = g.sol;
+    // chaque suite de 2+ lettres est un mot déclaré, et réciproquement
+    const runs = new Set();
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const i = r * N + c;
+      if (sol[i] === '#') continue;
+      if ((c === 0 || sol[i - 1] === '#') && c + 1 < N && sol[i + 1] !== '#') {
+        let k = c; let w = ''; while (k < N && sol[r * N + k] !== '#') { w += sol[r * N + k]; k++; }
+        runs.add('h' + i + w);
+      }
+      if ((r === 0 || sol[i - N] === '#') && r + 1 < N && sol[i + N] !== '#') {
+        let k = r; let w = ''; while (k < N && sol[k * N + c] !== '#') { w += sol[k * N + c]; k++; }
+        runs.add('v' + i + w);
+      }
     }
+    const decl = new Set(g.mots.map(m => m.dir + m.cells[0] + m.w));
+    if (runs.size !== decl.size || [...runs].some(x => !decl.has(x))) bad++;
+    g.mots.forEach(m => {
+      if (LEXC.index[m.w] === undefined || !m.def) bad++;
+      m.cells.forEach((c, k) => { if (sol[c] !== m.w[k]) bad++; });
+    });
+    // densité : cases croisées
+    let blanc = 0, croise = 0;
+    for (let i = 0; i < N * N; i++) {
+      cases++;
+      if (sol[i] === '#') { noirs++; continue; }
+      blanc++;
+      const r = Math.floor(i / N), c = i % N;
+      const h = (c > 0 && sol[i - 1] !== '#') || (c < N - 1 && sol[i + 1] !== '#');
+      const v = (r > 0 && sol[i - N] !== '#') || (r < N - 1 && sol[i + N] !== '#');
+      if (h && v) croise++;
+    }
+    minCroise = Math.min(minCroise, croise / blanc);
+    // numérotation classique : horizontaux par ligne puis verticaux par colonne
+    for (let k = 1; k < g.mots.length; k++) {
+      const a = g.mots[k - 1], b = g.mots[k];
+      if (a.dir === 'v' && b.dir === 'h') bad++;
+      if (a.dir === b.dir && a.ligne > b.ligne) bad++;
+    }
+    // pas deux fois la même définition dans une grille
+    const dd = new Set(g.mots.map(m => GR.norm(m.def)));
+    if (dd.size !== g.mots.length) bad++;
   }
-  check('générateur ' + lvl + ' : ' + minPlaced + '/' + want + ' mots, croisements cohérents', allOk && minPlaced >= want);
+  check('générateur ' + lvl + ' : 60 grilles cohérentes, ≥ 70 % de cases croisées (min ' +
+    Math.round(minCroise * 100) + ' %, ' + Math.round(100 * noirs / cases) + ' % de noires)', bad === 0 && minCroise >= 0.7, bad);
 }
-// partie complète à 2 joueurs
+check('les niveaux grandissent (8, 9, 10)', croises._grille('facile', 3).w === 8 &&
+  croises._grille('moyen', 3).w === 9 && croises._grille('difficile', 3).w === 10);
+check('grille déterministe (même numéro, même grille)',
+  croises._grille('moyen', 42).sol === croises._grille('moyen', 42).sol &&
+  croises._grille('moyen', 42).sol !== croises._grille('moyen', 43).sol);
+// partie complète à 2 joueurs (l’interface ne propose que le solo, les règles restent générales)
 g = croises.create(['A', 'B']);
 check('niveau réservé à l’hôte', !croises.apply(g, 1, { t: 'level', l: 'facile' }).ok);
-croises.apply(g, 0, { t: 'level', l: 'facile' });
-check('grille prête', g.phase === 'play' && g.words.length >= 6);
+croises.apply(g, 0, { t: 'level', l: 'facile', g: 0 });
+check('grille prête', g.phase === 'play' && g.words.length >= 15 && g.saisie.length === 64);
 const cw = g.words[0];
 check('mauvaise longueur refusée sans pénalité',
   !croises.apply(g, 0, { t: 'claim', i: 0, text: 'X' }).ok && g.players[0].errors === 0);
-const faux = cw.w[0] === 'A' ? 'B' + cw.w.slice(1) : 'A' + cw.w.slice(1);
+const faux = (cw.w[0] === 'A' ? 'B' : 'A') + cw.w.slice(1);
 croises.apply(g, 1, { t: 'claim', i: 0, text: faux });
-check('mauvaise réponse comptée comme erreur', g.players[1].errors === 1 && cw.foundBy === -1);
+check('mauvaise réponse comptée comme erreur', g.players[1].errors === 1 && !cw.ok);
 croises.apply(g, 0, { t: 'claim', i: 0, text: cw.w.toLowerCase() });
-check('bonne réponse acceptée (insensible à la casse)', cw.foundBy === 0);
+check('bonne réponse acceptée (insensible à la casse)', cw.ok && cw.by === 0);
 check('points = longueur du mot', g.players[0].points === cw.w.length);
+check('lettres écrites dans la grille', cw.cells.every((c, k) => g.saisie[c] === cw.w[k]));
 check('re-proposer un mot trouvé refusé', !croises.apply(g, 1, { t: 'claim', i: 0, text: cw.w }).ok);
-// accents normalisés
 check('normalisation accents', croises._norm('éLéPHANT') === 'ELEPHANT');
-// redact : les solutions ne circulent pas
 const redC = croises.redact(g, 1);
 check('mots non trouvés masqués', redC.words.every((w, i) => i === 0 ? w.w === cw.w : w.w === undefined));
 check('définitions et cases visibles', redC.words.every(w => w.def && w.cells.length > 0));
-// fin de partie
-for (let i = 1; i < g.words.length; i++) croises.apply(g, 1, { t: 'claim', i, text: g.words[i].w });
-check('tous trouvés → partie finie', g.finished === true && g.durationSec >= 1);
+let resFin = null;
+for (let i = 1; i < g.words.length; i++) {
+  if (g.words[i].ok) continue;
+  const rr = croises.apply(g, 1, { t: 'claim', i, text: g.words[i].w });
+  if (rr.timer) resFin = rr;
+}
+check('tous trouvés → grille complète, fête puis fin', g.complete === true && !!resFin &&
+  resFin.timer.action.t === 'fin' && !croises.over(g));
+croises.apply(g, -1, resFin.timer.action);
+check('fin de partie après la célébration', g.finished === true && croises.over(g) && g.durationSec >= 1);
+check('gagnants : grille finie = victoire', JSON.stringify(croises.gagnants(g)) === '[0]');
 const sumC = croises.summary(g);
-check('classement au score', /🏆/.test(sumC));
+check('résumé : temps, points, étoiles', /Temps/.test(sumC) && /Points/.test(sumC) && /⭐/.test(sumC));
 
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests jeux de réflexion OK.');
 process.exit(failures ? 1 : 0);

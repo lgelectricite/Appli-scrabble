@@ -1,43 +1,43 @@
 /* ===== GGgames V2 — Mots croisés =====
-   Styles propres à ce jeu (chargés après css/style.css). */
+   Le composant de grille commun (.gx-*) est décrit dans fleches.css ;
+   ici : cases noires, numéros en marge, tiroir des définitions. */
 
-/* ===== Mots croisés ===== */
-.cr-grid {
-  display: grid; gap: 2px;
-  max-width: min(94vw, 52vh); margin: 4px auto 8px;
-  user-select: none;
+.gx-cr .gx-n {
+  background: linear-gradient(145deg, #2e2745 0%, #17122a 100%);
+  box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .08);
 }
-.cr-cell {
-  position: relative; aspect-ratio: 1;
+.gx-cr .gx-coin { background: var(--cadre); }
+.gx-cr .gx-num, .gx-cr .gx-rom {
   display: flex; align-items: center; justify-content: center;
-  background: #fff; color: var(--ink); border: 1px solid var(--ink-10);
-  border-radius: 3px; cursor: pointer;
-  font-size: clamp(11px, 3.2vw, 17px); font-weight: 800;
+  background: var(--cadre); color: #f3e9cf;
+  font-family: var(--f-titre); font-weight: 600; font-size: calc(var(--s) * .34); line-height: 1;
 }
-.cr-cell.off { background: transparent; border-color: transparent; cursor: default; }
-.cr-cell.sel { outline: 2px solid var(--accent); background: #fff3e4; }
-.cr-num {
-  position: absolute; top: 1px; left: 2px;
-  font-size: clamp(7px, 1.8vw, 9px); font-weight: 700; opacity: .65;
+.gx-cr .gx-rom { font-size: calc(var(--s) * .3); letter-spacing: -.3px; }
+.gx-croises .gx-l { font-size: calc(var(--s) * .6); }
+
+/* le tiroir : toutes les définitions, numérotation classique */
+.gx-tiroir {
+  position: fixed; inset: 0; z-index: 45; display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(5, 6, 20, .55); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  animation: voileEntre .2s ease both;
 }
-.cr-h3 { margin: 10px 0 4px; font-size: 15px; font-family: 'Fraunces', Georgia, serif; }
-.cr-defs { display: flex; flex-direction: column; gap: 5px; }
-.cr-def {
-  text-align: left; background: var(--card); border: 1px solid var(--ink-16);
-  border-radius: 8px; padding: 7px 10px; font-size: 13px; line-height: 1.35;
-  color: var(--ink); cursor: pointer; font-family: inherit;
+.gx-tiroir-in {
+  width: 100%; max-width: 560px; max-height: 78vh; display: flex; flex-direction: column;
+  border-radius: 26px 26px 0 0; padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, #fffaf0, #f1e6cc); color: var(--encre);
+  box-shadow: var(--ombre-3); animation: feuilleEntre .35s var(--doux) both;
 }
-.cr-def.sel { border-color: var(--accent); background: #fff3e4; }
-.cr-def.found { text-decoration: none; font-weight: 600; }
-.cr-ask {
-  background: var(--card); border: 2px solid var(--ink); border-radius: 10px;
-  padding: 8px 10px; margin: 8px 0;
-  box-shadow: 0 3px 0 var(--ink);
+.gx-tiroir-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-family: var(--f-titre); font-size: 19px; }
+.gx-tiroir-h .gx-btn { color: var(--encre); background: rgba(42, 35, 64, .08); border-color: rgba(42, 35, 64, .2); box-shadow: none; }
+.gx-liste { overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 6px; }
+.gx-lt { margin: 10px 0 4px; font-family: var(--f-titre); font-size: 16px; color: var(--acc); }
+.gx-lg { padding: 5px 2px; border-bottom: 1px solid rgba(42, 35, 64, .12); font-size: 15px; line-height: 1.45; }
+.gx-lg > b { font-family: var(--f-titre); font-weight: 700; margin-right: 4px; }
+.gx-ld {
+  display: inline; padding: 2px 3px; border: none; border-radius: 6px; background: none; color: var(--encre);
+  font: inherit; font-weight: 700; text-align: left; cursor: pointer;
 }
-.cr-answer-row { display: flex; gap: 8px; margin: 6px 0 2px; }
-.cr-answer-row input {
-  flex: 1; min-width: 0; background: #fff; color: var(--ink);
-  border: 2px solid var(--ink); border-radius: 10px; padding: 11px; font-size: 16px;
-  text-transform: uppercase;
-}
-.cr-wrong { color: var(--danger); font-size: 13px; margin: 4px 0; animation: mn-shake .35s; }
+.gx-ld em { font-style: normal; font-weight: 600; color: var(--encre-2); font-size: 13px; }
+.gx-ld.sel { background: var(--cur); }
+.gx-ld.fini { color: rgba(34, 27, 49, .45); text-decoration: line-through; text-decoration-color: var(--trouve-encre); }
+.gx-tiret { margin: 0 4px; color: var(--encre-2); }
