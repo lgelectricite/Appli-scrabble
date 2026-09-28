@@ -181,12 +181,57 @@
     return true; // hôte : autoritaire, peut toujours jouer son tour
   }
 
+  /* =================================================================
+   *  WORDS V2 — le jeu de lettres
+   *
+   *  Plateau objet zoomable, pose au toucher OU en glissant du chevalet,
+   *  bulle de points pendant la pose, mot validé qui s'illumine, coups
+   *  adverses rejoués, pioche animée, tirage au sort du premier joueur,
+   *  IA dans un Web Worker, coach. Tout se retrouve à partir de l'état
+   *  (reprise des parties) ; les animations ne se rejouent jamais deux
+   *  fois (mémoire `vu` : identifiant de partie + longueur de l'historique).
+   * ================================================================= */
+
+  var fxM = function () { return window.GG.fx; };
+  function son(nom, opts) { try { window.GG.sfx.play(nom, opts); } catch (e) {} }
+  function vibre(t) { try { window.GG.haptic(t); } catch (e) {} }
+  function reduit() { try { return !!window.GG.fx.reduced(); } catch (e) { return true; } }
+
+  /* ---------- options de Words (propres à ce téléphone) ---------- */
+  function motsOptions() {
+    var o = lis('gg-mots-options', {}) || {};
+    return { coach: o.coach !== false, refus: o.refus === 'perdu' ? 'perdu' : 'essais' };
+  }
+  function motsOptionsSet(cle, v) {
+    var o = motsOptions();
+    o[cle] = v;
+    ecris('gg-mots-options', o);
+  }
+  function nomIA(niveau) {
+    return 'IA ' + ({ facile: 'facile', moyen: 'moyenne', difficile: 'difficile', expert: 'experte' }[niveau] || 'moyenne');
+  }
+
+  var tirageEnCours = false;  // tirage au sort du premier joueur à l'écran
+  var tirageVu = null;        // identifiant de la partie dont le tirage a été montré
+  var delaiSuite = null;      // minuteur « après l'animation du coup »
+  var ignoreClic = false;     // un glissement vient de finir : on ignore le clic qui suit
+  var dernierTap = { idx: -1, t: 0 };
+  var astuce = null;          // {ic, texte, fin} — petit conseil passager
+  var marquePose = -1;        // case dont la tuile vient d'être posée (petite animation)
+  var zoomDoigt = null;       // dernier point touché sur le plateau (le zoom se fait autour)
+
+  /* Peut-on jouer maintenant (en plus des règles de canAct) ? */
+  function peutJouer() { return canAct() && !tirageEnCours; }
+
   /* ---------- plateau ---------- */
   var cells = [];
+  var cellCle = [];           // contenu affiché de chaque case (rendu incrémental)
+  var zoom = false;
   function buildBoard() {
     var board = $('board');
     board.innerHTML = '';
     cells = [];
+    cellCle = [];
     for (var i = 0; i < S.SIZE * S.SIZE; i++) {
       var cell = document.createElement('div');
       cell.className = 'cell';
@@ -202,35 +247,135 @@
       }
       cell.dataset.i = i;
       cell.addEventListener('click', onCellTap);
+      cell.addEventListener('pointerdown', debutGlissePlateau);
       board.appendChild(cell);
       cells.push(cell);
+      cellCle.push('');
+    }
+    // la taille d'une case suit celle du plateau (rotation, clavier, zoom)
+    if (window.ResizeObserver) {
+      try { new ResizeObserver(function () { majTailleCase(); }).observe($('board-scroll')); } catch (e) {}
+    } else {
+      window.addEventListener('resize', majTailleCase);
     }
   }
 
-  function tileHtml(letter, blank, isNew) {
-    var val = blank ? 0 : S.letterValue(letter);
-    return '<div class="tile' + (isNew ? ' new' : '') + (blank ? ' blank' : '') + '">' +
-      letter + '<span class="val">' + (val || '') + '</span></div>';
+  /* Taille d'une case du plateau « au repos » (le zoom est une simple mise
+     à l'échelle : pas de nouvelle mise en page, rien ne saccade). */
+  var zoomK = 1;
+  function majTailleCase() {
+    var sc = $('board-scroll'), b = $('board');
+    if (!sc || !b) return;
+    var w = sc.clientWidth;
+    if (!w) return;
+    var c = Math.max(14, (w - 4 - 28) / 15);
+    $('screen-game').style.setProperty('--c', c.toFixed(1) + 'px');
+    if (zoom) appliqueZoom();
   }
 
+  /* Taille et échelle du plateau zoomé (cases d'au moins 44 px). */
+  function appliqueZoom() {
+    var sc = $('board-scroll'), b = $('board'), z = $('board-zoom');
+    var base = sc.clientWidth;
+    if (!base) return;
+    if (zoom) {
+      zoomK = Math.max(1, (15 * 44 + 14 * 2 + 4) / base);
+      b.style.width = base + 'px';
+      b.style.height = base + 'px';
+      b.style.transform = 'scale(' + zoomK.toFixed(4) + ')';
+      z.style.width = (base * zoomK).toFixed(1) + 'px';
+      z.style.height = (base * zoomK).toFixed(1) + 'px';
+    } else {
+      zoomK = 1;
+      b.style.width = b.style.height = b.style.transform = '';
+      z.style.width = z.style.height = '';
+    }
+  }
+
+  /* Zoom : le plateau grandit (cases d'au moins 44 px) et défile sous le
+     doigt. Une simple mise à l'échelle animée (« FLIP »), entièrement sur
+     le compositeur : fluide même sur un petit téléphone.
+     centreIdx : case à centrer ; ancre {x, y} : point de l'écran qui reste
+     sous le doigt (on zoome « autour du doigt ») ; sec : sans animation. */
+  function setZoom(on, centreIdx, sec, ancre) {
+    var sc = $('board-scroll'), b = $('board');
+    if (!sc || !b) return;
+    if (on === zoom) {
+      if (on && centreIdx != null) centrerSur(centreIdx, true);
+      return;
+    }
+    var avant = b.getBoundingClientRect();
+    var scAvant = sc.getBoundingClientRect();
+    zoom = on;
+    sc.classList.toggle('zoom', on);
+    $('btn-zoom').classList.toggle('zoome', on);
+    $('btn-zoom').setAttribute('aria-label', on ? 'Voir tout le plateau' : 'Zoomer sur le plateau');
+    $('btn-zoom').title = on ? 'Voir tout le plateau' : 'Zoomer sur le plateau';
+    appliqueZoom();
+    if (on && ancre) {
+      // le point du plateau sous le doigt reste sous le doigt
+      sc.scrollLeft = (ancre.x - avant.left) * zoomK - (ancre.x - scAvant.left);
+      sc.scrollTop = (ancre.y - avant.top) * zoomK - (ancre.y - scAvant.top);
+    } else if (on) centrerSur(centreIdx != null ? centreIdx : S.CENTER, false);
+    else { sc.scrollLeft = 0; sc.scrollTop = 0; }
+    if (!sec && !reduit() && b.animate) {
+      var apres = b.getBoundingClientRect();
+      var base = sc.clientWidth;
+      if (apres.width && base) {
+        var k0 = avant.width / base;
+        try {
+          b.animate([
+            { transformOrigin: '0 0', transform: 'translate(' + (avant.left - apres.left).toFixed(1) + 'px,' +
+              (avant.top - apres.top).toFixed(1) + 'px) scale(' + k0.toFixed(4) + ')' },
+            { transformOrigin: '0 0', transform: 'scale(' + zoomK.toFixed(4) + ')' }
+          ], { duration: 300, easing: 'cubic-bezier(.22, 1, .36, 1)' });
+        } catch (e) {}
+      }
+    }
+    son(on ? 'open' : 'close', { volume: 0.45 });
+  }
+
+  function centrerSur(idx, doux) {
+    var sc = $('board-scroll'), cell = cells[idx];
+    if (!sc || !cell) return;
+    var x = (cell.offsetLeft + cell.offsetWidth / 2) * zoomK - sc.clientWidth / 2;
+    var y = (cell.offsetTop + cell.offsetHeight / 2) * zoomK - sc.clientHeight / 2;
+    if (doux && sc.scrollTo) {
+      try { sc.scrollTo({ left: x, top: y, behavior: 'smooth' }); return; } catch (e) {}
+    }
+    sc.scrollLeft = x;
+    sc.scrollTop = y;
+  }
+
+  function tileHtml(letter, blank, isNew, extra) {
+    var val = blank ? 0 : S.letterValue(letter);
+    return '<div class="tile' + (isNew ? ' new' : '') + (blank ? ' blank' : '') + (extra ? ' ' + extra : '') + '">' +
+      esc(letter) + '<span class="val">' + (val || '') + '</span></div>';
+  }
+
+  /* Rendu incrémental : seules les cases qui changent sont reconstruites
+     (une animation en cours sur une tuile n'est donc pas coupée). */
   function renderBoard() {
     // dernier mot joué par un adversaire : cases mises en évidence
     var lastCells = {};
-    if (state.lastMove && state.lastMove.player !== myIndex()) {
+    if (state.lastMove && state.lastMove.player !== myIndex() && Array.isArray(state.lastMove.cells)) {
       state.lastMove.cells.forEach(function (ci) { lastCells[ci] = true; });
     }
+    var enAttente = {};
+    pending.forEach(function (p) { enAttente[p.index] = p; });
     for (var i = 0; i < cells.length; i++) {
-      var old = cells[i].querySelector('.tile');
-      if (old) old.remove();
-      var t = state.board[i];
-      if (t) cells[i].insertAdjacentHTML('beforeend', tileHtml(t.letter, t.blank, false));
-      cells[i].classList.toggle('last-word', !!lastCells[i]);
+      var t = state.board[i], p = enAttente[i];
+      var cle = p ? 'p' + p.letter + (p.blank ? '*' : '') : (t ? 'f' + t.letter + (t.blank ? '*' : '') : '');
+      if (cle !== cellCle[i]) {
+        var old = cells[i].querySelector('.tile');
+        if (old) old.remove();
+        if (p) cells[i].insertAdjacentHTML('beforeend', tileHtml(p.letter, p.blank, true, i === marquePose ? 'pose' : ''));
+        else if (t) cells[i].insertAdjacentHTML('beforeend', tileHtml(t.letter, t.blank, false));
+        cellCle[i] = cle;
+      }
+      cells[i].classList.toggle('last-word', !!lastCells[i] && !p);
     }
-    pending.forEach(function (p) {
-      var oldTile = cells[p.index].querySelector('.tile');
-      if (oldTile) oldTile.remove();
-      cells[p.index].insertAdjacentHTML('beforeend', tileHtml(p.letter, p.blank, true));
-    });
+    marquePose = -1;
   }
 
   /* ---------- chevalet ---------- */
@@ -273,47 +418,116 @@
     pending.forEach(function (p) { p.rackPos = newPosOf[p.rackPos]; });
     exchangeSel = exchangeSel.map(function (p) { return newPosOf[p]; });
     if (selected !== -1) selected = newPosOf[selected];
+    son('drop', { volume: 0.4 });
     render();
+  }
+
+  /* Tuile fantôme qui suit le doigt pendant un glissement vers le plateau. */
+  var fantomeActif = null;
+  function retireFantome() {
+    if (fantomeActif) { fantomeActif.remove(); fantomeActif = null; }
+    marqueCible(-1, false);
+  }
+  function creeFantome(letter, blank) {
+    retireFantome();
+    var f = document.createElement('div');
+    fantomeActif = f;
+    f.className = 'mots-fantome';
+    f.setAttribute('aria-hidden', 'true');
+    f.innerHTML = tileHtml(letter === S.JOKER ? '★' : letter, blank, false);
+    document.body.appendChild(f);
+    return f;
+  }
+  function bougeFantome(f, x, y) {
+    if (!f) return;
+    f.style.left = x + 'px';
+    f.style.top = y + 'px';
+  }
+  function caseSous(x, y) {
+    var el = document.elementFromPoint(x, y);
+    var c = el && el.closest ? el.closest('#board .cell') : null;
+    return c ? parseInt(c.dataset.i, 10) : -1;
+  }
+  function marqueCible(idx, ok) {
+    cells.forEach(function (c, i) {
+      c.classList.toggle('cible', i === idx && ok);
+      c.classList.toggle('cible-ko', i === idx && !ok);
+    });
+  }
+  function caseLibre(idx) {
+    return idx >= 0 && !state.board[idx] && !pending.some(function (p) { return p.index === idx; });
   }
 
   function renderRack() {
     var rackEl = $('rack');
+    // un rendu pendant un glissement (message réseau…) : on nettoie le fantôme
+    if (fantomeActif && fantomeActif.dataset.depuis === 'chevalet') retireFantome();
     rackEl.innerHTML = '';
     if (!state) return;
     var rack = myRack();
     var used = usedRackPositions();
-    var drag = null; // {pos, el, x, moved}
+    var drag = null; // {pos, el, x, y, mode, rects, target, fantome, survol}
     rack.forEach(function (letter, pos) {
       if (used[pos]) return;
       var b = document.createElement('button');
-      b.className = 'rack-tile';
+      b.className = 'rack-tile' + (letter === S.JOKER ? ' joker' : '');
       if (passHidden) b.classList.add('hidden-face');
       if (selected === pos) b.classList.add('selected');
       if (exchangeSel.indexOf(pos) !== -1) b.classList.add('exchange');
       var val = S.letterValue(letter);
-      b.innerHTML = (letter === S.JOKER ? '★' : letter) +
-        '<span class="val">' + (val || '') + '</span>';
+      b.innerHTML = (letter === S.JOKER ? '★' : esc(letter)) + '<span class="val">' + (val || '') + '</span>';
       b.dataset.pos = pos;
-      // Un appui = sélection ; un glissement horizontal = réorganisation.
+      b.setAttribute('aria-label', passHidden ? 'Lettre cachée' : (letter === S.JOKER ? 'Joker' : 'Lettre ' + letter));
+      // Un appui = sélection ; glissement horizontal = réorganisation ;
+      // glissement vers le haut = pose directe sur le plateau.
       b.addEventListener('pointerdown', function (e) {
-        if (passHidden) return;
-        // photographie des positions au départ du glissement (repère stable)
+        if (passHidden || (e.button !== undefined && e.button > 0)) return;
         var rects = Array.prototype.slice.call(rackEl.querySelectorAll('.rack-tile'))
           .map(function (t) {
             var r = t.getBoundingClientRect();
             return { pos: parseInt(t.dataset.pos, 10), left: r.left, width: r.width, el: t };
           });
-        drag = { pos: pos, el: b, x: e.clientX, moved: false, rects: rects, target: pos };
+        drag = { pos: pos, el: b, x: e.clientX, y: e.clientY, mode: null, rects: rects, target: pos,
+          fantome: null, survol: null, cible: -1 };
         try { b.setPointerCapture(e.pointerId); } catch (err) {}
       });
       b.addEventListener('pointermove', function (e) {
         if (!drag || drag.el !== b) return;
-        var dx = e.clientX - drag.x;
-        if (!drag.moved && Math.abs(dx) > 12) {
-          drag.moved = true;
-          b.classList.add('dragging');
+        var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+        if (!drag.mode) {
+          if (dy < -14 && Math.abs(dy) > Math.abs(dx) && peutJouer() && !exchangeMode) {
+            drag.mode = 'plateau';
+            b.classList.add('vers-plateau');
+            drag.fantome = creeFantome(letter, false);
+            drag.fantome.dataset.depuis = 'chevalet';
+            son('pop', { volume: 0.35 });
+          } else if (Math.abs(dx) > 12) {
+            drag.mode = 'chevalet';
+            b.classList.add('dragging');
+          } else return;
         }
-        if (!drag.moved) return;
+        if (drag.mode === 'plateau') {
+          bougeFantome(drag.fantome, e.clientX, e.clientY);
+          var idx = caseSous(e.clientX, e.clientY);
+          drag.cible = idx;
+          marqueCible(idx, caseLibre(idx));
+          // survol du plateau non zoomé : il s'agrandit autour du doigt
+          drag.px = e.clientX;
+          drag.py = e.clientY;
+          if (idx >= 0 && !zoom) {
+            if (!drag.survol) {
+              drag.survol = setTimeout(function () {
+                if (drag && drag.mode === 'plateau' && !zoom && caseSous(drag.px, drag.py) >= 0) {
+                  setZoom(true, null, false, { x: drag.px, y: drag.py });
+                  drag.cible = caseSous(drag.px, drag.py);
+                  marqueCible(drag.cible, caseLibre(drag.cible));
+                }
+                if (drag) drag.survol = null;
+              }, 380);
+            }
+          } else if (drag.survol) { clearTimeout(drag.survol); drag.survol = null; }
+          return;
+        }
         b.style.transform = 'translateX(' + dx + 'px) translateY(-6px)';
         // les autres lettres s'écartent pour montrer où celle-ci va se poser
         drag.target = rackDropTarget(drag.rects, drag.pos, e.clientX);
@@ -333,48 +547,147 @@
           rc.el.style.transform = shift ? 'translateX(' + shift + 'px)' : '';
         });
       });
-      b.addEventListener('pointerup', function (e) {
+      function finGlisse(annule) {
         if (!drag || drag.el !== b) return;
-        var wasDrag = drag.moved;
-        var target = drag.target;
-        drag.rects.forEach(function (rc) { rc.el.style.transform = ''; });
-        b.classList.remove('dragging');
+        var d = drag;
         drag = null;
-        if (wasDrag) moveRackTileTo(pos, target);
+        if (d.survol) clearTimeout(d.survol);
+        d.rects.forEach(function (rc) { rc.el.style.transform = ''; });
+        b.classList.remove('dragging', 'vers-plateau');
+        if (d.fantome) { if (fantomeActif === d.fantome) fantomeActif = null; d.fantome.remove(); }
+        marqueCible(-1, false);
+        if (annule) return;
+        if (d.mode === 'plateau') {
+          zoomDoigt = d.px != null ? { x: d.px, y: d.py } : null;
+          if (caseLibre(d.cible) && peutJouer()) poseLettre(pos, d.cible, true);
+          else render();
+        } else if (d.mode === 'chevalet') moveRackTileTo(pos, d.target);
         else onRackTap(pos);
-      });
-      b.addEventListener('pointercancel', function () {
-        if (drag && drag.el === b) {
-          drag.rects.forEach(function (rc) { rc.el.style.transform = ''; });
-          b.classList.remove('dragging');
-          drag = null;
+      }
+      b.addEventListener('pointerup', function (e) {
+        if (drag && drag.mode === 'plateau') {
+          drag.cible = caseSous(e.clientX, e.clientY);
         }
+        finGlisse(false);
       });
+      b.addEventListener('pointercancel', function () { finGlisse(true); });
       rackEl.appendChild(b);
     });
+    if (!rackEl.childElementCount && !state.over) {
+      rackEl.innerHTML = pending.length ? '' : '<span class="rack-vide">Chevalet vide</span>';
+    }
+    marquePioche();
+  }
+
+  /* Glisser une lettre déjà posée (pas encore validée) vers une autre case,
+     ou hors du plateau pour la rendre au chevalet. */
+  function debutGlissePlateau(e) {
+    if (!state || !peutJouer() || exchangeMode) return;
+    var idx = parseInt(e.currentTarget.dataset.i, 10);
+    var pIdx = pending.findIndex(function (p) { return p.index === idx; });
+    if (pIdx === -1) return;
+    var cell = e.currentTarget, x0 = e.clientX, y0 = e.clientY, g = null;
+    var p = pending[pIdx];
+    function bouge(ev) {
+      if (!g) {
+        if (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) < 10) return;
+        g = { fantome: creeFantome(p.letter, p.blank), cible: -1 };
+        var t = cell.querySelector('.tile');
+        if (t) t.style.opacity = '.25';
+      }
+      bougeFantome(g.fantome, ev.clientX, ev.clientY);
+      g.cible = caseSous(ev.clientX, ev.clientY);
+      marqueCible(g.cible, g.cible === idx || caseLibre(g.cible));
+    }
+    function fin(ev) {
+      document.removeEventListener('pointermove', bouge);
+      document.removeEventListener('pointerup', fin);
+      document.removeEventListener('pointercancel', fin);
+      if (!g) return; // simple appui : le clic s'en charge
+      ignoreClic = true;
+      setTimeout(function () { ignoreClic = false; }, 60);
+      if (fantomeActif === g.fantome) fantomeActif = null;
+      g.fantome.remove();
+      marqueCible(-1, false);
+      var cible = ev.type === 'pointercancel' ? idx : caseSous(ev.clientX, ev.clientY);
+      var k = pending.indexOf(p);
+      if (k === -1) { render(); return; }
+      if (cible === idx) { render(); return; }
+      if (cible >= 0 && caseLibre(cible)) {
+        p.index = cible;
+        marquePose = cible;
+        son('place');
+        vibre('light');
+      } else {
+        pending.splice(k, 1); // lâchée hors du plateau : retour au chevalet
+        son('back', { volume: 0.5 });
+      }
+      render();
+    }
+    document.addEventListener('pointermove', bouge);
+    document.addEventListener('pointerup', fin);
+    document.addEventListener('pointercancel', fin);
   }
 
   /* ---------- rendu global ---------- */
-  function renderBadges() {
+  var scoresAffiches = null;  // scores affichés (pour les faire défiler)
+  var sacAffiche = null;
+
+  function avatarDe(i) {
+    var p = state.players[i];
+    if (mode === 'solo' && i === 1) return { t: '🤖', bg: 'linear-gradient(135deg,#9aa3ff,#6b5cff)' };
+    var moiIci = (mode === 'solo' && i === 0) || ((mode === 'host' || mode === 'guest') && i === myFixedIndex);
+    if (moiIci) { var pr = profil(); return { t: pr.av, bg: fondAvatar(pr.teinte) }; }
+    var c = TEINTES[(i + 2) % TEINTES.length];
+    var initiale = (String(p.name || '?').trim().charAt(0) || '?').toUpperCase();
+    return { t: initiale, bg: 'linear-gradient(135deg,' + c[0] + ',' + c[1] + ')' };
+  }
+
+  function renderBadges(delaiScore) {
     var bar = $('players-bar');
-    if (bar.childElementCount !== state.players.length) {
+    if (bar.childElementCount !== state.players.length || bar.dataset.partie !== String(state.id)) {
       bar.innerHTML = '';
       state.players.forEach(function (_, i) {
         var badge = document.createElement('div');
         badge.className = 'player-badge';
         badge.id = 'badge-' + i;
-        badge.innerHTML = '<span class="p-name"></span><span class="p-score">0</span>';
+        badge.innerHTML = '<span class="pb-av"></span><span class="pb-tx"><span class="p-name"></span>' +
+          '<span class="p-score">0</span></span>';
         bar.appendChild(badge);
       });
+      bar.dataset.partie = String(state.id);
+      scoresAffiches = null;
     }
+    if (!scoresAffiches || scoresAffiches.length !== state.players.length) {
+      scoresAffiches = state.players.map(function (p) { return p.score; });
+    }
+    bar.classList.toggle('n4', state.players.length >= 4);
     state.players.forEach(function (p, i) {
       var badge = $('badge-' + i);
+      var av = avatarDe(i);
+      var avEl = badge.querySelector('.pb-av');
+      if (avEl.textContent !== av.t) avEl.textContent = av.t;
+      avEl.style.setProperty('--av-bg', av.bg);
       badge.querySelector('.p-name').textContent = p.name;
-      badge.querySelector('.p-score').textContent = p.score;
+      var sc = badge.querySelector('.p-score');
+      var avant = scoresAffiches[i];
+      if (avant !== p.score && !reduit()) {
+        (function (el, de, a) {
+          setTimeout(function () {
+            fxM().countUp(el, de, a, 750);
+            badge.classList.remove('gagne');
+            void badge.offsetWidth;
+            if (a > de) badge.classList.add('gagne');
+          }, delaiScore || 0);
+        })(sc, avant, p.score);
+      } else {
+        sc.textContent = p.score;
+      }
+      scoresAffiches[i] = p.score;
       badge.classList.toggle('turn', !state.over && state.current === i);
-      badge.classList.toggle('me',
-        (mode === 'host' || mode === 'guest') && i === myFixedIndex);
+      badge.classList.toggle('me', (mode === 'host' || mode === 'guest') && i === myFixedIndex);
       badge.classList.toggle('offline', mode === 'host' && isPeerOffline(i));
+      badge.classList.toggle('pense', aiThinking && mode === 'solo' && i === 1);
     });
   }
 
@@ -386,70 +699,197 @@
     return false;
   }
 
+  /* Le sac : nombre de lettres et jauge qui se vide. */
+  function renderSac() {
+    var el = $('bag-count');
+    var n = state.bag.length;
+    if (!el.querySelector('.sac-n')) {
+      el.innerHTML = '<span class="sac-ic" aria-hidden="true">🎒</span><span class="sac-n"></span>' +
+        '<span class="sac-jauge" aria-hidden="true"><i></i></span>';
+    }
+    var nEl = el.querySelector('.sac-n');
+    if (sacAffiche !== null && sacAffiche !== n && !reduit()) {
+      fxM().countUp(nEl, sacAffiche, n, 600);
+      el.classList.remove('secoue');
+      void el.offsetWidth;
+      el.classList.add('secoue');
+    } else nEl.textContent = n;
+    sacAffiche = n;
+    var total = 102 - 7 * state.players.length;
+    el.style.setProperty('--plein', Math.max(0, Math.min(100, n / total * 100)).toFixed(0) + '%');
+    el.classList.toggle('vide', n === 0);
+    el.title = n + ' lettre' + (n > 1 ? 's' : '') + ' dans le sac';
+    el.setAttribute('aria-label', el.title);
+  }
+
+  /* Nom d'un joueur pour les messages (« L’IA » en solo). */
+  function nomJoueur(i) {
+    return mode === 'solo' && i === 1 ? 'L’IA' : esc(state.players[i].name);
+  }
+
+  /* Dernière action d'un autre joueur que celui qui regarde : c'est elle
+     que le bandeau rappelle (un « a joué » périmé ne reste jamais affiché). */
+  function derniereActionTexte() {
+    var h = state.history[state.history.length - 1];
+    if (!h || h.player === myIndex() || state.over || !state.players[h.player]) return '';
+    var qui = nomJoueur(h.player);
+    if (h.type === 'move') {
+      var mots = (h.words || []).map(function (w) { return esc(w.word); }).join(' + ');
+      return '<span class="last-move-info">' + qui + ' a joué <strong>' + mots + '</strong> (' +
+        (h.points | 0) + ' pts)</span>';
+    }
+    if (h.type === 'exchange') {
+      return '<span class="last-move-info neutre">' + qui + ' a échangé ' + (h.count | 0) + ' lettre' +
+        ((h.count | 0) > 1 ? 's' : '') + '</span>';
+    }
+    if (h.refus) {
+      return '<span class="last-move-info neutre">' + qui + ' : mot refusé (' + esc(h.refus) + '), tour perdu</span>';
+    }
+    return '<span class="last-move-info neutre">' + qui + ' a passé son tour</span>';
+  }
+
+  function renderBanner() {
+    var waiting = (mode === 'host' || mode === 'guest') && state.current !== myFixedIndex;
+    var html;
+    if (state.over) html = 'Partie terminée';
+    else if (tirageEnCours) html = 'Tirage au sort…';
+    else if (mode === 'solo' && state.current === 1) html = '🤖 L’IA réfléchit<span class="tb-pts"></span>';
+    else html = 'Au tour de <strong>' + esc(state.players[state.current].name) + '</strong>' + (waiting ? '…' : '');
+    html += derniereActionTexte();
+    var el = $('turn-banner');
+    if (el.innerHTML !== html) el.innerHTML = html;
+  }
+
+  /* Ligne d'état (quand on ne pose pas de lettres) : conseil, coach, attente. */
+  function renderStatut() {
+    var el = $('zone-info');
+    var ic = '', tx = '', cls = '';
+    var moi = myIndex();
+    if (astuce && Date.now() < astuce.fin) {
+      ic = astuce.ic; tx = astuce.texte; cls = 'astuce';
+    } else if (state.over) {
+      ic = '🏁'; tx = 'Partie terminée.';
+    } else if (tirageEnCours) {
+      ic = '🎲'; tx = 'Tirage au sort : la lettre la plus proche du A commence.';
+    } else if (coach.messages[moi] && canAct() && !passHidden) {
+      ic = '💡'; tx = coach.messages[moi]; cls = 'coach';
+    } else if (mode === 'solo' && state.current === 1) {
+      ic = '🤖'; tx = 'L’IA cherche son coup…';
+    } else if (canAct() && exchangeMode) {
+      ic = '⇄'; tx = 'Touchez les lettres à rendre au sac, puis « Échanger ».';
+    } else if (canAct()) {
+      if (!state.moveCount) { ic = '★'; tx = 'Premier mot : il doit passer par l’étoile du centre.'; }
+      else { ic = '👆'; tx = 'Touchez une lettre puis une case, ou faites-la glisser.'; }
+    } else if (waitingHost) {
+      ic = '⏳'; tx = 'Envoi du coup à l’hôte…';
+    } else if (!passHidden) {
+      ic = '⏳'; tx = 'Au tour de <b>' + esc(state.players[state.current].name) + '</b>.';
+    }
+    var html = tx ? '<span class="zi-ic">' + ic + '</span><span class="zi-tx">' + tx + '</span>' : '';
+    if (el.innerHTML !== html) el.innerHTML = html;
+    el.className = cls;
+  }
+
+  /* Petit conseil passager dans la ligne d'état. */
+  function indice(ic, texte, ms) {
+    astuce = { ic: ic, texte: texte, fin: Date.now() + (ms || 3500) };
+    if (state) renderStatut();
+    var z = $('zone-info');
+    z.classList.remove('mots-secoue');
+    void z.offsetWidth;
+    z.classList.add('mots-secoue');
+    setTimeout(function () { if (state && astuce && Date.now() >= astuce.fin) { astuce = null; renderStatut(); } },
+      (ms || 3500) + 60);
+  }
+
   function render() {
     if (!state) return;
-    renderBadges();
-    $('bag-count').textContent = '🎒 ' + state.bag.length;
-    var waiting = (mode === 'host' || mode === 'guest') && state.current !== myFixedIndex;
-    var bannerHtml = state.over
-      ? 'Partie terminée'
-      : (mode === 'solo' && state.current === 1)
-        ? '🤖 L’IA réfléchit…'
-        : 'Au tour de <strong>' + esc(state.players[state.current].name) + '</strong>' +
-          (waiting ? '…' : '');
-    // rappel du dernier coup adverse (surligné en doré sur la grille)
-    if (state.lastMove && state.lastMove.player !== myIndex() && !state.over) {
-      var lmName = mode === 'solo' && state.lastMove.player === 1
-        ? '🤖 L’IA' : esc(state.players[state.lastMove.player].name);
-      bannerHtml += '<span class="last-move-info">' + lmName + ' a joué <strong>' +
-        state.lastMove.words.map(esc).join(' + ') + '</strong> (' +
-        state.lastMove.points + ' pts)</span>';
-    }
-    $('turn-banner').innerHTML = bannerHtml;
-
+    if (!state.id) state.id = 'p' + Date.now().toString(36); // partie d'avant la V2
+    majTailleCase();
+    var nouveaux = detecteNouveaux();
+    renderBadges(nouveaux.length ? 450 : 0);
+    renderSac();
+    renderBanner();
     renderBoard();
     renderRack();
     renderMoveInfo();
+    renderStatut();
+    $('ia-pense').classList.toggle('hidden', !(aiThinking && mode === 'solo'));
 
-    var act = canAct();
+    var act = peutJouer();
     $('btn-play').disabled = !act || pending.length === 0;
     $('btn-pass').disabled = !act;
     $('btn-exchange').disabled = !act || state.bag.length < S.RACK_SIZE;
     $('btn-recall').disabled = pending.length === 0;
-    $('btn-shuffle').disabled = !state || state.over;
+    $('btn-shuffle').disabled = !state || state.over || passHidden;
     $('exchange-bar').classList.toggle('hidden', !exchangeMode);
     $('actions').classList.toggle('hidden', exchangeMode);
     $('btn-exchange-ok').textContent = 'Échanger (' + exchangeSel.length + ')';
+    if (nouveaux.length) animeEntrees(nouveaux);
+    coachPrepare();
   }
 
-  /* Premier mot hors dictionnaire d'un coup, ou null si tout est valide. */
+  /* Premier mot hors dictionnaire d'un coup, ou null si tout est valide.
+     Sans dictionnaire (pas encore chargé) : pas de verdict (null). */
   function invalidWord(words) {
-    if (!dict) return null; // dictionnaire pas encore chargé : pas de contrôle
+    if (!dict) return null;
     for (var i = 0; i < words.length; i++) {
       if (!dict.set.has(words[i].word)) return words[i].word;
     }
     return null;
   }
 
+  /* L'aperçu donne-t-il un verdict (vert / rouge) ? Seulement si le
+     dictionnaire est là, et jamais avec la règle classique (le verdict
+     tombe à la validation, sinon on sonderait le dictionnaire gratis). */
+  function verdictVisible() {
+    return !!dict && !(state.regles && state.regles.refus === 'perdu');
+  }
+
   function renderMoveInfo() {
     var el = $('move-info');
-    if (!pending.length || !canAct()) {
+    var bulle = $('board').querySelector('.bulle');
+    if (!pending.length || !peutJouer()) {
+      $('btn-play').classList.remove('pret');
       el.classList.add('hidden');
+      el.classList.remove('good', 'bad', 'neutre');
+      if (bulle) bulle.remove();
       return;
     }
     var res = S.checkMove(state, placementsFromPending());
-    var bad = res.ok ? invalidWord(res.words) : null;
+    var verdict = verdictVisible();
+    var bad = res.ok && verdict ? invalidWord(res.words) : null;
+    var bon = res.ok && !bad;
     el.classList.remove('hidden');
-    el.classList.toggle('good', !!res.ok && !bad);
+    el.classList.toggle('good', bon && verdict);
     el.classList.toggle('bad', !res.ok || !!bad);
+    el.classList.toggle('neutre', bon && !verdict);
+    var tx, ic;
     if (!res.ok) {
-      el.textContent = res.error;
+      ic = '⚠️'; tx = esc(res.error);
     } else if (bad) {
-      el.textContent = '« ' + bad + ' » n’est pas dans le dictionnaire.';
+      ic = '❌'; tx = '« ' + esc(bad) + ' » n’est pas dans le dictionnaire.';
     } else {
-      var words = res.words.map(function (w) { return w.word + ' (' + w.score + ')'; }).join(' + ');
-      el.textContent = words + (res.bingo ? ' + Bonus ! 50' : '') + ' = ' + res.total + ' pts';
+      ic = verdict ? '✅' : '🔢';
+      tx = res.words.map(function (w) { return '<b>' + esc(w.word) + '</b> ' + w.score; }).join(' + ') +
+        (res.bingo ? ' + <b>Scrabble !</b> 50' : '') + ' = <b>' + res.total + ' pts</b>' +
+        (verdict ? '' : (dict ? ' <small>(vérifié à la validation)</small>' : ' <small>(dictionnaire en chargement)</small>'));
     }
+    el.innerHTML = '<span class="zi-ic">' + ic + '</span><span class="zi-tx">' + tx + '</span>';
+    // bulle de points sur le plateau, près de la dernière lettre posée
+    var dernier = pending[pending.length - 1].index;
+    if (!bulle) {
+      bulle = document.createElement('div');
+      bulle.className = 'bulle';
+      $('board').appendChild(bulle);
+    }
+    var r = Math.floor(dernier / S.SIZE), c = dernier % S.SIZE;
+    bulle.style.left = ((c + 0.85) / S.SIZE * 100).toFixed(2) + '%';
+    bulle.style.top = ((r < 2 ? r + 1 : r) / S.SIZE * 100).toFixed(2) + '%';
+    bulle.className = 'bulle ' + (!res.ok ? 'illegal' : (bad ? 'ko' : (verdict ? 'ok' : 'neutre'))) +
+      (r < 2 ? ' dessous' : '');
+    $('btn-play').classList.toggle('pret', bon);
+    bulle.textContent = !res.ok ? '?' : (bad ? '✗' : '+' + res.total);
   }
 
   function placementsFromPending() {
@@ -460,43 +900,122 @@
 
   /* ---------- interactions plateau / chevalet ---------- */
   function onRackTap(pos) {
-    if (!canAct()) return;
+    if (!peutJouer()) {
+      if (state && !state.over && !passHidden) indice('⏳', 'Ce n’est pas encore votre tour.');
+      return;
+    }
     if (exchangeMode) {
       var at = exchangeSel.indexOf(pos);
       if (at === -1) exchangeSel.push(pos); else exchangeSel.splice(at, 1);
+      son('toggle', { volume: 0.5 });
       render();
       return;
     }
     selected = (selected === pos) ? -1 : pos;
+    son('select', { volume: 0.55 });
+    vibre('select');
     render();
   }
 
   function onCellTap(ev) {
-    if (!canAct() || exchangeMode) return;
+    if (ignoreClic) { ignoreClic = false; return; }
+    if (!state) return;
     var idx = parseInt(ev.currentTarget.dataset.i, 10);
+    var t = Date.now();
+    var double = dernierTap.idx === idx && t - dernierTap.t < 380;
+    dernierTap = { idx: idx, t: double ? 0 : t };
+    var doigt = ev.clientX || ev.clientY ? { x: ev.clientX, y: ev.clientY } : null;
+    zoomDoigt = doigt;
+    if (!peutJouer() || exchangeMode) {
+      if (double) setZoom(!zoom, idx, false, doigt);
+      return;
+    }
     // Reprendre une lettre en attente
     var pIdx = pending.findIndex(function (p) { return p.index === idx; });
     if (pIdx !== -1) {
       pending.splice(pIdx, 1);
+      son('back', { volume: 0.5 });
       render();
       return;
     }
-    if (selected === -1) return;
-    if (state.board[idx]) { toast('Case déjà occupée.'); return; }
-    var letter = myRack()[selected];
+    if (state.board[idx]) {
+      if (double) { setZoom(!zoom, idx, false, doigt); return; }
+      if (selected !== -1) { indice('⛔', 'Cette case est déjà occupée.'); vibre('warning'); }
+      return;
+    }
+    if (selected === -1) {
+      // double appui sur une case vide : zoom ; sinon on guide le joueur
+      if (double) { setZoom(!zoom, idx, false, doigt); return; }
+      indice('👆', 'Choisissez d’abord une lettre de votre chevalet, puis touchez la case.');
+      var rk = $('rack');
+      rk.classList.remove('attention');
+      void rk.offsetWidth;
+      rk.classList.add('attention');
+      setTimeout(function () { rk.classList.remove('attention'); }, 600);
+      son('tap', { volume: 0.4 });
+      vibre('warning');
+      return;
+    }
+    poseLettre(selected, idx, false);
+  }
+
+  /* Pose la lettre `pos` du chevalet sur la case `idx`. */
+  function poseLettre(pos, idx, viaGlisse) {
+    var letter = myRack()[pos];
     if (letter === S.JOKER) {
-      jokerTarget = { index: idx, rackPos: selected };
+      jokerTarget = { index: idx, rackPos: pos };
       openJoker();
       return;
     }
-    pending.push({ index: idx, letter: letter, blank: false, rackPos: selected });
+    var el = !viaGlisse ? $('rack').querySelector('.rack-tile[data-pos="' + pos + '"]') : null;
+    var depuis = null;
+    if (el) {
+      // position mesurée AVANT le rendu (le chevalet est reconstruit)
+      var r = el.getBoundingClientRect();
+      depuis = { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width };
+    }
+    pending.push({ index: idx, letter: letter, blank: false, rackPos: pos });
     selected = -1;
+    apresPose(idx, depuis, letter, false);
+  }
+
+  /* depuis : point de départ du vol {x, y, w} (null : pas de vol). */
+  function apresPose(idx, depuis, letter, blank) {
+    son('place');
+    vibre('light');
+    var autoZoom = !zoom && pending.length === 1;
+    marquePose = idx;
+    if (autoZoom) setZoom(true, idx, false, zoomDoigt);
+    else if (zoom) centrerSiCache(idx);
     render();
+    // la tuile vole du chevalet à sa case (quand le plateau ne bouge pas)
+    if (depuis && !autoZoom && !reduit()) {
+      var cible = cells[idx] && cells[idx].querySelector('.tile');
+      if (cible) {
+        cible.classList.add('arrive');
+        fxM().flyTo({ x: depuis.x, y: depuis.y }, cells[idx], { html: '<div class="mots-vol" style="width:' +
+          Math.round(depuis.w) + 'px;height:' + Math.round(depuis.w * 1.08) + 'px;--c:' + Math.round(depuis.w) + 'px">' +
+          tileHtml(letter, blank, true) + '</div>',
+          duration: 240, arc: 0.12, scaleTo: 'auto' }).then(function () {
+          cible.classList.remove('arrive');
+        });
+      }
+    }
+  }
+
+  /* Plateau zoomé : on ramène la case posée dans le champ si besoin. */
+  function centrerSiCache(idx) {
+    var sc = $('board-scroll'), c = cells[idx];
+    if (!sc || !c) return;
+    var a = sc.getBoundingClientRect(), b = c.getBoundingClientRect();
+    if (b.left < a.left || b.right > a.right || b.top < a.top || b.bottom > a.bottom) centrerSur(idx, true);
   }
 
   function recallAll() {
+    var avait = pending.length;
     pending = [];
     selected = -1;
+    if (avait) son('back', { volume: 0.5 });
     render();
   }
 
@@ -508,13 +1027,14 @@
         var b = document.createElement('button');
         b.textContent = l;
         b.addEventListener('click', function () {
-          if (jokerTarget) {
-            pending.push({ index: jokerTarget.index, letter: l, blank: true, rackPos: jokerTarget.rackPos });
-            jokerTarget = null;
+          var jt = jokerTarget;
+          if (jt && state && caseLibre(jt.index)) {
+            pending.push({ index: jt.index, letter: l, blank: true, rackPos: jt.rackPos });
             selected = -1;
-          }
+          } else jt = null;
+          jokerTarget = null;
           showOverlay('overlay-joker', false);
-          render();
+          if (jt) apresPose(jt.index, null, l, true); else render();
         });
         box.appendChild(b);
       });
@@ -532,26 +1052,79 @@
   }
 
   /* ---------- actions de jeu ---------- */
+  var refusInvite = { cle: '', n: 0 }; // invité : essais refusés pendant ce tour
+
+  /* Les tuiles posées tremblent, le mot est refusé. */
+  function secoueRefus() {
+    pending.forEach(function (p) {
+      var t = cells[p.index] && cells[p.index].querySelector('.tile');
+      if (!t) return;
+      t.classList.remove('refus');
+      void t.offsetWidth;
+      t.classList.add('refus');
+    });
+    fxM().shake($('board-wrap'), 6);
+    son('wrong');
+    vibre('error');
+  }
+
+  /* Un mot n'est pas au dictionnaire : règle choisie (essais ou tour perdu). */
+  function motRefuse(bad) {
+    secoueRefus();
+    var classique = !!(state.regles && state.regles.refus === 'perdu');
+    if (mode === 'guest') {
+      // l'hôte arbitre les coups ; ce téléphone compte les essais de son joueur
+      var cle = state.id + ':' + state.history.length;
+      if (refusInvite.cle !== cle) refusInvite = { cle: cle, n: 0 };
+      refusInvite.n++;
+      if (classique || refusInvite.n >= S.ESSAIS_MAX) {
+        toast('« ' + bad + ' » n’est pas dans le dictionnaire : tour perdu.');
+        pending = [];
+        selected = -1;
+        sendAction({ kind: 'pass' });
+      } else {
+        var reste = S.ESSAIS_MAX - refusInvite.n;
+        toast('« ' + bad + ' » n’est pas dans le dictionnaire. Encore ' + reste + ' essai' + (reste > 1 ? 's' : '') + ' ce tour-ci.');
+      }
+      return;
+    }
+    var r = S.refuseMove(state, myIndex(), bad);
+    if (!r.ok) { toast(r.error); return; }
+    if (r.perdu) {
+      toast('« ' + bad + ' » n’est pas dans le dictionnaire : tour perdu.');
+      setTimeout(function () { afterLocalAction(); }, reduit() ? 0 : 450);
+    } else {
+      toast('« ' + bad + ' » n’est pas dans le dictionnaire. Encore ' + r.restants + ' essai' +
+        (r.restants > 1 ? 's' : '') + ' ce tour-ci.');
+      sauvePartie();
+      render();
+    }
+  }
+
   function doPlay() {
-    if (!canAct() || !pending.length) return;
+    if (!peutJouer() || !pending.length) return;
     var placements = placementsFromPending();
+    var pre = S.checkMove(state, placements);
+    if (!pre.ok) {
+      secoueRefus();
+      toast(pre.error);
+      return;
+    }
+    var bad = invalidWord(pre.words);
+    if (bad) { motRefuse(bad); return; }
     if (mode === 'guest') {
       sendAction({ kind: 'move', placements: placements });
       return;
     }
-    var pre = S.checkMove(state, placements);
-    if (pre.ok) {
-      var bad = invalidWord(pre.words);
-      if (bad) { toast('« ' + bad + ' » n’est pas dans le dictionnaire.'); return; }
-    }
     var res = S.playMove(state, myIndex(), placements);
-    if (!res.ok) { toast(res.error); return; }
+    if (!res.ok) { secoueRefus(); toast(res.error); return; }
     afterLocalAction();
   }
 
   function doPass() {
-    if (!canAct()) return;
-    askConfirm('Passer le tour', 'Voulez-vous vraiment passer votre tour sans jouer ?', function () {
+    if (!peutJouer()) return;
+    askConfirm('Passer le tour', 'Voulez-vous vraiment passer votre tour sans jouer ? (La partie s’arrête ' +
+      'quand chaque joueur a passé trois fois de suite.)', function () {
       recallAll();
       if (mode === 'guest') {
         sendAction({ kind: 'pass' });
@@ -559,15 +1132,17 @@
       }
       var res = S.passTurn(state, myIndex());
       if (!res.ok) { toast(res.error); return; }
+      son('whoosh', { volume: 0.5 });
       afterLocalAction();
     });
   }
 
   function startExchange() {
-    if (!canAct()) return;
+    if (!peutJouer()) return;
     recallAll();
     exchangeMode = true;
     exchangeSel = [];
+    son('open', { volume: 0.4 });
     render();
   }
 
@@ -575,6 +1150,18 @@
     if (!exchangeSel.length) { toast('Touchez d’abord les lettres à échanger.'); return; }
     var rack = myRack();
     var letters = exchangeSel.map(function (pos) { return rack[pos]; });
+    // les lettres rendues filent vers le sac
+    if (!reduit()) {
+      exchangeSel.forEach(function (pos, k) {
+        var el = $('rack').querySelector('.rack-tile[data-pos="' + pos + '"]');
+        if (!el) return;
+        setTimeout(function () {
+          fxM().flyTo(el, $('bag-count'), { duration: 420, scaleTo: 0.35, arc: 0.3, rotate: -20 });
+          el.style.opacity = '0';
+        }, k * 70);
+      });
+    }
+    son('swap');
     exchangeMode = false;
     exchangeSel = [];
     if (mode === 'guest') {
@@ -583,44 +1170,89 @@
     }
     var res = S.exchange(state, myIndex(), letters);
     if (!res.ok) { toast(res.error); render(); return; }
-    afterLocalAction();
+    setTimeout(afterLocalAction, reduit() ? 0 : 380);
   }
 
+  /* Mélange les lettres restées au chevalet ; celles déjà posées sur le
+     plateau y restent (elles gardent leur place). */
   function shuffleRack() {
-    if (!state) return;
-    recallAll();
+    if (!state || state.over || passHidden) return;
     var rack = myRack();
-    for (var i = rack.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = rack[i]; rack[i] = rack[j]; rack[j] = tmp;
+    var used = usedRackPositions();
+    var libres = [];
+    for (var i = 0; i < rack.length; i++) if (!used[i]) libres.push(i);
+    if (libres.length < 2) return;
+    var perm = libres.slice();
+    for (var essai = 0; essai < 5; essai++) {
+      for (var a = perm.length - 1; a > 0; a--) {
+        var b = Math.floor(Math.random() * (a + 1));
+        var t = perm[a]; perm[a] = perm[b]; perm[b] = t;
+      }
+      var change = perm.some(function (x, k) { return rack[x] !== rack[libres[k]]; });
+      if (change) break;
     }
+    // positions à l'écran avant le mélange (pour l'animation)
+    var avant = {};
+    Array.prototype.forEach.call($('rack').querySelectorAll('.rack-tile'), function (el) {
+      avant[el.dataset.pos] = el.getBoundingClientRect();
+    });
+    var lettres = perm.map(function (x) { return rack[x]; });
+    libres.forEach(function (x, k) { rack[x] = lettres[k]; });
+    selected = -1;
+    exchangeSel = [];
+    son('shuffle');
     render();
+    if (reduit()) return;
+    // chaque lettre glisse de son ancienne place à la nouvelle
+    libres.forEach(function (x, k) {
+      var el = $('rack').querySelector('.rack-tile[data-pos="' + x + '"]');
+      var de = avant[perm[k]];
+      if (!el || !de || !el.animate) return;
+      var r = el.getBoundingClientRect();
+      try {
+        el.animate([{ transform: 'translate(' + (de.left - r.left) + 'px, -10px) rotate(' + (k % 2 ? 6 : -6) + 'deg)' },
+          { transform: 'none' }], { duration: 360, easing: 'cubic-bezier(.34, 1.56, .64, 1)' });
+      } catch (e) {}
+    });
   }
 
-  /* Après une action jouée sur ce téléphone (modes local et hôte). */
+  /* Après une action jouée sur ce téléphone (solo, local, hôte). */
   function afterLocalAction() {
     pending = [];
     selected = -1;
     exchangeMode = false;
     exchangeSel = [];
+    if (zoom) setZoom(false);
     if (mode === 'host') broadcastState();
+    // sur un seul téléphone : le chevalet du joueur suivant reste caché
+    if (mode === 'local' && !state.over) passHidden = true;
+    render();
+    var delai = delaiAnimation();
+    clearTimeout(delaiSuite);
     if (state.over) {
-      render();
-      showEnd();
+      delaiSuite = setTimeout(showEnd, delai);
       return;
     }
     sauvePartie();
     if (mode === 'solo' && state.current === 1) {
-      aiTurn();
+      delaiSuite = setTimeout(aiTurn, Math.min(delai, 1300));
       return;
     }
     if (mode === 'local') {
-      showPassDevice();
+      delaiSuite = setTimeout(showPassDevice, delai);
     }
-    render();
   }
 
-  /* ---------- mode solo : tour de l'IA ---------- */
+  /* Durée de l'animation du dernier coup (avant de passer à la suite). */
+  function delaiAnimation() {
+    if (reduit()) return 250;
+    var h = state && state.history[state.history.length - 1];
+    if (h && h.bingo) return 2600;
+    if (h && h.type === 'move') return 1400;
+    return 700;
+  }
+
+  /* ---------- l'IA (Web Worker, repli sur le fil principal) ---------- */
   function loadDict() {
     if (dict) return Promise.resolve(dict);
     if (!dictPromise) {
@@ -629,8 +1261,11 @@
           if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.text();
         })
-        .then(function (text) {
-          dict = window.AI.buildDict(text);
+        .then(construitDict)
+        .then(function (d) {
+          dict = d;
+          // le dictionnaire arrive en cours de partie : l'aperçu donne son verdict
+          if (state && currentGame === 'mots' && $('screen-game').classList.contains('active')) render();
           return dict;
         })
         .catch(function (e) {
@@ -641,45 +1276,450 @@
     return dictPromise;
   }
 
+  /* Le Set des 315 000 mots, construit par morceaux : jamais de longue
+     tâche qui figerait l'écran (l'invité le charge en pleine partie). */
+  function construitDict(text) {
+    return new Promise(function (resolve) {
+      var mots = String(text || '').split('\n');
+      var set = new Set();
+      var i = 0;
+      (function morceau() {
+        var fin = Math.min(mots.length, i + 20000);
+        for (; i < fin; i++) {
+          var w = mots[i];
+          if (w.charCodeAt(w.length - 1) === 13) w = w.slice(0, -1);
+          if (w.length >= 2 && w.charCodeAt(0) !== 35) set.add(w);
+        }
+        if (i < mots.length) setTimeout(morceau, 0);
+        else resolve({ set: set, trie: null, niveau: null });
+      })();
+    });
+  }
+
+  var ia = { worker: null, ok: typeof Worker !== 'undefined', seq: 0, attente: {}, courants: null, dernierMs: null };
+  function iaWorker() {
+    if (ia.worker || !ia.ok) return ia.worker;
+    try {
+      ia.worker = new Worker('js/ai-worker.js');
+      ia.worker.onmessage = function (e) {
+        var m = e.data || {};
+        var cb = ia.attente[m.id];
+        if (!cb) return;
+        delete ia.attente[m.id];
+        clearTimeout(cb.minuteur);
+        if (m.type === 'erreur') cb.echec(); else cb.ok(m);
+      };
+      ia.worker.onerror = function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        // worker indisponible (fichier absent, navigateur ancien) : repli définitif
+        ia.ok = false;
+        try { ia.worker.terminate(); } catch (e) {}
+        ia.worker = null;
+        var enCours = ia.attente;
+        ia.attente = {};
+        Object.keys(enCours).forEach(function (k) { clearTimeout(enCours[k].minuteur); enCours[k].echec(); });
+      };
+    } catch (e) {
+      ia.ok = false;
+      ia.worker = null;
+    }
+    return ia.worker;
+  }
+
+  /* Calcul sur le fil principal (repli) : on laisse d'abord l'écran respirer. */
+  function iaLocale(type, d) {
+    return loadDict().then(function () {
+      var courants = ia.courants || (ia.courants = fetch('data/mots-courants.txt')
+        .then(function (r) { return r.ok ? r.text() : ''; })
+        .then(function (t) { if (t) window.AI.chargeCourants(dict, t); })
+        .catch(function () {}));
+      return courants;
+    }).then(function () {
+      return new Promise(function (res) {
+        setTimeout(function () {
+          try {
+            if (type === 'coup') res({ action: window.AI.chooseAction(S, d.state, d.joueur, dict, d.niveau) });
+            else res({ coup: window.AI.meilleurCoup(S, d.state, d.joueur, dict) });
+          } catch (e) { res(type === 'coup' ? { action: { kind: 'pass' } } : { coup: null }); }
+        }, 60);
+      });
+    }).catch(function () {
+      return type === 'coup' ? { action: { kind: 'pass' } } : { coup: null };
+    });
+  }
+
+  function demandeIA(type, d) {
+    return new Promise(function (resolve) {
+      var w = iaWorker();
+      if (!w) { iaLocale(type, d).then(resolve); return; }
+      var id = ++ia.seq;
+      var fini = false;
+      function repli() { if (fini) return; fini = true; iaLocale(type, d).then(resolve); }
+      ia.attente[id] = {
+        ok: function (m) { if (fini) return; fini = true; resolve(m); },
+        echec: repli,
+        minuteur: setTimeout(function () { if (ia.attente[id]) { delete ia.attente[id]; repli(); } }, 25000)
+      };
+      try {
+        w.postMessage({ id: id, type: type, state: d.state, joueur: d.joueur, niveau: d.niveau });
+      } catch (e) {
+        delete ia.attente[id];
+        repli();
+      }
+    });
+  }
+
   function aiTurn() {
-    if (mode !== 'solo' || !state || state.over || state.current !== 1) return;
+    if (mode !== 'solo' || !state || state.over || state.current !== 1 || tirageEnCours) return;
+    if (aiThinking) return;
     aiThinking = true;
     render();
-    // setTimeout : laisse l'écran afficher « l'IA réfléchit » avant le calcul
+    var cle = state.id + ':' + state.history.length;
+    var debut = Date.now();
+    demandeIA('coup', { state: state, joueur: 1, niveau: aiLevel }).then(function (rep) {
+      ia.dernierMs = rep && typeof rep.ms === 'number' ? rep.ms : Date.now() - debut;
+      // la partie a pu changer entre-temps (quittée, recommencée)
+      if (!state || mode !== 'solo' || cle !== state.id + ':' + state.history.length || state.current !== 1) {
+        aiThinking = false;
+        return;
+      }
+      // l'IA « réfléchit » au moins un instant : on voit l'animation
+      var attente = reduit() ? 0 : Math.max(0, 1000 - (Date.now() - debut));
+      setTimeout(function () { joueIA(rep && rep.action, cle); }, attente);
+    });
+  }
+
+  function joueIA(action, cle) {
+    if (!state || mode !== 'solo' || cle !== state.id + ':' + state.history.length) { aiThinking = false; return; }
+    var res = null;
+    if (action && action.kind === 'move') res = S.playMove(state, 1, action.placements);
+    if (!res || !res.ok) {
+      if (action && action.kind === 'exchange') res = S.exchange(state, 1, action.letters);
+      if (!res || !res.ok) S.passTurn(state, 1);
+    }
+    aiThinking = false;
+    sauvePartie();
+    render();
+    if (state.over) {
+      clearTimeout(delaiSuite);
+      delaiSuite = setTimeout(showEnd, delaiAnimation());
+    }
+  }
+
+  /* ---------- coach : « le meilleur coup était… » ---------- */
+  var coach = { cle: null, coup: null, pret: false, messages: {} };
+  function coachPrepare() {
+    if (!motsOptions().coach || !state || state.over || !peutJouer() || passHidden) return;
+    var joueur = myIndex();
+    var cle = state.id + ':' + state.history.length + ':' + joueur;
+    if (coach.cle === cle) return;
+    coach.cle = cle;
+    coach.coup = null;
+    coach.pret = false;
+    demandeIA('coach', { state: state, joueur: joueur }).then(function (rep) {
+      if (coach.cle !== cle) return;
+      coach.coup = rep ? rep.coup : null;
+      coach.pret = true;
+    });
+  }
+  /* Après le coup du joueur de ce téléphone : message du coach. */
+  function coachApres(h, n) {
+    if (!motsOptions().coach || !coach.pret || coach.cle !== state.id + ':' + n + ':' + h.player) return;
+    var b = coach.coup;
+    if (!b) return;
+    var mot = (b.words && b.words[0] && b.words[0].word) || b.principal || '';
+    var texte;
+    if (h.type === 'move' && h.points >= b.total) texte = 'Bravo, le meilleur coup possible !';
+    else texte = 'Meilleur coup : <b>' + esc(mot) + '</b> (' + b.total + ' pts)';
+    coach.messages[h.player] = texte;
+  }
+
+  /* ---------- animations des coups ---------- */
+  var vu = { id: null, n: 0 };
+  var dernierVuLocal = {};  // sur un seul téléphone : où en était chaque joueur
+
+  /* Entrées de l'historique pas encore animées sur ce téléphone. */
+  function detecteNouveaux() {
+    if (vu.id !== state.id || state.history.length < vu.n) {
+      vu = { id: state.id, n: state.history.length };
+      scoresAffiches = null;
+      sacAffiche = null;
+      dernierVuLocal = {};
+      return [];
+    }
+    if (state.history.length === vu.n) return [];
+    var debut = vu.n;
+    vu.n = state.history.length;
+    return state.history.slice(debut).map(function (h, k) { return { h: h, n: debut + k }; }).slice(-3);
+  }
+
+  function animeEntrees(liste) {
+    liste.forEach(function (e, k) {
+      setTimeout(function () { animeEntree(e.h, e.n); }, k * 700);
+    });
+  }
+
+  /* Centre (écran) d'un groupe de cases. */
+  function centreCases(idxs) {
+    var x = 0, y = 0, n = 0;
+    idxs.forEach(function (i) {
+      if (!cells[i]) return;
+      var r = cells[i].getBoundingClientRect();
+      x += r.left + r.width / 2; y += r.top + r.height / 2; n++;
+    });
+    return n ? { x: x / n, y: y / n } : null;
+  }
+
+  function estAMoi(joueur) {
+    if (mode === 'local') return true; // l'auteur du coup tient encore le téléphone
+    return joueur === myIndex();
+  }
+
+  function animeEntree(h, n) {
+    if (!state) return;
+    var fx = fxM();
+    var moi = estAMoi(h.player);
+    if (moi) coachApres(h, n);
+    if (mode === 'local') dernierVuLocal[h.player] = n + 1;
+    if (h.type === 'move') {
+      var idxs = (h.cells || []).map(function (c) { return c.i; });
+      if (zoom) setZoom(false, null, true); // on voit le coup en entier (sans animation : les vols partent juste)
+      if (moi) illumine(h, idxs, 0, true);
+      else arriveeAdverse(h, idxs);
+      return;
+    }
+    var badge = $('badge-' + h.player);
+    if (h.type === 'exchange') {
+      if (moi) { if (mode !== 'local') piocheAnimee(h.tires || 0, 200); }
+      else if (badge) {
+        fx.floatText(badge, '⇄ ' + (h.count | 0), { color: '#9fe7ff', size: 20 });
+        son('shuffle', { volume: 0.5 });
+      }
+      return;
+    }
+    if (!moi && badge) {
+      fx.floatText(badge, h.refus ? '✗ refusé' : 'passe', { color: h.refus ? '#ff9aa5' : '#c9ccf5', size: 18 });
+      son('whoosh', { volume: 0.4 });
+    }
+  }
+
+  /* Mot validé : les lettres s'illuminent l'une après l'autre, les points jaillissent. */
+  function illumine(h, idxs, delai, moi) {
+    var fx = fxM();
+    idxs.forEach(function (i, k) {
+      var t = cells[i] && cells[i].querySelector('.tile');
+      if (!t) return;
+      t.style.setProperty('--d', (delai + k * 85) + 'ms');
+      t.classList.remove('eclat');
+      void t.offsetWidth;
+      t.classList.add('eclat');
+      setTimeout(function () { t.classList.remove('eclat'); }, delai + k * 85 + 700);
+    });
+    var pts = h.points | 0;
     setTimeout(function () {
-      var action = window.AI.chooseAction(S, state, 1, dict, aiLevel);
-      var res = null;
-      if (action.kind === 'move') {
-        res = S.playMove(state, 1, action.placements);
-        if (res.ok) {
-          var txt = action.words.map(function (w) { return w.word; }).join(' + ');
-          toast('🤖 L’IA joue ' + txt + ' (' + action.total + ' pts)');
-        }
+      var c = centreCases(idxs);
+      if (c) fx.floatText(c, '+' + pts, { color: '#ffd84a', size: pts >= 40 ? 34 : 28 });
+      if (h.bingo) celebreScrabble();
+      else if (pts >= 30) son('combo', { level: Math.min(8, Math.floor(pts / 10)) });
+      else son('correct');
+      if (!h.bingo) vibre(pts >= 30 ? 'medium' : 'light');
+      if (c && pts >= 20 && !h.bingo) fx.burst(c, { count: Math.min(30, 8 + pts / 2), shape: 'star' });
+    }, delai + idxs.length * 85 + 80);
+    // mes nouvelles lettres tirées du sac, pendant que le mot brille (pas sur un seul
+    // téléphone : c'est déjà le joueur suivant qui regarde)
+    if (moi && mode !== 'local' && h.tires) piocheAnimee(h.tires, delai + 250);
+  }
+
+  /* Coup adverse : ses tuiles arrivent de son badge et se posent une à une. */
+  function arriveeAdverse(h, idxs) {
+    var fx = fxM();
+    var badge = $('badge-' + h.player);
+    if (zoom) setZoom(false, null, true);
+    if (reduit() || !badge) { illumine(h, idxs, 0); return; }
+    idxs.forEach(function (i, k) {
+      var t = cells[i] && cells[i].querySelector('.tile');
+      if (!t) return;
+      t.classList.add('arrive');
+      var c = (h.cells[k] || {});
+      setTimeout(function () {
+        fx.flyTo(badge, cells[i], {
+          html: '<div class="mots-vol" style="--c:' + Math.round(cells[i].offsetWidth) + 'px">' +
+            tileHtml(c.l || '?', !!c.b, false) + '</div>',
+          duration: 420, arc: 0.22, scaleTo: 1
+        }).then(function () {
+          t.classList.remove('arrive');
+          son('place', { volume: 0.45 });
+        });
+      }, k * 110);
+    });
+    setTimeout(function () { illumine(h, idxs, 0); }, idxs.length * 110 + 380);
+  }
+
+  /* Nouvelles lettres : elles volent du sac jusqu'au chevalet. Les tuiles
+     encore « en vol » restent cachées même si le chevalet est redessiné
+     entre-temps (tour de l'IA, message réseau). */
+  var pioche = { reste: 0, filet: null };
+  function tuilesChevalet() { return Array.prototype.slice.call($('rack').querySelectorAll('.rack-tile')); }
+  function marquePioche() {
+    if (!pioche.reste) return;
+    var t = tuilesChevalet();
+    t.slice(-pioche.reste).forEach(function (el) { el.classList.add('a-venir'); });
+  }
+  function piocheAnimee(n, delai) {
+    if (!n || reduit() || passHidden) return;
+    n = Math.min(n, tuilesChevalet().length);
+    if (!n) return;
+    pioche.reste = n;
+    marquePioche();
+    clearTimeout(pioche.filet);
+    // filet de sécurité : jamais de tuile cachée pour de bon
+    pioche.filet = setTimeout(function () {
+      pioche.reste = 0;
+      tuilesChevalet().forEach(function (el) { el.classList.remove('a-venir'); });
+    }, (delai || 0) + n * 90 + 1500);
+    setTimeout(function () {
+      var sac = $('bag-count');
+      for (var k = 0; k < n; k++) {
+        (function (k) {
+          setTimeout(function () {
+            var t = tuilesChevalet(), el = t[t.length - n + k];
+            if (!el || passHidden) { pioche.reste = Math.max(0, pioche.reste - 1); return; }
+            son('deal', { volume: 0.4 });
+            fxM().flyTo(sac, el, {
+              html: '<div class="mots-vol" style="width:' + Math.round(el.offsetWidth) + 'px;height:' +
+                Math.round(el.offsetHeight) + 'px"><div class="tile" style="background:var(--bois)"></div></div>',
+              duration: 380, arc: 0.25, scaleTo: 1
+            }).then(function () {
+              pioche.reste = Math.max(0, pioche.reste - 1);
+              var t2 = tuilesChevalet(), el2 = t2[t2.length - n + k];
+              if (el2) { el2.classList.remove('a-venir'); el2.classList.add('nouvelle'); }
+            });
+          }, k * 90);
+        })(k);
       }
-      if (!res || !res.ok) {
-        if (action.kind === 'exchange') {
-          res = S.exchange(state, 1, action.letters);
-          if (res.ok) toast('🤖 L’IA échange ses lettres.');
-        }
-        if (!res || !res.ok) {
-          S.passTurn(state, 1);
-          toast('🤖 L’IA passe son tour.');
-        }
-      }
-      aiThinking = false;
-      sauvePartie();
+    }, delai || 0);
+  }
+
+  /* « Scrabble ! » : les 7 lettres posées d'un coup, fêtées en grand. */
+  function celebreScrabble() {
+    var fx = fxM();
+    var el = document.createElement('div');
+    el.className = 'mots-scrabble';
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = '<span class="ms-t">SCRABBLE !</span><span class="ms-s">+50 points</span>';
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 2300);
+    fx.confetti({ count: 140 });
+    son('fanfare');
+    vibre('success');
+  }
+
+  /* ---------- tirage au sort du premier joueur ---------- */
+  function animeTirage(suite) {
+    suite = suite || function () {};
+    if (!state || !state.tirage || !state.tirage.length || state.history.length || tirageVu === state.id) {
+      suite();
+      return;
+    }
+    tirageVu = state.id;
+    var vieux = $('mots-tirage');
+    if (vieux) vieux.remove();
+    tirageEnCours = true;
+    var tours = state.tirage;
+    var el = document.createElement('div');
+    el.id = 'mots-tirage';
+    var html = '<h3>🎲 Qui commence ?</h3><p class="mt-regle">Chacun pioche une lettre : la plus proche du A ' +
+      'commence (le joker bat tout).</p>';
+    var d = 0;
+    tours.forEach(function (tour, k) {
+      if (k > 0) html += '<p class="mt-regle">Égalité ! Les ex æquo repiochent :</p>';
+      html += '<div class="mt-ligne">';
+      var meilleur = Math.min.apply(null, tour.map(function (t) { return S.rangTirage(String(t.l)); }));
+      tour.forEach(function (t) {
+        var l = typeof t.l === 'string' ? t.l : '?';
+        var gagne = k === tours.length - 1 && t.p === state.premier;
+        var exAequo = k < tours.length - 1 && S.rangTirage(l) === meilleur;
+        html += '<div class="mt-joueur' + (k === tours.length - 1 ? (gagne ? ' fin premier-a-venir' : ' fin') :
+          (exAequo ? '' : ' hors-a-venir')) +
+          '" data-p="' + (t.p | 0) + '"><div class="mt-tuile" style="--d:' + d + 'ms"><div class="mt-dos"></div>' +
+          '<div class="tile' + (l === '?' ? ' blank' : '') + '" style="--d:' + d + 'ms">' +
+          (l === '?' ? '★' : esc(l)) + '</div></div><span>' + esc((state.players[t.p] || {}).name || '') + '</span></div>';
+        d += 260;
+      });
+      html += '</div>';
+      d += 300;
+    });
+    var gagnant = state.players[state.premier] ? state.players[state.premier].name : '';
+    html += '<p class="mt-resultat" style="animation-delay:' + d + 'ms">' + esc(gagnant) + ' commence !</p>';
+    el.innerHTML = html;
+    $('board-wrap').appendChild(el);
+    render();
+    var fini = false;
+    function termine() {
+      if (fini) return;
+      fini = true;
+      el.classList.add('sort');
+      setTimeout(function () { el.remove(); }, 420);
+      tirageEnCours = false;
       render();
-      if (state.over) showEnd();
-    }, 400);
+      suite();
+    }
+    el.addEventListener('click', termine);
+    if (reduit()) {
+      el.querySelectorAll('.mt-dos').forEach(function (x) { x.style.display = 'none'; });
+      setTimeout(termine, 1200);
+      return;
+    }
+    // bruitages des lettres retournées, puis le vainqueur
+    var nb = 0;
+    tours.forEach(function (tour) { nb += tour.length; });
+    for (var i = 0; i < nb; i++) (function (k) { setTimeout(function () { son('flip', { volume: 0.55 }); }, k * 260 + 150); })(i);
+    setTimeout(function () {
+      el.querySelectorAll('.mt-joueur.hors-a-venir, .mt-joueur.fin:not(.premier-a-venir)').forEach(function (x) { x.classList.add('hors'); });
+      el.querySelectorAll('.premier-a-venir').forEach(function (x) { x.classList.add('premier'); });
+      son('reveal');
+    }, d);
+    setTimeout(termine, d + 1500);
+  }
+
+  /* Début d'une partie jouée sur ce téléphone : tirage, puis la suite. */
+  function debutPartie() {
+    // sur un seul téléphone, personne ne voit encore de chevalet
+    if (mode === 'local') passHidden = true;
+    animeTirage(function () {
+      if (!state) return;
+      if (mode === 'local') showPassDevice();
+      else if (mode === 'solo' && state.current === 1) aiTurn();
+    });
   }
 
   /* ---------- mode local : passage du téléphone ---------- */
   function showPassDevice() {
+    if (!state || state.over) return;
     passHidden = true;
+    if (zoom) setZoom(false);
     $('pass-name').textContent = state.players[state.current].name;
     showOverlay('overlay-pass', true);
-    window.GG.sfx.play('whoosh');
+    son('whoosh');
     render();
+  }
+
+  /* Sur un seul téléphone : le joueur qui reprend l'appareil voit rejouer
+     les coups des autres depuis son dernier tour. */
+  function rejoueDepuisDernierTour() {
+    if (mode !== 'local' || !state || reduit()) return;
+    var moi = state.current;
+    var depuis = dernierVuLocal[moi] != null ? dernierVuLocal[moi] : 0; // 1er tour : depuis le début
+    var liste = [];
+    for (var n = depuis; n < state.history.length; n++) {
+      var h = state.history[n];
+      if (h.player !== moi && h.type === 'move') liste.push({ h: h, n: n });
+    }
+    liste.slice(-2).forEach(function (e, k) {
+      setTimeout(function () {
+        arriveeAdverse(e.h, (e.h.cells || []).map(function (c) { return c.i; }));
+      }, 250 + k * 1100);
+    });
   }
 
   /* ---------- historique ---------- */
@@ -690,48 +1730,83 @@
       return;
     }
     list.innerHTML = state.history.map(function (h) {
-      var name = esc(state.players[h.player].name);
+      var name = esc(state.players[h.player] ? state.players[h.player].name : '?');
       var txt;
       if (h.type === 'move') {
-        txt = h.words.map(function (w) { return esc(w.word); }).join(' + ') +
-          (h.bingo ? ' <em>(7 lettres !)</em>' : '');
+        txt = (h.words || []).map(function (w) { return esc(w.word); }).join(' + ') +
+          (h.bingo ? ' <em>Scrabble !</em>' : '');
       } else if (h.type === 'exchange') {
-        txt = 'échange ' + h.count + ' lettre' + (h.count > 1 ? 's' : '');
+        txt = 'échange ' + (h.count | 0) + ' lettre' + ((h.count | 0) > 1 ? 's' : '');
+      } else if (h.refus) {
+        txt = '<span class="mh-refus">mot refusé (' + esc(h.refus) + ') : tour perdu</span>';
       } else {
         txt = 'passe son tour';
       }
-      return '<div class="h-row"><strong>' + name + '</strong> — ' + txt +
-        '<span class="h-pts">' + (h.points || 0) + '</span></div>';
-    }).join('');
+      var pts = h.points | 0;
+      return '<div class="h-row mh-row"><span class="mh-tx"><strong>' + name + '</strong> — ' + txt + '</span>' +
+        '<span class="mh-pts' + (pts ? '' : ' zero') + '">' + (pts ? '+' + pts : '0') + '</span></div>';
+    }).reverse().join('');
   }
 
   /* ---------- fin de partie ---------- */
   function showEnd() {
+    if (!state || !state.over) return;
     var det = $('end-detail');
     var lines = [];
-    if (state.finalDetail) {
-      if (state.finalDetail.reason === 'playout') {
-        lines.push('<p>' + esc(state.players[state.finalDetail.finisher].name) +
-          ' a posé toutes ses lettres : les points des lettres restantes des autres joueurs lui sont transférés.</p>');
+    var fd = state.finalDetail;
+    var parJoueur = {};
+    if (fd) {
+      (fd.detail || []).forEach(function (d) { parJoueur[d.player] = d; });
+      if (fd.reason === 'playout') {
+        lines.push('<p class="fin-raison">🏁 <b>' + esc((state.players[fd.finisher] || {}).name || '') + '</b> a posé toutes ' +
+          'ses lettres : celles des autres lui reviennent.</p>');
       } else {
-        lines.push('<p>Six tours sans point : chacun déduit ses lettres restantes.</p>');
+        lines.push('<p class="fin-raison">🏁 Chacun a passé trois fois de suite : les lettres restantes ' +
+          'sont déduites.</p>');
       }
     }
-    var ranked = state.players.map(function (p, i) { return { name: p.name, score: p.score, i: i }; })
+    var ranked = state.players.map(function (p, i) { return { name: p.name, score: Number(p.score) || 0, i: i }; })
       .sort(function (a, b) { return b.score - a.score; });
-    ranked.forEach(function (r) {
-      lines.push('<div class="final-line"><span>' + esc(r.name) + '</span><strong>' +
-        r.score + ' pts</strong></div>');
+    var medailles = ['🥇 ', '🥈 ', '🥉 ', ''];
+    ranked.forEach(function (r, k) {
+      var d = parJoueur[r.i];
+      var detail = '';
+      if (d) {
+        var delta = Number(d.delta) || 0;
+        if (delta < 0) {
+          detail = (d.avant | 0) + ' <span class="moins">− ' + (-delta) + '</span> (lettres restantes : ' +
+            (Array.isArray(d.lettres) ? d.lettres : []).map(function (l) { return l === '?' ? '★' : esc(l); }).join('') + ')';
+        } else if (delta > 0) {
+          detail = (d.avant | 0) + ' <span class="plus">+ ' + delta + '</span> (lettres des autres)';
+        } else {
+          detail = (d.avant | 0) + ' (aucune lettre restante)';
+        }
+      }
+      lines.push('<div class="final-line"><span class="fl-g"><span class="fl-n">' + (medailles[k] || '') +
+        esc(r.name) + '</span>' + (detail ? '<span class="fl-d">' + detail + '</span>' : '') +
+        '</span><strong>' + r.score + ' pt' + (Math.abs(r.score) > 1 ? 's' : '') + '</strong></div>');
     });
+    // statistiques de la partie : une ligne par joueur
+    var st = S.stats(state);
+    lines.push('<div class="fin-stats"><table class="fs-table" aria-label="Statistiques de la partie"><thead><tr>' +
+      '<th>📊 Stats</th><th title="Meilleur mot">⭐ Meilleur mot</th><th title="Points par coup">Moy.</th>' +
+      '<th title="Scrabbles">🎉</th></tr></thead><tbody>' +
+      state.players.map(function (p, i) {
+        var s = st[i];
+        return '<tr><th>' + esc(p.name) + '</th><td>' +
+          (s.meilleur ? '<b>' + esc(s.meilleur.mot) + '</b> ' + s.meilleur.points : '—') + '</td><td>' +
+          String(s.moyenne).replace('.', ',') + '</td><td>' + s.scrabbles +
+          (s.refus ? ' <small title="mots refusés">(' + s.refus + '✗)</small>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>');
     det.innerHTML = lines.join('');
     var w = $('end-winner');
-    var gagnants;
-    if (ranked[0].score === ranked[1].score) {
+    var gagnants = S.gagnants(state);
+    if (!gagnants.length) {
       w.textContent = 'Égalité !';
-      gagnants = [];
+    } else if (gagnants.length === 1) {
+      w.textContent = mode === 'solo' && gagnants[0] === 1 ? 'L’IA gagne !' : state.players[gagnants[0]].name + ' gagne !';
     } else {
-      w.textContent = ranked[0].name + ' gagne !';
-      gagnants = [ranked[0].i];
+      w.textContent = gagnants.map(function (g) { return state.players[g].name; }).join(' et ') + ' gagnent !';
     }
     $('btn-end-new').classList.toggle('hidden', mode === 'guest');
     effaceSauvegarde();
@@ -741,19 +1816,81 @@
 
   function newGameSamePlayers() {
     var names = state.players.map(function (p) { return p.name; });
-    state = S.newGame(names);
+    state = S.newGame(names, { refus: state.regles && state.regles.refus });
     pending = [];
     selected = -1;
+    exchangeMode = false;
+    exchangeSel = [];
+    passHidden = false;
+    aiThinking = false;
+    coach = { cle: null, coup: null, pret: false, messages: {} };
+    clearTimeout(delaiSuite);
     showOverlay('overlay-end', false);
     if (mode === 'host') {
       hostPeers.forEach(function (peer) {
         if (peer.connected) peer.net.send({ t: 'init', state: wordsRedactFor(peer.playerIndex), you: peer.playerIndex });
       });
     }
-    if (mode === 'local') {
-      showPassDevice();
-    }
+    if (zoom) setZoom(false);
     render();
+    if (mode === 'host') animeTirage();
+    else debutPartie();
+  }
+
+  /* Options de Words sur les écrans de configuration (solo et sur ce
+     téléphone) : niveau « expert », coach, règle du mot refusé. */
+  function injecteOptionsMots() {
+    var niveaux = $('ai-level');
+    if (niveaux && !niveaux.querySelector('[data-level="expert"]')) {
+      var bx = document.createElement('button');
+      bx.className = 'count-btn level-btn';
+      bx.dataset.level = 'expert';
+      bx.textContent = '🧠 Expert';
+      niveaux.appendChild(bx);
+    }
+    function bloc(avant, suffixe) {
+      if (!avant || $('mots-opt-coach-' + suffixe)) return;
+      var d = document.createElement('div');
+      d.className = 'mots-options';
+      d.innerHTML =
+        '<div class="reglage" role="switch" tabindex="0" id="mots-opt-coach-' + suffixe + '"><span class="rg-ic">💡</span>' +
+        '<span class="rg-tx">Coach<small>Après chaque coup : le meilleur coup possible.</small></span>' +
+        '<span class="interrupteur"></span></div>' +
+        '<div class="reglage" role="switch" tabindex="0" id="mots-opt-refus-' + suffixe + '"><span class="rg-ic">📕</span>' +
+        '<span class="rg-tx">Règle classique<small>Mot refusé = tour perdu (sinon : 3 essais par tour).</small></span>' +
+        '<span class="interrupteur"></span></div>';
+      avant.parentNode.insertBefore(d, avant);
+      function maj() {
+        var op = motsOptions();
+        [['coach', op.coach], ['refus', op.refus === 'perdu']].forEach(function (x) {
+          ['solo', 'local'].forEach(function (s) {
+            var e = $('mots-opt-' + x[0] + '-' + s);
+            if (!e) return;
+            e.classList.toggle('on', !!x[1]);
+            e.setAttribute('aria-checked', x[1] ? 'true' : 'false');
+          });
+        });
+      }
+      function bascule(cle) {
+        return function (ev) {
+          if (ev.type === 'keydown' && ev.key !== 'Enter' && ev.key !== ' ') return;
+          if (ev.type === 'keydown') ev.preventDefault();
+          var op = motsOptions();
+          if (cle === 'coach') motsOptionsSet('coach', !op.coach);
+          else motsOptionsSet('refus', op.refus === 'perdu' ? 'essais' : 'perdu');
+          son('toggle');
+          maj();
+        };
+      }
+      ['coach', 'refus'].forEach(function (cle) {
+        var e = $('mots-opt-' + cle + '-' + suffixe);
+        e.addEventListener('click', bascule(cle));
+        e.addEventListener('keydown', bascule(cle));
+      });
+      maj();
+    }
+    bloc($('btn-solo-start'), 'solo');
+    bloc($('btn-local-start'), 'local');
   }
 
   /* =================================================================
@@ -2660,11 +3797,29 @@
   function enterGame() {
     stopScanner();
     noteRecent('mots');
+    if (state && !state.id) state.id = 'p' + Date.now().toString(36); // partie d'avant la V2
+    // l'hôte applique sa règle du mot refusé avant le premier coup
+    if (mode === 'host' && state && !state.history.length && !state.moveCount) {
+      state.regles = { refus: motsOptions().refus };
+      broadcastState();
+    }
     sauvePartie();
     showScreen('screen-game');
     $('btn-menu-invite').classList.toggle('hidden', mode !== 'host');
     chatBadges();
+    clearTimeout(delaiSuite);
+    if (zoom) setZoom(false);
+    // le dictionnaire se charge en tâche de fond (l'invité aussi : l'aperçu
+    // reste neutre tant qu'il n'est pas là, puis donne son verdict)
+    if (!dict) loadDict().catch(function () {});
+    // l'IA (et le coach) se préparent dans leur Web Worker
+    if (mode === 'solo' || motsOptions().coach) {
+      var w = iaWorker();
+      if (w) { try { w.postMessage({ id: 0, type: 'init' }); } catch (e) {} }
+    }
     render();
+    // en réseau, chaque téléphone montre le tirage au sort du premier joueur
+    if (mode === 'host' || mode === 'guest') animeTirage();
   }
 
   function quitToHome() {
@@ -3303,12 +4458,29 @@
     // Règles du jeu en cours
     var MOTS_REGLES = '<p><strong>🎯 Le but :</strong> marquer plus de points que les autres ' +
       'en posant des mots sur la grille, comme au jeu de lettres classique.</p>' +
-      '<p><strong>Comment jouer :</strong> touchez une lettre de votre chevalet puis une case ' +
-      'de la grille. Chaque mot doit exister dans le dictionnaire français (vérifié ' +
-      'automatiquement) et toucher les mots déjà posés.</p>' +
-      '<p><strong>Les points :</strong> chaque lettre a une valeur ; les cases colorées ' +
+      '<p><strong>🎲 Qui commence ?</strong> Chacun pioche une lettre : la plus proche du A ' +
+      'commence (le joker bat tout ; en cas d’égalité, les ex æquo repiochent).</p>' +
+      '<p><strong>👆 Poser ses lettres :</strong> touchez une lettre du chevalet puis une case, ' +
+      'ou faites-la glisser jusqu’à la case. Le plateau s’agrandit tout seul pour viser ' +
+      'facilement ; touchez 🔍 (ou deux fois une case vide) pour zoomer ou voir tout le ' +
+      'plateau. Touchez une lettre posée pour la reprendre. Le premier mot passe par ' +
+      'l’étoile du centre ; ensuite, chaque mot touche ceux déjà posés.</p>' +
+      '<p><strong>🔢 Les points :</strong> chaque lettre a une valeur ; les cases colorées ' +
       'multiplient la lettre (LD ×2, LT ×3) ou le mot (MD ×2, MT ×3). Poser ses 7 lettres ' +
-      'd’un coup rapporte 50 points bonus !</p>';
+      'd’un coup (« Scrabble ! ») rapporte 50 points bonus.</p>' +
+      '<p><strong>📕 Mot refusé :</strong> chaque mot doit exister dans le dictionnaire ' +
+      'français. Par défaut, on peut retenter : 3 essais par tour, au 3ᵉ refus le tour est ' +
+      'perdu. Avec la <em>règle classique</em> (option), un mot refusé fait perdre le tour ' +
+      'et l’aperçu ne dit pas à l’avance si le mot existe.</p>' +
+      '<p><strong>⇄ Échanger :</strong> possible tant que le sac contient au moins 7 lettres ; ' +
+      'l’échange prend le tour.</p>' +
+      '<p><strong>🏁 Fin de partie :</strong> quand un joueur a posé toutes ses lettres et que ' +
+      'le sac est vide (il gagne la valeur des lettres restant aux autres, qui la perdent), ou ' +
+      'quand chaque joueur a passé trois fois de suite (règlement international du Scrabble ' +
+      'classique : un échange ou un coup, même à 0 point, n’est pas un « je passe ») ; chacun ' +
+      'perd alors la valeur de ses lettres.</p>' +
+      '<p><strong>💡 Coach :</strong> en option, après chaque coup, le meilleur coup possible ' +
+      'vous est montré.</p>';
     function showRules() {
       var isMots = document.getElementById('screen-game').classList.contains('active');
       var titre, corps;
@@ -3356,7 +4528,8 @@
       });
     });
 
-    // Partie solo contre l'IA
+    // Partie solo contre l'IA (niveau « expert » et options de Words ajoutés ici)
+    injecteOptionsMots();
     document.querySelectorAll('.level-btn').forEach(function (b) {
       b.addEventListener('click', function () {
         aiLevel = b.dataset.level;
@@ -3374,10 +4547,13 @@
         btn.disabled = false;
         $('solo-loading').classList.add('hidden');
         mode = 'solo';
-        state = S.newGame([name, 'IA ' + aiLevel]);
+        state = S.newGame([name, nomIA(aiLevel)], { refus: motsOptions().refus });
         pending = [];
         selected = -1;
+        passHidden = false;
+        aiThinking = false;
         enterGame();
+        debutPartie();
       }).catch(function () {
         btn.disabled = false;
         $('solo-loading').classList.add('hidden');
@@ -3398,11 +4574,12 @@
       }).then(function () {
         btn.disabled = false;
         mode = 'local';
-        state = S.newGame(names);
+        state = S.newGame(names, { refus: motsOptions().refus });
         pending = [];
         selected = -1;
+        passHidden = false;
         enterGame();
-        showPassDevice();
+        debutPartie();
       });
     });
 
@@ -3458,12 +4635,31 @@
     $('btn-recall').addEventListener('click', recallAll);
     $('btn-shuffle').addEventListener('click', shuffleRack);
     $('btn-reconnect').addEventListener('click', reconnect);
+    $('btn-zoom').addEventListener('click', function () {
+      var centre = pending.length ? pending[pending.length - 1].index : S.CENTER;
+      setZoom(!zoom, centre);
+    });
+    // tests automatisés : accès en lecture à la partie de Words en cours
+    window.GGMotsTest = {
+      etat: function () { return state; },
+      rendu: function () { render(); },
+      mode: function () { return mode; },
+      dico: function () { return !!dict; },
+      ia: function () { return { worker: !!ia.worker, ok: ia.ok, dernierMs: ia.dernierMs }; },
+      zoom: function () { return zoom; },
+      // un coup proposé par l'IA pour le joueur de ce téléphone (les tests le jouent à la main)
+      suggestion: function (niveau) {
+        if (!dict || !state) return null;
+        window.AI.prepare(dict);
+        return window.AI.chooseAction(S, state, myIndex(), dict, niveau || 'moyen');
+      }
+    };
 
     // Passage du téléphone
     $('btn-pass-ready').addEventListener('click', function () {
       passHidden = false;
       showOverlay('overlay-pass', false);
-      if (currentGame === 'mots') render(); else miniRender();
+      if (currentGame === 'mots') { render(); rejoueDepuisDernierTour(); } else miniRender();
     });
 
     // Joker

@@ -27,19 +27,25 @@ function check(name, cond, extra) {
   const rack = await p.locator('#rack .rack-tile').count();
   check('chevalet humain de 7 tuiles', rack === 7, rack);
 
+  // V2 : le premier joueur est tiré au sort (animation), puis l'IA joue
+  // peut-être en premier : on attend que la main revienne à l'humain.
+  await p.waitForFunction(() => !document.querySelector('#btn-pass').disabled, null, { timeout: 30000 });
+  const h0 = await p.evaluate(() => window.GGMotsTest.etat().history.length);
+  console.log('  → ' + (h0 ? 'l’IA a commencé' : 'Léa commence'));
+
   // L'humain joue un mot valide du dictionnaire (ou passe s'il n'en a pas)
-  const w = await H.playFirstWord(p);
+  const w = h0 ? null : await H.playFirstWord(p);
   if (!w) { await p.click('#btn-pass'); await p.waitForSelector('#overlay-confirm:not(.hidden)'); await p.click('#btn-confirm-yes'); }
   console.log('  → humain ' + (w ? 'joue ' + w : 'passe'));
 
   // L'IA doit réagir puis rendre la main
-  await p.waitForFunction(() =>
+  await p.waitForFunction(n => window.GGMotsTest.etat().history.length >= n + 2 &&
     document.querySelector('#turn-banner').textContent.includes('Léa'),
-    null, { timeout: 20000 });
+    h0, { timeout: 30000 });
   check('l’IA a joué et rendu la main', true);
   await p.click('#btn-history');
   const hist = await p.locator('#history-list .h-row').count();
-  check('historique : 2 entrées (humain + IA)', hist === 2, hist);
+  check('historique : 2 entrées de plus (humain + IA)', hist === h0 + 2, hist);
   const histText = await p.textContent('#history-list');
   check('l’IA apparaît dans l’historique', histText.includes('IA'), histText);
   await p.click('#btn-history-close');
@@ -49,23 +55,28 @@ function check(name, cond, extra) {
   console.log('  → score IA:', aiScore, '| tuiles sur plateau:', tiles);
   check('l’IA a fait une action visible (coup ou échange)', tiles > 2 || aiScore >= 0);
   // si l'IA a posé un mot : ses lettres sont surlignées + rappel dans la bannière
-  if (aiScore > 0) {
+  const derniere = await p.evaluate(() => { const h = window.GGMotsTest.etat().history; return h[h.length - 1]; });
+  if (derniere && derniere.type === 'move' && derniere.player === 1) {
     const hl = await p.locator('#board .cell.last-word').count();
     check('dernier mot de l’IA surligné sur la grille', hl >= 1, hl);
     check('bannière : « L’IA a joué … »',
       /L’IA a joué/.test(await p.textContent('#turn-banner')));
+  } else {
+    // V2 : si l'IA a échangé ou passé, le bandeau ne parle plus d'un vieux « a joué »
+    check('bannière : pas de « L’IA a joué » périmé', !/L’IA a joué/.test(await p.textContent('#turn-banner')));
   }
 
   // Deuxième tour : l'humain passe, l'IA rejoue
+  await p.waitForFunction(() => !document.querySelector('#btn-pass').disabled, null, { timeout: 30000 });
   await p.click('#btn-pass');
   await p.waitForSelector('#overlay-confirm:not(.hidden)');
   await p.click('#btn-confirm-yes');
-  await p.waitForFunction(() =>
+  await p.waitForFunction(n => window.GGMotsTest.etat().history.length >= n + 4 &&
     document.querySelector('#turn-banner').textContent.includes('Léa'),
-    null, { timeout: 20000 });
+    h0, { timeout: 30000 });
   await p.click('#btn-history');
   const hist2 = await p.locator('#history-list .h-row').count();
-  check('historique : 4 entrées après 2e tour', hist2 === 4, hist2);
+  check('historique : 4 entrées de plus après 2e tour', hist2 === h0 + 4, hist2);
 
   await browser.close();
   console.log(failures ? `\n${failures} ÉCHEC(S)` : '\nTests solo OK.');
