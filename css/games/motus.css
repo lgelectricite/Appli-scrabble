@@ -85,7 +85,9 @@
 .mot-cell.donnee { border-style: dashed; }
 .mot-row.attente .mot-cell { opacity: .55; }
 .mot-cell.tape { animation: motTape .16s var(--ressort); }
+.mot-cell.tape2 { animation: motTape2 .16s var(--ressort); }
 @keyframes motTape { 50% { transform: scale(1.12); } }
+@keyframes motTape2 { 50% { transform: scale(1.12); } }
 
 /* ✅ bien placée : case pleine, verte, en relief */
 .mot-cell.m2 {
@@ -147,7 +149,13 @@
 
 /* essai refusé : la ligne tremble */
 .mot-row.tremble { animation: motTremble .42s ease; }
+.mot-row.tremble2 { animation: motTremble2 .42s ease; }
 @keyframes motTremble {
+  15%, 55% { transform: translateX(-9px); }
+  35%, 75% { transform: translateX(9px); }
+  90% { transform: translateX(-3px); }
+}
+@keyframes motTremble2 {
   15%, 55% { transform: translateX(-9px); }
   35%, 75% { transform: translateX(9px); }
   90% { transform: translateX(-3px); }

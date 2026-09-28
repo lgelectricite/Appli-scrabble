@@ -804,7 +804,7 @@
         if (m.ctx.act({ t: 'fin' }) === false) bf.disabled = false;
       });
     }
-    if (s.phase === 'play') fin.innerHTML = '';
+    if (s.phase === 'play' || s.phase === 'fin') fin.innerHTML = '';
     // effets des nouveaux mots
     if (nouveaux.length) {
       nouveaux.forEach(function (n, i) {

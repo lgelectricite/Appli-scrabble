@@ -486,25 +486,18 @@
       '<ellipse cx="-9" cy="-5" rx="10" ry="8"/><ellipse cx="7" cy="-7" rx="11" ry="9"/></svg>';
   }
 
-  function scene(etat) {
-    // etat : {alt 0..1, perdu, gagne, n (erreurs), neuf (erreur toute fraîche), humeur}
-    var alt = Math.max(0, Math.min(1, etat.alt));
-    var sx = 1 - 0.28 * alt, sy = 1 - 0.4 * alt;
-    if (etat.gagne) { sx = 1; sy = 1; } // mot trouvé : on regonfle !
-    var rust = '';
-    for (var i = 0; i < Math.min(etat.n, RUSTINES.length); i++) {
-      var r = RUSTINES[i];
-      rust += '<g transform="translate(' + r[0] + ' ' + r[1] + ') rotate(' + ((i * 37) % 50 - 25) + ')">' +
-        '<g class="pdu-rustine' + (etat.neuf && i === etat.n - 1 ? ' neuve' : '') + '">' +
-        '<rect x="-6" y="-4.5" width="12" height="9" rx="2.2"/><path d="M-4 -2.5l3 3M-1 -2.5l-3 3M1.5 -2.5l3 3M4.5 -2.5l-3 3"/></g></g>';
-    }
-    var pff = '';
-    if (etat.neuf && etat.n > 0) {
-      var q = RUSTINES[Math.min(etat.n, RUSTINES.length) - 1];
-      pff = '<g class="pdu-pff" transform="translate(' + q[0] + ' ' + q[1] + ')">' +
-        '<circle r="4"/><circle r="3" style="--dx:-14px;--dy:-10px"/><circle r="3.5" style="--dx:14px;--dy:-8px"/><circle r="2.5" style="--dx:2px;--dy:-16px"/></g>';
-    }
-    var h = etat.humeur;
+  function rustine(i, neuve) {
+    var r = RUSTINES[i];
+    return '<g transform="translate(' + r[0] + ' ' + r[1] + ') rotate(' + ((i * 37) % 50 - 25) + ')">' +
+      '<g class="pdu-rustine' + (neuve ? ' neuve' : '') + '">' +
+      '<rect x="-6" y="-4.5" width="12" height="9" rx="2.2"/><path d="M-4 -2.5l3 3M-1 -2.5l-3 3M1.5 -2.5l3 3M4.5 -2.5l-3 3"/></g></g>';
+  }
+  function pffDe(n) {
+    var q = RUSTINES[Math.min(n, RUSTINES.length) - 1];
+    return '<g class="pdu-pff" transform="translate(' + q[0] + ' ' + q[1] + ')">' +
+      '<circle r="4"/><circle r="3" style="--dx:-14px;--dy:-10px"/><circle r="3.5" style="--dx:14px;--dy:-8px"/><circle r="2.5" style="--dx:2px;--dy:-16px"/></g>';
+  }
+  function visage(h) {
     var bouche = h === 'joie' || h === 'fete' ? '<path class="pdu-bouche" d="M177.2 109.6q2.8 2.6 5.6 0"/>'
       : h === 'inquiet' ? '<path class="pdu-bouche" d="M177.4 110.6q1.4-1 2.8 0t2.8 0"/>'
         : h === 'panique' ? '<ellipse class="pdu-bouche o" cx="180" cy="110.4" rx="1.6" ry="2"/>'
@@ -512,8 +505,79 @@
     var yeux = h === 'plouf' ? '<path class="pdu-oeil x" d="M176.2 105.6l2 2m0-2l-2 2M181.8 105.6l2 2m0-2l-2 2"/>'
       : '<circle class="pdu-oeil" cx="177.8" cy="106.6" r="' + (h === 'panique' ? 1.25 : 0.95) + '"/><circle class="pdu-oeil" cx="182.2" cy="106.6" r="' + (h === 'panique' ? 1.25 : 0.95) + '"/>';
     var goutte = h === 'panique' ? '<path class="pdu-goutte" d="M186.4 102.6q1.3 2 0 2.8q-1.3-.8 0-2.8z"/>' : '';
+    return yeux + bouche + goutte;
+  }
+  /* la géométrie qui dépend des erreurs */
+  function geo(etat) {
+    var alt = Math.max(0, Math.min(1, etat.alt));
+    var g = { sx: 1 - 0.28 * alt, sy: 1 - 0.4 * alt, flamme: 1 - 0.6 * alt, halo: 6 - 4 * alt };
+    if (etat.gagne) { g.sx = 1; g.sy = 1; } // mot trouvé : on regonfle !
     // descente en % de la hauteur du calque du ballon (130 unités) : 40 unités au plus
-    var descente = etat.perdu ? 80 : (etat.gagne ? -3 : alt * 30.77);
+    g.descente = etat.perdu ? 80 : (etat.gagne ? -3 : alt * 30.77);
+    g.requin = alt >= 0.5 && !etat.gagne;
+    return g;
+  }
+  function classeScene(etat) {
+    return 'pdu-scene' + (etat.perdu ? ' perdu' : '') + (etat.gagne ? ' gagne' : '') +
+      (etat.alt >= 0.67 && !etat.perdu && !etat.gagne ? ' danger' : '');
+  }
+
+  /* Mise à jour de la scène EN PLACE : le ballon descend en douceur, les
+     nuages et les vagues ne sautent jamais (ils ne sont pas recréés). */
+  function majScene(sc, etat) {
+    var g = geo(etat);
+    sc.className = classeScene(etat);
+    var ballon = sc.querySelector('.pdu-ballon');
+    if (ballon) ballon.style.transform = 'translateY(' + g.descente.toFixed(2) + '%)';
+    var env = sc.querySelector('.pdu-enveloppe');
+    if (env) {
+      env.style.transform = 'scale(' + g.sx.toFixed(3) + ',' + g.sy.toFixed(3) + ')';
+      var deja = env.querySelectorAll('.pdu-rustine').length;
+      var n = Math.min(etat.n, RUSTINES.length);
+      var ajout = '';
+      for (var i = deja; i < n; i++) ajout += rustine(i, true);
+      if (etat.neuf && etat.n > 0) ajout += pffDe(etat.n);
+      if (ajout) {
+        env.insertAdjacentHTML('beforeend', ajout);
+        setTimeout(function () {
+          var vieux = env.querySelectorAll('.pdu-pff');
+          for (var k = 0; k < vieux.length; k++) if (vieux[k].parentNode) vieux[k].parentNode.removeChild(vieux[k]);
+        }, 1100);
+      }
+    }
+    var fl = sc.querySelector('.pdu-flamme');
+    if (fl) fl.style.transform = 'scale(' + g.flamme.toFixed(2) + ')';
+    var halo = sc.querySelector('.pdu-halo');
+    if (halo) halo.setAttribute('r', g.halo.toFixed(1));
+    var vis = sc.querySelector('.pdu-visage');
+    if (vis && vis.getAttribute('data-h') !== etat.humeur) {
+      vis.innerHTML = visage(etat.humeur);
+      vis.setAttribute('data-h', etat.humeur);
+    }
+    var sec = sc.querySelector('.pdu-sec');
+    if (sec && etat.neuf) {
+      // relance l’animation sans forcer de mise en page : on alterne deux noms d’animation
+      var bis = sec.classList.contains('secousse');
+      sec.classList.remove('secousse', 'secousse2');
+      sec.classList.add(bis ? 'secousse2' : 'secousse');
+    }
+    var ail = sc.querySelector('.pdu-aileron');
+    if (ail) ail.classList.toggle('visible', g.requin);
+    if (etat.perdu && !sc.querySelector('.pdu-bulles')) {
+      var mer = sc.querySelector('.pdu-mer');
+      if (mer) mer.insertAdjacentHTML('beforebegin', '<div class="pdu-bulles"><span></span><span></span><span></span><span></span></div>');
+    }
+  }
+
+  function scene(etat) {
+    // etat : {alt 0..1, perdu, gagne, n (erreurs), neuf (erreur toute fraîche), humeur}
+    var g = geo(etat), alt = Math.max(0, Math.min(1, etat.alt));
+    var sx = g.sx, sy = g.sy;
+    var rust = '';
+    for (var i = 0; i < Math.min(etat.n, RUSTINES.length); i++) rust += rustine(i, etat.neuf && i === etat.n - 1);
+    var pff = etat.neuf && etat.n > 0 ? pffDe(etat.n) : '';
+    var descente = g.descente;
+    if (alt < 0) descente = 0;
     return '<div class="pdu-fond" aria-hidden="true"><svg viewBox="0 0 360 190" preserveAspectRatio="xMidYMax slice">' +
       '<defs><linearGradient id="pdu-ciel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2466"/><stop offset=".55" stop-color="#5d3aa0"/><stop offset=".85" stop-color="#e0698a"/><stop offset="1" stop-color="#ffb070"/></linearGradient>' +
       '<radialGradient id="pdu-soleil"><stop offset="0" stop-color="#fff3c4"/><stop offset=".55" stop-color="#ffc861"/><stop offset="1" stop-color="#ff8a4c" stop-opacity="0"/></radialGradient></defs>' +
@@ -538,13 +602,13 @@
       rust + pff + '</g>' +
       '<path class="pdu-jupe" d="M167 99H193L190 104H170Z"/>' +
       '<path class="pdu-corde" d="M170 104L171.5 113M190 104L188.5 113M180 104V113"/>' +
-      '<circle class="pdu-halo" cx="180" cy="104" r="' + (6 - 4 * alt).toFixed(1) + '"/>' +
-      '<path class="pdu-flamme" style="transform:scale(' + (1 - 0.6 * alt).toFixed(2) + ')" d="M180 99c-3 3-3.6 6-1.4 8.4c.4-2 1.2-2.6 1.4-3.6c.4 1 1.2 1.6 1.4 3.6C183.6 105 183 102 180 99Z"/>' +
-      '<circle class="pdu-tete" cx="180" cy="107.6" r="5.6"/>' + yeux + bouche + goutte +
+      '<circle class="pdu-halo" cx="180" cy="104" r="' + g.halo.toFixed(1) + '"/>' +
+      '<path class="pdu-flamme" style="transform:scale(' + g.flamme.toFixed(2) + ')" d="M180 99c-3 3-3.6 6-1.4 8.4c.4-2 1.2-2.6 1.4-3.6c.4 1 1.2 1.6 1.4 3.6C183.6 105 183 102 180 99Z"/>' +
+      '<circle class="pdu-tete" cx="180" cy="107.6" r="5.6"/><g class="pdu-visage" data-h="' + etat.humeur + '">' + visage(etat.humeur) + '</g>' +
       '<rect class="pdu-nacelle" x="169" y="111" width="22" height="13" rx="3" fill="url(#pdu-osier)"/>' +
       '<path class="pdu-tresse" d="M169 115.5H191M169 119.5H191M174.5 111V124M180 111V124M185.5 111V124"/>' +
       '</svg></div></div></div>' +
-      '<div class="pdu-aileron' + (alt >= 0.5 && !etat.gagne ? ' visible' : '') + '"><div class="pdu-aileron-nage">' +
+      '<div class="pdu-aileron' + (g.requin ? ' visible' : '') + '"><div class="pdu-aileron-nage">' +
       '<svg viewBox="-1 -16 18 17" aria-hidden="true"><path d="M0 0C4-7 9-13 16-15C13-8 13-4 15 0Z"/></svg></div></div>' +
       (etat.perdu ? '<div class="pdu-bulles"><span></span><span></span><span></span><span></span></div>' : '') +
       '<div class="pdu-mer">' +
@@ -731,16 +795,15 @@
     v.fin = !!s.roundOver;
 
     var th = themeDe(s.cat);
-    var html = '<div class="pdu-jeu' + (s.roundOver ? ' fini' + (s.lost ? ' perdu' : '') : '') + '">';
-    html += '<div class="pdu-barre">' +
+    var html = '<div class="pdu-barre">' +
       '<span class="pdu-pill">Manche ' + Math.min(ent(s.round, 1), ent(s.maxRounds, 1)) + ' / ' + ent(s.maxRounds, 1) + '</span>' +
       '<span class="pdu-pill pdu-cat-pill">' + (th ? th.ic + ' ' + GG.esc(th.nom) : '❔ Sans indice') + '</span>' +
       '<span class="pdu-barre-esp"></span>' +
       (mine && errs < maxE - 1 ? '<button class="pdu-ic" data-a="hint" aria-label="Révéler une lettre (coûte une erreur)" title="Révéler une lettre (coûte une erreur)">💡</button>' : '') +
       '</div>';
-    var etatScene = { alt: alt, n: errs, neuf: neuf, perdu: s.roundOver && s.lost, gagne: s.roundOver && !s.lost, humeur: humeur(s, alt) };
-    html += '<div class="pdu-scene' + (s.roundOver ? (s.lost ? ' perdu' : ' gagne') : '') + (alt >= 0.67 && !s.roundOver ? ' danger' : '') + '">' +
-      scene(etatScene) + '</div>';
+    var etatScene = { alt: alt, n: errs, neuf: neuf, perdu: !!(s.roundOver && s.lost), gagne: !!(s.roundOver && !s.lost), humeur: humeur(s, alt) };
+    var haut = html;
+    html = '';
     // les erreurs restantes : en toutes lettres + pastilles
     var pips = '';
     for (var i = 0; i < maxE; i++) pips += '<span class="pdu-pip' + (i < reste ? '' : ' creve') + '"></span>';
@@ -768,11 +831,18 @@
           return '<span class="pdu-score" style="--c:' + PCOLORS[i % 4] + '">' + GG.esc(p.name) + ' <strong>' + ent(p.score) + '</strong></span>';
         }).join('') + '</div>';
       }
-      html += '<button class="btn big primary" data-a="next" id="pdu-next">' +
-        (ent(s.round) >= ent(s.maxRounds) ? 'Voir les scores' : (s.mode === 'duel' ? 'Manche suivante' : 'Mot suivant')) + '</button></div>';
+      if (!s.finished) {
+        html += '<button class="btn big primary" data-a="next" id="pdu-next">' +
+          (ent(s.round) >= ent(s.maxRounds) ? 'Voir les scores' : (s.mode === 'duel' ? 'Manche suivante' : 'Mot suivant')) + '</button>';
+      }
+      html += '</div>';
     } else {
       html += '<p class="pdu-msg">' + (mine ? (multi ? 'À vous : touchez une lettre !' : 'Touchez une lettre !')
         : (/^🤖/.test(nomJoueur(s, s.current)) ? '' : '⏳ ') + 'Au tour de <strong>' + GG.esc(nomJoueur(s, s.current)) + '</strong>…') + '</p>';
+      // en duel, l’auteur du mot (sur son propre téléphone) le voit et regarde les autres chercher
+      if (s.mode === 'duel' && ctx.me === s.chooser && typeof s.secret === 'string') {
+        html += '<p class="pdu-monmot">🔒 Votre mot : <strong>' + GG.esc(s.secret.replace(/[^A-Z]/g, '')) + '</strong></p>';
+      }
       html += '<div class="pdu-kb' + (mine ? '' : ' attente') + '">';
       ['AZERTYUIOP', 'QSDFGHJKLM', 'WXCVBN'].forEach(function (rang) {
         html += '<div class="pdu-kr">';
@@ -787,8 +857,19 @@
       });
       html += '</div>';
     }
-    html += '</div>';
-    el.innerHTML = html;
+    // la scène est construite une fois par manche, puis mise à jour en place
+    var jeu = el.querySelector('.pdu-jeu');
+    var sc = jeu && jeu.querySelector('.pdu-scene');
+    if (!jeu || !sc || jeu.getAttribute('data-cle') !== cle) {
+      el.innerHTML = '<div class="pdu-jeu" data-cle="' + GG.esc(cle) + '"><div class="pdu-haut"></div>' +
+        '<div class="' + classeScene(etatScene) + '">' + scene(etatScene) + '</div><div class="pdu-bas"></div></div>';
+      jeu = el.querySelector('.pdu-jeu');
+    } else {
+      majScene(sc, etatScene);
+    }
+    jeu.className = 'pdu-jeu' + (s.roundOver ? ' fini' + (s.lost ? ' perdu' : '') : '');
+    jeu.querySelector('.pdu-haut').innerHTML = haut;
+    jeu.querySelector('.pdu-bas').innerHTML = html;
 
     // ---- effets de ce qui vient de changer ----
     if (nouvelles.length) {

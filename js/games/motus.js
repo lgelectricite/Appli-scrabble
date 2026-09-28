@@ -866,7 +866,7 @@
       }
       lignes.push('<div class="mot-row mot-cur' + (monTour ? '' : ' attente') + '">' + whoC + cells + '</div>');
     }
-    if (M.essais) {
+    if (M.essais && jeu) { // (une fois le mot fini, les lignes vides laissent la place à la carte de fin)
       for (var v = lignes.length; v < M.essais; v++) {
         var vide = '';
         for (var j = 0; j < L; j++) vide += '<span class="mot-cell vide"><span></span></span>';
@@ -1050,9 +1050,10 @@
         cells[i].classList.toggle('pleine', !!c);
         cells[i].classList.toggle('donnee', i === 0 && !!first && mm.typed.length === 1);
         if (pop === i) {
-          cells[i].classList.remove('tape');
-          void cells[i].offsetWidth; // relance l’animation
-          cells[i].classList.add('tape');
+          // relance l’animation sans forcer de mise en page (deux noms en alternance)
+          var bis = cells[i].classList.contains('tape');
+          cells[i].classList.remove('tape', 'tape2');
+          cells[i].classList.add(bis ? 'tape2' : 'tape');
         }
       }
     }
@@ -1066,9 +1067,9 @@
     }
     function tremble() {
       if (!courante) return;
-      courante.classList.remove('tremble');
-      void courante.offsetWidth;
-      courante.classList.add('tremble');
+      var bis = courante.classList.contains('tremble');
+      courante.classList.remove('tremble', 'tremble2');
+      courante.classList.add(bis ? 'tremble2' : 'tremble');
       jouer('wrong');
       vibrer('error');
     }

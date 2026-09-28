@@ -6,7 +6,8 @@
 
 .pdu-jeu, .pdu-accueil, .pdu-choix { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .pdu-jeu { display: flex; flex-direction: column; min-height: calc(100vh - 158px); }
-.pdu-jeu > .pdu-kb, .pdu-jeu > .pdu-fin { margin-top: auto; width: 100%; }
+.pdu-bas { display: flex; flex-direction: column; flex: 1; }
+.pdu-bas > .pdu-kb, .pdu-bas > .pdu-fin { margin-top: auto; width: 100%; }
 
 /* ---- bandeau ---- */
 .pdu-barre { display: flex; align-items: center; gap: 6px; margin: 2px 0 6px; min-height: 40px; }
@@ -65,7 +66,12 @@
 .pdu-sec, .pdu-flotte { width: 100%; height: 100%; }
 .pdu-sec { transform-origin: 50% 90%; }
 .pdu-sec.secousse { animation: pduSecousse .9s ease; }
+.pdu-sec.secousse2 { animation: pduSecousse2 .9s ease; }
 @keyframes pduSecousse {
+  15% { transform: rotate(-9deg); } 35% { transform: rotate(7deg); }
+  55% { transform: rotate(-4deg); } 75% { transform: rotate(2deg); }
+}
+@keyframes pduSecousse2 {
   15% { transform: rotate(-9deg); } 35% { transform: rotate(7deg); }
   55% { transform: rotate(-4deg); } 75% { transform: rotate(2deg); }
 }
@@ -181,6 +187,8 @@
 .pdu-msg { min-height: 22px; margin: 6px 4px 4px; text-align: center; font-size: 15px; font-weight: 700; color: var(--txt-2); }
 .pdu-msg strong { color: var(--txt); }
 .pdu-msg.erreur { color: #ffb3bd; min-height: 0; }
+.pdu-monmot { text-align: center; margin: 0 0 4px; font-size: 14px; font-weight: 700; color: var(--txt-3); }
+.pdu-monmot strong { color: var(--txt-2); letter-spacing: 1.5px; }
 
 /* ---- le clavier en relief ---- */
 .pdu-kb { display: flex; flex-direction: column; gap: 7px; margin: 6px auto 2px; max-width: 520px; }
