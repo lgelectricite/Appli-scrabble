@@ -1,5 +1,18 @@
 # Tests de GGgames
 
+## Tout vérifier d'un coup
+
+```bash
+npm i playwright ws               # une fois
+node tests/tout.js                # toutes les suites (logique + navigateur), résumé à la fin
+node tests/tout.js logique        # seulement la logique (≈ 1 min)
+node tests/tout.js test_v2        # seulement les suites dont le nom contient « test_v2 »
+```
+
+Le lanceur sert lui-même l'application sur le port 8642 (ou `GG_PORT`) et
+range le journal de chaque suite dans `GG_JOURNAUX` (dossier temporaire par
+défaut).
+
 ## Tests de logique (Node, sans dépendance)
 
 Ils vérifient les règles de tous les jeux, les moteurs (lettres, IA, générateurs
@@ -12,6 +25,8 @@ node tests/test_games.js      # tous les jeux de plateau/cartes/enquête
 node tests/test_puzzle.js     # sudoku, mots mêlés, mot mystère, mots croisés
 node tests/test_newgames.js   # quiz, le plus proche, 8 américain
 node tests/test_casino.js     # cagnotte de jetons, blackjack, solitaire, encaissement poker
+node tests/test_relais.js     # le relais des parties en ligne (protocole de base)
+node tests/test_relais_v2.js  # le relais V2 : coupures de l'hôte, connexions fantômes, débit
 ```
 
 Ils tournent automatiquement en CI à chaque push (`.github/workflows/tests.yml`).

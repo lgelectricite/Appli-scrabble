@@ -195,3 +195,22 @@ Exigences :
 4. **Regardez vos captures** (outil Read sur les PNG) à chaque itération : c'est un travail visuel.
    Comparez avec les meilleures applis du genre ; recommencez tant que ce n'est pas beau.
 5. Commitez dans votre copie de travail (message en français, clair), sans pousser.
+
+
+## 8. Jeu en ligne V2 (coque — pour information)
+
+- Le relais attend l'hôte 3 minutes après une coupure (`hote-absent` /
+  `hote-revenu`) ; l'hôte reprend son code grâce à une clé secrète (`?k=`).
+- Chaque invité reçoit un **jeton de siège** (`{t:'siege'}`) et le renvoie
+  dans son `hello` : il retrouve sa place après un changement de réseau, un
+  rechargement, ou avec un prénom mal retapé.
+- L'hôte diffuse l'état en un seul envoi (`'*'`) quand le jeu n'a pas de
+  `redact`, sinon un envoi par invité, **dédoublonné** et regroupé (25 ms).
+  Un jeu n'a rien à faire pour en profiter : il suffit que `redact` soit
+  juste (jamais de secret dans un état sans `redact`).
+- Fin de partie : l'invité peut demander la revanche ; l'hôte relance ou
+  change de jeu (`#btn-end-switch`) en gardant la bande ; un retardataire
+  attend en salle et entre à la partie suivante. `gagnants(state)` doit donc
+  être juste chez l'hôte ET chez l'invité (l'invité reçoit l'état expurgé).
+- Tests : `tests/test_relais_v2.js`, `tests/browser/test_v2_reseau.js`,
+  et `node tests/tout.js` pour tout vérifier.
