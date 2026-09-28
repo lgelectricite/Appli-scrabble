@@ -36,7 +36,7 @@
     var n = state.players.length;
     var suivant = (state.current + 1) % n;
     state.turnPoints = 0;
-    if (state.cible >= 0 && suivant === 0) { termine(state); return; }
+    if (state.cible >= 0 && suivant === (state.premier || 0)) { termine(state); return; }
     state.current = suivant;
   }
   function termine(state) {
@@ -127,11 +127,14 @@
     niveaux: ['facile', 'moyen', 'difficile'],
     noBadges: true, // la course vers 100 montre déjà noms, totaux et tour
 
-    create: function (names) {
+    create: function (names, opts) {
+      // revanche : la coque fait tourner le premier joueur
+      var premier = opts && typeof opts.premier === 'number' ? Math.abs(Math.floor(opts.premier)) % names.length : 0;
       return {
         id: Math.floor(Math.random() * 1e9),
         players: names.map(function (n) { return { name: n, total: 0 }; }),
-        current: 0,
+        current: premier,
+        premier: premier,
         turnPoints: 0,
         die: 0,
         des: [],

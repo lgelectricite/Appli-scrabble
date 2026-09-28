@@ -105,6 +105,8 @@
     else if (ECRANS_CONFIG.indexOf(id) !== -1) j = pendingGame;
     if (j) document.body.setAttribute('data-jeu', j);
     else document.body.removeAttribute('data-jeu');
+    // en partie, le décor se fige : toute la fluidité va au jeu
+    document.body.classList.toggle('en-partie', ECRANS_JEU.indexOf(id) !== -1);
     if (id !== 'screen-home') poseGarde();
     if (id === 'screen-home') renderAccueil();
   }
@@ -2558,13 +2560,14 @@
     if (mod.bot) {
       var bb = $('msolo-bots');
       bb.innerHTML = '';
-      var bMin = Math.max(1, mod.min - 1);
+      // un jeu qui se joue aussi seul propose « aucun adversaire »
+      var bMin = mod.min === 1 ? 0 : Math.max(1, mod.min - 1);
       var bMax = Math.min(BOT_NAMES.length, mod.max - 1);
-      miniSoloBots = bMin;
+      miniSoloBots = Math.max(1, bMin);
       for (var nb = bMin; nb <= bMax; nb++) {
         var btn = document.createElement('button');
         btn.className = 'count-btn' + (nb === miniSoloBots ? ' active' : '');
-        btn.textContent = nb;
+        btn.textContent = nb === 0 ? 'Aucun' : nb;
         btn.dataset.n = nb;
         btn.addEventListener('click', function (ev) {
           miniSoloBots = parseInt(ev.currentTarget.dataset.n, 10);
@@ -2653,7 +2656,10 @@
       miniMod = mod;
       mode = 'local';
       miniBots = miniSoloBots;
-      miniState = mod.create(names, { dict: dict, niveau: mod.niveaux ? miniNiveau : undefined });
+      var bots = [];
+      for (var b = 1; b <= miniSoloBots; b++) bots.push(b);
+      miniState = mod.create(names, { dict: dict, niveau: mod.niveaux ? miniNiveau : undefined,
+        solo: true, bots: bots });
       if (mod.niveaux) miniState.niveauIA = miniNiveau;
       miniMe = 0;
       enterMini();
@@ -2688,7 +2694,28 @@
           return;
         }
       }
-    }, 650 + Math.random() * 550);
+    }, delaiBots());
+  }
+
+  function indicesBots() {
+    var out = [];
+    if (mode === 'local' && miniBots && miniState && miniState.players) {
+      for (var i = 1; i < miniState.players.length; i++) out.push(i);
+    }
+    return out;
+  }
+
+  /* Le rythme des IA : le jeu peut le régler (vitesse « rapide », suspense
+     d'un lancer de dé…) avec mod.delaiIA(state) → millisecondes. */
+  function delaiBots() {
+    var d = 650 + Math.random() * 550;
+    if (miniMod && typeof miniMod.delaiIA === 'function') {
+      try {
+        var v = miniMod.delaiIA(miniState);
+        if (typeof v === 'number' && isFinite(v) && v >= 0) d = Math.min(v, 10000);
+      } catch (e) {}
+    }
+    return d;
   }
 
   function enterMini() {
@@ -2770,7 +2797,10 @@
       state: viewState,
       me: viewer,
       mode: mode,
-      act: miniAct
+      act: miniAct,
+      dict: dict,                     // Mot Mystère : verdict immédiat, même chez l'invité
+      solo: mode === 'local' && miniBots > 0,
+      bots: indicesBots()             // qui est une IA (sur ce téléphone)
     });
   }
 
@@ -2840,7 +2870,10 @@
     if (mode === 'host') { hostRejoue(currentGame); return; }
     var names = miniState.players.map(function (p) { return p.name; });
     var niveauIA = miniState.niveauIA;
-    miniState = miniMod.create(names, { dict: dict, niveau: niveauIA });
+    // à chaque revanche, le premier joueur change (les jeux qui le gèrent)
+    var premier = ((miniState.premier || 0) + 1) % names.length;
+    miniState = miniMod.create(names, { dict: dict, niveau: niveauIA, premier: premier,
+      solo: miniBots > 0, bots: indicesBots() });
     if (niveauIA) miniState.niveauIA = niveauIA;
     miniLastViewer = -1;
     showOverlay('overlay-end', false);

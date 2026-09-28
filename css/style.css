@@ -186,23 +186,27 @@ body {
     linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 100%);
   background-attachment: fixed;
 }
-/* aurores lentes (très peu coûteuses : deux calques transformés) */
+/* aurores lentes : deux calques déjà flous par leur dégradé (aucun filtre à
+   recalculer), simplement déplacés ; figées pendant les parties, où chaque
+   image compte pour les animations du jeu */
 body::before, body::after {
   content: ''; position: fixed; z-index: -1; pointer-events: none;
   width: 70vmax; height: 70vmax; border-radius: 50%;
-  filter: blur(60px); opacity: .35;
+  opacity: .42;
   will-change: transform;
 }
 body::before {
   left: -25vmax; top: -20vmax;
-  background: radial-gradient(circle, #6b3cff 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(107, 60, 255, .95) 0%, rgba(107, 60, 255, .45) 30%, rgba(107, 60, 255, .12) 52%, transparent 70%);
   animation: aurore1 26s ease-in-out infinite alternate;
 }
 body::after {
   right: -30vmax; bottom: -25vmax;
-  background: radial-gradient(circle, #ff3fa4 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(255, 63, 164, .9) 0%, rgba(255, 63, 164, .4) 30%, rgba(255, 63, 164, .1) 52%, transparent 70%);
   animation: aurore2 32s ease-in-out infinite alternate;
 }
+body.en-partie::before, body.en-partie::after,
+body.anim-reduites::before, body.anim-reduites::after { animation-play-state: paused; }
 @keyframes aurore1 { to { transform: translate(18vmax, 22vmax) scale(1.15); } }
 @keyframes aurore2 { to { transform: translate(-20vmax, -16vmax) scale(1.2); } }
 

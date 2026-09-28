@@ -341,7 +341,9 @@
     niveaux: ['facile', 'moyen', 'difficile'],
     noBadges: true, // les onglets de la feuille montrent déjà noms, totaux et tour
 
-    create: function (names) {
+    create: function (names, opts) {
+      // revanche : la coque fait tourner le premier joueur
+      var premier = opts && typeof opts.premier === 'number' ? Math.abs(Math.floor(opts.premier)) % names.length : 0;
       var state = {
         id: Math.floor(Math.random() * 1e9),
         players: names.map(function (n) {
@@ -349,7 +351,8 @@
           CATS.forEach(function (c) { sheet[c.id] = null; });
           return { name: n, sheet: sheet };
         }),
-        current: 0,
+        current: premier,
+        premier: premier,
         gameTs: Math.floor(Math.random() * 1e9), // identifiant de partie (records)
         finished: false,
         nLancers: 0,
