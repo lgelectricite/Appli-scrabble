@@ -459,6 +459,92 @@ console.log('--- Poker : vitesse de jeu (bug 14) ---');
   check('un minuteur périmé ne rejoue pas', s.tourId === avant);
 }
 
+/* ================= SOLITAIRE (bug 12) ================= */
+const sol = require(ROOT + '/js/games/solitaire.js');
+const { resoudre, rejouer } = require(ROOT + '/tests/outils/solveur_solitaire.js');
+console.log('--- Solitaire : annuler, indice, pioche 3, fin automatique, blocage ---');
+{
+  const S = (suit, rank) => suit * 13 + rank;
+  const g = sol.create(['Solo']);
+  sol.apply(g, 0, { t: 'level', l: 'difficile', mode: 'libre' });
+  const b = g.players[0].board;
+  const avant = JSON.stringify(b);
+  sol.apply(g, 0, { t: 'draw' });
+  check('pioche 3 : trois cartes passent à la défausse', b.waste.length === 3 && b.stock.length === 21);
+  sol.apply(g, 0, { t: 'undo' });
+  check('annuler la pioche : tout revient à l’identique', JSON.stringify(g.players[0].board) === avant);
+  // annulations en chaîne : on joue 30 coups au hasard, puis on annule tout
+  const h = sol.create(['Solo']);
+  sol.apply(h, 0, { t: 'level', l: 'facile', mode: 'libre' });
+  const depart = JSON.stringify(h.players[0].board);
+  let joues = 0;
+  for (let k = 0; k < 400 && joues < 30; k++) {
+    const coups = sol._coupsUtiles(h.players[0].board, 1);
+    const c = coups[Math.floor(Math.random() * coups.length)];
+    if (!c) break;
+    const r = c.src.k === 'draw' ? sol.apply(h, 0, { t: 'draw' }) : sol.apply(h, 0, { t: 'move', src: c.src, dst: c.dst });
+    if (r.ok) joues++;
+  }
+  let annules = 0;
+  while (sol.apply(h, 0, { t: 'undo' }).ok) annules++;
+  check('annulation illimitée : ' + joues + ' coups joués puis annulés, on retrouve la donne', annules === joues && JSON.stringify(h.players[0].board) === depart);
+  // l'indice propose d'abord de ranger une carte en fondation
+  const t = sol.create(['Solo']);
+  t.phase = 'play'; t.draw = 1; t.startTs = Date.now();
+  t.players[0].board = { stock: [S(0, 5)], waste: [], found: [[], [], [], []],
+    tab: [[{ c: S(2, 7), up: false }, { c: S(1, 0), up: true }], [{ c: S(0, 9), up: true }], [], [], [], [], []] };
+  const ind = sol._coupsUtiles(t.players[0].board, 1)[0];
+  check('indice : l’as de cœur vers sa fondation (il découvre une carte)', ind && ind.dst && ind.dst.k === 'found' && ind.src.col === 0, ind);
+  // plus aucun coup utile
+  const bl = { stock: [], waste: [S(0, 4)], found: [[], [], [], []],
+    tab: [[{ c: S(1, 7), up: false }, { c: S(0, 9), up: true }], [{ c: S(3, 9), up: true }], [], [], [], [], []] };
+  check('blocage détecté : plus aucun coup utile', sol._coupsUtiles(bl, 1).length === 0 && !sol._peutFinir(bl));
+  // la fin automatique
+  const f = sol.create(['Solo']);
+  f.phase = 'play'; f.draw = 1; f.startTs = Date.now();
+  const found = [[], [], [], []];
+  for (let su = 0; su < 4; su++) for (let rk = 0; rk < 11; rk++) found[su].push(S(su, rk));
+  f.players[0].board = { stock: [], waste: [], found: found,
+    tab: [[{ c: S(0, 12), up: true }, { c: S(1, 11), up: true }], [{ c: S(1, 12), up: true }], [{ c: S(2, 12), up: true }, { c: S(0, 11), up: true }],
+      [{ c: S(3, 12), up: true }, { c: S(2, 11), up: true }], [{ c: S(3, 11), up: true }], [], []] };
+  check('tout est découvert : la fin automatique est possible', sol._peutFinir(f.players[0].board));
+  sol.apply(f, 0, { t: 'finir' });
+  check('fin automatique : les 52 cartes rangées, victoire (cascade avant la clôture)',
+    f.players[0].done && f.phase === 'victoire' && !sol.over(f));
+  sol.apply(f, 0, { t: 'cloture' });
+  check('après la cascade, la partie se clôt', sol.over(f) && JSON.stringify(sol.gagnants(f)) === '[0]');
+  // défaite : plus de « Le jeu gagne cette fois… » sec
+  const d = sol.create(['Solo']);
+  sol.apply(d, 0, { t: 'level', l: 'facile' });
+  sol.apply(d, 0, { t: 'giveup' });
+  const txt = sol.summary(d);
+  check('abandon : un résumé encourageant (cartes rangées, conseil), gagnants = défaite',
+    !/Le jeu gagne cette fois/.test(txt) && /rangées sur 52/.test(txt) && sol.gagnants(d) === null, txt.slice(0, 120));
+}
+
+console.log('--- Solitaire : donnes gagnables garanties et défi du jour ---');
+{
+  const G = sol._gagnables;
+  check('200 donnes gagnables embarquées pour chaque pioche', G[1].length === 200 && G[3].length === 200);
+  // on refait gagner le solveur sur un échantillon, et on REJOUE sa solution avec les vraies règles
+  let ok = 0;
+  const echantillon = [G[1][0], G[1][57], G[1][123], G[1][199], G[3][0], G[3][88], G[3][150], G[3][199]];
+  echantillon.forEach((graine, k) => {
+    const pioche = k < 4 ? 1 : 3;
+    const r = resoudre(sol._donne(graine), pioche, 120000);
+    if (r.ok && rejouer(graine, pioche, r.chemin)) ok++;
+  });
+  check('échantillon de 8 donnes « gagnables » : gagnées pour de vrai en rejouant la solution', ok === echantillon.length, ok);
+  const a = sol.create(['A']), b = sol.create(['B']);
+  sol.apply(a, 0, { t: 'level', l: 'facile', mode: 'defi' });
+  sol.apply(b, 0, { t: 'level', l: 'difficile', mode: 'defi' });
+  check('défi du jour : la même donne pour tout le monde (pioche 1)', a.graine === b.graine && a.draw === 1 && b.draw === 1 &&
+    JSON.stringify(a.players[0].board) === JSON.stringify(b.players[0].board) && G[1].indexOf(a.graine) !== -1);
+  const c = sol.create(['C']);
+  sol.apply(c, 0, { t: 'level', l: 'difficile', mode: 'gagnable' });
+  check('donne gagnable : tirée de la liste de la pioche 3', c.mode === 'gagnable' && G[3].indexOf(c.graine) !== -1);
+}
+
 Date.now = vraiNow;
 module.exports = { check };
 if (require.main === module) {
