@@ -1,51 +1,330 @@
 /* ===== GGgames V2 — Mot Mystère =====
+   Des tuiles « objets » (épaisseur, reflet, ombre) qui se retournent une à une.
+   Les indices se lisent aussi SANS la couleur : case pleine = bien placée,
+   rond = mal placée, case sombre = absente (comme dans le jeu télévisé).
    Styles propres à ce jeu (chargés après css/style.css). */
 
-/* ===== Mot Mystère ===== */
-.mot-board { display: flex; flex-direction: column; gap: 5px; align-items: center; margin: 8px 0; }
-/* essais illimités : le tableau défile, les derniers essais sous les yeux */
-.mot-board.mot-scroll {
-  max-height: 46vh; overflow-y: auto; padding: 4px 2px;
-  border: 1.5px solid var(--ink-16); border-radius: 10px;
+.mot-jeu, .mot-accueil {
+  --mot-vert: #22c872;
+  --mot-vert-bord: #0e7a44;
+  --mot-jaune: #ffc23d;
+  --mot-vide: rgba(255, 255, 255, .06);
+  --gap: 6px;
+  /* taille d'une tuile : la largeur de l'écran, et en « 6 essais » la hauteur */
+  --t: min(56px, calc((100vw - 28px - (var(--L, 5) - 1) * var(--gap)) / var(--L, 5)));
+  touch-action: manipulation;
+  user-select: none; -webkit-user-select: none;
 }
-/* pastille de l'auteur d'un essai (mode à plusieurs) */
-.mot-who {
-  width: 20px; height: 20px; border-radius: 50%; flex: none;
-  display: inline-flex; align-items: center; justify-content: center;
-  align-self: center; margin-right: 4px;
-  color: #fff; font-size: 11px; font-weight: 800;
-  border: 1.5px solid var(--ink); text-shadow: 0 1px 1px rgba(0, 0, 0, .35);
-}
-.mot-who.cur { background: var(--card); }
-.mot-row { display: flex; gap: 5px; }
-.mot-cell {
-  width: clamp(34px, 11vw, 48px); height: clamp(34px, 11vw, 48px);
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 7px; font-size: clamp(18px, 6vw, 26px); font-weight: 800;
-  background: var(--card); border: 2px solid var(--ink-16); color: var(--ink);
-}
-.mot-cell.m2 { background: var(--green); border-color: var(--green); color: #fff; }
-.mot-cell.m1 { background: var(--gold); border-color: var(--gold); color: var(--ink); }
-.mot-cell.m0 { background: #b6a893; border-color: #b6a893; color: #f4eee2; }
-.mot-cell.cur { border-color: var(--accent); }
-.mot-kb { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 8px; }
-.mot-key {
-  min-width: 8.4%; padding: 11px 2px; font-size: 15px; font-weight: 700;
-  border: 1px solid var(--tile-edge); border-radius: 7px;
-  background: var(--tile); color: var(--tile-text);
-  cursor: pointer; box-shadow: 0 2px 0 var(--tile-edge);
-}
-.mot-key.wide { min-width: 18%; }
-.mot-key.go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); box-shadow: 0 2px 0 #8c3120; }
+.mot-jeu.multi { --t: min(54px, calc((100vw - 58px - (var(--L, 5) - 1) * var(--gap)) / var(--L, 5))); }
+.mot-jeu.limite { --t2: calc((100vh - 392px) / 6); }
+.mot-jeu.limite .mot-board { --t: max(34px, min(56px, calc((100vw - 28px - (var(--L, 5) - 1) * var(--gap)) / var(--L, 5)), var(--t2))); }
+.mot-jeu.limite.multi .mot-board { --t: max(32px, min(54px, calc((100vw - 58px - (var(--L, 5) - 1) * var(--gap)) / var(--L, 5)), var(--t2))); }
 
-/* ===== Mot Mystère : révélation entre deux mots de la série ===== */
-.mot-reveal { text-align: center; max-width: 420px; margin: 8px auto; }
-.mot-reveal .mot-reveal-word { justify-content: center; margin: 8px 0 14px; }
-.mot-reveal .final-line {
-  display: flex; justify-content: space-between;
-  background: var(--card); border: 1px solid var(--ink-10); border-radius: 10px;
-  padding: 8px 12px; margin: 5px 0; font-size: 15px;
+/* la partie occupe l'écran : le clavier reste en bas, sous le pouce */
+.mot-jeu { display: flex; flex-direction: column; min-height: calc(100vh - 158px); }
+.mot-jeu > .mot-kb, .mot-jeu > .mot-reveal { margin-top: auto; width: 100%; }
+.mot-jeu > .mot-msg { margin-top: 8px; }
+
+/* ---- bandeau du haut ---- */
+.mot-barre { display: flex; align-items: center; gap: 6px; margin: 2px 0 6px; }
+.mot-barre-esp { flex: 1; }
+.mot-pill {
+  font-family: var(--f-titre); font-weight: 600; font-size: 14px; white-space: nowrap;
+  padding: 5px 11px; border-radius: 999px; color: var(--txt);
+  background: var(--glass-2); border: 1px solid var(--stroke);
 }
-.mot-reveal .btn.big { margin-top: 14px; }
-.mini-center { text-align: center; }
-.mot-reveal .mot-row { display: flex; }
+.mot-ic {
+  width: 40px; height: 40px; border-radius: 12px; flex: none; font-size: 18px; cursor: pointer;
+  background: var(--glass-2); border: 1px solid var(--stroke); color: var(--txt);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 2px 0 rgba(0, 0, 0, .25);
+  touch-action: manipulation;
+}
+.mot-ic:active { transform: translateY(1px); box-shadow: none; }
+.mot-notice {
+  margin: 4px 0 8px; padding: 8px 12px; border-radius: 14px; font-size: 14px; font-weight: 700; line-height: 1.35;
+  color: #ffe9b8; background: rgba(255, 194, 61, .12); border: 1px solid rgba(255, 194, 61, .45);
+}
+
+/* ---- le tableau ---- */
+.mot-board {
+  display: flex; flex-direction: column; align-items: center; gap: var(--gap);
+  margin: 4px auto; padding: 2px;
+}
+.mot-board.mot-scroll {
+  max-height: max(170px, calc(100vh - 430px)); overflow-y: auto; overscroll-behavior: contain;
+  justify-content: flex-start; padding: 6px 4px;
+  border-radius: 18px; background: rgba(0, 0, 0, .16); border: 1px solid var(--stroke);
+  scrollbar-width: thin;
+}
+.mot-row { display: flex; gap: var(--gap); align-items: center; }
+
+/* une tuile */
+.mot-cell {
+  position: relative; flex: none;
+  width: var(--t); height: var(--t);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: calc(var(--t) * .22);
+  font-family: var(--f-titre); font-weight: 600; font-size: calc(var(--t) * .56); line-height: 1;
+  color: var(--txt);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .035));
+  border: 2px solid rgba(255, 255, 255, .13);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 3px 0 rgba(0, 0, 0, .28);
+  transform-style: preserve-3d;
+}
+.mot-cell > span { position: relative; z-index: 1; }
+.mot-cell.vide { background: var(--mot-vide); border-color: rgba(255, 255, 255, .07); box-shadow: none; }
+
+/* la ligne en cours */
+.mot-cell.cur { border-color: rgba(255, 255, 255, .22); }
+.mot-row.mot-cur:not(.attente) .mot-cell.cur { border-color: color-mix(in srgb, var(--jeu-a) 45%, rgba(255, 255, 255, .2)); }
+.mot-cell.pleine {
+  border-color: rgba(255, 255, 255, .6) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .07));
+}
+.mot-cell.donnee > span { color: var(--jeu-a); opacity: .85; }
+.mot-cell.donnee { border-style: dashed; }
+.mot-row.attente .mot-cell { opacity: .55; }
+.mot-cell.tape { animation: motTape .16s var(--ressort); }
+@keyframes motTape { 50% { transform: scale(1.12); } }
+
+/* ✅ bien placée : case pleine, verte, en relief */
+.mot-cell.m2 {
+  color: #fff; text-shadow: 0 1px 2px rgba(0, 60, 30, .45);
+  background: linear-gradient(180deg, #43e693 0%, #1fbf6a 60%, #17a95c 100%);
+  border-color: #6ff2ad;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .4), 0 4px 0 var(--mot-vert-bord), 0 6px 14px rgba(20, 170, 95, .35);
+}
+/* 🟡 mal placée : un ROND jaune dans une case sombre */
+.mot-cell.m1 {
+  color: #3a2500;
+  background: linear-gradient(180deg, #2d3170, #23265a);
+  border-color: rgba(255, 194, 61, .55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 3px 0 rgba(0, 0, 0, .35);
+}
+.mot-cell.m1::before {
+  content: ''; position: absolute; inset: 9%; border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%, #fff1b0 0%, #ffd24d 38%, #ffae1a 100%);
+  box-shadow: inset 0 -2px 3px rgba(160, 90, 0, .35), 0 2px 5px rgba(0, 0, 0, .35);
+}
+/* ⬛ absente : case enfoncée, lettre éteinte */
+.mot-cell.m0 {
+  color: #9ea3cf;
+  background: linear-gradient(180deg, #171a3c, #1c2048);
+  border-color: rgba(255, 255, 255, .06);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, .45);
+}
+
+/* retournement une à une : la couleur se révèle à mi-course */
+.mot-row.flip .mot-cell {
+  animation: motFlip .52s ease-in-out both, motCache .26s steps(1, end) both;
+  animation-delay: var(--d, 0ms), var(--d, 0ms);
+}
+.mot-row.flip .mot-cell.m1::before { animation: motCacheRond .26s steps(1, end) both; animation-delay: var(--d, 0ms); }
+@keyframes motFlip {
+  0% { transform: rotateX(0); }
+  50% { transform: rotateX(90deg); }
+  100% { transform: rotateX(0); }
+}
+@keyframes motCache {
+  from {
+    color: var(--txt); text-shadow: none;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .07));
+    border-color: rgba(255, 255, 255, .6);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 3px 0 rgba(0, 0, 0, .28);
+  }
+}
+@keyframes motCacheRond { from { opacity: 0; transform: scale(.3); } }
+
+/* victoire : la vague qui rebondit */
+.mot-row.vague .mot-cell { animation: motVague .62s var(--ressort) both; animation-delay: var(--dv, 0ms); }
+@keyframes motVague {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-38%) scale(1.06); }
+  60% { transform: translateY(6%) scale(.97); }
+  100% { transform: translateY(0); }
+}
+.mot-row.gagne .mot-cell.m2 { box-shadow: inset 0 2px 0 rgba(255, 255, 255, .4), 0 4px 0 var(--mot-vert-bord), 0 0 22px rgba(60, 240, 140, .55); }
+
+/* essai refusé : la ligne tremble */
+.mot-row.tremble { animation: motTremble .42s ease; }
+@keyframes motTremble {
+  15%, 55% { transform: translateX(-9px); }
+  35%, 75% { transform: translateX(9px); }
+  90% { transform: translateX(-3px); }
+}
+/* nouvelle manche : les cases arrivent en cascade */
+.mot-board.entree .mot-row .mot-cell { animation: motEntre .42s var(--ressort) both; animation-delay: calc(var(--i, 0) * 45ms); }
+@keyframes motEntre { from { opacity: 0; transform: translateY(12px) scale(.7); } }
+
+/* pastille de l'auteur d'un essai (à plusieurs) */
+.mot-who {
+  width: 24px; height: 24px; border-radius: 50%; flex: none; margin-right: 2px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--f-titre); font-size: 13px; font-weight: 600; color: #10122e;
+  background: var(--c, #888); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 2px 0 rgba(0, 0, 0, .3);
+}
+.mot-who.cur { animation: motTour 1.3s ease-in-out infinite; }
+.mot-who.vide { background: transparent; box-shadow: none; }
+@keyframes motTour { 50% { transform: scale(.82); opacity: .75; } }
+
+/* ---- message sous le tableau ---- */
+.mot-msg {
+  min-height: 22px; margin: 6px 4px 4px; text-align: center;
+  font-size: 15px; font-weight: 700; color: var(--txt-2);
+}
+.mot-msg strong { color: var(--txt); }
+.mot-msg.erreur { color: #ffb3bd; }
+
+/* ---- le clavier : des touches en relief ---- */
+.mot-kb { display: flex; flex-direction: column; gap: 7px; margin: 6px auto 4px; max-width: 520px; }
+.mot-kr { display: flex; gap: 5px; justify-content: center; }
+.mot-key {
+  flex: 1 1 0; min-width: 0; height: 52px; padding: 0;
+  font-family: var(--f-titre); font-size: 19px; font-weight: 600; color: #fff;
+  background: linear-gradient(180deg, #454b9a 0%, #353a80 100%);
+  border: 1px solid rgba(255, 255, 255, .16); border-radius: 11px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 3px 0 #171a44, 0 5px 10px rgba(0, 0, 0, .25);
+  cursor: pointer; touch-action: manipulation;
+  transition: transform .07s, box-shadow .07s, filter .15s;
+}
+.mot-key:active { transform: translateY(3px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18), 0 0 0 #171a44; filter: brightness(1.18); }
+.mot-key.wide { flex: 1.55 1 0; font-size: 17px; }
+.mot-key.del { background: linear-gradient(180deg, #555b8f, #43487a); }
+.mot-key.go {
+  color: #04261e; background: linear-gradient(180deg, #4ff0c0 0%, var(--jeu-a) 45%, var(--jeu-b) 100%);
+  border-color: rgba(255, 255, 255, .35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 3px 0 #06574f, 0 5px 12px rgba(26, 215, 160, .3);
+}
+.mot-key.go:active { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), 0 0 0 #06574f; }
+/* option « clavier coloré » (désactivée par défaut) */
+.mot-kb.colore .mot-key.k2 { background: linear-gradient(180deg, #3fe08c, #19a95c); }
+.mot-kb.colore .mot-key.k1 { background: linear-gradient(180deg, #ffd35a, #e79d10); color: #3a2500; }
+.mot-kb.colore .mot-key.k0 { background: #1e2146; color: #7d82b2; box-shadow: inset 0 2px 3px rgba(0, 0, 0, .4); }
+
+/* ---- révélation entre deux mots ---- */
+.mot-reveal {
+  text-align: center; max-width: 440px; margin: 10px auto 4px; padding: 12px 14px 14px;
+  border-radius: 22px; background: var(--glass); border: 1px solid var(--stroke);
+  animation: motCarte .5s var(--ressort) both;
+}
+@keyframes motCarte { from { opacity: 0; transform: translateY(18px) scale(.96); } }
+.mot-verdict { font-family: var(--f-titre); font-size: 24px; font-weight: 600; margin: 2px 0 2px; }
+.mot-verdict.gagne { background: linear-gradient(90deg, #6ff2ad, #ffe066); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.mot-verdict.rate { color: #ffc9d0; }
+.mot-reveal .mot-reveal-word { justify-content: center; margin: 4px 0 6px; --t: min(40px, calc((100vw - 60px) / 7.5)); --gap: 5px; }
+.mot-reveal .mini-msg { margin: 4px; }
+.mot-scores { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 8px 0; }
+.mot-score {
+  padding: 5px 12px; border-radius: 999px; font-weight: 800; font-size: 14px;
+  background: var(--glass-2); border: 2px solid var(--c, var(--stroke));
+}
+.mot-actions { display: flex; gap: 8px; align-items: stretch; margin-top: 10px; }
+.mot-actions .btn.big { flex: 1; width: auto; }
+.mot-actions .mot-partage { flex: none; min-height: 56px; }
+
+/* ---- accueil du jeu ---- */
+.mot-accueil { max-width: 460px; margin: 0 auto; --L: 3; --t: 50px; }
+.mot-titre { display: flex; justify-content: center; align-items: center; gap: 7px; margin: 6px 0 12px; }
+.mot-titre .mot-cell { animation: motFlip .6s ease-in-out both; animation-delay: calc(var(--i) * 140ms + 120ms); }
+.mot-titre-q {
+  font-family: var(--f-titre); font-size: 40px; font-weight: 600; margin-left: 4px;
+  background: var(--jeu-grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: motTour 1.6s ease-in-out infinite;
+}
+.mot-jour {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer;
+  border-radius: 20px; text-align: left; color: #fff; touch-action: manipulation;
+  background: linear-gradient(135deg, rgba(26, 215, 160, .95), rgba(15, 155, 142, .95) 55%, rgba(59, 130, 246, .9));
+  border: 1px solid rgba(255, 255, 255, .3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 5px 0 #08564f, 0 12px 26px rgba(26, 215, 160, .25);
+  transition: transform .12s var(--doux), box-shadow .12s;
+}
+.mot-jour:active { transform: translateY(3px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 2px 0 #08564f; }
+.mot-jour.fait { background: linear-gradient(135deg, rgba(60, 66, 140, .95), rgba(40, 44, 100, .95)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 4px 0 #15173a; }
+.mot-jour-ic { font-size: 30px; }
+.mot-jour-tx { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.mot-jour-t { font-family: var(--f-titre); font-size: 20px; font-weight: 600; }
+.mot-jour-s { font-size: 14px; font-weight: 700; opacity: .92; }
+.mot-jour-go {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: rgba(255, 255, 255, .22); font-size: 17px;
+}
+.mot-sep { display: flex; align-items: center; gap: 10px; margin: 14px 2px 10px; color: var(--txt-3); font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; }
+.mot-sep::before, .mot-sep::after { content: ''; flex: 1; height: 1px; background: var(--stroke); }
+.mot-modes { display: flex; gap: 8px; }
+.mot-mode {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 9px 6px; cursor: pointer;
+  border-radius: 16px; color: var(--txt); background: var(--glass); border: 2px solid var(--stroke);
+  touch-action: manipulation; transition: border-color .2s, background .2s, transform .12s;
+}
+.mot-mode:active { transform: scale(.97); }
+.mot-mode.actif { border-color: var(--jeu-a); background: rgba(26, 215, 160, .14); box-shadow: 0 0 0 3px rgba(26, 215, 160, .15); }
+.mm-ic { font-size: 20px; }
+.mm-t { font-family: var(--f-titre); font-weight: 600; font-size: 16px; }
+.mm-s { font-size: 13px; font-weight: 700; color: var(--txt-2); }
+.mot-lvls { flex-direction: row; gap: 8px; margin: 12px 0 10px; }
+.mot-lvls .btn.big.mot-lvl {
+  flex: 1; min-height: 76px; padding: 8px 4px; flex-direction: column; gap: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .05));
+}
+.mot-lvl-n { font-family: var(--f-titre); font-size: 30px; font-weight: 600; line-height: 1; color: var(--jeu-a); }
+.mot-lvl-t { display: flex; flex-direction: column; font-size: 15px; line-height: 1.2; }
+.mot-lvl-t small { font-size: 13px; color: var(--txt-2); }
+.mot-legende { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0 2px; font-size: 14px; font-weight: 700; color: var(--txt-2); }
+.mot-legende > span { display: inline-flex; align-items: center; gap: 6px; }
+.mot-cell.mini { --t: 28px; border-width: 1.5px; }
+.mot-lien { min-height: 0; padding: 2px 4px; font-size: 14px; }
+
+/* ---- fenêtres (statistiques, options) ---- */
+.mot-modal {
+  position: fixed; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(5, 6, 20, .6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  animation: voileEntre .2s ease both;
+}
+.mot-modal-carte {
+  width: min(94vw, 420px); max-height: 92vh; overflow-y: auto; padding: 18px 16px 14px;
+  border-radius: 26px; background: linear-gradient(180deg, var(--solid-2), var(--solid));
+  border: 1px solid var(--stroke-2); box-shadow: var(--ombre-3);
+  animation: motCarte .4s var(--ressort) both;
+}
+.mot-modal-t { margin: 0 0 10px; text-align: center; font-family: var(--f-titre); font-weight: 600; font-size: 21px; }
+.mot-onglets { display: flex; gap: 6px; margin-bottom: 12px; }
+.mot-onglet {
+  flex: 1; min-height: 40px; padding: 4px; border-radius: 12px; font-weight: 800; font-size: 13.5px; cursor: pointer;
+  color: var(--txt-2); background: var(--glass); border: 1px solid var(--stroke);
+}
+.mot-onglet.actif { color: #04261e; background: var(--jeu-grad); border-color: transparent; }
+.mot-chiffres { display: flex; gap: 6px; margin-bottom: 10px; }
+.mot-chiffres > div { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 8px 2px; border-radius: 14px; background: var(--glass); }
+.mot-chiffres strong { font-family: var(--f-titre); font-size: 26px; font-weight: 600; line-height: 1.1; }
+.mot-chiffres span { font-size: 12px; font-weight: 700; color: var(--txt-2); text-align: center; line-height: 1.2; }
+.mot-distrib-t { margin: 4px 0 6px; font-weight: 800; font-size: 14px; color: var(--txt-2); }
+.mot-distrib { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.mot-barre-d { display: flex; align-items: center; gap: 8px; }
+.mbd-n { width: 14px; font-family: var(--f-titre); font-weight: 600; text-align: right; }
+.mbd-b {
+  width: var(--p); min-width: 28px; display: flex; justify-content: flex-end; padding: 3px 8px; border-radius: 8px;
+  background: linear-gradient(90deg, #17a95c, #43e693); font-weight: 800; font-size: 13px; color: #fff;
+}
+.mot-modal-carte .btn.big { margin-top: 8px; }
+.mot-modal-carte .mot-partage { width: 100%; margin: 4px 0; }
+.mot-option { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 16px; background: var(--glass); cursor: pointer; }
+.mot-option input { width: 24px; height: 24px; margin: 2px 0 0; accent-color: var(--jeu-a); flex: none; }
+.mot-option span { display: flex; flex-direction: column; gap: 3px; font-size: 16px; }
+.mot-option small { font-size: 13.5px; color: var(--txt-2); line-height: 1.35; }
+
+.mot-reveal .mot-reveal-word .mot-cell { animation: motFlip .5s ease-in-out both; animation-delay: calc(var(--i) * 110ms + 200ms); }
+
+/* petits écrans : un clavier et une carte de fin un peu moins hauts */
+@media (max-height: 700px) {
+  .mot-reveal { padding: 8px 10px 10px; margin-top: 8px; }
+  .mot-verdict { font-size: 20px; }
+  .mot-reveal .mini-msg { font-size: 14px; margin: 2px; }
+  .mot-scores { margin: 4px 0; }
+  .mot-actions { margin-top: 6px; }
+  .mot-actions .btn.big, .mot-actions .mot-partage { min-height: 48px; font-size: 16px; }
+  .mot-reveal .hint { margin: 4px 0; }
+  .mot-key { height: 46px; font-size: 18px; }
+  .mot-kb { gap: 6px; }
+  .mot-jeu.limite { --t2: calc((100vh - 372px) / 6); }
+}

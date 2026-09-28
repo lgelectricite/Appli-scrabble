@@ -78,7 +78,15 @@ function check(n, c, e) {
   await p.waitForSelector('[data-lvl="facile"]', { timeout: 20000 });
   await p.click('[data-lvl="facile"]');
   await p.waitForSelector('.mot-kb', { timeout: 20000 });
-  for (const L of 'CHIEN') await p.locator('.mot-key[data-k="' + L + '"]').click();
+  // V2 : la première lettre est offerte ; on tape le mot ENTIER (la lettre
+  // offerte retapée est absorbée, comme au jeu télévisé)
+  const motValide = () => p.evaluate(() => {
+    const first = document.querySelector('.mot-row.mot-cur .mot-cell').textContent;
+    const L = document.querySelectorAll('.mot-row.mot-cur .mot-cell').length;
+    return GG.MOTS_MYSTERE[L].filter(w => w[0] === first)[3];
+  });
+  const premier = await motValide();
+  for (const L of premier) await p.locator('.mot-key[data-k="' + L + '"]').click();
   await p.locator('.mot-key[data-k="OK"]').click();
   await p.waitForTimeout(400);
   if (await p.locator('.mot-reveal').count() === 0) {
@@ -89,7 +97,7 @@ function check(n, c, e) {
     check('clavier neutre : les couleurs restent sur le tableau, pas sur les touches',
       await p.locator('.mot-key.k0, .mot-key.k1, .mot-key.k2').count() === 0);
   } else {
-    check('essai jugé et nouvelle ligne affichée', true); // CHIEN était le secret !
+    check('essai jugé et nouvelle ligne affichée', true); // c'était le secret !
     check('couleurs attribuées aux 5 lettres', true);
     check('clavier neutre : les couleurs restent sur le tableau, pas sur les touches', true);
   }
@@ -107,7 +115,8 @@ function check(n, c, e) {
         };
       }).filter(e => /^[A-Z]{5}$/.test(e.word));
       const mk = GG.byId.motus._marks;
-      const cand = GG.MOTS_COURANTS.filter(w => w.length === 5 &&
+      const first = document.querySelector('.mot-row.mot-cur .mot-cell').textContent;
+      const cand = GG.MOTS_COURANTS.filter(w => w.length === 5 && w[0] === first &&
         !essais.some(e => e.word === w) &&
         essais.every(e => JSON.stringify(mk(w, e.word)) === JSON.stringify(e.marks)));
       return cand[0];
@@ -135,7 +144,7 @@ function check(n, c, e) {
   await p.waitForSelector('[data-lvl="facile"]', { timeout: 20000 });
   await p.click('[data-lvl="facile"]');
   await p.waitForSelector('.mot-kb', { timeout: 20000 });
-  for (const L of 'PLAGE') await p.locator('.mot-key[data-k="' + L + '"]').click();
+  for (const L of await motValide()) await p.locator('.mot-key[data-k="' + L + '"]').click();
   await p.locator('.mot-key[data-k="OK"]').click();
   await p.waitForTimeout(400);
   if (await p.locator('.mot-reveal').count() === 0) {
@@ -145,7 +154,7 @@ function check(n, c, e) {
       /Joueur 2/.test(await p.textContent('#mini-turn')) &&
       await p.locator('.mot-kb').count() === 1);
   } else {
-    check('duel : l’essai porte la pastille de son auteur', true); // PLAGE était le secret
+    check('duel : l’essai porte la pastille de son auteur', true); // c'était le secret
     check('duel : c’est au tour du joueur 2, même tableau', true);
   }
 

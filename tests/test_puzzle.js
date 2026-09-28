@@ -125,19 +125,25 @@ g = motus.create(['A', 'B']);
 motus.apply(g, 0, { t: 'level', l: 'facile' }, { dict });
 check('mot de 5 lettres choisi', g.secret.length === 5 && dict.set.has(g.secret));
 check('secret pris dans les mots courants', GG.MOTS_COURANTS.indexOf(g.secret) !== -1, g.secret);
+check('V2 : la première lettre est offerte (publique)', g.first === g.secret[0] &&
+  motus.redact(g, 1).first === g.secret[0]);
+// pour la suite, un secret connu (les essais doivent commencer par sa 1re lettre)
+g.secret = 'CHIEN'; g.first = 'C';
 // tableau COMMUN, chacun son tour : A commence
 check('A commence (tour par tour)', motus.turnOf(g) === 0);
 check('hors tour refusé', !motus.apply(g, 1, { t: 'guess', w: 'CHIEN' }, { dict }).ok);
-r = motus.apply(g, 0, { t: 'guess', w: 'ZZZZZ' }, { dict });
-check('mot hors dictionnaire refusé', !r.ok);
-const g1 = g.secret === 'CHIEN' ? 'PLAGE' : 'CHIEN';
+r = motus.apply(g, 0, { t: 'guess', w: 'CZZZZ' }, { dict });
+check('mot hors dictionnaire refusé', !r.ok && /dictionnaire/.test(r.error), r.error);
+r = motus.apply(g, 0, { t: 'guess', w: 'PLAGE' }, { dict });
+check('V2 : un essai qui ne commence pas par la lettre offerte est refusé', !r.ok && /commence par/.test(r.error), r.error);
+const g1 = 'CHAUD';
 r = motus.apply(g, 0, { t: 'guess', w: g1.toLowerCase() }, { dict });
 check('essai valide accepté (minuscules OK), essai PARTAGÉ avec auteur',
   r.ok && g.tries.length === 1 && g.tries[0].by === 0 && g.tries[0].word === g1);
 check('le tour passe à B', motus.turnOf(g) === 1);
 check('mot déjà proposé refusé', !motus.apply(g, 1, { t: 'guess', w: g1 }, { dict }).ok);
 // essais ILLIMITÉS : bien plus de 6 propositions possibles
-const pool5 = GG.MOTS_COURANTS.filter(w => w.length === 5 && w !== g.secret && w !== g1);
+const pool5 = GG.MOTS_COURANTS.filter(w => w.length === 5 && w[0] === 'C' && w !== g.secret && w !== g1);
 for (let k = 0; k < 9; k++) {
   const rr = motus.apply(g, g.turn, { t: 'guess', w: pool5[k] }, { dict });
   if (!rr.ok) { failures++; console.log('  FAIL essai illimité n°' + (k + 2) + ' refusé : ' + rr.error); break; }
