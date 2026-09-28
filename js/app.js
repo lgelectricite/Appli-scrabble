@@ -1047,8 +1047,43 @@
     $('home-salut').textContent = p.nom ? 'Salut ' + p.nom + ' ! 👋' : 'Salut ! 👋';
     $('home-sous').textContent = ACCROCHES[Math.floor(Math.random() * ACCROCHES.length)];
     majProfilChip();
+    renderBienvenue();
     renderReprise();
     if (filtreActif === 'tous') renderCatalog();
+  }
+
+  /* Première ouverture : on fait connaissance (le prénom sera proposé dans
+     tous les jeux). Une carte discrète, jamais une fenêtre qui bloque. */
+  function renderBienvenue() {
+    var box = $('home-bienvenue');
+    if (!box) return;
+    var p = profil();
+    if (p.nom || lis('gg-bienvenue-vu', false)) { box.innerHTML = ''; return; }
+    if (box.childElementCount) return;
+    box.innerHTML = '<div class="bienvenue">' +
+      '<button class="bv-x" id="bv-x" aria-label="Plus tard">✕</button>' +
+      '<p class="bv-t">Bienvenue sur GGgames ! 🎉</p>' +
+      '<p class="bv-s">Comment tu t’appelles ? Ton prénom sera proposé dans tous les jeux.</p>' +
+      '<form class="bv-ligne" id="bv-form"><input type="text" id="bv-nom" maxlength="14" ' +
+      'placeholder="Ton prénom" autocomplete="given-name" enterkeyhint="done">' +
+      '<button class="btn primary" type="submit">C’est moi !</button></form></div>';
+    $('bv-form').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var v = $('bv-nom').value.trim().slice(0, 14);
+      if (!v) { window.GG.fx.shake($('bv-nom')); window.GG.sfx.play('wrong'); return; }
+      var q = profil(); q.nom = v; profilSet(q);
+      ecris('gg-bienvenue-vu', true);
+      window.GG.sfx.play('success');
+      window.GG.haptic('success');
+      window.GG.fx.confetti({ count: 60 });
+      box.innerHTML = '';
+      renderAccueil();
+      prefillNoms();
+    });
+    $('bv-x').addEventListener('click', function () {
+      ecris('gg-bienvenue-vu', true);
+      box.innerHTML = '';
+    });
   }
 
   /* ---------- écran « Mon profil » ---------- */
