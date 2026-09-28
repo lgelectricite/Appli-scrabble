@@ -47,12 +47,18 @@ function check(n, c, e) {
   await p.waitForSelector('#overlay-rules.hidden', { state: 'attached' });
   const cells = await p.locator('.p4-cell').count();
   check('grille 7×6', cells === 42, cells);
-  // Léa gagne en verticale : colonnes 0 (Léa) / 1 (Marc)
+  // Léa gagne en verticale : colonnes 0 (Léa) / 1 (Marc). Sur un seul
+  // téléphone, le plateau est gelé un instant après chaque jeton (anti
+  // double-appui) : on attend qu'il soit de nouveau prêt.
+  const p4Joue = async c => {
+    await p.waitForSelector('.p4-board[data-pret="1"]');
+    await p.locator('.p4-cell[data-col="' + c + '"]').first().click();
+  };
   for (let i = 0; i < 3; i++) {
-    await p.locator('.p4-cell[data-col="0"]').first().click();
-    await p.locator('.p4-cell[data-col="1"]').first().click();
+    await p4Joue(0);
+    await p4Joue(1);
   }
-  await p.locator('.p4-cell[data-col="0"]').first().click();
+  await p4Joue(0);
   await p.waitForSelector('.mini-msg');
   const msg = await p.textContent('#mini-area');
   check('victoire de Léa annoncée', msg.includes('Léa') && msg.includes('gagne'), msg.slice(0, 80));
