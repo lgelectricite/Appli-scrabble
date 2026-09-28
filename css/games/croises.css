@@ -1,0 +1,43 @@
+/* ===== GGgames V2 — Mots croisés =====
+   Styles propres à ce jeu (chargés après css/style.css). */
+
+/* ===== Mots croisés ===== */
+.cr-grid {
+  display: grid; gap: 2px;
+  max-width: min(94vw, 52vh); margin: 4px auto 8px;
+  user-select: none;
+}
+.cr-cell {
+  position: relative; aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; color: var(--ink); border: 1px solid var(--ink-10);
+  border-radius: 3px; cursor: pointer;
+  font-size: clamp(11px, 3.2vw, 17px); font-weight: 800;
+}
+.cr-cell.off { background: transparent; border-color: transparent; cursor: default; }
+.cr-cell.sel { outline: 2px solid var(--accent); background: #fff3e4; }
+.cr-num {
+  position: absolute; top: 1px; left: 2px;
+  font-size: clamp(7px, 1.8vw, 9px); font-weight: 700; opacity: .65;
+}
+.cr-h3 { margin: 10px 0 4px; font-size: 15px; font-family: 'Fraunces', Georgia, serif; }
+.cr-defs { display: flex; flex-direction: column; gap: 5px; }
+.cr-def {
+  text-align: left; background: var(--card); border: 1px solid var(--ink-16);
+  border-radius: 8px; padding: 7px 10px; font-size: 13px; line-height: 1.35;
+  color: var(--ink); cursor: pointer; font-family: inherit;
+}
+.cr-def.sel { border-color: var(--accent); background: #fff3e4; }
+.cr-def.found { text-decoration: none; font-weight: 600; }
+.cr-ask {
+  background: var(--card); border: 2px solid var(--ink); border-radius: 10px;
+  padding: 8px 10px; margin: 8px 0;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.cr-answer-row { display: flex; gap: 8px; margin: 6px 0 2px; }
+.cr-answer-row input {
+  flex: 1; min-width: 0; background: #fff; color: var(--ink);
+  border: 2px solid var(--ink); border-radius: 10px; padding: 11px; font-size: 16px;
+  text-transform: uppercase;
+}
+.cr-wrong { color: var(--danger); font-size: 13px; margin: 4px 0; animation: mn-shake .35s; }

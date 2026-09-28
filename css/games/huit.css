@@ -1,0 +1,60 @@
+/* ===== GGgames V2 — 8 américain =====
+   Styles propres à ce jeu (chargés après css/style.css). */
+
+/* ===== 8 américain ===== */
+.ha-opps { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 8px; }
+.ha-opp {
+  background: var(--card); border: 2px solid var(--ink-16); border-radius: 12px;
+  padding: 6px 12px; text-align: center; font-size: 12px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.ha-opp.turn { border-color: var(--accent); box-shadow: 0 2px 0 var(--accent); }
+.ha-opp-count { font-size: 15px; font-weight: 800; }
+.ha-center { display: flex; gap: 20px; justify-content: center; align-items: center; margin: 10px 0; }
+.ha-card {
+  position: relative; display: inline-flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px;
+  width: 52px; height: 72px; flex: none;
+  background: #fff; color: var(--ink);
+  border: 1.5px solid var(--ink); border-radius: 8px;
+  font-size: 19px; font-weight: 800; cursor: pointer; font-family: inherit;
+  box-shadow: 0 3px 0 rgba(44, 34, 24, .3);
+}
+.ha-card span { font-size: 17px; line-height: 1; }
+.ha-card.red { color: #cf3345; }
+.ha-card.big { width: 68px; height: 94px; font-size: 26px; cursor: default; }
+.ha-card.big span { font-size: 24px; }
+.ha-card.off { opacity: .45; }
+.ha-card.ok { box-shadow: 0 0 0 2px var(--gold), 0 3px 0 rgba(44, 34, 24, .3); }
+.ha-card.sel { transform: translateY(-6px); }
+.ha-top { position: relative; }
+.ha-suit-tag {
+  position: absolute; right: -12px; top: -10px;
+  background: var(--accent); color: var(--accent-ink);
+  border: 2px solid var(--ink);
+  border-radius: 50%; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 800;
+}
+.ha-pile {
+  width: 68px; height: 94px; border-radius: 8px; border: 2px solid var(--ink);
+  background: repeating-linear-gradient(45deg, #a84330, #a84330 7px, #983b29 7px, #983b29 14px);
+  color: #fff; font-size: 24px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.ha-pile small { font-size: 11px; opacity: .9; }
+.ha-pile:disabled { opacity: .5; cursor: default; }
+.ha-dir { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 2px 0; }
+.ha-hand {
+  display: flex; gap: 7px; overflow-x: auto; padding: 10px 4px 14px;
+  -webkit-overflow-scrolling: touch;
+}
+.ha-suits { display: flex; gap: 10px; justify-content: center; }
+.ha-suit-btn {
+  width: 56px; height: 56px; border-radius: 12px; border: 2px solid var(--ink);
+  background: #fff; color: var(--ink); font-size: 28px; cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.ha-suit-btn.red { color: #cf3345; }
+.ha-scores { margin: 10px 0; }

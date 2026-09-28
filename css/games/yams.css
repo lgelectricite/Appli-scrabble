@@ -1,0 +1,24 @@
+/* ===== GGgames V2 — Yams =====
+   Styles propres à ce jeu (chargés après css/style.css). */
+
+/* ================= Yams ================= */
+.yams-dice { display: flex; justify-content: center; gap: 8px; margin: 6px 0; }
+.yams-die {
+  font-size: 44px; line-height: 1; padding: 4px 2px 0;
+  background: #fff; color: var(--ink); border: 2px solid var(--ink);
+  border-radius: 12px; cursor: pointer; min-width: 54px;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.yams-die.held { background: var(--tile-new); transform: translateY(-4px); }
+.yams-sheet { overflow-x: auto; margin-top: 8px; }
+.yams-sheet table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.yams-sheet td, .yams-sheet th { padding: 4px 6px; border-bottom: 1px solid var(--ink-10); text-align: center; }
+.yams-sheet td:first-child { text-align: left; }
+.yams-sheet th.turn { color: var(--accent); }
+.yams-sheet td.filled { font-weight: 700; }
+.yams-sheet td.empty { opacity: .4; }
+.yams-sheet tr.total td { font-weight: 800; border-top: 2px solid var(--ink); }
+.yams-pick {
+  background: var(--accent); color: var(--accent-ink); border: none; border-radius: 6px;
+  padding: 3px 10px; font-size: 13px; font-weight: 700; cursor: pointer;
+}

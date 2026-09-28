@@ -9,7 +9,7 @@ function check(n, c, e) { if (c) console.log('  OK  ' + n); else { failures++; c
   host.on('pageerror', e => { failures++; console.log('  FAIL host JS: ' + e.message); });
   guest.on('pageerror', e => { failures++; console.log('  FAIL guest JS: ' + e.message); });
 
-  await host.goto('http://localhost:8642/index.html');
+  await host.goto((process.env.GG_URL || 'http://localhost:8642/index.html'));
   await host.click('.game-tile[data-g="mots"]');
   await host.click('#btn-mode-host');
   await host.fill('#host-name', 'Hugo');

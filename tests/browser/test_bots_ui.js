@@ -13,15 +13,15 @@ const EXPECTED = parseInt(process.argv[2] || '13', 10);
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   const p = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
   p.on('pageerror', e => { failures++; console.log('  FAIL JS: ' + e.message); });
-  await p.goto('http://localhost:8642/index.html');
+  await p.goto((process.env.GG_URL || 'http://localhost:8642/index.html'));
   await p.waitForSelector('.game-tile');
 
   const ids = await p.evaluate(() =>
     Object.keys(GG.byId).filter(id => typeof GG.byId[id].bot === 'function'));
   console.log('Jeux avec IA : ' + ids.join(', '));
   check('au moins ' + EXPECTED + ' jeux dotés d’une IA', ids.length >= EXPECTED, ids);
-  check('pastille 🤖 sur les boîtes de l’étagère',
-    await p.locator('.bx .bx-bot').count() >= Math.min(EXPECTED + 1, 14)); // + Words
+  check('pastille 🤖 sur les tuiles des jeux jouables seul',
+    await p.locator('.game-tile .gt-bot').count() >= Math.min(EXPECTED + 1, 14)); // + Words
 
   async function quitGame() {
     await p.click('#btn-mini-menu');

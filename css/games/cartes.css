@@ -1,0 +1,66 @@
+/* ===== GGgames V2 — Cartes à jouer (Poker, cartes.js) =====
+   Styles propres à ce jeu (chargés après css/style.css). */
+
+/* ===== Cartes à jouer « grand index », lisibles sur téléphone =====
+   Le rang en très gros dans le coin, la couleur dessous, un grand symbole
+   pour le reste. Tout est proportionnel à --jcw (largeur de la carte). */
+.jc {
+  --jcw: 46px;
+  position: relative; display: inline-block; vertical-align: middle; flex: none;
+  width: var(--jcw); aspect-ratio: 5 / 7; overflow: hidden;
+  border-radius: calc(var(--jcw) * .1);
+  background: linear-gradient(165deg, #ffffff 0%, #fbfaf6 60%, #f1ede3 100%);
+  border: 1px solid #bdb3a1;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .3), 0 3px 7px rgba(0, 0, 0, .28);
+  color: #16171b; user-select: none;
+  transform: rotate(var(--jc-rot, 0deg)) translateY(var(--jc-lift, 0px));
+}
+.jc.rouge { color: #d3202a; }
+/* valet, dame, roi : un fond doré pâle, pour les repérer d'un coup d'œil */
+.jc.fig { background: linear-gradient(165deg, #fffdf4 0%, #fbf1d6 60%, #f1dfae 100%); }
+.jc.mini { --jcw: 34px; }
+.jc.grande { --jcw: 58px; }
+
+.jc-i {
+  position: absolute; left: 4%; top: 2%; width: 50%;
+  display: flex; flex-direction: column; align-items: center;
+}
+.jc-i b {
+  display: block; line-height: .94; font-weight: 800; letter-spacing: -.02em;
+  font-size: calc(var(--jcw) * .54);
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif-condensed,
+    'Helvetica Neue', Roboto, 'Segoe UI', Arial, sans-serif;
+}
+/* « 10 » : deux chiffres dans la place d'un seul */
+.jc-i b.dix {
+  font-size: calc(var(--jcw) * .46); letter-spacing: -.05em; margin-left: -.05em;
+  /* même hauteur de ligne que les autres rangs : le symbole reste aligné */
+  padding-top: calc(var(--jcw) * .04); margin-bottom: calc(var(--jcw) * .035);
+}
+.jc-p {
+  display: block; width: calc(var(--jcw) * .3); height: calc(var(--jcw) * .3);
+  margin-top: calc(var(--jcw) * .03); fill: currentColor;
+}
+.jc-g {
+  position: absolute; right: 4%; bottom: 3%;
+  width: calc(var(--jcw) * .56); height: calc(var(--jcw) * .56); fill: currentColor;
+}
+
+.jc.dos {
+  background: #b0302a; border-color: #7b1f1a;
+}
+.jc-dos-motif {
+  position: absolute; inset: 7%; border-radius: calc(var(--jcw) * .05);
+  border: 1.5px solid rgba(255, 255, 255, .75);
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 17%, rgba(255, 255, 255, .5) 18% 22%, transparent 23%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .2) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, .2) 0 2px, transparent 2px 6px);
+}
+/* la carte gagnante se détache */
+.jc.gagnante {
+  --jc-lift: -4px;
+  box-shadow: 0 0 0 2px #d4af37, 0 0 14px rgba(212, 175, 55, .85);
+}
+/* à l'abattage, les cartes qui ne jouent pas s'estompent */
+.jc.terne { filter: brightness(.62) saturate(.6); }

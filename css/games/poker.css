@@ -1,0 +1,309 @@
+/* ===== GGgames V2 — Poker =====
+   Styles propres à ce jeu (chargés après css/style.css). */
+
+/* ================= Poker : coin casino ================= */
+.pk-table {
+  position: relative;
+  background: radial-gradient(130% 110% at 50% 30%, #35704f 0%, var(--felt) 55%, var(--felt-dark) 100%);
+  border: 2px solid var(--ink); border-radius: 42px; padding: 16px 12px;
+  color: var(--paper);
+  box-shadow:
+    0 0 0 9px #4a3018,
+    0 0 0 11px var(--ink),
+    0 8px 0 11px rgba(44, 34, 24, .35),
+    inset 0 0 0 2px rgba(212, 175, 55, .45),
+    inset 0 12px 50px rgba(0, 0, 0, .3);
+  margin: 12px 9px;
+}
+.pk-table::before {
+  content: 'GG · CASINO';
+  position: absolute; left: 0; right: 0; top: 46%;
+  text-align: center; pointer-events: none;
+  font-family: 'Fraunces', Georgia, serif; font-size: 15px; letter-spacing: 6px;
+  color: rgba(212, 175, 55, .22);
+}
+.pk-table .mini-msg, .pk-table .waiting { color: var(--paper); }
+.pk-table .hint { color: #cfe0d4; }
+/* ===== la table ovale vue de dessus : sièges autour, pot au centre ===== */
+.pk-mode { text-align: center; font-size: 13px; color: var(--ink-soft); margin: 4px 0 2px; }
+.pk-mode small { opacity: .8; }
+.pk-oval {
+  position: relative;
+  max-width: min(88vw, 420px);
+  aspect-ratio: 1.22;
+  /* en bas : mes cartes à cheval sur le rail (moitié dehors), ma main dessous */
+  margin: 58px auto calc(var(--moi-h) / 2 + 27px);
+  border-radius: 50%;
+  /* largeur des cartes : le tapis, les miennes (plus grandes), les adverses */
+  --com-w: clamp(34px, 12.6vw, 54px);
+  --moi-w: clamp(50px, 16vw, 66px);
+  --moi-h: calc(var(--moi-w) * 1.4);
+  --adv-w: clamp(24px, 7.4vw, 30px);
+  background: radial-gradient(85% 80% at 50% 38%, #3d7a58 0%, var(--felt) 55%, var(--felt-dark) 100%);
+  box-shadow:
+    0 0 0 8px #4a3018,
+    0 0 0 10px var(--ink),
+    0 10px 26px rgba(30, 22, 14, .45),
+    inset 0 0 0 2px rgba(212, 175, 55, .5),
+    inset 0 14px 44px rgba(0, 0, 0, .38);
+}
+.pk-oval::before { /* le liseré intérieur du tapis */
+  content: ''; position: absolute; inset: 11%;
+  border-radius: 50%; border: 1.5px solid rgba(212, 175, 55, .3);
+  pointer-events: none;
+}
+.pk-center {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center; width: 82%;
+}
+.pk-pot {
+  display: inline-block; background: rgba(0, 0, 0, .35); color: var(--paper);
+  border-radius: 999px; padding: 3px 12px; font-size: 13px; margin-bottom: 6px;
+}
+.pk-pot b { color: #f2cd5c; }
+.pk-community {
+  min-height: calc(var(--com-w) * 1.4); display: flex; justify-content: center;
+  align-items: center; gap: calc(var(--com-w) * .08);
+}
+/* à quatre, les sièges des côtés prennent de la place : tapis un peu plus
+   petit et un peu plus bas, sièges latéraux remontés */
+.pk-oval.n4 { --com-w: clamp(30px, 10.4vw, 44px); }
+.pk-oval.n4 .pk-center { top: 55%; }
+.pk-street { opacity: .7; font-size: 13px; color: var(--paper); }
+
+/* un siège : ses cartes, puis la plaque avatar + nom + tapis */
+.pk-seat {
+  position: absolute; display: flex; flex-direction: column;
+  align-items: center; gap: 3px; z-index: 2; width: 112px;
+}
+.pk-seat.st { left: 50%; top: -46px; transform: translateX(-50%); flex-direction: column-reverse; }
+.pk-seat.stl { left: 0; top: -44px; flex-direction: column-reverse; }
+.pk-seat.str { right: 0; top: -44px; flex-direction: column-reverse; }
+.pk-seat.sl { left: -16px; top: 29%; transform: translateY(-50%); flex-direction: column-reverse; }
+.pk-seat.sr { right: -16px; top: 29%; transform: translateY(-50%); flex-direction: column-reverse; }
+/* MOI, en bas : mes cartes en grand, en éventail, à cheval sur le rail ;
+   ma plaque à côté ; ma main nommée et mon annonce juste dessous */
+.pk-seat.sb {
+  /* trois colonnes égales autour de MES CARTES, pile au centre de la table :
+     vide | mes cartes | ma plaque (minmax(0, …) : rien ne les décentre) */
+  left: -14px; right: -14px; width: auto; top: calc(100% - var(--moi-h) / 2);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  column-gap: 6px; row-gap: 4px; align-items: end; justify-items: start;
+}
+.pk-seat.sb .pk-scards {
+  grid-column: 2; grid-row: 1; justify-self: center; min-height: var(--moi-h);
+  margin: 0; align-items: flex-end; gap: 0;
+}
+/* ma main nommée, sur UNE ligne, sous mes cartes : elle prend toute la
+   largeur de la table pour ne jamais passer à la ligne ni décentrer */
+.pk-seat.sb .pk-mamain { grid-column: 1 / -1; grid-row: 2; justify-self: center; margin: 0; }
+.pk-seat.sb .pk-plate { grid-column: 3; grid-row: 1; min-width: 0; padding-right: 8px; }
+/* mon annonce (et TAPIS / couché) : au-dessus de ma plaque, à côté de mes cartes */
+.pk-seat.sb .pk-tag, .pk-seat.sb .pk-annonce {
+  grid-column: 3; grid-row: 1; align-self: start; margin: 4px 0 0 12px;
+}
+/* badge ET annonce à la fois (tapis sur une blind) : le badge à gauche */
+.pk-seat.sb .pk-tag.gauche { grid-column: 1; justify-self: end; margin: 4px 12px 0 0; }
+.pk-seat.sb .pk-trophee { right: -3px; }
+/* très petits écrans : mises à 4 chiffres et annonces longues tiennent */
+@media (max-width: 340px) {
+  .pk-betspot.sl, .pk-betspot.sr { gap: 2px; font-size: 11px; }
+  .pk-seat.sb .pk-annonce, .pk-seat.sb .pk-tag { margin-left: 4px; }
+  .pk-seat.sb .pk-tag.gauche { margin: 4px 4px 0 0; }
+}
+.pk-seat.sb .pk-scards .jc { --jcw: var(--moi-w); transform-origin: 50% 100%; }
+.pk-seat.sb .pk-scards .jc:first-child { --jc-rot: -4deg; }
+.pk-seat.sb .pk-scards .jc + .jc { --jc-rot: 4deg; margin-left: calc(var(--moi-w) * -.12); }
+/* les cartes adverses : petites (des dos), un peu plus grandes une fois montrées */
+.pk-seat .pk-scards .jc { --jcw: var(--adv-w); }
+.pk-seat .pk-scards.montre .jc { --jcw: calc(var(--adv-w) * 1.3); }
+/* chez un adversaire, la carte gagnante s'avance vers la table (en montant,
+   elle passerait sous sa plaque) */
+.pk-seat:not(.sb) .jc.gagnante { --jc-lift: 3px; }
+/* TAPIS / couché d'un adversaire : un badge au-dessus de la plaque, qui ne
+   pousse pas le siège vers la table (il cacherait sa mise) */
+.pk-seat:not(.sb) .pk-tag {
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 2;
+}
+.pk-seat.folded .pk-plate, .pk-seat.folded .pk-scards { opacity: .55; }
+.pk-seat.out { opacity: .35; }
+.pk-plate {
+  display: flex; align-items: center; gap: 6px; max-width: 100%;
+  background: linear-gradient(180deg, #37302a, #211b15);
+  border: 2px solid var(--ink); border-radius: 999px;
+  padding: 3px 10px 3px 4px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+.pk-seat.turn .pk-plate {
+  border-color: #f2cd5c;
+  box-shadow: 0 0 0 2px rgba(242, 205, 92, .35), 0 0 14px rgba(242, 205, 92, .6);
+  animation: pk-turnp 1.1s infinite alternate;
+}
+@keyframes pk-turnp {
+  from { box-shadow: 0 0 0 2px rgba(242, 205, 92, .3), 0 0 8px rgba(242, 205, 92, .4); }
+  to { box-shadow: 0 0 0 2px rgba(242, 205, 92, .45), 0 0 18px rgba(242, 205, 92, .8); }
+}
+.pk-avatar {
+  width: 26px; height: 26px; border-radius: 50%; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 35% 30%, #8d7550, #5d4a2e);
+  color: #fdf3da; font-weight: 800; font-size: 13px;
+  border: 1.5px solid rgba(255, 240, 210, .4);
+}
+.pk-pinfo { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.pk-pname {
+  color: #f4ead2; font-size: 11px; font-weight: 700; max-width: 76px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pk-pstack { color: #f2cd5c; font-size: 11px; font-weight: 800; }
+.pk-scards { display: flex; gap: 3px; min-height: 26px; margin-bottom: 2px; }
+.pk-plate { position: relative; z-index: 1; } /* toujours au-dessus des cartes */
+.pk-tag {
+  background: var(--accent); color: #fff; font-size: 9px; font-weight: 800;
+  padding: 1px 8px; border-radius: 999px; letter-spacing: 1px;
+}
+.pk-tag.grey { background: #6c6154; }
+
+/* la mise de la rue en jetons devant chaque siège + le bouton du donneur */
+.pk-betspot {
+  position: absolute; z-index: 1; display: flex; align-items: center; gap: 4px;
+  color: #fff; font-size: 12px; font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
+}
+.pk-betspot.sb { left: 50%; bottom: calc(var(--moi-h) / 2 + 7px); transform: translateX(-50%); }
+.pk-betspot.st { left: 50%; top: 20%; transform: translateX(-50%); }
+.pk-betspot.stl { left: 21%; top: 23%; }
+.pk-betspot.str { right: 21%; top: 23%; }
+.pk-betspot.sl { left: 32%; top: 27%; }
+.pk-betspot.sr { right: 32%; top: 27%; }
+.pk-chip {
+  width: 16px; height: 16px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 50% 50%, #b8302c 0 44%, #7e1f1c 46% 100%);
+  border: 2.5px dashed #f4ead2; box-sizing: border-box;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, .5);
+}
+.pk-dbtn {
+  width: 18px; height: 18px; border-radius: 50%; flex: none;
+  background: #fdf6e5; color: var(--ink); font-size: 11px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--ink); box-shadow: 0 2px 3px rgba(0, 0, 0, .5);
+}
+.pk-msg { font-weight: 600; }
+.pk-oval .pk-community .jc { --jcw: var(--com-w); }
+.pk-actions { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 8px; }
+.pk-actions .btn.action { flex: 1 1 28%; max-width: none; }
+.pk-modes .btn.big { margin: 6px 0; }
+.pk-modes .btn small { display: block; font-size: 12px; opacity: .8; font-weight: 400; }
+
+/* ===== Poker : annonces, abattage, fil de la main, animation ===== */
+.pk-annonce {
+  position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%);
+  background: #f4ead2; color: #2b2118; font-size: 10px; font-weight: 800;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .45); border: 1px solid #c9bda2;
+  animation: pkPop .25s ease-out;
+}
+@keyframes pkPop { from { transform: translateX(-50%) scale(.6); opacity: 0; } }
+/* en bas, l'annonce se range sous ma plaque, sans mordre sur le nom ni le tapis */
+.pk-seat.sb .pk-annonce { position: static; transform: none; animation-name: pkPopBas; }
+@keyframes pkPopBas { from { transform: scale(.6); opacity: 0; } }
+/* ma main nommée en direct, entre mes cartes et ma plaque */
+.pk-mamain {
+  font-size: 10px; font-weight: 800; letter-spacing: .2px; white-space: nowrap;
+  color: #2b2118; background: linear-gradient(180deg, #f7e39b, #d9b545);
+  border: 1px solid #a8862a; border-radius: 999px; padding: 1px 9px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .45); margin: -1px 0 1px;
+}
+.pk-seat.gagne .pk-plate {
+  box-shadow: 0 0 0 2px #d4af37, 0 0 16px rgba(212, 175, 55, .85);
+}
+.pk-trophee { /* posé sur le coin de la plaque du gagnant */
+  position: absolute; top: -14px; right: -9px; font-size: 18px; z-index: 3;
+  line-height: 1; animation: pkTroph .6s ease-out;
+}
+.pk-seat.sr .pk-trophee, .pk-seat.str .pk-trophee { right: auto; left: -9px; }
+@keyframes pkTroph { from { transform: scale(0) rotate(-40deg); } }
+
+.pk-fin {
+  margin: 10px 0 4px; padding: 10px 12px; border-radius: 12px;
+  background: rgba(20, 40, 28, .55); border: 2px solid #d4af37;
+  color: #f4ead2; text-align: center;
+}
+.pk-fin-titre { font-weight: 800; font-size: 15px; line-height: 1.45; color: #f7e39b; }
+.pk-abat { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+.pk-abat-l {
+  display: flex; align-items: center; gap: 8px; padding: 4px 6px;
+  border-radius: 8px; background: rgba(0, 0, 0, .22); font-size: 12px;
+}
+.pk-abat-l.win { background: rgba(212, 175, 55, .22); }
+.pk-abat-n { font-weight: 800; flex: 1; text-align: left; }
+.pk-abat-c { display: flex; gap: 3px; }
+.pk-abat-c .jc { --jcw: 38px; }
+.pk-abat-m { font-weight: 700; opacity: .9; }
+
+.pk-fil { margin: 6px 0; font-size: 13px; }
+.pk-fil summary { cursor: pointer; padding: 5px 2px; color: var(--ink-soft); }
+.pk-fil summary b { color: var(--ink); }
+.pk-fil-l {
+  max-height: 170px; overflow-y: auto; padding: 6px 8px;
+  background: var(--card); border: 1px solid var(--line, #d8cdb4);
+  border-radius: 10px; line-height: 1.6;
+}
+.pk-fil-l .rue { font-weight: 800; opacity: .75; margin-top: 3px; }
+body.theme-casino .pk-fil summary { color: #cbbfa6; }
+body.theme-casino .pk-fil summary b { color: #f4ead2; }
+body.theme-casino .pk-fil-l { background: rgba(0, 0, 0, .3); border-color: #4a3f2f; color: #eadfc6; }
+
+/* le pot s'envole vers le gagnant */
+.pk-vol {
+  position: absolute; left: 50%; top: 46%; width: 16px; height: 16px;
+  margin: -8px 0 0 -8px; border-radius: 50%; z-index: 6;
+  background: radial-gradient(circle at 35% 30%, #f7e39b, #d4af37 60%, #a8842a);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .5);
+  animation: pkVolSb .9s cubic-bezier(.4, .1, .3, 1) forwards;
+}
+@keyframes pkVolSb { to { transform: translate(0, 150px) scale(.5); opacity: 0; } }
+@keyframes pkVolSt { to { transform: translate(0, -150px) scale(.5); opacity: 0; } }
+@keyframes pkVolSl { to { transform: translate(-120px, -48px) scale(.5); opacity: 0; } }
+@keyframes pkVolSr { to { transform: translate(120px, -48px) scale(.5); opacity: 0; } }
+@keyframes pkVolStl { to { transform: translate(-105px, -105px) scale(.5); opacity: 0; } }
+@keyframes pkVolStr { to { transform: translate(105px, -105px) scale(.5); opacity: 0; } }
+.pk-vol.vers-sb { animation-name: pkVolSb; }
+.pk-vol.vers-st { animation-name: pkVolSt; }
+.pk-vol.vers-sl { animation-name: pkVolSl; }
+.pk-vol.vers-sr { animation-name: pkVolSr; }
+.pk-vol.vers-stl { animation-name: pkVolStl; }
+.pk-vol.vers-str { animation-name: pkVolStr; }
+
+/* ===== Poker : choisir librement sa relance =====
+   Le bouton qui VALIDE (« Relancer à N ») est dans la rangée d'actions, sous la
+   table : toujours visible. Dessous, le réglage : − curseur +, puis raccourcis. */
+.pk-actions .btn.action { min-height: 50px; padding: 5px 4px; line-height: 1.15; }
+.pk-actions .pk-raise-go small {
+  display: block; font-size: 11px; font-weight: 600; letter-spacing: .2px; opacity: .92;
+}
+.pk-actions .pk-raise-go b { font-size: 19px; }
+.pk-actions .pk-raise-go.tapis { background: #b8302c; color: #fff; }
+.pk-raise {
+  margin-top: 8px; padding: 8px 10px 10px; border-radius: 14px;
+  background: rgba(0, 0, 0, .28); border: 1px solid rgba(212, 175, 55, .45);
+}
+.pk-raise-head { display: flex; align-items: center; gap: 8px; }
+.pk-adj {
+  width: 44px; height: 40px; flex: none; border-radius: 12px;
+  background: var(--card); border: 2px solid var(--ink); color: var(--ink);
+  font-size: 24px; font-weight: 800; line-height: 1; cursor: pointer;
+  touch-action: manipulation;
+}
+.pk-adj:active { transform: translateY(2px); }
+#pk-slider {
+  flex: 1; min-width: 0; margin: 0; accent-color: #d4af37; height: 40px;
+}
+.pk-raise-quick { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.pk-quick {
+  flex: 1 1 22%; padding: 7px 4px; border-radius: 10px; cursor: pointer;
+  background: var(--card); border: 2px solid var(--ink); color: var(--ink);
+  font-size: 13px; font-weight: 700; touch-action: manipulation;
+}
+.pk-quick:active { transform: translateY(1px); }

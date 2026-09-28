@@ -1,6 +1,6 @@
 /* UI : Discussion — messagerie locale entre deux « téléphones » (WebRTC). */
 const { chromium } = require('playwright');
-const URL = 'http://localhost:8642/index.html';
+const URL = (process.env.GG_URL || 'http://localhost:8642/index.html');
 let failures = 0;
 function check(n, c, e) {
   if (c) console.log('  OK  ' + n);
@@ -57,7 +57,7 @@ function check(n, c, e) {
 
   await host.waitForSelector('.ch-log');
   await guest.waitForSelector('.ch-log');
-  check('pas de tour de parole affiché', (await host.textContent('#mini-turn')).trim() === '');
+  check('pas de tour de parole affiché', !/Au tour de/.test(await host.textContent('#mini-turn')));
   check('pas de badges de score', await host.locator('#mini-players.hidden').count() === 1);
   check('les deux prénoms sont présentés', /Hugo/.test(await guest.textContent('.ch-who')) &&
     /Nina/.test(await guest.textContent('.ch-who')));

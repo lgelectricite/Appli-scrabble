@@ -13,7 +13,7 @@ function check(n, c, e) {
   p.on('pageerror', e => { failures++; console.log('  FAIL JS: ' + e.message); });
 
   // 1. Premier chargement EN LIGNE : le service worker met tout en cache
-  await p.goto('http://localhost:8642/index.html');
+  await p.goto((process.env.GG_URL || 'http://localhost:8642/index.html'));
   await p.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.ready
     .then(() => true) && !!navigator.serviceWorker, null, { timeout: 15000 });
   await p.evaluate(() => navigator.serviceWorker.ready);

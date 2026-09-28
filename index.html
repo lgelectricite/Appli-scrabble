@@ -2,36 +2,67 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>GGgames</title>
   <meta name="description" content="GGgames : des jeux à plusieurs, entièrement hors ligne — mots, Puissance 4, pendu, poker, bataille navale…">
-  <meta name="theme-color" content="#f1e7d4">
+  <meta name="theme-color" content="#0a0b1c">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/favicon.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preload" href="vendor/fonts/fredoka-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="vendor/fonts/nunito-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/games/mots.css">
+  <link rel="stylesheet" href="css/games/p4.css">
+  <link rel="stylesheet" href="css/games/morpion.css">
+  <link rel="stylesheet" href="css/games/pendu.css">
+  <link rel="stylesheet" href="css/games/bac.css">
+  <link rel="stylesheet" href="css/games/bataille.css">
+  <link rel="stylesheet" href="css/games/yams.css">
+  <link rel="stylesheet" href="css/games/cochon.css">
+  <link rel="stylesheet" href="css/games/memory.css">
+  <link rel="stylesheet" href="css/games/sudoku.css">
+  <link rel="stylesheet" href="css/games/meles.css">
+  <link rel="stylesheet" href="css/games/motus.css">
+  <link rel="stylesheet" href="css/games/croises.css">
+  <link rel="stylesheet" href="css/games/fleches.css">
+  <link rel="stylesheet" href="css/games/imposteur.css">
+  <link rel="stylesheet" href="css/games/quiz.css">
+  <link rel="stylesheet" href="css/games/huit.css">
+  <link rel="stylesheet" href="css/games/cartes.css">
+  <link rel="stylesheet" href="css/games/casino.css">
+  <link rel="stylesheet" href="css/games/poker.css">
+  <link rel="stylesheet" href="css/games/blackjack.css">
+  <link rel="stylesheet" href="css/games/solitaire.css">
+  <link rel="stylesheet" href="css/games/bonbons.css">
+  <link rel="stylesheet" href="css/games/manoir.css">
+  <link rel="stylesheet" href="css/games/chat.css">
 </head>
 <body>
 
   <!-- ============ ACCUEIL : CATALOGUE ============ -->
   <section id="screen-home" class="screen active">
-    <div class="home-inner">
-      <div class="logo-row">
-        <div class="logo-mark">GG</div>
-        <h1>GGgames</h1>
-      </div>
-      <p class="subtitle">Des jeux à plusieurs, entièrement hors&nbsp;ligne.</p>
-      <p id="offline-badge" class="offline-badge hidden">✈️ Prête pour le mode avion —
-        tout est enregistré sur ce téléphone.</p>
+    <header class="home-top">
+      <div class="brand"><div class="logo-mark">GG</div><h1 class="brand-name">GGgames</h1></div>
+      <button class="profil-chip" id="btn-profil" aria-label="Mon profil"><span class="av" id="profil-av">🙂</span><span class="nm" id="profil-nom">Joueur</span></button>
+      <button class="icon-btn" id="btn-reglages" title="Réglages" aria-label="Réglages">⚙️</button>
+    </header>
+    <div class="home-hello">
+      <p class="salut" id="home-salut">Salut ! 👋</p>
+      <p id="home-sous">À quoi on joue ?</p>
+      <p id="offline-badge" class="offline-badge hidden">✈️ Prête pour le mode avion</p>
       <button id="btn-wallet" class="wallet-chip">🪙 <b id="wallet-amount">10 000</b> jetons
         <span class="wallet-more">Boutique ›</span></button>
-      <div id="catalog"></div>
-      <button class="btn big" id="btn-home-online">🌍 Rejoindre avec un code</button>
-      <button class="btn big" id="btn-home-join">🔗 Rejoindre une partie (QR)</button>
-      <p class="hint">Sur place, sans Internet : celui qui crée la partie sert de serveur
-        et l’invité scanne un QR code. À distance : l’hôte annonce un
-        <strong>code de 6 caractères</strong>, chacun le tape ici.</p>
     </div>
+    <div id="home-reprise"></div>
+    <div class="home-rejoindre">
+      <button class="btn" id="btn-home-online"><span class="ic">🌍</span>Rejoindre<small>avec un code</small></button>
+      <button class="btn" id="btn-home-join"><span class="ic">📷</span>Scanner<small>un QR, sur place</small></button>
+    </div>
+    <nav class="cat-tabs" id="cat-tabs" aria-label="Catégories"></nav>
+    <div id="catalog"></div>
+    <p class="hint" style="text-align:center;margin-top:22px">Sur place sans Internet : l’hôte montre un QR code.
+      À distance : il partage un <strong>code de 6 caractères</strong>.</p>
   </section>
 
   <!-- ============ BOUTIQUE DE JETONS ============ -->
@@ -68,20 +99,24 @@
   </section>
 
   <!-- ============ MOTS : SOUS-MENU ============ -->
-  <section id="screen-mots-home" class="screen">
-    <h2>🔤 Words</h2>
-    <p class="hint">Le jeu de lettres classique : dictionnaire français obligatoire pour tout le monde.</p>
+  <section id="screen-mots-home" class="screen" data-jeu="mots">
+    <div class="jeu-hero">
+      <span class="jh-ic">🔤</span>
+      <h2>Words</h2>
+      <p>Le jeu de lettres : posez vos mots sur le plateau, le dictionnaire français arbitre.</p>
+      <div class="jh-meta"><span class="jh-pill">1–4 joueurs</span><span class="jh-pill">🤖 IA 3 niveaux</span></div>
+    </div>
     <div class="home-buttons">
-      <button class="btn big" id="btn-mode-solo">🤖 Jouer seul contre l’IA</button>
-      <button class="btn big" id="btn-mode-local">📱 Jouer sur ce téléphone (2-4)</button>
-      <button class="btn big" id="btn-mode-online">🌍 En ligne (chacun chez soi)</button>
-      <button class="btn big" id="btn-mode-host">📶 Sur place, sans Internet (QR)</button>
+      <button class="btn big mode-btn" id="btn-mode-solo"><span class="mode-ic">🤖</span><span class="mode-tx"><span class="mode-t">Jouer seul</span><span class="mode-s">contre l’ordinateur</span></span></button>
+      <button class="btn big mode-btn" id="btn-mode-local"><span class="mode-ic">📱</span><span class="mode-tx"><span class="mode-t">Sur ce téléphone</span><span class="mode-s">de 2 à 4, on se le passe</span></span></button>
+      <button class="btn big mode-btn" id="btn-mode-online"><span class="mode-ic">🌍</span><span class="mode-tx"><span class="mode-t">En ligne</span><span class="mode-s">chacun chez soi, avec un code</span></span></button>
+      <button class="btn big mode-btn" id="btn-mode-host"><span class="mode-ic">📶</span><span class="mode-tx"><span class="mode-t">Sur place, sans Internet</span><span class="mode-s">plusieurs téléphones, par QR code</span></span></button>
     </div>
     <button class="btn link" data-back>← Retour</button>
   </section>
 
   <!-- ============ SOLO CONTRE L'IA (Mots) ============ -->
-  <section id="screen-solo-setup" class="screen">
+  <section id="screen-solo-setup" class="screen" data-jeu="mots">
     <h2>Jouer contre l’IA</h2>
     <label>Votre prénom
       <input type="text" id="solo-name" maxlength="14" placeholder="Prénom" value="Joueur">
@@ -99,7 +134,7 @@
   </section>
 
   <!-- ============ MOTS : CONFIG LOCALE (1 téléphone) ============ -->
-  <section id="screen-local-setup" class="screen">
+  <section id="screen-local-setup" class="screen" data-jeu="mots">
     <h2>Words — sur ce téléphone</h2>
     <p class="hint">Chacun joue à son tour en se passant le téléphone.</p>
     <label>Nombre de joueurs</label>
@@ -126,23 +161,30 @@
 
   <!-- ============ MINI-JEUX : CHOIX DU MODE ============ -->
   <section id="screen-mini-setup" class="screen">
-    <h2 id="mini-setup-title"></h2>
-    <p class="hint" id="mini-setup-desc"></p>
-    <div class="home-buttons" id="mini-setup-modes">
-      <button class="btn big" id="btn-mini-solo">🤖 Jouer seul contre l’ordinateur</button>
-      <button class="btn big" id="btn-mini-hotseat">📱 Sur ce téléphone</button>
-      <button class="btn big" id="btn-mini-online">🌍 En ligne (chacun chez soi)</button>
-      <button class="btn big" id="btn-mini-host">📶 Sur place, sans Internet (QR)</button>
+    <div class="jeu-hero">
+      <span class="jh-ic" id="mini-setup-ic"></span>
+      <h2 id="mini-setup-title"></h2>
+      <p id="mini-setup-desc"></p>
+      <div class="jh-meta" id="mini-setup-meta"></div>
+      <button class="btn small jh-regles" id="btn-setup-rules">❓ Les règles</button>
     </div>
-    <div id="mini-solo-config" class="hidden">
+    <div class="home-buttons" id="mini-setup-modes">
+      <button class="btn big mode-btn" id="btn-mini-solo"><span class="mode-ic">🤖</span><span class="mode-tx"><span class="mode-t">Jouer seul</span><span class="mode-s">contre l’ordinateur</span></span></button>
+      <button class="btn big mode-btn" id="btn-mini-hotseat"><span class="mode-ic">📱</span><span class="mode-tx"><span class="mode-t">Sur ce téléphone</span><span class="mode-s">à plusieurs, on se le passe</span></span></button>
+      <button class="btn big mode-btn" id="btn-mini-online"><span class="mode-ic">🌍</span><span class="mode-tx"><span class="mode-t">En ligne</span><span class="mode-s">chacun chez soi, avec un code</span></span></button>
+      <button class="btn big mode-btn" id="btn-mini-host"><span class="mode-ic">📶</span><span class="mode-tx"><span class="mode-t">Sur place, sans Internet</span><span class="mode-s">plusieurs téléphones, par QR code</span></span></button>
+    </div>
+    <div id="mini-solo-config" class="hidden config-bloc">
       <label>Votre prénom
         <input type="text" id="msolo-name" maxlength="14" value="Joueur 1">
       </label>
       <label id="msolo-bots-label">Adversaires IA</label>
       <div id="msolo-bots"></div>
+      <label id="msolo-niveau-label" class="hidden">Niveau de l’ordinateur</label>
+      <div id="msolo-niveau" class="choix-ligne hidden"></div>
       <button class="btn big primary" id="btn-msolo-start">Commencer la partie</button>
     </div>
-    <div id="mini-hotseat-config" class="hidden">
+    <div id="mini-hotseat-config" class="hidden config-bloc">
       <label>Nombre de joueurs</label>
       <div id="mini-count"></div>
       <label>Joueur 1
@@ -159,6 +201,45 @@
       </label>
       <button class="btn big primary" id="btn-mini-start">Commencer la partie</button>
     </div>
+    <button class="btn link" data-back>← Retour</button>
+  </section>
+
+  <!-- ============ PROFIL ============ -->
+  <section id="screen-profil" class="screen">
+    <h2>Mon profil</h2>
+    <div class="profil-tete"><div class="avatar" id="pf-av">🙂</div></div>
+    <label>Mon prénom
+      <input type="text" id="pf-nom" maxlength="14" placeholder="Prénom" autocomplete="off">
+    </label>
+    <label>Mon avatar</label>
+    <div class="avatars" id="pf-avatars"></div>
+    <label>Ma couleur</label>
+    <div class="teintes" id="pf-teintes"></div>
+    <h3 style="margin-top:22px">📊 Mes statistiques</h3>
+    <div class="stats-grille" id="pf-stats"></div>
+    <div class="stats-jeux" id="pf-stats-jeux"></div>
+    <button class="btn link" data-back>← Retour</button>
+  </section>
+
+  <!-- ============ RÉGLAGES ============ -->
+  <section id="screen-reglages" class="screen">
+    <h2>Réglages</h2>
+    <div class="reglage" id="rg-son" role="switch" tabindex="0"><span class="rg-ic">🔊</span><span class="rg-tx">Sons<small>bruitages et musiques de victoire</small></span><span class="interrupteur"></span></div>
+    <div class="reglage" id="rg-vib" role="switch" tabindex="0"><span class="rg-ic">📳</span><span class="rg-tx">Vibrations<small>quand le téléphone le permet</small></span><span class="interrupteur"></span></div>
+    <div class="reglage" id="rg-anim" role="switch" tabindex="0"><span class="rg-ic">✨</span><span class="rg-tx">Animations<small>confettis, particules, transitions</small></span><span class="interrupteur"></span></div>
+    <button class="btn big" id="btn-rg-profil">🙂 Mon profil et mes statistiques</button>
+    <button class="btn big" id="btn-rg-boutique" style="margin-top:10px">🪙 Cagnotte de jetons</button>
+    <hr class="sep">
+    <h3>À propos</h3>
+    <p class="hint">GGgames — des jeux à plusieurs, entièrement hors ligne. <span id="rg-version"></span></p>
+    <button class="btn" id="btn-rg-maj">🔄 Recharger l’application</button>
+    <details class="code-details">
+      <summary>Licences des ressources libres utilisées</summary>
+      <p class="licences">Polices Fredoka, Nunito et Fraunces : SIL Open Font License 1.1.
+        Dictionnaire : dérivé de « an-array-of-french-words » (MIT, © Zeke Sikelianos),
+        lui-même issu de la liste Letterpress (CC0). QR codes : qrcode-generator (MIT,
+        © Kazuhiko Arase) et jsQR (Apache-2.0, © Cosmo Wolfe). Tout le reste : GGgames.</p>
+    </details>
     <button class="btn link" data-back>← Retour</button>
   </section>
 
@@ -401,7 +482,7 @@
   </section>
 
   <!-- ============ SUPERPOSITIONS ============ -->
-  <div id="overlay-chat" class="overlay hidden">
+  <div id="overlay-chat" class="overlay sheet hidden">
     <div class="overlay-card chat-sheet">
       <h3>💬 Discussion</h3>
       <div id="chat-log" class="chat-log"></div>
@@ -416,8 +497,10 @@
   </div>
   <div id="overlay-pass" class="overlay hidden">
     <div class="overlay-card">
+      <span class="pass-av" id="pass-av">📱</span>
       <h2>Passez le téléphone</h2>
-      <p>Au tour de <strong id="pass-name"></strong></p>
+      <p class="hint">C’est au tour de</p>
+      <p class="big-msg"><strong id="pass-name"></strong></p>
       <button class="btn big primary" id="btn-pass-ready">Voir mon jeu</button>
     </div>
   </div>
@@ -439,7 +522,7 @@
     </div>
   </div>
 
-  <div id="overlay-history" class="overlay hidden">
+  <div id="overlay-history" class="overlay sheet hidden">
     <div class="overlay-card scroll">
       <h2>Historique</h2>
       <div id="history-list"></div>
@@ -447,7 +530,7 @@
     </div>
   </div>
 
-  <div id="overlay-rules" class="overlay hidden">
+  <div id="overlay-rules" class="overlay sheet hidden">
     <div class="overlay-card scroll">
       <h2 id="rules-title">Règles</h2>
       <div id="rules-body" class="rules-body"></div>
@@ -455,7 +538,7 @@
     </div>
   </div>
 
-  <div id="overlay-menu" class="overlay hidden">
+  <div id="overlay-menu" class="overlay sheet hidden">
     <div class="overlay-card">
       <h2>Menu</h2>
       <button class="btn big" id="btn-menu-resume">Reprendre la partie</button>
@@ -467,9 +550,11 @@
 
   <div id="overlay-end" class="overlay hidden">
     <div class="overlay-card scroll">
-      <h2>🏁 Fin de partie</h2>
-      <div id="end-detail"></div>
+      <div class="fin-rayons"></div>
+      <span class="fin-trophee" id="end-trophee">🏆</span>
+      <h2 id="end-titre">Fin de partie</h2>
       <h1 id="end-winner"></h1>
+      <div id="end-detail"></div>
       <button class="btn big primary" id="btn-end-new">Nouvelle partie</button>
       <button class="btn link" id="btn-end-home">Retour à l’accueil</button>
     </div>
@@ -483,6 +568,8 @@
   <script src="js/ai.js"></script>
   <script src="js/net.js"></script>
   <script src="js/games/registry.js"></script>
+  <script src="js/fx.js"></script>
+  <script src="js/sfx.js"></script>
   <script src="js/games/cartes.js"></script>
   <script src="js/online.js"></script>
   <script src="js/wallet.js"></script>

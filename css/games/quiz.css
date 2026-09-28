@@ -1,0 +1,46 @@
+/* ===== GGgames V2 — Quiz et Le Plus Proche =====
+   Styles propres à ce jeu (chargés après css/style.css). */
+
+/* ===== Quiz & Le Plus Proche ===== */
+.qz-head { text-align: center; font-size: 13px; color: var(--ink-soft); margin: 2px 0 10px; }
+.qz-themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+.qz-theme {
+  background: var(--card);
+  border: 2px solid var(--ink); border-radius: 14px;
+  padding: 12px 4px 9px; color: var(--ink); cursor: pointer; font-family: inherit;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 24px;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.qz-theme:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.qz-theme span { font-size: 13px; font-weight: 700; font-family: 'Fraunces', Georgia, serif; }
+.qz-theme small { font-size: 10px; color: var(--ink-soft); }
+.qz-q {
+  background: var(--card);
+  border: 2px solid var(--ink); border-radius: 16px;
+  padding: 18px 16px; text-align: center;
+  font-size: 19px; font-weight: 600; line-height: 1.4; margin-bottom: 12px;
+  font-family: 'Fraunces', Georgia, serif;
+  box-shadow: 0 4px 0 var(--ink);
+}
+.qz-choices { display: flex; flex-direction: column; gap: 8px; }
+.qz-choice {
+  background: var(--card); border: 2px solid var(--ink-16); color: var(--ink);
+  border-radius: 13px; padding: 13px 14px; font-size: 16px; font-weight: 600;
+  cursor: pointer; font-family: inherit; text-align: left; position: relative;
+}
+.qz-choice:disabled { opacity: .55; }
+.qz-choice.picked { border-color: var(--teal); opacity: 1; }
+.qz-choice.show { cursor: default; }
+.qz-choice.good { border-color: var(--green); background: rgba(47, 122, 80, .12); }
+.qz-choice small { display: block; font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
+.pr-answer { text-align: center; font-size: 20px; margin: 12px 0; }
+.pr-answer strong { color: var(--accent); font-size: 26px; font-family: 'Fraunces', Georgia, serif; }
+.pr-rows { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.pr-row {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--card); border: 1px solid var(--ink-16);
+  border-radius: 10px; padding: 8px 12px; font-size: 14px;
+}
+.pr-row.win { border: 2px solid var(--green); background: rgba(47, 122, 80, .1); font-weight: 700; }
+.pr-row small { color: var(--ink-soft); font-weight: 400; }

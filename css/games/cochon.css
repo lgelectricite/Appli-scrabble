@@ -1,0 +1,5 @@
+/* ===== GGgames V2 — Cochon =====
+   Styles propres à ce jeu (chargés après css/style.css). */
+
+/* ================= Cochon ================= */
+.pig-die { text-align: center; font-size: 110px; line-height: 1.1; }

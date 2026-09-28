@@ -1,7 +1,7 @@
 /*
  * GGgames — registre des jeux.
  * Chaque module de jeu s'enregistre ici et expose :
- *   id, nom, icone, desc        — catalogue
+ *   id, nom, icone, desc, regles — catalogue et règles
  *   min, max                    — nombre de joueurs
  *   hotseat                     — jouable à plusieurs sur un seul téléphone
  *   hidden                      — informations cachées (écran « passez le téléphone »)
@@ -12,12 +12,22 @@
  *       renvoie {ok, error?, timer?:{ms, action}}
  *   over(state)                 — partie terminée ?
  *   summary(state)              — HTML du récapitulatif final
+ *   gagnants(state)             — (V2, conseillé) indices des gagnants, [] = égalité ;
+ *                                 'tous' pour une victoire collective, null = défaite collective
  *   scoreOf(state, i)           — score affiché dans le bandeau
  *   redact(state, viewer)       — copie sans les secrets des autres (optionnel)
+ *   bot(state, i, ctx)          — action de l'IA pour le joueur i (optionnel)
  *   render(el, ctx)             — ctx = {state, me, act(a), canAct, mode}
+ *
+ * Les effets (GG.fx, GG.sfx, GG.haptic, GG.reglages) sont remplacés par
+ * js/fx.js et js/sfx.js dans le navigateur. Les versions « muettes »
+ * ci-dessous garantissent qu'un appel ne plante jamais : dans Node (tests),
+ * ou si un de ces fichiers n'a pas pu se charger.
  */
 (function (root) {
   'use strict';
+  function rien() { return typeof Promise !== 'undefined' ? Promise.resolve() : undefined; }
+  var muet = new Proxy({}, { get: function () { return rien; } });
   root.GG = {
     list: [],
     byId: {},
@@ -34,8 +44,16 @@
       }
       return a;
     },
+    /* Échappe TOUT ce qui pourrait sortir d'un texte ou d'un attribut HTML :
+       les guillemets aussi (un prénom comme a" onclick="… ne doit rien créer). */
     esc: function (s) {
-      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    },
+    fx: muet,
+    sfx: muet,
+    haptic: rien,
+    reglages: { get: function () { return undefined; }, set: rien, tout: function () { return {}; } }
   };
 })(typeof self !== 'undefined' ? self : globalThis);

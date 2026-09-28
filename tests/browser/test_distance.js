@@ -13,8 +13,8 @@ function check(n, c, e) {
   const host = await ctxH.newPage(), guest = await ctxG.newPage();
   host.on('pageerror', e => { failures++; console.log('  FAIL host JS: ' + e.message); });
   guest.on('pageerror', e => { failures++; console.log('  FAIL guest JS: ' + e.message); });
-  await host.goto('http://localhost:8642/index.html');
-  await guest.goto('http://localhost:8642/index.html');
+  await host.goto((process.env.GG_URL || 'http://localhost:8642/index.html'));
+  await guest.goto((process.env.GG_URL || 'http://localhost:8642/index.html'));
 
   console.log('--- Jouer à distance (échange des codes par message) ---');
   await host.click('.game-tile[data-g="p4"]');

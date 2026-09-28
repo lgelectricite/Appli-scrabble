@@ -1,0 +1,17 @@
+/* ===== GGgames V2 — Memory =====
+   Styles propres à ce jeu (chargés après css/style.css). */
+
+/* ================= Memory ================= */
+.mem-board {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px;
+  max-width: 420px; margin: 0 auto;
+}
+.mem-card {
+  aspect-ratio: 1; border-radius: 10px; cursor: pointer;
+  background: repeating-linear-gradient(45deg, #e4d3b2, #e4d3b2 8px, #dbc7a0 8px, #dbc7a0 16px);
+  display: flex; align-items: center; justify-content: center; font-size: 30px;
+  border: 2px solid var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+}
+.mem-card.up { background: #fff; }
+.mem-card.done { opacity: .35; box-shadow: none; }

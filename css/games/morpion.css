@@ -1,0 +1,16 @@
+/* ===== GGgames V2 — Morpion =====
+   Styles propres à ce jeu (chargés après css/style.css). */
+
+/* ================= Morpion ================= */
+.ttt-board {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  max-width: 320px; margin: 0 auto;
+}
+.ttt-cell {
+  aspect-ratio: 1; background: var(--card); border: 2px solid var(--ink);
+  border-radius: 12px; box-shadow: 0 3px 0 var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 52px; font-weight: 800; cursor: pointer;
+  font-family: 'Fraunces', Georgia, serif;
+}
+.ttt-cell.win { background: var(--green); color: #fff; }

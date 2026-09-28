@@ -4,7 +4,7 @@
  * issue de secours permet de tout retélécharger.
  */
 const { chromium } = require('playwright');
-const URL_APP = 'http://localhost:8642/index.html';
+const URL_APP = (process.env.GG_URL || 'http://localhost:8642/index.html');
 let failures = 0;
 function check(n, c, e) {
   if (c) console.log('  OK  ' + n);

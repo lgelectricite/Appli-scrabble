@@ -38,6 +38,7 @@
   var miniBots = 0;          // adversaires IA en jeu (mode « contre l'ordinateur »)
   var miniSoloBots = 1;      // choix courant sur l'écran de config solo
   var miniBotTimer = null;   // prochaine action IA programmée
+  var miniNiveau = 'moyen';  // niveau des IA (jeux qui déclarent mod.niveaux)
   var BOT_NAMES = ['🤖 Margot', '🤖 Ernest', '🤖 Suzette', '🤖 Marcel'];
   var scanner = null;
   var pending = [];          // [{index, letter, blank, rackPos}]
@@ -63,21 +64,72 @@
 
   function $(id) { return document.getElementById(id); }
 
-  /* ---------- navigation entre écrans ---------- */
-  function showScreen(id) {
+  /* ---------- navigation entre écrans ----------
+     Chaque écran entre avec une petite animation ; l'accent de couleur du
+     jeu choisi (data-jeu sur <body>) colore bannières, boutons et en-têtes ;
+     hors de l'accueil, une « garde » d'historique intercepte le bouton
+     retour d'Android (voir onRetour). */
+  var ECRANS_JEU = ['screen-mini', 'screen-game'];
+  var ECRANS_CONFIG = ['screen-mini-setup', 'screen-host', 'screen-mots-home',
+    'screen-solo-setup', 'screen-local-setup'];
+  function showScreen(id, opts) {
+    opts = opts || {};
     document.querySelectorAll('.screen').forEach(function (s) {
-      s.classList.toggle('active', s.id === id);
+      var on = s.id === id;
+      s.classList.toggle('active', on);
+      s.classList.toggle('retour', on && !!opts.retour);
     });
     window.scrollTo(0, 0);
+    var j = null;
+    if (ECRANS_JEU.indexOf(id) !== -1) j = currentGame;
+    else if (ECRANS_CONFIG.indexOf(id) !== -1) j = pendingGame;
+    if (j) document.body.setAttribute('data-jeu', j);
+    else document.body.removeAttribute('data-jeu');
+    if (id !== 'screen-home') poseGarde();
+    if (id === 'screen-home') renderAccueil();
+  }
+
+  /* ---------- bouton retour d'Android ---------- */
+  var garde = false;
+  function poseGarde() {
+    if (garde) return;
+    try { history.pushState({ gg: 1 }, ''); garde = true; } catch (e) {}
+  }
+  var FENETRES = ['overlay-joker', 'overlay-confirm', 'overlay-rules', 'overlay-history',
+    'overlay-chat', 'overlay-menu'];
+  function onRetour() {
+    garde = false;
+    if ($('screen-home').classList.contains('active')) return; // on laisse sortir
+    for (var k = 0; k < FENETRES.length; k++) {
+      if (!$(FENETRES[k]).classList.contains('hidden')) {
+        if (FENETRES[k] === 'overlay-chat') chatFerme();
+        else if (FENETRES[k] === 'overlay-joker') { jokerTarget = null; showOverlay('overlay-joker', false); }
+        else if (FENETRES[k] === 'overlay-confirm') { confirmCb = null; showOverlay('overlay-confirm', false); }
+        else showOverlay(FENETRES[k], false);
+        poseGarde();
+        return;
+      }
+    }
+    if (!$('overlay-end').classList.contains('hidden')) { quitToHome(); return; }
+    if (!$('overlay-pass').classList.contains('hidden')) { poseGarde(); return; }
+    var enJeu = ECRANS_JEU.some(function (e) { return $(e).classList.contains('active'); });
+    if (enJeu && gameStarted()) { showOverlay('overlay-menu', true); poseGarde(); return; }
+    quitToHome();
   }
 
   function showOverlay(id, visible) {
-    $(id).classList.toggle('hidden', !visible);
+    var el = $(id);
+    var avant = !el.classList.contains('hidden');
+    el.classList.toggle('hidden', !visible);
+    if (visible && !avant) window.GG.sfx.play(el.classList.contains('sheet') ? 'open' : 'pop');
   }
 
   function toast(msg) {
     var t = $('toast');
     t.textContent = msg;
+    // relance l'animation d'entrée à chaque message
+    t.classList.add('hidden');
+    void t.offsetWidth;
     t.classList.remove('hidden');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.classList.add('hidden'); }, 3200);
@@ -536,6 +588,7 @@
       showEnd();
       return;
     }
+    sauvePartie();
     if (mode === 'solo' && state.current === 1) {
       aiTurn();
       return;
@@ -593,6 +646,7 @@
         }
       }
       aiThinking = false;
+      sauvePartie();
       render();
       if (state.over) showEnd();
     }, 400);
@@ -603,6 +657,7 @@
     passHidden = true;
     $('pass-name').textContent = state.players[state.current].name;
     showOverlay('overlay-pass', true);
+    window.GG.sfx.play('whoosh');
     render();
   }
 
@@ -649,12 +704,17 @@
     });
     det.innerHTML = lines.join('');
     var w = $('end-winner');
+    var gagnants;
     if (ranked[0].score === ranked[1].score) {
       w.textContent = 'Égalité !';
+      gagnants = [];
     } else {
-      w.textContent = '🏆 ' + ranked[0].name + ' gagne !';
+      w.textContent = ranked[0].name + ' gagne !';
+      gagnants = [ranked[0].i];
     }
     $('btn-end-new').classList.toggle('hidden', mode === 'guest');
+    effaceSauvegarde();
+    celebreFin('mots', gagnants, mode === 'solo' ? [0] : (mode === 'local' ? null : [myFixedIndex]));
     showOverlay('overlay-end', true);
   }
 
@@ -683,6 +743,308 @@
     if (pendingGame === 'mots') return 'Words';
     var mod = window.GG.byId[pendingGame];
     return mod ? mod.nom : '';
+  }
+
+
+  /* =================================================================
+   *  V2 — PROFIL, STATISTIQUES, RÉCENTS, REPRISE, CÉLÉBRATION, RÉGLAGES
+   * ================================================================= */
+
+  function lis(cle, defaut) {
+    try { var v = JSON.parse(localStorage.getItem(cle) || 'null'); return v == null ? defaut : v; }
+    catch (e) { return defaut; }
+  }
+  function ecris(cle, v) {
+    try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) {}
+  }
+
+  /* ---------- profil : prénom, avatar, couleur, retenus pour toujours ---------- */
+  var AVATARS = ['🙂', '😎', '🤠', '🥳', '🤓', '😺', '🦊', '🐼', '🐸', '🦁', '🐯', '🐵',
+    '🦄', '🐙', '👾', '🐧', '🦉', '🐨', '🐶', '🐱', '🐻', '🐰', '🦖', '🐝'];
+  var TEINTES = [
+    ['#ffcf5c', '#ff6b8b'], ['#6be38a', '#1fa37a'], ['#5ee7ff', '#3b82f6'],
+    ['#c471f5', '#fa71cd'], ['#ffa24f', '#ff4f4f'], ['#9aa3ff', '#6b5cff'], ['#f7f7f7', '#9aa0c8']
+  ];
+  function profil() {
+    var p = lis('gg-profil', {});
+    return { nom: typeof p.nom === 'string' ? p.nom.slice(0, 14) : '', av: p.av || '🙂',
+      teinte: TEINTES[p.teinte] ? p.teinte : 0 };
+  }
+  function profilSet(p) { ecris('gg-profil', p); majProfilChip(); }
+  function monNom(defaut) { return profil().nom || defaut; }
+  function fondAvatar(t) {
+    var c = TEINTES[t] || TEINTES[0];
+    return 'linear-gradient(135deg,' + c[0] + ',' + c[1] + ')';
+  }
+  function majProfilChip() {
+    var p = profil();
+    $('profil-av').textContent = p.av;
+    $('profil-av').style.setProperty('--av-bg', fondAvatar(p.teinte));
+    $('profil-nom').textContent = p.nom || 'Mon profil';
+  }
+  /* Un prénom tapé dans un écran de configuration devient celui du profil. */
+  function retiensNom(v) {
+    v = (v || '').trim().slice(0, 14);
+    if (!v || /^(joueur|vous|invité)( ?\d+)?$/i.test(v)) return;
+    var p = profil();
+    if (p.nom === v) return;
+    p.nom = v;
+    profilSet(p);
+  }
+  var CHAMPS_MON_NOM = ['solo-name', 'msolo-name', 'mini-name-1', 'local-name-1', 'host-name', 'join-name', 'online-name'];
+  function prefillNoms() {
+    var n = profil().nom;
+    if (!n) return;
+    CHAMPS_MON_NOM.forEach(function (id) { if ($(id)) $(id).value = n; });
+  }
+
+  /* ---------- statistiques par jeu ---------- */
+  function stats() { return lis('gg-stats', {}); }
+  function noteStat(jeu, issue) {
+    var st = stats();
+    var j = st[jeu] || { jouees: 0, gagnees: 0, serie: 0, record: 0 };
+    j.jouees++;
+    if (issue === 'gagne') { j.gagnees++; j.serie++; j.record = Math.max(j.record, j.serie); }
+    else if (issue === 'perdu') j.serie = 0;
+    st[jeu] = j;
+    ecris('gg-stats', st);
+  }
+  function recents() { return lis('gg-recents', []); }
+  function noteRecent(jeu) {
+    var r = recents().filter(function (x) { return x !== jeu; });
+    r.unshift(jeu);
+    ecris('gg-recents', r.slice(0, 6));
+  }
+
+  /* ---------- la fin d'une partie se fête ----------
+     gagnants : indices, [] = égalité, 'tous' = victoire collective,
+     null = défaite collective, undefined = inconnu.
+     humains : indices joués sur CE téléphone (null = tout le monde, hotseat). */
+  function celebreFin(jeu, gagnants, humains) {
+    var fx = window.GG.fx, sfx = window.GG.sfx;
+    var titre = 'Fin de partie', trophee = '🏁', issue = 'fini';
+    var moiGagne = false;
+    if (gagnants === 'tous') { moiGagne = true; }
+    else if (Array.isArray(gagnants) && gagnants.length) {
+      moiGagne = !humains || gagnants.some(function (g) { return humains.indexOf(g) !== -1; });
+    }
+    if (gagnants === 'tous') { titre = 'Victoire collective !'; trophee = '🏆'; issue = 'gagne'; }
+    else if (gagnants === null) { titre = 'Perdu…'; trophee = '🕯️'; issue = 'perdu'; }
+    else if (Array.isArray(gagnants) && !gagnants.length) { titre = 'Égalité !'; trophee = '🤝'; issue = 'egalite'; }
+    else if (Array.isArray(gagnants)) {
+      if (!humains) { titre = 'Bravo !'; trophee = '🏆'; issue = 'fini'; }
+      else if (moiGagne) { titre = 'Victoire !'; trophee = '🏆'; issue = 'gagne'; }
+      else { titre = 'Perdu, de peu…'; trophee = '🥈'; issue = 'perdu'; }
+    }
+    $('end-titre').textContent = titre;
+    $('end-trophee').textContent = trophee;
+    $('overlay-end').dataset.issue = issue;
+    noteStat(jeu, humains ? issue : 'fini');
+    setTimeout(function () {
+      if (issue === 'gagne' || (issue === 'fini' && trophee === '🏆')) {
+        fx.confetti({ count: 160 });
+        sfx.play('win');
+        window.GG.haptic('success');
+      } else if (issue === 'perdu') {
+        sfx.play('lose');
+        window.GG.haptic('warning');
+      } else {
+        sfx.play('draw');
+      }
+    }, 180);
+  }
+
+  /* ---------- reprendre une partie interrompue ----------
+     Les parties jouées sur CE téléphone (seul contre l'IA ou à plusieurs
+     en se le passant) sont enregistrées à chaque coup : bouton retour,
+     appel entrant, appli fermée par Android… on reprend là où on était. */
+  var SAUVE_CLE = 'gg-partie';
+  var sauveMinuteur = null;
+  function sauvePartie() {
+    clearTimeout(sauveMinuteur);
+    sauveMinuteur = setTimeout(sauveMaintenant, 250);
+  }
+  function sauveMaintenant() {
+    var sv = null;
+    if (miniState && miniMod && mode === 'local' && !miniMod.over(miniState)) {
+      sv = { v: 2, type: 'mini', jeu: currentGame, bots: miniBots, state: miniState, me: miniMe, ts: Date.now() };
+    } else if (state && (mode === 'solo' || mode === 'local') && currentGame === 'mots' && !state.over) {
+      sv = { v: 2, type: 'mots', mode: mode, niveau: aiLevel, state: state, ts: Date.now() };
+    }
+    if (sv) ecris(SAUVE_CLE, sv);
+  }
+  function lisSauvegarde() {
+    var sv = lis(SAUVE_CLE, null);
+    if (!sv || sv.v !== 2 || !sv.state) return null;
+    if (Date.now() - sv.ts > 14 * 86400000) return null; // au-delà de 2 semaines, on oublie
+    if (sv.type === 'mini' && !window.GG.byId[sv.jeu]) return null;
+    return sv;
+  }
+  function effaceSauvegarde() {
+    clearTimeout(sauveMinuteur);
+    try { localStorage.removeItem(SAUVE_CLE); } catch (e) {}
+  }
+  /* On renonce à reprendre : une table à jetons rend d'abord la pile. */
+  function abandonneSauvegarde() {
+    var sv = lisSauvegarde();
+    if (sv && sv.type === 'mini') {
+      var mod = window.GG.byId[sv.jeu];
+      if (mod && mod.cashout) { try { mod.cashout(sv.state, sv.me || 0); } catch (e) {} }
+    }
+    effaceSauvegarde();
+    updateWallet();
+  }
+  function ilYa(ts) {
+    var m = Math.round((Date.now() - ts) / 60000);
+    if (m < 1) return 'à l’instant';
+    if (m < 60) return 'il y a ' + m + ' min';
+    var h = Math.round(m / 60);
+    if (h < 24) return 'il y a ' + h + ' h';
+    var j = Math.round(h / 24);
+    return 'il y a ' + j + ' jour' + (j > 1 ? 's' : '');
+  }
+  function renderReprise() {
+    var box = $('home-reprise');
+    if (!box) return;
+    var sv = lisSauvegarde();
+    if (!sv) { box.innerHTML = ''; return; }
+    var info = catInfo(sv.type === 'mots' ? 'mots' : sv.jeu);
+    var noms = (sv.state.players || []).map(function (p) { return p.name; });
+    var qui = sv.type === 'mots'
+      ? (sv.mode === 'solo' ? 'contre l’IA (' + sv.niveau + ')' : 'à ' + noms.length + ' sur ce téléphone')
+      : (sv.bots ? 'contre ' + noms.slice(1).join(', ') : (noms.length > 1 ? 'à ' + noms.length + ' sur ce téléphone' : 'en solo'));
+    box.innerHTML = '<div class="reprise" data-jeu="' + info.id + '" role="button" tabindex="0" id="btn-reprise">' +
+      '<span class="rp-ic">' + info.icone + '</span>' +
+      '<span class="rp-tx"><span class="rp-t">Reprendre : ' + window.GG.esc(info.nom) + '</span>' +
+      '<span class="rp-s">' + window.GG.esc(qui) + ' · ' + ilYa(sv.ts) + '</span></span>' +
+      '<span class="rp-go">Jouer ▶</span>' +
+      '<span class="rp-x" id="btn-reprise-x" role="button" aria-label="Oublier cette partie">✕</span></div>';
+    $('btn-reprise').addEventListener('click', function (ev) {
+      if (ev.target && ev.target.id === 'btn-reprise-x') {
+        ev.stopPropagation();
+        abandonneSauvegarde();
+        renderReprise();
+        return;
+      }
+      reprendPartie();
+    });
+  }
+  function reprendPartie() {
+    var sv = lisSauvegarde();
+    if (!sv) { renderReprise(); return; }
+    if (sv.type === 'mini') {
+      var mod = window.GG.byId[sv.jeu];
+      var besoinDico = sv.jeu === 'motus';
+      (besoinDico ? loadDict().catch(function () {}) : Promise.resolve()).then(function () {
+        pendingGame = currentGame = sv.jeu;
+        miniMod = mod;
+        mode = 'local';
+        miniBots = sv.bots || 0;
+        miniState = sv.state;
+        miniMe = sv.me || 0;
+        enterMini();
+      });
+      return;
+    }
+    loadDict().then(function () {
+      pendingGame = currentGame = 'mots';
+      mode = sv.mode;
+      aiLevel = sv.niveau || 'moyen';
+      state = sv.state;
+      pending = [];
+      selected = -1;
+      enterGame();
+      if (mode === 'local') showPassDevice();
+      else if (mode === 'solo' && state.current === 1) aiTurn();
+    }).catch(function () {
+      toast('Impossible de charger le dictionnaire pour reprendre la partie.');
+    });
+  }
+
+  /* ---------- l'accueil : salutation, reprise, profil ---------- */
+  var ACCROCHES = ['À quoi on joue ?', 'Une petite partie ?', 'Prêt pour la revanche ?',
+    'Qui gagne ce soir ?', 'On lance les dés ?', 'Un défi entre amis ?'];
+  function renderAccueil() {
+    var p = profil();
+    $('home-salut').textContent = p.nom ? 'Salut ' + p.nom + ' ! 👋' : 'Salut ! 👋';
+    $('home-sous').textContent = ACCROCHES[Math.floor(Math.random() * ACCROCHES.length)];
+    majProfilChip();
+    renderReprise();
+    if (filtreActif === 'tous') renderCatalog();
+  }
+
+  /* ---------- écran « Mon profil » ---------- */
+  function openProfil() {
+    var p = profil();
+    $('pf-nom').value = p.nom;
+    $('pf-av').textContent = p.av;
+    $('pf-av').style.setProperty('--av-bg', fondAvatar(p.teinte));
+    $('pf-avatars').innerHTML = AVATARS.map(function (a) {
+      return '<button class="' + (a === p.av ? 'active' : '') + '" data-av="' + a + '">' + a + '</button>';
+    }).join('');
+    $('pf-teintes').innerHTML = TEINTES.map(function (t, i) {
+      return '<button class="' + (i === p.teinte ? 'active' : '') + '" data-t="' + i +
+        '" style="background:linear-gradient(135deg,' + t[0] + ',' + t[1] + ')" aria-label="Couleur ' + (i + 1) + '"></button>';
+    }).join('');
+    $('pf-avatars').querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var q = profil(); q.av = b.dataset.av; profilSet(q);
+        $('pf-avatars').querySelectorAll('button').forEach(function (x) { x.classList.toggle('active', x === b); });
+        $('pf-av').textContent = q.av;
+        window.GG.fx.pop($('pf-av'));
+      });
+    });
+    $('pf-teintes').querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var q = profil(); q.teinte = parseInt(b.dataset.t, 10); profilSet(q);
+        $('pf-teintes').querySelectorAll('button').forEach(function (x) { x.classList.toggle('active', x === b); });
+        $('pf-av').style.setProperty('--av-bg', fondAvatar(q.teinte));
+        window.GG.fx.pop($('pf-av'));
+      });
+    });
+    var st = stats();
+    var tot = { jouees: 0, gagnees: 0, record: 0 };
+    Object.keys(st).forEach(function (k) {
+      tot.jouees += st[k].jouees; tot.gagnees += st[k].gagnees; tot.record = Math.max(tot.record, st[k].record);
+    });
+    $('pf-stats').innerHTML =
+      '<div class="stat-case"><b>' + tot.jouees + '</b><span>parties</span></div>' +
+      '<div class="stat-case"><b>' + tot.gagnees + '</b><span>victoires</span></div>' +
+      '<div class="stat-case"><b>' + tot.record + '</b><span>meilleure série</span></div>';
+    var lignes = Object.keys(st).sort(function (a, b) { return st[b].jouees - st[a].jouees; }).map(function (k) {
+      var m = catInfo(k);
+      if (!m) return '';
+      return '<div class="stats-jeu" data-jeu="' + k + '"><span class="sj-ic">' + m.icone + '</span>' +
+        '<span class="sj-n">' + window.GG.esc(m.nom) + '</span><span class="sj-v">' +
+        st[k].gagnees + ' / ' + st[k].jouees + ' gagnées</span></div>';
+    }).join('');
+    $('pf-stats-jeux').innerHTML = lignes || '<p class="hint" style="text-align:center">Vos parties terminées apparaîtront ici.</p>';
+    showScreen('screen-profil');
+  }
+
+  /* ---------- écran « Réglages » ---------- */
+  function majReglages() {
+    var R = window.GG.reglages;
+    $('rg-son').classList.toggle('on', R.get('son') !== false);
+    $('rg-vib').classList.toggle('on', R.get('vibrations') !== false);
+    $('rg-anim').classList.toggle('on', R.get('animations') !== 'reduites');
+    ['rg-son', 'rg-vib', 'rg-anim'].forEach(function (id) {
+      $(id).setAttribute('aria-checked', $(id).classList.contains('on') ? 'true' : 'false');
+    });
+    document.body.classList.toggle('anim-reduites', R.get('animations') === 'reduites');
+  }
+  function openReglages() {
+    majReglages();
+    $('rg-version').textContent = '';
+    try {
+      if (window.caches && caches.keys) {
+        caches.keys().then(function (ks) {
+          var v = ks.filter(function (k) { return /^gggames-v/.test(k); }).sort().pop();
+          $('rg-version').textContent = v ? 'Version ' + v.replace('gggames-', '') + '.' : '';
+        }).catch(function () {});
+      }
+    } catch (e) {}
+    showScreen('screen-reglages');
   }
 
   /* ---------- cagnotte de jetons et boutique ---------- */
@@ -744,24 +1106,28 @@
     return false;
   }
 
-  /* L'accueil est une étagère de salon : chaque jeu est une boîte rangée
-     sur une planche, par rayon. Les boîtes gardent la classe .game-tile et
-     l'attribut data-g dont dépendent les tests et le reste du code. */
-  var SHELVES = [
-    { titre: 'Jeux de lettres', jeux: ['mots', 'pendu', 'motus', 'bac', 'meles', 'croises', 'fleches'], couches: 2 },
-    { titre: 'Cartes & casino', jeux: ['huit', 'poker', 'blackjack', 'solitaire'], couches: 1 },
-    { titre: 'Réflexion', jeux: ['sudoku', 'memory', 'bonbons', 'quiz', 'proche'], couches: 1 },
-    { titre: 'Grands classiques', jeux: ['p4', 'morpion', 'bataille', 'yams', 'cochon'], couches: 1 },
-    { titre: 'Jeux de soirée', jeux: ['manoir', 'imposteur', 'chat'], couches: 0 }
+  /* ---------- l'accueil V2 : des tuiles colorées rangées par catégorie ----------
+     Les tuiles gardent la classe .game-tile et l'attribut data-g dont
+     dépendent les tests et le reste du code ; data-jeu leur donne leurs
+     couleurs (voir css/style.css). */
+  var CATEGORIES = [
+    { id: 'lettres', titre: 'Jeux de lettres', ic: '🔤', jeux: ['mots', 'motus', 'pendu', 'bac', 'meles', 'croises', 'fleches'] },
+    { id: 'cartes', titre: 'Cartes et casino', ic: '🃏', jeux: ['poker', 'blackjack', 'huit', 'solitaire'] },
+    { id: 'classiques', titre: 'Grands classiques', ic: '🎲', jeux: ['p4', 'morpion', 'bataille', 'yams', 'cochon', 'memory'] },
+    { id: 'reflexion', titre: 'Réflexion', ic: '🧩', jeux: ['sudoku', 'bonbons'] },
+    { id: 'soiree', titre: 'Soirée entre amis', ic: '🎉', jeux: ['imposteur', 'manoir', 'quiz', 'proche', 'chat'] }
   ];
-  var BOX_COLORS = {
-    mots: '#c2452c', pendu: '#1e6f77', motus: '#2f7a50', bac: '#d9992b',
-    meles: '#7d4a6b', croises: '#3f4b6e', fleches: '#b96a3d',
-    huit: '#a83a4f', poker: '#234c37', blackjack: '#2c2218', solitaire: '#1e6f77',
-    sudoku: '#3f4b6e', memory: '#c2452c', bonbons: '#d9679b', quiz: '#d9992b', proche: '#2f7a50',
-    p4: '#1e6f77', morpion: '#b96a3d', bataille: '#3f4b6e', yams: '#7d4a6b', cochon: '#c2452c',
-    manoir: '#241d38', imposteur: '#6d4f3a', chat: '#7d4a6b'
-  };
+  var FILTRES = [
+    { id: 'tous', t: '✨ Tous' },
+    { id: 'plusieurs', t: '👥 À plusieurs' },
+    { id: 'solo', t: '🤖 Seul' },
+    { id: 'lettres', t: '🔤 Lettres' },
+    { id: 'cartes', t: '🃏 Cartes' },
+    { id: 'classiques', t: '🎲 Classiques' },
+    { id: 'reflexion', t: '🧩 Réflexion' },
+    { id: 'soiree', t: '🎉 Soirée' }
+  ];
+  var filtreActif = 'tous';
 
   function catInfo(id) {
     if (id === 'mots') return { id: 'mots', nom: 'Words', icone: '🔤', min: 1, max: 4, bot: true };
@@ -772,24 +1138,22 @@
     return m.min + (m.max > m.min ? '–' + m.max : '') + ' joueur' + (m.max > 1 ? 's' : '');
   }
 
-  function boxHtml(m, i, flat) {
-    var color = BOX_COLORS[m.id] || '#c2452c';
-    if (flat) {
-      return '<button class="game-tile bx-flat" data-g="' + m.id + '" style="--bx:' + color + '">' +
-        '<span class="bx-ic">' + m.icone + '</span>' +
-        '<span class="bx-nm">' + m.nom + '</span>' +
-        '<span class="bx-pl">' + m.min + (m.max > m.min ? '–' + m.max : '') + ' j.</span></button>';
-    }
-    var h = 122 + ((i * 13) % 27); // hauteurs de boîtes irrégulières
-    return '<button class="game-tile bx" data-g="' + m.id + '" style="--bx:' + color +
-      ';height:' + h + 'px">' +
-      (m.bot ? '<span class="bx-bot" title="Jouable seul contre l’ordinateur">🤖</span>' : '') +
-      '<span class="bx-ic">' + m.icone + '</span>' +
-      '<span class="bx-nm">' + m.nom + '</span>' +
-      '<span class="bx-pl">' + playersLabel(m) + '</span>' +
-      '<span class="bx-gg">GG</span></button>';
+  function tuileHtml(m, i) {
+    var joueurs = m.max === 1 ? 'solo' : (m.min + (m.max > m.min ? '–' + m.max : ''));
+    return '<button class="game-tile" data-g="' + m.id + '" data-jeu="' + m.id + '" style="--i:' + i + '" aria-label="' +
+      window.GG.esc(m.nom + ', ' + playersLabel(m)) + '">' +
+      '<span class="gt-carre"><span class="gt-ic">' + m.icone + '</span>' +
+      '<span class="gt-bd">' + joueurs + '</span>' +
+      (m.bot ? '<span class="gt-fav gt-bot" title="Jouable seul contre l’ordinateur">🤖</span>' : '') +
+      '</span><span class="gt-nm">' + window.GG.esc(m.nom) + '</span></button>';
   }
 
+  function correspond(m, filtre) {
+    if (filtre === 'tous') return true;
+    if (filtre === 'plusieurs') return m.max > 1;
+    if (filtre === 'solo') return m.max === 1 || !!m.bot;
+    return false;
+  }
   /* Issue de secours : vide le cache hors ligne, désinscrit le service
      worker et recharge tout depuis le site. À n'utiliser qu'avec Internet —
      c'est le seul moyen de sortir d'une mise à jour abîmée. */
@@ -818,43 +1182,62 @@
 
   function renderCatalog() {
     var cat = $('catalog');
-    // La pièce : un mur peint, la bibliothèque en bois, la plinthe et le
-    // parquet. Tout défile verticalement — 4 boîtes par planche, toutes
-    // droites, aucun défilement horizontal.
-    var html = '<div class="room">' +
-      '<div class="room-clock"><span class="rc-h"></span><span class="rc-m"></span></div>' +
-      '<div class="bookcase"><span class="room-plant">🪴</span><div class="case-inner">';
+    // les onglets de catégories
+    var tabs = $('cat-tabs');
+    if (tabs && !tabs.childElementCount) {
+      tabs.innerHTML = FILTRES.map(function (f) {
+        return '<button class="cat-tab' + (f.id === filtreActif ? ' active' : '') +
+          '" data-f="' + f.id + '">' + f.t + '</button>';
+      }).join('');
+      tabs.querySelectorAll('.cat-tab').forEach(function (b) {
+        b.addEventListener('click', function () {
+          filtreActif = b.dataset.f;
+          tabs.querySelectorAll('.cat-tab').forEach(function (x) { x.classList.toggle('active', x === b); });
+          renderCatalog();
+        });
+      });
+    }
     // Un jeu dont le fichier n'a pas pu être chargé (mise à jour interrompue,
-    // fichier abîmé…) est simplement absent de l'étagère : JAMAIS il ne doit
-    // emporter les autres avec lui.
+    // fichier abîmé…) est simplement absent : JAMAIS il ne doit emporter les
+    // autres avec lui.
     var manquants = [];
     var poses = 0;
-    SHELVES.forEach(function (sh) {
-      var jeux = sh.jeux.filter(function (id) {
-        if (id === 'mots' || window.GG.byId[id]) return true;
-        manquants.push(id);
-        return false;
+    var html = '';
+    var idx = 0;
+    function tuiles(ids) {
+      var h = '';
+      ids.forEach(function (id) {
+        if (id !== 'mots' && !window.GG.byId[id]) { if (manquants.indexOf(id) === -1) manquants.push(id); return; }
+        try { h += tuileHtml(catInfo(id), idx++); poses++; } catch (e) { manquants.push(id); }
       });
-      if (!jeux.length) return;
-      html += '<div class="case-label">' + sh.titre + '</div>';
-      // planches équilibrées : 5 jeux font 3 + 2, jamais une boîte esseulée
-      var n = jeux.length;
-      var planches = Math.ceil(n / 4);
-      var parPlanche = Math.ceil(n / planches);
-      for (var o = 0; o < n; o += parPlanche) {
-        html += '<div class="shelf-books">';
-        jeux.slice(o, o + parPlanche).forEach(function (id, i) {
-          try {
-            html += boxHtml(catInfo(id), i + o, false);
-            poses++;
-          } catch (e) {
-            manquants.push(id);
-          }
+      return h;
+    }
+    var sections = CATEGORIES.filter(function (c) { return filtreActif === 'tous' || filtreActif === c.id; });
+    if (filtreActif === 'plusieurs' || filtreActif === 'solo') {
+      var ids = [];
+      CATEGORIES.forEach(function (c) {
+        c.jeux.forEach(function (id) {
+          var m = null;
+          try { m = catInfo(id); } catch (e) { m = null; }
+          if (m && correspond(m, filtreActif)) ids.push(id);
         });
-        html += '</div><div class="shelf-board"></div>';
+      });
+      html += '<div class="grille-jeux">' + tuiles(ids) + '</div>';
+    } else {
+      // « Récemment joués » en tête, quand on regarde tout
+      var rec = filtreActif === 'tous' ? recents().filter(function (id) {
+        return id === 'mots' || window.GG.byId[id];
+      }).slice(0, 3) : [];
+      if (rec.length) {
+        html += '<div class="cat-titre">🕘 Récemment joués</div><div class="grille-jeux">' +
+          rec.map(function (id) { return tuileHtml(catInfo(id), idx++); }).join('') + '</div>';
       }
-    });
-    html += '</div></div><div class="room-floor"></div></div>';
+      sections.forEach(function (c) {
+        var t = tuiles(c.jeux);
+        if (!t) return;
+        html += '<div class="cat-titre">' + c.ic + ' ' + c.titre + '</div><div class="grille-jeux">' + t + '</div>';
+      });
+    }
     // filet de sécurité : plus rien à afficher, ou des jeux à la traîne
     if (!poses) {
       html = '<div class="ecran-secours"><h3>😕 Les jeux ne se sont pas chargés</h3>' +
@@ -871,30 +1254,33 @@
     var secours = cat.querySelector('#btn-secours');
     if (secours) secours.addEventListener('click', rechargerPropre);
     cat.querySelectorAll('.game-tile').forEach(function (t) {
-      t.addEventListener('click', function () {
-        var id = t.dataset.g;
-        if (!chipGate(id)) return;
-        if (id === 'mots') {
-          pendingGame = 'mots';
-          showScreen('screen-mots-home');
-          return;
-        }
-        // jeu de pur solitaire : on entre directement, sans écran de config
-        var mInfo = catInfo(id);
-        if (mInfo && mInfo.max === 1) {
-          pendingGame = id;
-          currentGame = id;
-          miniMod = window.GG.byId[id];
-          mode = 'local';
-          miniBots = 0;
-          miniState = miniMod.create(['Joueur 1'], { dict: dict });
-          miniMe = 0;
-          enterMini();
-          return;
-        }
-        openMiniSetup(window.GG.byId[id]);
-      });
+      t.addEventListener('click', function () { ouvreJeu(t.dataset.g); });
     });
+  }
+
+  function ouvreJeu(id) {
+    if (!chipGate(id)) return;
+    window.GG.sfx.play('select');
+    if (id === 'mots') {
+      pendingGame = 'mots';
+      prefillNoms();
+      showScreen('screen-mots-home');
+      return;
+    }
+    // jeu de pur solitaire : on entre directement, sans écran de config
+    var mInfo = catInfo(id);
+    if (mInfo && mInfo.max === 1) {
+      pendingGame = id;
+      currentGame = id;
+      miniMod = window.GG.byId[id];
+      mode = 'local';
+      miniBots = 0;
+      miniState = miniMod.create([monNom('Joueur 1')], { dict: dict });
+      miniMe = 0;
+      enterMini();
+      return;
+    }
+    openMiniSetup(window.GG.byId[id]);
   }
 
   function updateMiniNameFields() {
@@ -906,8 +1292,13 @@
 
   function openMiniSetup(mod) {
     pendingGame = mod.id;
-    $('mini-setup-title').textContent = mod.icone + ' ' + mod.nom;
+    $('mini-setup-ic').textContent = mod.icone;
+    $('mini-setup-title').textContent = mod.nom;
     $('mini-setup-desc').textContent = mod.desc;
+    $('mini-setup-meta').innerHTML = '<span class="jh-pill">👥 ' + playersLabel(mod) + '</span>' +
+      (mod.bot ? '<span class="jh-pill">🤖 contre l’ordinateur</span>' : '') +
+      (mod.netOnly ? '<span class="jh-pill">📱 un téléphone chacun</span>' : '');
+    prefillNoms();
     $('btn-mini-hotseat').classList.toggle('hidden', !mod.hotseat || mod.netOnly);
     $('btn-mini-host').classList.toggle('hidden', mod.max < 2);
     $('mini-hotseat-config').classList.add('hidden');
@@ -935,6 +1326,29 @@
       }
       $('msolo-bots-label').classList.toggle('hidden', bMin === bMax);
       bb.classList.toggle('hidden', bMin === bMax);
+      // niveau de l'ordinateur : pour les jeux qui en proposent plusieurs
+      var nv = $('msolo-niveau');
+      var niveaux = mod.niveaux || null;
+      $('msolo-niveau-label').classList.toggle('hidden', !niveaux);
+      nv.classList.toggle('hidden', !niveaux);
+      nv.innerHTML = '';
+      if (niveaux) {
+        var memo = lis('gg-niveau-' + mod.id, null);
+        miniNiveau = niveaux.indexOf(memo) !== -1 ? memo : (niveaux.indexOf('moyen') !== -1 ? 'moyen' : niveaux[0]);
+        var LIB = { facile: '😌 Facile', moyen: '🙂 Moyen', difficile: '😈 Difficile', expert: '🧠 Expert' };
+        niveaux.forEach(function (n) {
+          var bt = document.createElement('button');
+          bt.className = 'count-btn' + (n === miniNiveau ? ' active' : '');
+          bt.dataset.niveau = n;
+          bt.textContent = LIB[n] || n;
+          bt.addEventListener('click', function () {
+            miniNiveau = n;
+            ecris('gg-niveau-' + mod.id, n);
+            nv.querySelectorAll('.count-btn').forEach(function (x) { x.classList.toggle('active', x === bt); });
+          });
+          nv.appendChild(bt);
+        });
+      }
     }
     var box = $('mini-count');
     box.innerHTML = '';
@@ -989,7 +1403,8 @@
       miniMod = mod;
       mode = 'local';
       miniBots = miniSoloBots;
-      miniState = mod.create(names, { dict: dict });
+      miniState = mod.create(names, { dict: dict, niveau: mod.niveaux ? miniNiveau : undefined });
+      if (mod.niveaux) miniState.niveauIA = miniNiveau;
       miniMe = 0;
       enterMini();
     });
@@ -1008,7 +1423,7 @@
       if (miniMod.over(miniState)) return;
       for (var i = 1; i < miniState.players.length; i++) {
         var a = null;
-        try { a = miniMod.bot(window.GG.clone(miniState), i, { dict: dict }); } catch (e) { a = null; }
+        try { a = miniMod.bot(window.GG.clone(miniState), i, { dict: dict, niveau: miniState.niveauIA || 'moyen' }); } catch (e) { a = null; }
         if (!a) continue;
         var res = null;
         try { res = miniMod.apply(miniState, i, a, { dict: dict }); } catch (e2) { res = null; }
@@ -1028,6 +1443,8 @@
 
   function enterMini() {
     stopScanner();
+    noteRecent(currentGame);
+    sauvePartie();
     showScreen('screen-mini');
     $('btn-menu-invite').classList.toggle('hidden', mode !== 'host');
     chatBadges(); // la discussion n'existe qu'entre téléphones
@@ -1076,9 +1493,12 @@
       });
     }
     $('mini-icon').textContent = mod.icone;
-    $('mini-turn').innerHTML = mod.over(miniState) ? 'Partie terminée'
-      : t === -1 ? ''
-        : 'Au tour de <strong>' + esc(miniState.players[t].name) + '</strong>';
+    $('mini-turn').innerHTML = mod.max === 1 ? '<strong>' + esc(mod.nom) + '</strong>'
+      : mod.over(miniState) ? 'Partie terminée'
+        : t === -1 ? '<strong>' + esc(mod.nom) + '</strong>'
+          : (mode !== 'local' && t === miniMe) || (mode === 'local' && miniBots && t === 0)
+            ? '<strong>À vous de jouer !</strong>'
+            : 'Au tour de <strong>' + esc(miniState.players[t].name) + '</strong>';
 
     var viewer = miniViewer();
     // jeux à infos cachées sur un seul téléphone : écran de passage
@@ -1087,6 +1507,7 @@
       passHidden = true;
       $('pass-name').textContent = miniState.players[viewer].name;
       showOverlay('overlay-pass', true);
+      window.GG.sfx.play('whoosh');
     }
     miniLastViewer = viewer;
     if (passHidden && currentGame !== 'mots') {
@@ -1135,23 +1556,44 @@
 
   function miniAfterChange() {
     if (mode === 'host') miniBroadcast();
+    sauvePartie();
     miniRender();
     if (miniMod.over(miniState)) showMiniEnd();
     pumpBots();
   }
 
   function showMiniEnd() {
+    if (!$('overlay-end').classList.contains('hidden')) return; // déjà affichée
     $('end-detail').innerHTML = miniMod.summary(miniState);
     $('end-winner').textContent = '';
     $('btn-end-new').classList.toggle('hidden', mode === 'guest');
+    effaceSauvegarde();
+    var g = null;
+    try { g = miniMod.gagnants ? miniMod.gagnants(miniState) : gagnantsParScore(); } catch (e) { g = null; }
+    var humains = mode === 'local' ? (miniBots ? [0] : null) : [miniViewer()];
+    celebreFin(currentGame, g, humains);
     showOverlay('overlay-end', true);
+  }
+
+  /* Faute de mieux : le meilleur score l'emporte (égalité : personne). */
+  function gagnantsParScore() {
+    if (!miniMod.scoreOf || !miniState.players) return undefined;
+    var sc = miniState.players.map(function (p, i) { return Number(miniMod.scoreOf(miniState, i)); });
+    if (sc.some(isNaN)) return undefined;
+    var max = Math.max.apply(null, sc);
+    var gs = [];
+    sc.forEach(function (v, i) { if (v === max) gs.push(i); });
+    return gs.length === 1 ? gs : [];
   }
 
   function miniRematch() {
     var names = miniState.players.map(function (p) { return p.name; });
-    miniState = miniMod.create(names, { dict: dict });
+    var niveauIA = miniState.niveauIA;
+    miniState = miniMod.create(names, { dict: dict, niveau: niveauIA });
+    if (niveauIA) miniState.niveauIA = niveauIA;
     miniLastViewer = -1;
     showOverlay('overlay-end', false);
+    sauvePartie();
     if (mode === 'host') {
       hostPeers.forEach(function (peer) { if (peer.connected) sendInitTo(peer); });
     }
@@ -1780,6 +2222,8 @@
   /* ---------- entrée / sortie du jeu ---------- */
   function enterGame() {
     stopScanner();
+    noteRecent('mots');
+    sauvePartie();
     showScreen('screen-game');
     $('btn-menu-invite').classList.toggle('hidden', mode !== 'host');
     chatBadges();
@@ -1791,6 +2235,7 @@
     if (miniMod && miniMod.cashout && miniState) {
       try { miniMod.cashout(miniState, miniViewer()); } catch (e) {}
     }
+    effaceSauvegarde();
     updateWallet();
     stopScanner();
     autoOffer = null; // une vieille invitation ne doit jamais être rejouée
@@ -1824,7 +2269,7 @@
     netKind = 'qr';
     document.body.classList.remove('theme-manoir');
     document.body.classList.remove('theme-casino');
-    showScreen('screen-home');
+    showScreen('screen-home', { retour: true });
   }
 
   /* =================================================================
@@ -2144,8 +2589,55 @@
   function init() {
     buildBoard();
 
-    // Accueil : catalogue des jeux
+    // Accueil : catalogue des jeux, profil, reprise
+    majReglages();
     renderCatalog();
+    renderAccueil();
+    prefillNoms();
+    window.addEventListener('popstate', onRetour);
+
+    // Profil et réglages
+    $('btn-profil').addEventListener('click', openProfil);
+    $('btn-reglages').addEventListener('click', openReglages);
+    $('btn-rg-profil').addEventListener('click', openProfil);
+    $('btn-rg-boutique').addEventListener('click', openBoutique);
+    $('btn-rg-maj').addEventListener('click', rechargerPropre);
+    $('pf-nom').addEventListener('input', function () {
+      var q = profil();
+      q.nom = $('pf-nom').value.trim().slice(0, 14);
+      profilSet(q);
+      prefillNoms();
+    });
+    function bascule(id, cle, valeurOn, valeurOff) {
+      function go() {
+        var R = window.GG.reglages;
+        var on = $(id).classList.contains('on');
+        R.set(cle, on ? valeurOff : valeurOn);
+        if (cle === 'son' && window.GG.sfx.setOn) window.GG.sfx.setOn(!on);
+        majReglages();
+        if (!on) { window.GG.sfx.play('toggle'); window.GG.haptic('select'); }
+      }
+      $(id).addEventListener('click', go);
+      $(id).addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(); }
+      });
+    }
+    bascule('rg-son', 'son', true, false);
+    bascule('rg-vib', 'vibrations', true, false);
+    bascule('rg-anim', 'animations', 'normales', 'reduites');
+    // un prénom tapé quelque part devient celui du profil
+    document.addEventListener('change', function (ev) {
+      if (ev.target && CHAMPS_MON_NOM.indexOf(ev.target.id) !== -1) retiensNom(ev.target.value);
+    });
+    // petits bruits et vibrations d'interface (les jeux ont les leurs)
+    document.addEventListener('click', function (ev) {
+      var b = ev.target && ev.target.closest &&
+        ev.target.closest('.btn, .count-btn, .icon-btn, .cat-tab, .avatars button, .teintes button, .chat-q');
+      if (!b || b.disabled || b.closest('#mini-area') || b.closest('#board') || b.closest('#rack')) return;
+      window.GG.sfx.play('tap');
+      window.GG.haptic('select');
+    }, true);
+    if (window.GG.fx.autoRipple) window.GG.fx.autoRipple('.btn:not(.link), .count-btn, .mode-btn, .cat-tab');
 
     // Cagnotte de jetons : jauge d'accueil et boutique
     if (window.GG.wallet) {
@@ -2155,9 +2647,13 @@
         if ($('screen-boutique').classList.contains('active')) renderBoutique();
       });
       // table de poker fermée brutalement (appli tuée) : la cave est remboursée
+      // — sauf si la partie est enregistrée : on la reprendra, jetons compris
       try {
         var orphan = JSON.parse(localStorage.getItem('gg-poker-open') || 'null');
-        if (orphan && orphan.invested) {
+        var aReprendre = lisSauvegarde();
+        var memeTable = aReprendre && aReprendre.type === 'mini' && aReprendre.state &&
+          orphan && aReprendre.state.gameId === orphan.gameId;
+        if (orphan && orphan.invested && !memeTable) {
           window.GG.wallet.add(orphan.invested);
           localStorage.removeItem('gg-poker-open');
         }
@@ -2192,8 +2688,8 @@
       $('join-error').classList.add('hidden');
     }
 
-    $('btn-mode-solo').addEventListener('click', function () { showScreen('screen-solo-setup'); });
-    $('btn-mode-local').addEventListener('click', function () { showScreen('screen-local-setup'); });
+    $('btn-mode-solo').addEventListener('click', function () { prefillNoms(); showScreen('screen-solo-setup'); });
+    $('btn-mode-local').addEventListener('click', function () { prefillNoms(); showScreen('screen-local-setup'); });
     $('btn-mode-host').addEventListener('click', function () {
       pendingGame = 'mots';
       openHostScreen();
@@ -2296,6 +2792,13 @@
       showOverlay('overlay-rules', true);
     }
     $('btn-rules').addEventListener('click', showRules);
+    $('btn-setup-rules').addEventListener('click', function () {
+      var mod = window.GG.byId[pendingGame];
+      if (!mod) return;
+      $('rules-title').textContent = mod.icone + ' ' + mod.nom;
+      $('rules-body').innerHTML = mod.regles || ('<p>' + esc(mod.desc) + '</p>');
+      showOverlay('overlay-rules', true);
+    });
     $('btn-mini-rules').addEventListener('click', showRules);
     $('btn-rules-close').addEventListener('click', function () {
       showOverlay('overlay-rules', false);
@@ -2503,7 +3006,7 @@
     // Service worker (fonctionnement hors ligne + mise à jour automatique)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(function (reg) {
-        if (reg && reg.update) reg.update();
+        if (reg && reg.update) { try { reg.update().catch(function () {}); } catch (e) {} }
         // badge « prête pour le mode avion » quand tout est en cache
         var showReady = function () {
           var b = document.getElementById('offline-badge');

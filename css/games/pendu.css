@@ -1,0 +1,23 @@
+/* ===== GGgames V2 — Pendu =====
+   Styles propres à ce jeu (chargés après css/style.css). */
+
+/* ================= Pendu ================= */
+.pendu-word { text-align: center; margin: 12px 0; }
+.pendu-slot {
+  display: inline-block; min-width: 26px; margin: 2px 3px;
+  border-bottom: 3px solid var(--ink);
+  font-size: 26px; font-weight: 800; text-align: center;
+  font-family: 'Fraunces', Georgia, serif;
+}
+.pendu-lives { text-align: center; font-size: 18px; letter-spacing: 2px; }
+.pendu-kb {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+  max-width: 420px; margin: 10px auto;
+}
+.pendu-key {
+  padding: 10px 0; font-size: 16px; font-weight: 700;
+  background: var(--tile); color: var(--tile-text);
+  border: 1px solid var(--tile-edge); border-radius: 8px; cursor: pointer;
+  box-shadow: 0 2px 0 var(--tile-edge);
+}
+.pendu-key.used { opacity: .25; box-shadow: none; }

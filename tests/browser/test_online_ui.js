@@ -5,7 +5,7 @@
  */
 const { chromium } = require('playwright');
 const { demarrer } = require('../relais-local.js');
-const URL_APP = 'http://localhost:8642/index.html';
+const URL_APP = (process.env.GG_URL || 'http://localhost:8642/index.html');
 let failures = 0;
 function check(n, c, e) {
   if (c) console.log('  OK  ' + n);
@@ -86,7 +86,7 @@ function check(n, c, e) {
     null, { timeout: 10000 });
   check('le coup de l’hôte arrive chez l’invitée', true);
   check('c’est au tour de l’invitée',
-    /Manon/.test(await invite.textContent('#mini-turn')));
+    /Manon|À vous de jouer/.test(await invite.textContent('#mini-turn')));
 
   // l'invitée joue à son tour, l'hôte le voit
   await invite.locator('.p4-cell[data-col="5"]').first().click();

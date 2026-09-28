@@ -1,0 +1,29 @@
+/* ===== GGgames V2 — Sudoku =====
+   Styles propres à ce jeu (chargés après css/style.css). */
+
+/* ===== Sudoku ===== */
+.sdk-grid {
+  display: grid; grid-template-columns: repeat(9, 1fr);
+  max-width: min(94vw, 62vh); margin: 4px auto 10px;
+  border: 2px solid var(--ink); border-radius: 6px; overflow: hidden;
+  background: #fff;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.sdk-cell {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-size: clamp(14px, 4.6vw, 24px); font-weight: 600;
+  border-right: 1px solid var(--ink-16); border-bottom: 1px solid var(--ink-16);
+  cursor: pointer; color: var(--teal);
+  font-family: 'Fraunces', Georgia, serif;
+}
+.sdk-cell.given { color: var(--ink); font-weight: 700; background: var(--tile); cursor: default; }
+.sdk-cell.sel { background: var(--accent); color: var(--accent-ink); }
+.sdk-cell.br { border-right: 2px solid var(--ink); }
+.sdk-cell.bb { border-bottom: 2px solid var(--ink); }
+.sdk-pad { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+.sdk-key {
+  width: 9%; min-width: 34px; padding: 10px 0; font-size: 18px; font-weight: 700;
+  border: 1px solid var(--tile-edge); border-radius: 8px;
+  background: var(--tile); color: var(--tile-text);
+  cursor: pointer; box-shadow: 0 2px 0 var(--tile-edge);
+}

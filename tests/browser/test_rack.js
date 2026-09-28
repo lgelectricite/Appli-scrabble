@@ -11,7 +11,7 @@ const rackLetters = p => p.$$eval('#rack .rack-tile', els =>
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   const p = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
   p.on('pageerror', e => { failures++; console.log('  FAIL JS: ' + e.message); });
-  await p.goto('http://localhost:8642/index.html');
+  await p.goto((process.env.GG_URL || 'http://localhost:8642/index.html'));
   check('tuile Words au catalogue', (await p.textContent('#catalog')).includes('Words'));
   await p.click('.game-tile[data-g="mots"]');
   check('écran Words', (await p.textContent('#screen-mots-home h2')).includes('Words'));

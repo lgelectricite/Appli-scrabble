@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const H = require('./test_helpers.js');
 
-const URL = 'http://localhost:8642/index.html';
+const URL = (process.env.GG_URL || 'http://localhost:8642/index.html');
 let failures = 0;
 function check(name, cond, extra) {
   if (cond) console.log('  OK  ' + name);

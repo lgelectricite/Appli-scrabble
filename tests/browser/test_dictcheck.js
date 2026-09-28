@@ -5,7 +5,7 @@ function check(n, c, e) { if (c) console.log('  OK  ' + n); else { failures++; c
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   const p = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
   p.on('pageerror', e => { failures++; console.log('  FAIL JS: ' + e.message); });
-  await p.goto('http://localhost:8642/index.html');
+  await p.goto((process.env.GG_URL || 'http://localhost:8642/index.html'));
   await p.click('.game-tile[data-g="mots"]');
   await p.click('#btn-mode-local');
   await p.click('#btn-local-start');
