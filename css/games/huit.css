@@ -308,8 +308,8 @@
 .hu-barre { grid-column: 2 / 4; height: 6px; border-radius: 99px; background: rgba(255, 255, 255, .1); overflow: hidden; }
 .hu-barre i { display: block; height: 100%; border-radius: inherit; background: var(--jeu-grad); transition: width .9s var(--doux); }
 .hu-fin-cible { text-align: center; margin: 2px 0; }
-/* le bouton principal reste toujours à portée de pouce */
-.hu-fin .btn.big { position: sticky; bottom: 10px; z-index: 5; margin-top: 4px; }
+/* le bouton principal juste sous le titre : visible sans défiler */
+.hu-fin > .btn.big { margin: 2px 0 4px; }
 .hu-fin.serre .jc.hu-jc-mini2 { --jcw: 24px; }
 .hu-fin.serre .hu-fin-ligne { padding: 7px 10px; }
 .hu-fin.serre .hu-fin-derniere .jc { --jcw: 58px; }

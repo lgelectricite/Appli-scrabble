@@ -841,6 +841,10 @@
         if (dispo > 300) jeuEl.style.minHeight = dispo + 'px';
       }
 
+      // les voiles plein écran se calent sur la fenêtre visible (l'écran de la
+      // coque, animé par une transformation, devient leur repère « fixed »)
+      el.querySelectorAll('.hu-roue-voile, .hu-feuille-voile').forEach(calerSurFenetre);
+
       // ---------- gestes ----------
       function verrouille() { return v.verrou && Date.now() < v.verrou; }
       function agir(a) {
@@ -970,6 +974,20 @@
     _playable: playable, _cardValue: cardValue, _drawCards: drawCards,
     _regles: regles, _triMain: triMain, _eventail: eventail
   };
+
+  function calerSurFenetre(voile) {
+    if (!voile.getBoundingClientRect) return;
+    var r = voile.getBoundingClientRect();
+    var H = root.innerHeight || r.height, Wv = root.innerWidth || r.width;
+    if (Math.abs(r.top) < 1 && Math.abs(r.left) < 1 && Math.abs(r.height - H) < 2) return;
+    var cs = root.getComputedStyle(voile);
+    voile.style.top = ((parseFloat(cs.top) || 0) - r.top) + 'px';
+    voile.style.left = ((parseFloat(cs.left) || 0) - r.left) + 'px';
+    voile.style.right = 'auto';
+    voile.style.bottom = 'auto';
+    voile.style.width = Wv + 'px';
+    voile.style.height = H + 'px';
+  }
 
   /* ---------- la distribution animée : une carte après l'autre ---------- */
   function animerDonne(el, s, me, v) {
@@ -1193,6 +1211,7 @@
       (s.bloque ? ' a la main la plus légère' : ' vide sa main') + '\u00a0!</h2>' +
       '<p class="hu-fin-gain">+<span class="hu-gain-n">' + (s.lastGain || 0) + '</span> point' +
       ((s.lastGain || 0) > 1 ? 's' : '') + '</p></div></div>';
+    if (!s.fini && me === 0) html += '<button class="btn big jeu" data-a="again">🔁 Manche suivante</button>';
     var ordre = s.players.map(function (p, i) { return i; }).sort(function (a, b) {
       return s.players[b].score - s.players[a].score;
     });
@@ -1217,9 +1236,7 @@
     html += '<p class="hint hu-fin-cible">Premier à ' + R.cible + ' points · manche ' + s.manche + '</p>';
     if (s.fini) {
       html += '<p class="mini-msg">🏁 ' + esc(nom(s, w)) + ' atteint ' + R.cible + ' points : partie terminée !</p>';
-    } else if (me === 0) {
-      html += '<button class="btn big jeu" data-a="again">🔁 Manche suivante</button>';
-    } else {
+    } else if (me !== 0) {
       html += '<p class="waiting">L’hôte va relancer une manche…</p>';
     }
     html += '</div>';
