@@ -1,318 +1,374 @@
-/* ===== GGgames V2 — Bonbons =====
-   Styles propres à ce jeu (chargés après css/style.css). */
+/* ===== GGgames V2 — Bonbons : l'aventure sucrée =====
+   Styles propres à ce jeu (chargés après css/style.css).
+   Les bonbons eux-mêmes sont des dessins SVG fabriqués par js/games/bonbons.js
+   (classes .bbs-*) : ici, la scène, le bandeau, les fenêtres et les effets. */
 
-/* ===== Bonbons : l'aventure sucrée ===== */
-.bb-wrap { position: relative; }
-.bb-grid {
-  display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
-  max-width: min(94vw, 58vh); margin: 8px auto; user-select: none;
-  touch-action: none;
-  background: var(--card); border: 2px solid var(--ink); border-radius: 14px;
-  padding: 6px; box-shadow: 0 4px 0 var(--ink);
+/* Pendant le jeu, les aurores du fond se figent (elles restent visibles) : leur
+   flou animé coûtait plus cher que tout le plateau (mesuré au processeur ×4 :
+   9 à 12 images/s au repos avec, 60 sans). */
+body[data-jeu="bonbons"]::before, body[data-jeu="bonbons"]::after { animation-play-state: paused; }
+
+/* ---------------- l'écran de jeu ---------------- */
+.bb-jeu {
+  --bb-w: min(100%, calc(100vh - 200px), 560px);
+  --bb-w: min(100%, calc(100dvh - 200px), 560px);
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  user-select: none; -webkit-user-select: none; padding-top: 2px;
 }
-/* Chaque famille de bonbons a SA forme et SA couleur franche : impossible
-   de les confondre, même du coin de l'œil. Les formes sont dessinées en CSS. */
+/* le bandeau : coups · objectif · score et étoiles */
+.bb-hud {
+  width: var(--bb-w); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .05));
+  border: 1px solid var(--stroke-2); box-shadow: var(--ombre-1), inset 0 1px 0 rgba(255, 255, 255, .15);
+}
+.bb-hud-coups {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 58px; height: 58px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 35% 28%, var(--ma), var(--mb));
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .45), inset 0 -4px 8px rgba(0, 0, 0, .25), 0 6px 14px rgba(0, 0, 0, .35);
+  color: #fff; text-shadow: 0 2px 3px rgba(0, 0, 0, .35); transition: transform .3s var(--ressort);
+}
+.bb-hud-coups b { font-family: var(--f-titre); font-size: 25px; font-weight: 600; line-height: 1; }
+.bb-hud-coups small { font-size: 10.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .5px; opacity: .95; }
+.bb-hud-coups.peu { animation: bbPeu .8s ease-in-out infinite alternate; background: radial-gradient(circle at 35% 28%, #ff9aa8, #e0243f); }
+@keyframes bbPeu { to { transform: scale(1.08); box-shadow: 0 0 0 5px rgba(255, 77, 94, .3), 0 6px 14px rgba(0, 0, 0, .35); } }
+.bb-obj { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.bb-goal {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 4px; border-radius: 999px;
+  background: rgba(0, 0, 0, .22); border: 1px solid var(--stroke);
+}
+.bb-goal b { font-family: var(--f-titre); font-size: 18px; font-weight: 600; min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.bb-obj.trois .bb-goal { padding: 2px 6px 2px 2px; gap: 2px; }
+.bb-obj.trois .bb-ic { width: 24px; height: 24px; }
+.bb-obj.trois .bb-goal b { font-size: 15.5px; }
+.bb-goal.fait { border-color: rgba(47, 214, 123, .6); background: rgba(47, 214, 123, .18); }
+.bb-goal.fait b { color: var(--vert); }
+.bb-ic { display: inline-block; width: 30px; height: 30px; background-size: contain; background-repeat: no-repeat; background-position: center; flex: none; }
+.bb-ic-etoile { font-style: normal; font-size: 22px; color: var(--or); text-shadow: 0 2px 4px rgba(0, 0, 0, .35); width: 26px; text-align: center; }
+.bb-hud-score { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; min-width: 96px; }
+.bb-hud-score b { font-family: var(--f-titre); font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bb-barre {
+  position: relative; width: 96px; height: 10px; border-radius: 999px; background: rgba(0, 0, 0, .35);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
+}
+.bb-barre-fill {
+  height: 100%; width: 0; border-radius: 999px;
+  background: linear-gradient(90deg, #ffe066, #ff9124 70%, #ff4d6d);
+  box-shadow: 0 0 8px rgba(255, 190, 60, .6); transition: width .45s var(--doux);
+}
+.bb-bst {
+  position: absolute; top: 50%; transform: translate(-50%, -52%); font-style: normal; font-size: 15px; line-height: 1;
+  color: rgba(255, 255, 255, .3); text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
+}
+.bb-bst.on { color: #ffd23f; text-shadow: 0 0 6px rgba(255, 210, 63, .9), 0 1px 2px rgba(0, 0, 0, .6); }
+.bb-lvl-tag {
+  width: var(--bb-w); display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-family: var(--f-titre); font-size: 13.5px; font-weight: 500; color: var(--txt-2); margin: -2px 0 -2px; padding: 0 4px;
+}
+.bb-carte-btn {
+  min-height: 32px; padding: 4px 11px; border-radius: 999px; cursor: pointer; touch-action: manipulation;
+  font-family: var(--f-titre); font-size: 13px; font-weight: 600; color: var(--txt);
+  background: var(--glass-2); border: 1px solid var(--stroke);
+}
+.bb-carte-btn:active { transform: scale(.94); }
+
+/* ---------------- le plateau ---------------- */
+.bb-stage { width: var(--bb-w); }
+.bb-board {
+  position: relative; width: 100%; aspect-ratio: 1; touch-action: none;
+  -webkit-touch-callout: none;
+}
+.bb-tiles {
+  position: absolute; inset: 0; display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr));
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, .5)) drop-shadow(0 0 1px rgba(255, 255, 255, .4));
+}
+.bb-tile { position: relative; background: rgba(28, 20, 78, .78); }
+.bb-tile.alt { background: rgba(44, 34, 110, .78); }
+.bb-tile.trou { background: none; }
+.bb-tile.ctl { border-top-left-radius: 14px; }
+.bb-tile.ctr { border-top-right-radius: 14px; }
+.bb-tile.cbl { border-bottom-left-radius: 14px; }
+.bb-tile.cbr { border-bottom-right-radius: 14px; }
+/* la gelée (une ou deux couches) et les meringues (une ou deux couches) */
+.bb-tile.j1::before, .bb-tile.j2::before, .bb-tile.b1::after, .bb-tile.b2::after {
+  content: ''; position: absolute; inset: 2px; background-size: 100% 100%; background-repeat: no-repeat;
+}
+.bb-tile.j1::before { background-image: var(--bb-j1); }
+.bb-tile.j2::before { background-image: var(--bb-j2); }
+.bb-tile.b1::after { background-image: var(--bb-m1); inset: 1px; z-index: 1; }
+.bb-tile.b2::after { background-image: var(--bb-m2); inset: 1px; z-index: 1; }
+.bb-tile.splash::before { animation: bbSplash .45s ease-out; }
+@keyframes bbSplash { 30% { transform: scale(1.22); opacity: .55; } }
+.bb-tile.craque::after { animation: bbCraque .4s ease-out; }
+@keyframes bbCraque { 25% { transform: scale(1.12) rotate(-4deg); } 60% { transform: scale(.94) rotate(3deg); } }
+.bb-tile.sortie { border-bottom: 3px solid rgba(255, 210, 63, .8); }
+.bb-tile.sortie + .bb-tile.sortie { border-bottom-color: rgba(255, 210, 63, .8); }
+
+/* les pièces : positionnées par translate(colonne × 100 %, ligne × 100 %) */
+.bb-pieces { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .bb-cell {
-  aspect-ratio: 1; border: none; padding: 0; background: none;
-  cursor: pointer; touch-action: none; position: relative;
+  position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%;
+  pointer-events: auto; cursor: pointer;
 }
 .bb-candy {
-  position: absolute; inset: 5%; display: flex;
-  align-items: center; justify-content: center;
-  filter: drop-shadow(0 2px 2px rgba(44, 34, 24, .3));
+  position: absolute; inset: 4%; display: block;
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+  transform-origin: 50% 70%;
 }
-/* 🔴 boule cerise */
-.bb-cell.t0 .bb-candy {
-  border-radius: 50%;
-  background: radial-gradient(circle at 32% 26%, #ffb3b3 0 16%, #e5484d 55%, #a82a30 100%);
+.bb-cell.part { pointer-events: none; z-index: 1; }
+.bb-cell.sel .bb-candy { animation: bbSel .7s ease-in-out infinite alternate; }
+.bb-cell.sel::before {
+  content: ''; position: absolute; inset: 3%; border-radius: 30%;
+  background: radial-gradient(circle, rgba(255, 255, 255, .35), rgba(255, 255, 255, 0) 70%);
+  box-shadow: 0 0 0 2.5px rgba(255, 255, 255, .85), 0 0 14px rgba(255, 255, 255, .6);
 }
-/* 🟠 papillote orange (avec ses deux oreilles de papier) */
-.bb-cell.t1 .bb-candy {
-  inset: 16% 4%;
-  border-radius: 46% / 58%;
-  background: radial-gradient(circle at 34% 28%, #ffd9ae 0 16%, #f28b30 58%, #c05f13 100%);
-}
-.bb-cell.t1 .bb-candy::before, .bb-cell.t1 .bb-candy::after {
-  content: ''; position: absolute; top: 26%; bottom: 26%; width: 18%;
-  background: #f28b30; clip-path: polygon(100% 50%, 0 0, 0 100%);
-}
-.bb-cell.t1 .bb-candy::before { left: -14%; }
-.bb-cell.t1 .bb-candy::after { right: -14%; transform: scaleX(-1); }
-/* 🟡 losange citron */
-.bb-cell.t2 .bb-candy {
-  inset: 12%; border-radius: 18%; transform: rotate(45deg);
-  background: linear-gradient(135deg, #ffe37a, #f2c937 45%, #cf9d14);
-}
-/* 🟢 carré pomme */
-.bb-cell.t3 .bb-candy {
-  inset: 9%; border-radius: 26%;
-  background: radial-gradient(circle at 32% 26%, #b8e6a9 0 14%, #5fb45f 58%, #3c8542 100%);
-}
-/* 🔵 anneau menthe (le trou clair au milieu) */
-.bb-cell.t4 .bb-candy {
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 46%, #eaf4ff 0 30%, #4f9cd9 37% 78%, #2f6ea6 100%);
-}
-/* 🟣 hexagone myrtille */
-.bb-cell.t5 .bb-candy {
-  inset: 7%;
-  clip-path: polygon(50% 0, 94% 26%, 94% 74%, 50% 100%, 6% 74%, 6% 26%);
-  background: linear-gradient(150deg, #cfa9ee 0 22%, #a06bd8 55%, #6f3fa8 100%);
-}
-/* 🌟 sucre magique */
-.bb-cell.tx .bb-candy {
-  border-radius: 50%; font-size: clamp(14px, 4.4vw, 22px);
-  background:
-    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .9) 0 18%, transparent 42%),
-    conic-gradient(#ffd76e, #ffb3c8, #bcd9f7, #c4ecc9, #ffd76e);
-  animation: bb-glow 1.1s infinite alternate;
-}
-.bb-cell.sel { transform: scale(1.14); z-index: 2; }
-.bb-cell.sel .bb-candy { filter: drop-shadow(0 0 6px var(--accent)); }
-/* rayés : bandes blanches dans le sens du rayon (horizontal = raye la ligne) */
-.bb-cell.raye1::after, .bb-cell.raye2::after {
-  content: ''; position: absolute; inset: 20%; border-radius: 50%;
-  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .9) 0 3px, transparent 3px 8px);
-  pointer-events: none; z-index: 1;
-}
-.bb-cell.raye2::after { background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .9) 0 3px, transparent 3px 8px); }
-/* enveloppé : il palpite dans son papier blanc avant d'exploser en 3×3 */
-.bb-cell.envel .bb-candy { animation: bb-envp .8s infinite alternate; }
-.bb-cell.envel::after {
-  content: ''; position: absolute; inset: 4%; border-radius: 30%;
-  border: 2.5px dashed #fff; pointer-events: none; z-index: 1;
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, .9));
-  animation: bb-envr 1.6s linear infinite;
-}
-@keyframes bb-envp { from { transform: scale(.94); } to { transform: scale(1.08); } }
-.bb-cell.t2.envel .bb-candy { animation: none; } /* le losange garde sa rotation */
-@keyframes bb-envr { from { transform: rotate(0deg); } to { transform: rotate(90deg); } }
-/* indice : les deux bonbons d'un coup jouable clignotent */
-.bb-cell.bb-hint { animation: bb-hintp .8s infinite alternate; z-index: 2; }
-@keyframes bb-hintp {
-  from { transform: scale(1); }
-  to { transform: scale(1.16); filter: drop-shadow(0 0 8px var(--gold)); }
-}
-.bb-gain { background: var(--tile-new); border-color: var(--gold); font-weight: 800; }
-@keyframes bb-glow {
-  from { box-shadow: 0 0 0 rgba(217, 153, 43, 0); }
-  to { box-shadow: 0 0 14px rgba(217, 153, 43, .9); }
-}
+@keyframes bbSel { from { transform: scale(1.02); } to { transform: scale(1.14); } }
+.bb-cell.presse .bb-candy { transform: scale(1.1); transition: transform .12s; }
+.bb-cell.bb-hint .bb-candy { animation: bbHint .5s ease-in-out infinite alternate; }
+@keyframes bbHint { from { transform: rotate(-9deg) scale(1.04); } to { transform: rotate(9deg) scale(1.1); } }
+.bb-candy.envel { animation: bbEnvel 1.1s ease-in-out infinite alternate; }
+@keyframes bbEnvel { from { transform: scale(.96); } to { transform: scale(1.05); } }
+.bb-candy.magique { animation: bbMagique 2.4s linear infinite; }
+@keyframes bbMagique { to { transform: rotate(360deg); } }
+.bb-cell.sel .bb-candy.envel, .bb-cell.sel .bb-candy.magique { animation: bbSel .7s ease-in-out infinite alternate; }
 
-/* bonbons qui tombent en scène + tremblement d'échange raté */
-.bb-cell.pop-in { animation: bb-pop .38s cubic-bezier(.2, 1.6, .4, 1) backwards; }
-@keyframes bb-pop {
-  from { transform: translateY(-26px) scale(.3); opacity: 0; }
-  60% { transform: translateY(2px) scale(1.06); opacity: 1; }
-  to { transform: none; opacity: 1; }
+/* ---------------- les effets ---------------- */
+.bb-fxl { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.bb-beam, .bb-blast, .bb-flash, .bb-onde, .bb-combo, .bb-points {
+  position: absolute; transform: translate(-50%, -50%); pointer-events: none; white-space: nowrap;
+  font-family: var(--f-titre); font-weight: 700; color: #fff; will-change: transform, opacity;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .35), 0 0 3px rgba(0, 0, 0, .6), 0 4px 12px rgba(0, 0, 0, .45);
+  animation: bbPoints .95s var(--doux) forwards;
 }
-.bb-cell.bb-shake { animation: bb-shake .3s; }
-@keyframes bb-shake {
-  25% { transform: translateX(-4px); } 50% { transform: translateX(4px); }
-  75% { transform: translateX(-2px); }
+.bb-points.dore { color: #ffe066; }
+@keyframes bbPoints {
+  from { opacity: 0; transform: translate(-50%, -30%) scale(.4); }
+  18% { opacity: 1; transform: translate(-50%, -60%) scale(1.15); }
+  30% { transform: translate(-50%, -70%) scale(1); }
+  75% { opacity: 1; }
+  to { opacity: 0; transform: translate(-50%, -180%) scale(.95); }
 }
-.bb-float {
-  position: absolute; left: 0; right: 0; top: 34%;
-  text-align: center; pointer-events: none; z-index: 5;
-  font-family: 'Fraunces', Georgia, serif; font-size: 30px; font-weight: 700;
-  color: var(--accent); text-shadow: 0 2px 0 #fff, 0 3px 6px rgba(44, 34, 24, .3);
-  animation: bb-rise 1s ease-out forwards;
-}
-@keyframes bb-rise {
-  from { transform: translateY(14px); opacity: 0; }
-  25% { opacity: 1; }
-  to { transform: translateY(-34px); opacity: 0; }
-}
-
-/* objectif du niveau : barre de progression jalonnée d'étoiles */
-.bb-obj {
-  position: relative; height: 22px; max-width: min(94vw, 58vh);
-  margin: 6px auto 0; border: 2px solid var(--ink); border-radius: 999px;
-  background: var(--card); overflow: hidden;
-}
-.bb-obj-star {
-  position: absolute; top: 50%; transform: translate(-50%, -52%);
-  font-size: 11px; opacity: .3; pointer-events: none;
-}
-.bb-obj-star.lit {
-  opacity: 1; font-size: 13px;
-  filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 6px var(--gold));
-}
-/* plus que 3 coups : le compteur s'affole */
-.mem-stat.bb-low {
-  background: var(--accent); color: #fff;
-  animation: bb-lowp .7s infinite alternate;
-}
-@keyframes bb-lowp { from { transform: scale(1); } to { transform: scale(1.09); } }
-/* chaque monde de l'aventure teinte la grille à ses couleurs */
-.bb-wrap.zn0 .bb-grid { background: #fce4ee; } /* Prairie Guimauve */
-.bb-wrap.zn1 .bb-grid { background: #ecdcc2; } /* Forêt Chocolat */
-.bb-wrap.zn2 .bb-grid { background: #d8ecf3; } /* Lagon Réglisse */
-.bb-wrap.zn3 .bb-grid { background: #eef1f5; } /* Montagne Meringue */
-.bb-wrap.zn4 .bb-grid { background: #f6e5c1; } /* Désert Caramel */
-.bb-wrap.zn5 .bb-grid { background: #f8dcd0; } /* Volcan Praline */
-.bb-wrap.zn6 .bb-grid { background: #def3ea; } /* Banquise Menthe */
-.bb-wrap.zn7 .bb-grid { background: #f0e7d9; } /* Cité Nougat */
-.bb-obj-fill {
-  height: 100%; background: linear-gradient(90deg, var(--gold), var(--accent));
-  transition: width .5s ease;
-}
-.bb-obj-txt {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 800; color: var(--ink);
-}
-
-/* la carte de l'aventure */
-.bb-map { max-width: 420px; margin: 0 auto; }
-.bb-earlier {
-  text-align: center; font-size: 12px; color: var(--ink-soft);
-  border: 1.5px dashed var(--ink-16); border-radius: 10px; padding: 6px; margin: 8px 0;
-}
-.bb-path { display: flex; flex-direction: column; gap: 10px; padding: 6px 12px 2px; position: relative; }
-.bb-path::before { /* le sentier pointillé qui relie les niveaux */
-  content: ''; position: absolute; left: 50%; top: 14px; bottom: 14px;
-  border-left: 3px dashed var(--ink-16); transform: translateX(-1.5px);
-}
-.bb-zone { position: relative; z-index: 1; }
-.bb-step { position: relative; z-index: 1; }
-.bb-zone {
-  align-self: center; margin: 10px 0 4px;
-  font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 15px;
-  background: var(--card); border: 2px solid var(--ink); border-radius: 999px;
-  padding: 6px 18px; box-shadow: 0 3px 0 var(--ink); transform: rotate(-1deg);
-}
-.bb-zone.z0 { background: #fde7ef; } .bb-zone.z1 { background: #e8efdd; }
-.bb-zone.z2 { background: #ddeef5; } .bb-zone.z3 { background: #f0ecf9; }
-.bb-zone.z4 { background: #fbeed3; } .bb-zone.z5 { background: #f9ddd3; }
-.bb-zone.z6 { background: #e3f2f4; } .bb-zone.z7 { background: #efe4da; }
-.bb-step { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.bb-step.s0 { align-self: flex-start; margin-left: 8%; }
-.bb-step.s1 { align-self: center; }
-.bb-step.s2 { align-self: flex-end; margin-right: 8%; }
-.bb-step.s3 { align-self: center; }
-.bb-node {
-  width: 56px; height: 56px; border-radius: 50%;
-  border: 2.5px solid var(--ink); cursor: pointer;
-  font-family: 'Fraunces', Georgia, serif; font-size: 18px; font-weight: 700;
-  color: var(--ink); background: var(--card);
-  box-shadow: 0 4px 0 var(--ink);
-  display: flex; align-items: center; justify-content: center;
-  touch-action: manipulation;
-}
-.bb-node:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
-.bb-node.done { background: #dff0e2; border-color: var(--green); box-shadow: 0 4px 0 var(--green); }
-.bb-node.cur {
-  background: var(--accent); color: var(--accent-ink);
-  animation: bb-cur 1.2s infinite alternate; width: 64px; height: 64px; font-size: 21px;
-}
-@keyframes bb-cur {
-  from { box-shadow: 0 4px 0 var(--ink), 0 0 0 0 rgba(194, 69, 44, .4); }
-  to { box-shadow: 0 4px 0 var(--ink), 0 0 0 12px rgba(194, 69, 44, 0); }
-}
-.bb-node.lock { background: var(--ink-06); color: var(--ink-soft); border-color: var(--ink-16); box-shadow: none; }
-.bb-node-stars { font-size: 11px; letter-spacing: -2px; }
-.bb-node-go { font-size: 11px; font-weight: 800; color: var(--accent); }
-
-/* résultat de niveau */
-.bb-result { text-align: center; max-width: 380px; margin: 12px auto; }
-.bb-stars-big { font-size: 44px; margin: 4px 0 8px; letter-spacing: 2px; }
-.bb-result .btn { margin-top: 10px; }
-
-/* ===== Bonbons : explosions des super bonus ===== */
-.bb-grid { position: relative; }
-.bb-grid.bb-quake { animation: bb-quake .45s; }
-@keyframes bb-quake {
-  15% { transform: translate(-4px, 2px) rotate(-.4deg); }
-  30% { transform: translate(4px, -2px) rotate(.4deg); }
-  45% { transform: translate(-3px, -2px); }
-  60% { transform: translate(3px, 2px); }
-  75% { transform: translate(-1px, 1px); }
+.bb-banniere { will-change: transform, opacity; }
+.bb-board.secoue { animation: bbSecoue .42s ease-out; }
+@keyframes bbSecoue {
+  15% { transform: translate(-6px, 3px) rotate(-.6deg); } 30% { transform: translate(6px, -3px) rotate(.6deg); }
+  45% { transform: translate(-4px, -2px); } 60% { transform: translate(4px, 2px); } 80% { transform: translate(-2px, 1px); }
 }
 .bb-beam {
-  position: absolute; pointer-events: none; z-index: 4; border-radius: 999px;
-  background: linear-gradient(90deg, transparent, #fff9e0 18%, var(--gold) 50%, #fff9e0 82%, transparent);
-  box-shadow: 0 0 18px 4px rgba(217, 153, 43, .75);
-  animation: bb-beam .55s ease-out forwards;
+  position: absolute; border-radius: 999px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, #fffbe6 16%, #ffe066 50%, #fffbe6 84%, transparent);
+  box-shadow: 0 0 20px 5px rgba(255, 214, 90, .75);
+  animation: bbBeam .5s ease-out forwards;
 }
-.bb-beam.h { left: 2%; right: 2%; height: 10.5%; }
-.bb-beam.v {
-  top: 2%; bottom: 2%; width: 10.5%;
-  background: linear-gradient(180deg, transparent, #fff9e0 18%, var(--gold) 50%, #fff9e0 82%, transparent);
+.bb-beam.h { left: -2%; right: -2%; height: 12.5%; transform-origin: 50% 50%; }
+.bb-beam.v { top: -2%; bottom: -2%; width: 12.5%; background: linear-gradient(180deg, transparent, #fffbe6 16%, #ffe066 50%, #fffbe6 84%, transparent); }
+@keyframes bbBeam { from { opacity: 0; transform: scale(.3); } 25% { opacity: 1; transform: scale(1.04); } to { opacity: 0; transform: scale(1); } }
+.bb-blast {
+  position: absolute; width: 37.5%; height: 37.5%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, .98) 0 16%, rgba(255, 200, 80, .85) 38%, rgba(255, 77, 109, .5) 58%, transparent 72%);
+  animation: bbBlast .55s ease-out both;
 }
-@keyframes bb-beam {
-  from { opacity: 0; transform: scale(.4); }
-  25% { opacity: 1; transform: scale(1.05); }
-  to { opacity: 0; transform: scale(1); }
+.bb-blast.grand { width: 62.5%; height: 62.5%; }
+@keyframes bbBlast { from { transform: scale(.1); opacity: 1; } 55% { transform: scale(1.1); opacity: .95; } to { transform: scale(1.3); opacity: 0; } }
+.bb-eclairs { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.bb-eclairs { will-change: opacity; animation: bbEclairFin .5s ease-in forwards; }
+.bb-eclairs path {
+  fill: none; stroke-width: 8; stroke-linecap: round;
+  stroke-dasharray: 900; stroke-dashoffset: 900; animation: bbEclair .3s ease-out forwards;
 }
+.bb-eclairs path.halo { stroke: #fff; stroke-width: 18; opacity: .35; }
+@keyframes bbEclairFin { 0%, 60% { opacity: 1; } to { opacity: 0; } }
+@keyframes bbEclair { to { stroke-dashoffset: 0; } }
 .bb-flash {
-  position: absolute; inset: 0; z-index: 3; pointer-events: none;
-  background: radial-gradient(circle, #fff9e0cc, transparent 70%);
-  border-radius: 12px;
-  animation: bb-flashk .5s ease-out forwards;
+  position: absolute; inset: -4%; border-radius: 20px; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 250, 225, .75), transparent 70%);
+  animation: bbFlash .45s ease-out forwards;
 }
-@keyframes bb-flashk { from { opacity: 1; } to { opacity: 0; } }
-.bb-boom {
-  position: absolute; left: 50%; top: 50%; z-index: 5; pointer-events: none;
+.bb-flash.fort { background: radial-gradient(circle, rgba(255, 255, 255, .95), rgba(255, 220, 120, .4) 60%, transparent 80%); }
+@keyframes bbFlash { from { opacity: 1; } to { opacity: 0; } }
+.bb-onde {
+  position: absolute; left: 50%; top: 50%; width: 20%; height: 20%; margin: -10% 0 0 -10%; border-radius: 50%;
+  border: 6px solid #ffe066; animation: bbOnde .6s ease-out forwards;
 }
-.bb-part {
-  position: absolute; width: 12px; height: 12px; border-radius: 50%;
-  left: -6px; top: -6px;
-  box-shadow: 0 0 8px 2px rgba(255, 255, 255, .55);
-  animation: bb-part .8s cubic-bezier(.1, .8, .4, 1) forwards;
-}
-@keyframes bb-part {
-  from { transform: translate(0, 0) scale(1.3); opacity: 1; }
-  to { transform: translate(var(--dx), var(--dy)) scale(.2); opacity: 0; }
-}
-.bb-ring {
-  position: absolute; left: -10px; top: -10px; width: 20px; height: 20px;
-  border: 4px solid var(--gold); border-radius: 50%; pointer-events: none;
-  animation: bb-ring .6s ease-out forwards;
-}
-@keyframes bb-ring {
-  from { transform: scale(.4); opacity: 1; }
-  to { transform: scale(11); opacity: 0; border-width: 1px; }
-}
+@keyframes bbOnde { from { transform: scale(.3); opacity: 1; } to { transform: scale(7); opacity: 0; border-width: 1px; } }
+/* les annonces de cascade, en grand */
 .bb-combo {
-  position: absolute; left: 0; right: 0; top: 42%; z-index: 6;
-  text-align: center; pointer-events: none;
-  font-family: 'Fraunces', Georgia, serif; font-size: 34px; font-weight: 700;
-  color: var(--gold);
-  text-shadow: 0 2px 0 var(--ink), 0 0 22px rgba(217, 153, 43, .9), 0 3px 8px rgba(44, 34, 24, .4);
-  animation: bb-combo 1.1s cubic-bezier(.2, 1.5, .4, 1) forwards;
+  position: absolute; left: -6%; right: -6%; top: 36%; text-align: center; pointer-events: none;
+  font-family: var(--f-titre); font-weight: 700; font-size: clamp(34px, 11vw, 52px); line-height: 1;
+  color: #fff; -webkit-text-stroke: 2.5px #8a1454; paint-order: stroke fill;
+  text-shadow: 0 5px 0 #c2185b, 0 0 26px rgba(255, 120, 200, .95), 0 10px 22px rgba(0, 0, 0, .6);
+  animation: bbCombo 1.25s cubic-bezier(.2, 1.5, .4, 1) forwards;
 }
-@keyframes bb-combo {
-  from { transform: scale(.2) rotate(-6deg); opacity: 0; }
-  30% { transform: scale(1.15) rotate(2deg); opacity: 1; }
-  70% { transform: scale(1); opacity: 1; }
-  to { transform: scale(1.05); opacity: 0; }
+.bb-combo.n5, .bb-combo.n6 { color: #ffe066; -webkit-text-stroke-color: #9a3412; text-shadow: 0 5px 0 #d9480f, 0 0 30px rgba(255, 200, 60, 1), 0 10px 22px rgba(0, 0, 0, .6); }
+.bb-combo::before { /* un halo sombre derrière le texte, lisible sur n'importe quels bonbons */
+  content: ''; position: absolute; left: 12%; right: 12%; top: -18%; bottom: -30%; z-index: -1; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(20, 8, 40, .55), transparent);
 }
 .bb-combo small {
-  display: block; font-size: 15px; letter-spacing: 3px; margin-top: 2px;
-  color: var(--accent); text-shadow: 0 1px 0 #fff;
+  display: block; margin-top: 6px; font-size: 15px; letter-spacing: 2px; -webkit-text-stroke: 0;
+  color: #fff; text-shadow: 0 2px 4px rgba(0, 0, 0, .6);
 }
-/* fantôme d'éclatement : chaque bonbon croqué éclate sur place, vague à vague */
-.bb-pop {
-  position: absolute; width: 12.5%; height: 12.5%; z-index: 4; pointer-events: none;
-  background: radial-gradient(circle, #fff 0 22%, var(--tt, var(--gold)) 30% 58%, transparent 66%);
-  border-radius: 50%;
-  animation: bb-popk .5s ease-out both;
+@keyframes bbCombo {
+  from { transform: scale(.2) rotate(-8deg); opacity: 0; }
+  25% { transform: scale(1.15) rotate(2deg); opacity: 1; }
+  45% { transform: scale(1) rotate(-1deg); }
+  80% { opacity: 1; }
+  to { transform: scale(1.08) translateY(-20px); opacity: 0; }
 }
-@keyframes bb-popk {
-  from { transform: scale(.9); opacity: 1; }
-  45% { transform: scale(1.45); opacity: .95; }
-  to { transform: scale(.1); opacity: 0; }
+.bb-banniere {
+  position: absolute; left: -3%; right: -3%; top: 42%; padding: 12px 10px; text-align: center;
+  font-family: var(--f-titre); font-weight: 600; font-size: 20px; color: #fff;
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 255, .92) 12%, rgba(255, 79, 154, .92) 88%, transparent);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, .4); animation: bbBanniere 1.6s var(--doux) forwards;
 }
-/* déflagration ronde d'un bonbon enveloppé : tout son carré de 3×3 y passe */
-.bb-blast {
-  position: absolute; width: 37.5%; height: 37.5%; z-index: 5; pointer-events: none;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, .95) 0 18%,
-      rgba(242, 169, 59, .8) 40%, rgba(229, 72, 77, .45) 58%, transparent 72%);
-  animation: bb-blastk .6s ease-out both;
+.bb-banniere.final { font-size: 28px; background: linear-gradient(90deg, transparent, rgba(255, 145, 36, .95) 12%, rgba(255, 77, 109, .95) 88%, transparent); }
+@keyframes bbBanniere { from { transform: scaleX(0); opacity: 0; } 18% { transform: scaleX(1); opacity: 1; } 80% { opacity: 1; } to { opacity: 0; transform: translateY(-14px); } }
+
+/* ---------------- les fenêtres : début de niveau, résultat ---------------- */
+.bb-modal-zone:empty { display: none; }
+.bb-voile {
+  position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 18px;
+  background: rgba(8, 6, 26, .55); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  animation: voileEntre .3s ease both;
 }
-@keyframes bb-blastk {
-  from { transform: scale(.15); opacity: 1; }
-  55% { transform: scale(1.08); opacity: .95; }
-  to { transform: scale(1.25); opacity: 0; }
+.bb-carte {
+  position: relative; width: min(92vw, 380px); padding: 22px 18px 14px; text-align: center; overflow: hidden;
+  border-radius: 30px; color: var(--txt);
+  background: linear-gradient(180deg, var(--solid-2) 0%, var(--solid) 100%);
+  border: 1px solid var(--stroke-2); box-shadow: var(--ombre-3), inset 0 1px 0 rgba(255, 255, 255, .15);
 }
+.bb-carte::before { /* bandeau aux couleurs du monde */
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 86px; pointer-events: none;
+  background: linear-gradient(135deg, var(--ma), var(--mb)); opacity: .5;
+  mask-image: linear-gradient(180deg, #000, transparent); -webkit-mask-image: linear-gradient(180deg, #000, transparent);
+}
+.bb-carte > * { position: relative; }
+.bb-carte .btn.big { margin-top: 12px; }
+.bb-carte .btn:not(.big):not(.link) { width: 100%; margin-top: 8px; }
+.bb-carte-monde { font-size: 13px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--txt-2); }
+.bb-carte-lvl { font-family: var(--f-titre); font-size: 30px; font-weight: 600; margin: 2px 0 10px; }
+.bb-boss { font-size: 15px; vertical-align: middle; padding: 2px 8px; border-radius: 999px; background: var(--grad-or); color: #3a2200; }
+.bb-carte-objs { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 6px 0 10px; }
+.bb-carte-obj {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 4px; min-width: 76px; padding: 10px 12px;
+  border-radius: 20px; background: rgba(0, 0, 0, .25); border: 1px solid var(--stroke);
+}
+.bb-carte-obj .bb-ic { width: 46px; height: 46px; }
+.bb-carte-obj .bb-ic-etoile { font-size: 38px; width: 46px; }
+.bb-carte-obj b { font-family: var(--f-titre); font-size: 22px; font-weight: 600; }
+.bb-carte-tx { margin: 4px 0 8px; font-size: 15.5px; line-height: 1.45; color: var(--txt-2); font-weight: 700; }
+.bb-carte-tx b { color: var(--txt); }
+.bb-carte-seuils { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; font-weight: 800; color: var(--txt-3); }
+.bb-carte-seuils span { padding: 3px 8px; border-radius: 999px; background: rgba(255, 210, 63, .1); color: #ffe08a; }
+/* résultat : les étoiles tombent une à une */
+.bb-res-titre {
+  font-family: var(--f-titre); font-size: 34px; font-weight: 700; line-height: 1.05; margin: -2px 0 6px;
+  background: var(--grad-or); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 3px 8px rgba(255, 170, 40, .35));
+}
+.bb-voile.perdu .bb-res-titre { background: linear-gradient(135deg, #ffb3c1, #ff4d6d); -webkit-background-clip: text; background-clip: text; }
+.bb-etoiles { display: flex; justify-content: center; align-items: flex-end; gap: 6px; height: 78px; margin: 4px 0 6px; }
+.bb-etoile {
+  font-size: 56px; line-height: 1; color: rgba(255, 255, 255, .13);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .3);
+}
+.bb-etoile.e2 { font-size: 70px; }
+.bb-etoile.on { color: #ffd23f; text-shadow: 0 0 18px rgba(255, 210, 63, .85), 0 4px 0 #c77700; }
+.bb-etoile.tombe { animation: bbTombe .6s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes bbTombe {
+  from { transform: translateY(-160px) rotate(-120deg) scale(1.6); opacity: 0; }
+  60% { transform: translateY(8px) rotate(10deg) scale(.95); opacity: 1; }
+  to { transform: none; }
+}
+.bb-res-triste { font-size: 50px; margin: 2px 0 4px; }
+.bb-res-score { font-family: var(--f-titre); font-size: 32px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bb-res-score small { font-size: 15px; color: var(--txt-2); font-family: var(--f-texte); font-weight: 800; }
+.bb-res-best { margin: 4px 0 0; font-size: 13.5px; font-weight: 800; color: var(--txt-3); }
+
+/* ---------------- la carte des mondes ---------------- */
+.bb-map { max-width: 460px; margin: 0 auto; padding-bottom: 76px; }
+.bb-map-tete { text-align: center; margin: 4px 0 12px; }
+.bb-map-titre {
+  font-family: var(--f-titre); font-size: 27px; font-weight: 700; line-height: 1.1;
+  background: linear-gradient(90deg, #fff, #ffc2e6 50%, #ffe08a); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.bb-map-stats { display: flex; justify-content: center; gap: 8px; margin-top: 8px; }
+.bb-pastille {
+  font-family: var(--f-titre); font-weight: 600; font-size: 15px; padding: 5px 12px; border-radius: 999px;
+  background: var(--glass-2); border: 1px solid var(--stroke);
+}
+.bb-earlier {
+  text-align: center; font-size: 13.5px; font-weight: 800; color: var(--txt-2); padding: 9px; margin: 0 0 12px;
+  border: 1.5px dashed var(--stroke-2); border-radius: 14px;
+}
+.bb-monde {
+  position: relative; margin: 0 0 14px; padding: 12px 10px 16px; border-radius: 26px; overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ma) 30%, transparent), color-mix(in srgb, var(--mb) 18%, transparent));
+  border: 1px solid rgba(255, 255, 255, .14);
+}
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .bb-monde { background: rgba(255, 255, 255, .06); }
+}
+.bb-monde.verrou { filter: saturate(.35) brightness(.8); }
+.bb-monde-tete {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 18px;
+  background: linear-gradient(135deg, var(--ma), var(--mb)); color: #fff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+.bb-monde-ic { font-size: 30px; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .3)); }
+.bb-monde-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bb-monde-tx b { font-family: var(--f-titre); font-size: 19px; font-weight: 600; text-shadow: 0 2px 4px rgba(0, 0, 0, .25); }
+.bb-monde-tx small { font-size: 12.5px; font-weight: 800; opacity: .92; }
+.bb-monde-et { font-family: var(--f-titre); font-weight: 600; font-size: 14px; background: rgba(0, 0, 0, .22); padding: 4px 9px; border-radius: 999px; }
+.bb-sentier { position: relative; height: calc(50px + 9 * 96px + 50px); margin-top: 6px; }
+.bb-sentier-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bb-sentier-svg path {
+  fill: none; stroke: rgba(255, 255, 255, .35); stroke-width: 5; stroke-dasharray: 2 12; stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.bb-step { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; z-index: 1; }
+.bb-node {
+  position: relative; width: 58px; height: 58px; border-radius: 50%; padding: 0; cursor: pointer;
+  font-family: var(--f-titre); font-size: 21px; font-weight: 600; color: #fff;
+  background: radial-gradient(circle at 34% 28%, var(--ma), var(--mb));
+  border: 3px solid rgba(255, 255, 255, .85);
+  box-shadow: 0 5px 0 rgba(0, 0, 0, .3), 0 10px 18px rgba(0, 0, 0, .35), inset 0 2px 0 rgba(255, 255, 255, .4);
+  text-shadow: 0 2px 3px rgba(0, 0, 0, .35); touch-action: manipulation;
+  transition: transform .15s var(--ressort);
+}
+.bb-node:active { transform: translateY(3px) scale(.95); }
+.bb-node.boss { width: 66px; height: 66px; border-color: #ffd23f; }
+.bb-couronne { position: absolute; top: -17px; left: 50%; transform: translateX(-50%) rotate(-8deg); font-style: normal; font-size: 20px; }
+.bb-node.cur {
+  width: 70px; height: 70px; font-size: 25px; border-color: #fff;
+  animation: bbCur 1.2s ease-in-out infinite alternate;
+}
+@keyframes bbCur {
+  from { box-shadow: 0 5px 0 rgba(0, 0, 0, .3), 0 0 0 0 rgba(255, 255, 255, .5), inset 0 2px 0 rgba(255, 255, 255, .4); }
+  to { box-shadow: 0 5px 0 rgba(0, 0, 0, .3), 0 0 0 14px rgba(255, 255, 255, 0), inset 0 2px 0 rgba(255, 255, 255, .4); }
+}
+.bb-node.lock {
+  background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .22); color: var(--txt-3);
+  box-shadow: none; cursor: default; font-size: 20px;
+}
+.bb-lock { font-size: 20px; opacity: .7; }
+.bb-node-stars { display: flex; gap: 1px; margin-top: 2px; font-size: 15px; line-height: 1; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.bb-node-stars i { font-style: normal; color: rgba(255, 255, 255, .25); }
+.bb-node-stars i.on { color: #ffd23f; }
+.bb-node-go {
+  font-family: var(--f-titre); font-weight: 600; font-size: 13px; padding: 2px 10px; border-radius: 999px;
+  background: #fff; color: var(--mb, #b01d8a); box-shadow: 0 3px 8px rgba(0, 0, 0, .3); margin-top: 4px;
+}
+.bb-avatar {
+  position: absolute; left: 100%; top: -8px; margin-left: -8px; width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 22px; background: #fff; pointer-events: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .35), 0 0 0 3px var(--ma); animation: bbAvatar 1.6s ease-in-out infinite;
+}
+@keyframes bbAvatar { 50% { transform: translateY(-6px); } }
+.bb-map-bas {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, rgba(10, 11, 28, .92) 40%);
+}
+.bb-map-bas .btn { max-width: 460px; margin: 0 auto; display: flex; }
