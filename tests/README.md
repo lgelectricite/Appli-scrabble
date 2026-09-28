@@ -8,6 +8,8 @@ de grilles), l'anti-triche (redaction des états) et les banques de contenu.
 ```bash
 node tests/test_engine.js     # moteur du jeu de lettres (scores, primes, fin de partie)
 node tests/test_ai.js         # IA de Words (coups légaux, niveaux)
+node tests/test_mots_regles.js  # Words V2 : fin par passes, tirage au sort, mot refusé, statistiques
+node tests/test_mots_ia.js [n]  # Words V2 : dictionnaire, générateur, liste noire, niveaux mesurés
 node tests/test_games.js      # tous les jeux de plateau/cartes/enquête
 node tests/test_puzzle.js     # sudoku, mots mêlés, mot mystère, mots croisés
 node tests/test_newgames.js   # quiz, le plus proche, 8 américain
@@ -28,6 +30,7 @@ npm i playwright                       # une fois
 python3 -m http.server 8642 &          # sert l'appli à la racine du dépôt
 node tests/browser/test_platform.js    # catalogue + parcours de chaque écran
 node tests/browser/test_ui.js          # Words en réseau : hôte + 3 invités
+node tests/browser/test_v2_words.js    # Words V2 : partie solo complète, à deux, en ligne, bugs corrigés
 node tests/browser/test_offline.js     # mode avion de bout en bout
 node tests/browser/test_casino_ui.js   # boutique, blackjack, solitaire, barrière de jetons
 # … voir le dossier pour les autres suites

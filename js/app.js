@@ -1613,10 +1613,13 @@
     tours.forEach(function (tour, k) {
       if (k > 0) html += '<p class="mt-regle">Égalité ! Les ex æquo repiochent :</p>';
       html += '<div class="mt-ligne">';
+      var meilleur = Math.min.apply(null, tour.map(function (t) { return S.rangTirage(String(t.l)); }));
       tour.forEach(function (t) {
         var l = typeof t.l === 'string' ? t.l : '?';
         var gagne = k === tours.length - 1 && t.p === state.premier;
-        html += '<div class="mt-joueur' + (k === tours.length - 1 ? (gagne ? ' fin premier-a-venir' : ' fin') : ' hors-a-venir') +
+        var exAequo = k < tours.length - 1 && S.rangTirage(l) === meilleur;
+        html += '<div class="mt-joueur' + (k === tours.length - 1 ? (gagne ? ' fin premier-a-venir' : ' fin') :
+          (exAequo ? '' : ' hors-a-venir')) +
           '" data-p="' + (t.p | 0) + '"><div class="mt-tuile" style="--d:' + d + 'ms"><div class="mt-dos"></div>' +
           '<div class="tile' + (l === '?' ? ' blank' : '') + '" style="--d:' + d + 'ms">' +
           (l === '?' ? '★' : esc(l)) + '</div></div><span>' + esc((state.players[t.p] || {}).name || '') + '</span></div>';
@@ -1660,6 +1663,8 @@
 
   /* Début d'une partie jouée sur ce téléphone : tirage, puis la suite. */
   function debutPartie() {
+    // sur un seul téléphone, personne ne voit encore de chevalet
+    if (mode === 'local') passHidden = true;
     animeTirage(function () {
       if (!state) return;
       if (mode === 'local') showPassDevice();
@@ -1732,25 +1737,26 @@
     if (fd) {
       (fd.detail || []).forEach(function (d) { parJoueur[d.player] = d; });
       if (fd.reason === 'playout') {
-        lines.push('<p class="fin-raison">🏁 <b>' + esc(state.players[fd.finisher].name) + '</b> a posé toutes ' +
+        lines.push('<p class="fin-raison">🏁 <b>' + esc((state.players[fd.finisher] || {}).name || '') + '</b> a posé toutes ' +
           'ses lettres : celles des autres lui reviennent.</p>');
       } else {
         lines.push('<p class="fin-raison">🏁 Chacun a passé trois fois de suite : les lettres restantes ' +
           'sont déduites.</p>');
       }
     }
-    var ranked = state.players.map(function (p, i) { return { name: p.name, score: p.score, i: i }; })
+    var ranked = state.players.map(function (p, i) { return { name: p.name, score: Number(p.score) || 0, i: i }; })
       .sort(function (a, b) { return b.score - a.score; });
     var medailles = ['🥇 ', '🥈 ', '🥉 ', ''];
     ranked.forEach(function (r, k) {
       var d = parJoueur[r.i];
       var detail = '';
       if (d) {
-        if (d.delta < 0) {
-          detail = (d.avant | 0) + ' <span class="moins">− ' + (-d.delta) + '</span> (lettres restantes : ' +
-            (d.lettres || []).map(function (l) { return l === '?' ? '★' : esc(l); }).join('') + ')';
-        } else if (d.delta > 0) {
-          detail = (d.avant | 0) + ' <span class="plus">+ ' + d.delta + '</span> (lettres des autres)';
+        var delta = Number(d.delta) || 0;
+        if (delta < 0) {
+          detail = (d.avant | 0) + ' <span class="moins">− ' + (-delta) + '</span> (lettres restantes : ' +
+            (Array.isArray(d.lettres) ? d.lettres : []).map(function (l) { return l === '?' ? '★' : esc(l); }).join('') + ')';
+        } else if (delta > 0) {
+          detail = (d.avant | 0) + ' <span class="plus">+ ' + delta + '</span> (lettres des autres)';
         } else {
           detail = (d.avant | 0) + ' (aucune lettre restante)';
         }

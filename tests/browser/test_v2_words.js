@@ -256,7 +256,7 @@ async function attendsMaMain(page, ms) {
   check('[bug 5] fin : points retirés / ajoutés détaillés',
     /(lettres restantes|lettres des autres|aucune lettre restante)/.test(finTexte), finTexte.slice(0, 300));
   check('fin : statistiques (meilleur mot, moyenne, scrabbles)',
-    /Meilleur mot/.test(finTexte) && /\/coup/.test(finTexte) && await p.locator('#end-detail .fs-table tbody tr').count() === 2);
+    /Meilleur mot/.test(finTexte) && /Moy\./.test(finTexte) && await p.locator('#end-detail .fs-table tbody tr').count() === 2);
   await p.click('#btn-end-home');
   // l'historique se lit dans une partie en cours : on en relance une courte
   await p.click('.game-tile[data-g="mots"]');
@@ -439,6 +439,27 @@ async function attendsMaMain(page, ms) {
   const bandeau = await d.textContent('#turn-banner');
   check('[bug 5] après une passe de l’IA, plus de « L’IA a joué DOL » dans le bandeau',
     derniereIA.type === 'pass' && !/a joué/.test(bandeau) && /a passé son tour/.test(bandeau), bandeau);
+  // sécurité : prénoms, mots et lettres venus de l'état (hôte malveillant) sont échappés
+  await d.evaluate(() => {
+    const s = window.GGMotsTest.etat();
+    const piege = '<img src=x onerror="window.__xss=1">';
+    s.players[1].name = piege;
+    s.history.push({ player: 1, type: 'move', points: '<b>9</b>', words: [{ word: piege, score: 1 }],
+      cells: [{ i: 0, l: piege, b: false }] });
+    s.history.push({ player: 1, type: 'pass', points: 0, refus: piege });
+    window.GGMotsTest.rendu();
+    document.getElementById('btn-history').click();
+  });
+  await attends(400);
+  check('sécurité : rien d’injecté par les noms, mots ou mots refusés (GG.esc)',
+    await d.evaluate(() => !window.__xss && !document.querySelector('#screen-game img, #history-list img, #turn-banner img')));
+  await d.click('#btn-history-close');
+  await d.evaluate(() => {
+    const s = window.GGMotsTest.etat();
+    s.players[1].name = 'IA moyenne';
+    s.history.splice(-2);
+    window.GGMotsTest.rendu();
+  });
   // [bug 3] fin par passes : chaque joueur passe trois fois de suite, les échanges ne comptent pas
   const regles = await d.evaluate(() => {
     document.getElementById('btn-rules').click();

@@ -524,20 +524,22 @@
 
   /* Statistiques de la partie, par joueur, tirées de l'historique. */
   function stats(state) {
+    // (en réseau, l'état vient de l'hôte : tout est converti en nombres)
     var st = state.players.map(function (p) {
       return { coups: 0, points: 0, moyenne: 0, meilleur: null, scrabbles: 0,
-        refus: p.refus || 0, echanges: 0, passes: 0 };
+        refus: Math.max(0, Number(p.refus) || 0), echanges: 0, passes: 0 };
     });
     (state.history || []).forEach(function (h) {
-      var s = st[h.player];
+      var s = st[h && h.player];
       if (!s) return;
+      var pts = Number(h.points) || 0;
       if (h.type === 'move') {
         s.coups++;
-        s.points += h.points || 0;
+        s.points += pts;
         if (h.bingo) s.scrabbles++;
-        var mot = h.words && h.words.length
-          ? h.words.slice().sort(function (a, b) { return b.score - a.score; })[0].word : '';
-        if (!s.meilleur || h.points > s.meilleur.points) s.meilleur = { mot: mot, points: h.points };
+        var mot = Array.isArray(h.words) && h.words.length
+          ? String(h.words.slice().sort(function (a, b) { return (b.score || 0) - (a.score || 0); })[0].word) : '';
+        if (!s.meilleur || pts > s.meilleur.points) s.meilleur = { mot: mot, points: pts };
       } else if (h.type === 'exchange') {
         s.echanges++;
       } else if (h.type === 'pass') {
