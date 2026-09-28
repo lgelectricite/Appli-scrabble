@@ -1973,6 +1973,20 @@
     st[jeu] = j;
     ecris('gg-stats', st);
   }
+  /* Jeux sans fin (l'aventure de Bonbons) : chaque niveau terminé compte
+     dans les statistiques, une seule fois (mod.bilan → {id, issue}). */
+  function noteBilan() {
+    if (!miniMod || !miniMod.bilan || !miniState || mode !== 'local') return;
+    var b = null;
+    try { b = miniMod.bilan(miniState); } catch (e) { b = null; }
+    if (!b || !b.id) return;
+    var vus = lis('gg-bilans', {});
+    var cle = currentGame;
+    if (vus[cle] === String(b.id)) return;
+    vus[cle] = String(b.id);
+    ecris('gg-bilans', vus);
+    noteStat(cle, b.issue === 'gagne' ? 'gagne' : b.issue === 'perdu' ? 'perdu' : 'fini');
+  }
   function recents() { return lis('gg-recents', []); }
   function noteRecent(jeu) {
     var r = recents().filter(function (x) { return x !== jeu; });
@@ -2030,6 +2044,12 @@
   }
   function sauveMaintenant() {
     var sv = null;
+    // un jeu peut dire qu'il n'y a rien à reprendre (Bonbons sur sa carte)
+    if (miniState && miniMod && mode === 'local' && miniMod.aReprendre) {
+      var aReprendre = true;
+      try { aReprendre = miniMod.aReprendre(miniState) !== false; } catch (e) {}
+      if (!aReprendre) { try { localStorage.removeItem(SAUVE_CLE); } catch (e) {} return; }
+    }
     if (miniState && miniMod && mode === 'local' && !miniMod.over(miniState)) {
       sv = { v: 2, type: 'mini', jeu: currentGame, bots: miniBots, state: miniState, me: miniMe, ts: Date.now() };
     } else if (state && (mode === 'solo' || mode === 'local') && currentGame === 'mots' && !state.over) {
@@ -2853,6 +2873,7 @@
 
   function miniAfterChange() {
     if (mode === 'host') miniBroadcast();
+    noteBilan();
     sauvePartie();
     miniRender();
     if (miniMod.over(miniState)) showMiniEnd();

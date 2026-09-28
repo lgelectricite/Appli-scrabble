@@ -214,3 +214,17 @@ Exigences :
   être juste chez l'hôte ET chez l'invité (l'invité reçoit l'état expurgé).
 - Tests : `tests/test_relais_v2.js`, `tests/browser/test_v2_reseau.js`,
   et `node tests/tout.js` pour tout vérifier.
+
+
+## 9. Points d'accroche ajoutés pendant l'intégration (tous facultatifs)
+
+- `delaiIA(state)` → millisecondes entre deux actions de l'IA (vitesse
+  « rapide », suspense d'un dé…). Par défaut : 650 à 1 200 ms.
+- `create(names, opts)` reçoit aussi `opts.solo`, `opts.bots` (indices des
+  IA) et, à la revanche, `opts.premier` (le premier joueur tourne).
+- Le rendu reçoit `ctx.dict`, `ctx.solo` et `ctx.bots`.
+- `aReprendre(state)` → `false` : rien à reprendre (pas de carte
+  « Reprendre »), par exemple sur la carte des mondes de Bonbons.
+- `bilan(state)` → `{id, issue: 'gagne'|'perdu'}` : pour les jeux sans fin,
+  chaque étape terminée compte une fois dans les statistiques du profil.
+- Écran de fin : « 👀 Voir le jeu » laisse admirer le plateau final.

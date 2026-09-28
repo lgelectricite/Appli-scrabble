@@ -1043,8 +1043,11 @@
     el.style.fontWeight = String(opts.weight || 800);
     el.style.textShadow = ombre;
     document.body.appendChild(el);
-    // on garde le texte entier à l'écran (bord gauche / droit)
-    var w = el.offsetWidth, h = el.offsetHeight, vw = root.innerWidth || w;
+    // on garde le texte entier à l'écran (bord gauche / droit). Sa taille
+    // est estimée plutôt que mesurée : mesurer forcerait un recalcul de la
+    // page, coûteux au milieu d'une cascade d'effets.
+    var nbCar = Array.from ? Array.from(el.textContent).length : el.textContent.length;
+    var w = Math.max(taille, nbCar * taille * 0.62), h = taille * 1.05, vw = root.innerWidth || w;
     var x = borne(pt.x - w / 2, 6, Math.max(6, vw - w - 6)), y = pt.y - h / 2;
     el.style.left = x.toFixed(1) + 'px';
     el.style.top = y.toFixed(1) + 'px';

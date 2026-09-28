@@ -1249,6 +1249,13 @@
 
     turnOf: function (state) { return state.phase === 'setup' ? 0 : -1; },
     over: function (state) { return state.finished; },
+    // la coque : rien à reprendre sur la carte des mondes, et chaque niveau
+    // terminé compte dans les statistiques du profil
+    aReprendre: function (state) { return state.phase === 'play'; },
+    bilan: function (state) {
+      return state.solo && state.phase === 'result' && state.res
+        ? { id: String(state.res.ts) + '-' + state.res.lvl, issue: state.res.won ? 'gagne' : 'perdu' } : null;
+    },
     scoreOf: function (state, i) { return state.players[i].score; },
     gagnants: function (state) {
       if (state.solo) {
