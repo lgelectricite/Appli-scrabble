@@ -72,6 +72,13 @@ function mandataire(portEcoute, portRelais) {
       };
       window.WebSocket.prototype = W.prototype;
       window.WebSocket.OPEN = 1; window.WebSocket.CONNECTING = 0; window.WebSocket.CLOSED = 3;
+      // tous les messages éphémères affichés (un toast en remplace un autre)
+      window.__toasts = [];
+      document.addEventListener('DOMContentLoaded', () => {
+        const el = document.getElementById('toast');
+        if (el) new MutationObserver(() => { if (el.textContent) window.__toasts.push(el.textContent); })
+          .observe(el, { childList: true, characterData: true, subtree: true });
+      });
     }, urlRelais);
     const page = await ctx.newPage();
     const t = { nom, ctx, page, erreurs: [] };
@@ -330,11 +337,12 @@ function mandataire(portEcoute, portRelais) {
     const B = G[0];
     await B.page.evaluate(() => { const b = document.getElementById('btn-mini-chat'); if (b) b.click(); });
     await B.page.waitForSelector('.chat-q');
-    for (let k = 0; k < 30; k++) await B.page.locator('.chat-q').first().click();
+    // 30 émojis d'affilée, sans attendre (une vraie rafale)
+    await B.page.evaluate(() => { const q = document.querySelector('.chat-q'); for (let k = 0; k < 30; k++) q.click(); });
     await pause(1500);
     const envois = (await sortants(H.page)).length - avant;
     check('30 émojis d’un invité : l’hôte envoie peu (' + envois + ' messages)', envois < 60, envois);
-    check('le bavard est freiné', /Doucement/.test(await B.page.evaluate(() => document.getElementById('toast').textContent)));
+    check('le bavard est freiné', await B.page.evaluate(() => window.__toasts.some(t => /Doucement/.test(t))));
     const dernier = G[10];
     check('les autres reçoivent la conversation', await aLu(dernier.page, '👍'));
     check('l’hôte est toujours là', !(await banniere(dernier.page)), await banniere(dernier.page));
