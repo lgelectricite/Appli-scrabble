@@ -872,8 +872,9 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
       await h.locator('.ym-ligne.possible[data-cat="chance"]').dblclick();
       await g.waitForSelector('[data-a="roll"]:not([disabled])', { timeout: 8000 });
       await g.click('[data-a="roll"]');
-      await h.waitForFunction(() => /Nina/.test(document.querySelector('.ym-msg').textContent), null, { timeout: 8000 });
-      check('Yams en ligne : l’invitée lance à son tour', await g.locator('.ym-ligne.possible').count() === 13);
+      // l’aller-retour par l’hôte prend un instant
+      const lance = await g.waitForSelector('.ym-ligne.possible', { timeout: 8000 }).then(() => true, () => false);
+      check('Yams en ligne : l’invitée lance à son tour', lance && await g.locator('.ym-ligne.possible').count() === 13);
     });
     console.log('--- Cochon en ligne ---');
     await partieEnLigne('cochon', async (h, g) => {
