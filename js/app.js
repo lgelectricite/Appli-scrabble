@@ -2642,10 +2642,10 @@
     }
     var box = $('mini-count');
     box.innerHTML = '';
-    miniCount = mod.min;
-    // sur un seul téléphone : 4 noms maximum, ou moins si le jeu l'impose
+    // sur un seul téléphone : 4 noms maximum, ou moins si le jeu l'impose ;
+    // « à plusieurs » commence à 2 même si le jeu se joue aussi seul
     var hotMax = Math.min(mod.hotseatMax || mod.max, 4);
-    if (miniCount > hotMax) miniCount = hotMax;
+    miniCount = Math.min(Math.max(mod.min, 2), hotMax);
     for (var n = mod.min; n <= hotMax; n++) {
       var b = document.createElement('button');
       b.className = 'count-btn' + (n === miniCount ? ' active' : '');
@@ -4417,6 +4417,9 @@
       window.GG.haptic('select');
     }, true);
     if (window.GG.fx.autoRipple) window.GG.fx.autoRipple('.btn:not(.link), .count-btn, .mode-btn, .cat-tab');
+    // les sons lourds (dés, jetons, cartes…) se préparent au repos, dès que
+    // le son est déverrouillé : jamais d'à-coup au premier lancer de dé
+    try { if (window.GG.sfx.prepare) window.GG.sfx.prepare(); } catch (e) {}
 
     // Cagnotte de jetons : jauge d'accueil et boutique
     if (window.GG.wallet) {

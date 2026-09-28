@@ -167,6 +167,7 @@ html, body {
   margin: 0;
   padding: 0;
   overflow-x: hidden; /* jamais de défilement latéral */
+  overflow-x: clip;   /* …sans casser position: sticky (navigateurs récents) */
   font-family: var(--f-texte);
   color: var(--txt);
   background-color: var(--bg-0);
@@ -227,7 +228,10 @@ strong { font-weight: 800; }
   display: none; padding: 14px 14px 28px; max-width: 560px; margin: 0 auto;
   min-height: 100vh; min-height: 100dvh;
 }
-.screen.active { display: block; animation: ecranEntre .38s var(--doux) both; }
+/* « backwards » et non « both » : une fois entré, l'écran ne garde aucune
+   transformation (sinon les éléments position: fixed des jeux se caleraient
+   sur l'écran au lieu de la fenêtre) */
+.screen.active { display: block; animation: ecranEntre .38s var(--doux) backwards; }
 .screen.retour.active { animation-name: ecranRevient; }
 @keyframes ecranEntre { from { opacity: 0; transform: translateY(14px) scale(.985); } }
 @keyframes ecranRevient { from { opacity: 0; transform: translateY(-10px) scale(.99); } }
@@ -704,8 +708,9 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-we
 #game-header, #screen-mini > header {
   position: sticky; top: 0; z-index: 20;
   margin: 0 -8px 8px; padding: calc(6px + env(safe-area-inset-top)) 10px 8px;
-  background: linear-gradient(180deg, rgba(10, 11, 28, .92) 0%, rgba(10, 11, 28, .78) 100%);
-  -webkit-backdrop-filter: var(--flou); backdrop-filter: var(--flou);
+  /* presque opaque, sans flou d'arrière-plan : le flou recalculé à chaque
+     image sous un plateau animé coûte trop cher aux petits téléphones */
+  background: linear-gradient(180deg, rgba(10, 11, 28, .97) 0%, rgba(12, 13, 34, .93) 100%);
   border-bottom: 1px solid var(--stroke);
 }
 .info-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
