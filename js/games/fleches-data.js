@@ -634,17 +634,21 @@
     { W: 10, H: 12, maxLen: 9, rares: true, pref: [0, 0.4, 0.1, 0.4, 0.8, 1.2, 1.5, 1.5, 1.3, 1.1], K: 4, maxSteps: 600, pen2: 0.2, pD: 0.07, lo: [0.45, 0.7, 0.4, 1.6], defs: [0, 0.4, 0.6] },
     { W: 10, H: 14, maxLen: 9, rares: true, pref: [0, 0.3, 0.03, 0.2, 0.7, 1.2, 1.6, 1.8, 1.6, 1.4], K: 4, maxSteps: 600, pen2: 0.15, pD: 0.06, lo: [0.45, 0.7, 0.4, 1.8], defs: [0, 0.15, 0.85] }
   ];
-  /* Raccourcis : pour les grilles n°0 à 999 de chaque force, la tentative
-     réussie quand la première est laborieuse (calculée une fois pour toutes par
-     tests/test_grilles.js : RACCOURCIS=1 node tests/test_grilles.js). Ce ne sont
-     pas des grilles stockées : juste « commencer à l’essai n° a » (base 36),
-     ce qui borne le calcul de chaque grille à quelques milliers de pas. */
+  /* Raccourcis : pour les grilles n°0 à 999 de chaque force (fléchés) et de
+     chaque niveau (croisés), la tentative réussie quand la première est
+     laborieuse (calculée une fois pour toutes par tests/test_grilles.js :
+     RACCOURCIS=1 node tests/test_grilles.js). Ce ne sont pas des grilles
+     stockées : juste « commencer à l’essai n° a » (base 36), ce qui donne la
+     même grille en bornant son calcul à quelques milliers de pas. */
   var RACCOURCIS_TXT = {
     1: 'h:5,1l:6,1u:5,2q:5,3p:5,4c:b,53:5,6n:5,8q:5,ao:6,bl:6,c2:6,e9:5,lt:5,n7:8,n8:5,nj:6,oo:5',
     2: 'a:6,h:5,1x:5,5q:5,60:5,62:5,6h:5,aa:7,ah:7,b3:5,bq:5,bx:5,cv:5,dh:5,dq:7,e4:5,ek:6,ep:6,fu:5,gh:5,gk:7,go:5,gt:5,id:5,m1:5,m8:5,mk:7,of:6,os:6,pf:6,pi:6,pt:6,q8:5,qd:d,qw:5',
     3: '1:b,9:7,e:5,k:9,w:8,15:6,17:9,1d:6,1r:7,23:b,2h:7,2v:6,2z:5,3c:6,3h:7,3l:5,3s:5,3v:7,47:7,4r:8,51:5,5c:5,5p:h,5u:5,60:5,62:5,66:5,6c:5,6j:5,6u:5,6z:5,7g:5,7r:9,7z:5,83:6,86:5,87:5,8r:c,8s:5,9b:5,9k:7,9m:l,9s:k,9t:8,a0:d,a3:5,aa:5,ag:7,ai:5,az:5,b8:5,be:5,bk:5,bs:5,bw:6,c3:5,c7:7,ck:6,cm:8,co:6,ct:6,d1:6,d4:9,dd:5,dt:8,ei:6,en:7,eq:6,ez:e,f1:5,fo:5,fr:5,gc:5,gj:5,h1:5,h2:7,h4:c,h8:6,ha:9,hs:5,ht:7,hu:5,hy:5,i8:9,ic:a,ig:7,j5:5,jk:6,jr:6,jv:6,jz:9,k5:7,k6:7,k9:b,kf:b,kk:6,km:5,kt:5,kz:5,l5:5,l7:5,lh:8,lj:6,lk:5,lm:9,lp:5,ls:5,lv:6,m1:6,m7:7,m9:d,mf:5,mk:7,n6:8,ng:5,nm:7,nn:5,o7:d,o8:5,of:5,om:5,p0:a,p3:7,p6:5,p8:c,pa:b,pc:8,pn:5,pr:9,q7:5,qd:6,qe:7,qg:6,qi:7,qs:5,qw:7,r0:5,r4:b,rj:9,rl:8,rp:7',
     4: '4:9,5:f,6:d,d:e,j:8,k:7,q:h,r:8,13:b,19:j,1e:8,1n:6,1q:b,22:c,28:8,2i:c,2l:7,2o:9,2s:7,2u:8,2z:9,33:b,34:6,39:7,3c:c,3i:9,3j:8,3l:a,3n:9,3v:7,43:9,46:e,4c:i,4o:6,4r:9,4w:7,4z:7,50:9,52:h,54:7,55:e,56:b,5e:c,5j:c,5k:8,5n:9,5r:7,5x:7,5y:a,67:c,6b:a,6e:6,6h:n,6l:7,6t:a,6w:d,6z:8,70:9,71:6,73:d,7e:7,7f:b,7j:9,7m:7,7p:7,7u:7,7y:d,7z:6,82:7,84:7,8a:8,8j:g,8m:9,8o:i,8p:c,8u:8,8w:b,90:g,94:9,95:7,97:d,9b:b,9c:8,9d:9,9h:p,9o:e,9s:9,9x:b,a4:d,ac:b,ad:b,ai:c,aj:b,am:k,ap:7,b8:7,b9:7,ba:b,bd:g,bf:6,bg:k,bk:a,bn:c,br:d,bv:8,bw:t,c7:j,c8:6,cb:7,cp:7,cu:7,d4:f,d5:6,da:b,de:7,dh:8,dj:f,dk:n,dr:f,dz:9,e1:f,e7:c,eo:7,ep:9,eq:8,eu:9,ev:7,ew:n,f4:9,f9:h,fc:b,ff:c,fj:j,fm:b,fv:9,fy:7,g3:7,g9:f,ga:k,ge:7,gg:f,gk:h,gm:h,gs:b,gt:9,gu:a,gx:c,gy:7,h0:7,hm:h,hq:9,hr:7,hz:i,i1:a,i3:9,i7:l,i9:i,ib:6,ie:k,ih:7,ij:7,ir:9,is:a,it:9,iv:d,iz:7,j5:6,j7:8,j8:k,j9:m,ja:7,je:l,jf:a,jj:h,jq:8,jt:7,jy:e,k3:c,k4:8,k8:8,kf:d,ko:9,ky:7,l2:a,l3:9,l6:h,l7:9,l8:a,lb:h,ld:8,lt:f,lu:d,lx:d,ly:8,mb:9,mf:7,mn:8,mo:8,mq:6,mr:9,mu:7,my:e,mz:8,n0:7,n1:b,n3:e,na:c,ng:a,ni:d,nn:7,no:a,ny:7,o2:j,o4:j,o6:7,o8:8,oa:h,oe:9,og:9,oi:6,oj:7,ol:8,os:g,ou:k,oy:a,oz:6,p0:9,p2:h,p5:7,pc:a,pv:8,px:d,q8:9,q9:f,qa:8,qf:e,qg:l,qh:7,qi:9,qk:l,qm:a,qv:c,qw:b,r3:8,r4:j,r6:9,r8:a,r9:9,ra:8,rr:b',
-    5: '2:8,3:a,6:b,a:i,e:a,f:7,g:o,h:a,j:h,k:c,l:9,r:k,s:d,u:a,v:b,y:p,z:b,11:9,13:k,19:6,1c:b,1f:g,1g:d,1h:g,1i:b,1k:v,1m:b,1o:b,1p:a,1s:j,1v:9,1z:8,24:7,26:d,28:x,2a:l,2b:d,2g:8,2h:7,2j:a,2l:y,2n:8,2p:8,2u:8,2x:h,2y:h,2z:b,33:a,34:j,35:7,36:b,39:7,3j:b,3m:d,3n:e,3p:c,3s:12,3t:g,3v:g,3z:7,42:7,43:m,45:p,46:a,47:c,48:d,49:n,4e:9,4f:a,4h:c,4j:e,4k:m,4m:a,4r:z,4s:7,4t:c,4v:a,52:p,57:b,59:7,5b:a,5f:n,5g:g,5r:8,5u:8,62:7,65:9,66:7,69:j,6a:9,6b:d,6c:f,6k:7,6l:g,6m:8,6s:p,6x:8,6z:n,70:k,72:e,74:n,76:c,77:e,79:6,7c:g,7d:9,7l:c,7o:i,7p:b,7t:i,7u:9,7y:9,80:f,86:9,87:h,88:g,8a:7,8d:9,8e:6,8f:c,8g:8,8j:a,8n:7,8p:6,8q:9,8w:i,8x:7,94:7,96:m,97:9,9c:i,9d:g,9h:c,9i:s,9j:v,9k:o,9m:a,9o:q,9p:a,9s:b,9t:b,a1:7,a5:e,a6:k,a9:7,aa:8,ab:7,am:d,ap:c,au:6,aw:m,ax:7,b0:c,b2:o,b3:7,b6:v,b9:a,ba:q,bf:a,bg:f,bk:g,bl:a,bo:7,bp:a,bs:b,bu:6,bw:e,bx:y,by:8,c2:i,c3:8,c6:t,c8:b,cb:e,cf:m,ci:9,ck:e,cl:8,cn:h,cq:7,cr:d,cs:y,ct:d,cx:f,cz:h,d4:6,d6:a,d7:7,d8:e,db:b,dj:g,dk:a,dl:6,dp:c,dx:k,dz:f,e0:9,e3:d,e5:9,e8:c,e9:7,ea:c,ee:i,ef:9,ei:p,ej:6,el:f,em:8,ep:w,eq:8,er:b,ev:9,f0:b,f1:g,f5:8,f8:b,fc:e,fe:l,fg:g,fi:6,fj:a,ft:6,fv:e,fw:b,fy:e,fz:a,g0:c,g1:a,ga:7,gb:8,gc:b,ge:7,gf:z,gj:a,gr:7,gv:9,gy:b,h2:7,h4:6,h7:7,h8:s,hb:e,hd:8,hf:j,hg:7,hh:a,hl:e,hp:i,hq:9,hr:9,hs:7,ht:j,hv:j,hx:a,hz:a,i1:7,i5:9,i6:a,ib:8,ic:8,ie:7,io:m,ip:h,ir:9,it:i,iu:g,iz:8,j1:9,j4:k,j6:8,ja:6,jd:7,ji:b,jm:c,jn:7,jq:8,jt:9,jw:18,jx:j,k0:8,k1:c,k9:8,ke:c,ki:c,kj:m,kn:a,ko:j,kr:a,ku:e,kv:6,kx:8,kz:i,l5:9,lb:9,lc:a,le:q,lf:e,lh:7,lk:h,lm:a,lo:b,lq:g,lr:c,ls:e,lt:f,lu:q,ly:i,m2:8,m4:r,m7:b,m8:g,mb:i,mc:e,me:k,mf:c,mo:b,mp:t,mq:7,mt:8,mu:6,mw:a,mx:6,my:8,n1:9,n3:c,n9:u,na:7,nb:k,ne:i,ng:a,nh:y,nk:8,nm:7,nn:8,no:m,nr:h,ns:7,nt:7,nu:b,ny:f,o0:8,o3:a,o6:o,o7:h,o9:o,oa:9,og:c,ol:b,om:t,on:u,oo:e,ou:8,p2:c,p3:a,p5:8,p9:n,pa:e,pb:9,pd:b,pe:a,pf:8,pg:7,pk:a,pp:c,ps:a,pt:f,pu:7,pv:t,px:e,py:h,pz:b,q1:a,q2:8,q5:k,q6:e,q8:d,qi:b,qk:f,ql:7,qm:w,qp:k,qu:c,qw:b,qx:h,qz:b,r6:d,r7:7,r9:k,ra:d,rc:b,rf:c,rg:w,ri:g,rk:8,rm:l,rn:f,rp:a'
+    5: '2:8,3:a,6:b,a:i,e:a,f:7,g:o,h:a,j:h,k:c,l:9,r:k,s:d,u:a,v:b,y:p,z:b,11:9,13:k,19:6,1c:b,1f:g,1g:d,1h:g,1i:b,1k:v,1m:b,1o:b,1p:a,1s:j,1v:9,1z:8,24:7,26:d,28:x,2a:l,2b:d,2g:8,2h:7,2j:a,2l:y,2n:8,2p:8,2u:8,2x:h,2y:h,2z:b,33:a,34:j,35:7,36:b,39:7,3j:b,3m:d,3n:e,3p:c,3s:12,3t:g,3v:g,3z:7,42:7,43:m,45:p,46:a,47:c,48:d,49:n,4e:9,4f:a,4h:c,4j:e,4k:m,4m:a,4r:z,4s:7,4t:c,4v:a,52:p,57:b,59:7,5b:a,5f:n,5g:g,5r:8,5u:8,62:7,65:9,66:7,69:j,6a:9,6b:d,6c:f,6k:7,6l:g,6m:8,6s:p,6x:8,6z:n,70:k,72:e,74:n,76:c,77:e,79:6,7c:g,7d:9,7l:c,7o:i,7p:b,7t:i,7u:9,7y:9,80:f,86:9,87:h,88:g,8a:7,8d:9,8e:6,8f:c,8g:8,8j:a,8n:7,8p:6,8q:9,8w:i,8x:7,94:7,96:m,97:9,9c:i,9d:g,9h:c,9i:s,9j:v,9k:o,9m:a,9o:q,9p:a,9s:b,9t:b,a1:7,a5:e,a6:k,a9:7,aa:8,ab:7,am:d,ap:c,au:6,aw:m,ax:7,b0:c,b2:o,b3:7,b6:v,b9:a,ba:q,bf:a,bg:f,bk:g,bl:a,bo:7,bp:a,bs:b,bu:6,bw:e,bx:y,by:8,c2:i,c3:8,c6:t,c8:b,cb:e,cf:m,ci:9,ck:e,cl:8,cn:h,cq:7,cr:d,cs:y,ct:d,cx:f,cz:h,d4:6,d6:a,d7:7,d8:e,db:b,dj:g,dk:a,dl:6,dp:c,dx:k,dz:f,e0:9,e3:d,e5:9,e8:c,e9:7,ea:c,ee:i,ef:9,ei:p,ej:6,el:f,em:8,ep:w,eq:8,er:b,ev:9,f0:b,f1:g,f5:8,f8:b,fc:e,fe:l,fg:g,fi:6,fj:a,ft:6,fv:e,fw:b,fy:e,fz:a,g0:c,g1:a,ga:7,gb:8,gc:b,ge:7,gf:z,gj:a,gr:7,gv:9,gy:b,h2:7,h4:6,h7:7,h8:s,hb:e,hd:8,hf:j,hg:7,hh:a,hl:e,hp:i,hq:9,hr:9,hs:7,ht:j,hv:j,hx:a,hz:a,i1:7,i5:9,i6:a,ib:8,ic:8,ie:7,io:m,ip:h,ir:9,it:i,iu:g,iz:8,j1:9,j4:k,j6:8,ja:6,jd:7,ji:b,jm:c,jn:7,jq:8,jt:9,jw:18,jx:j,k0:8,k1:c,k9:8,ke:c,ki:c,kj:m,kn:a,ko:j,kr:a,ku:e,kv:6,kx:8,kz:i,l5:9,lb:9,lc:a,le:q,lf:e,lh:7,lk:h,lm:a,lo:b,lq:g,lr:c,ls:e,lt:f,lu:q,ly:i,m2:8,m4:r,m7:b,m8:g,mb:i,mc:e,me:k,mf:c,mo:b,mp:t,mq:7,mt:8,mu:6,mw:a,mx:6,my:8,n1:9,n3:c,n9:u,na:7,nb:k,ne:i,ng:a,nh:y,nk:8,nm:7,nn:8,no:m,nr:h,ns:7,nt:7,nu:b,ny:f,o0:8,o3:a,o6:o,o7:h,o9:o,oa:9,og:c,ol:b,om:t,on:u,oo:e,ou:8,p2:c,p3:a,p5:8,p9:n,pa:e,pb:9,pd:b,pe:a,pf:8,pg:7,pk:a,pp:c,ps:a,pt:f,pu:7,pv:t,px:e,py:h,pz:b,q1:a,q2:8,q5:k,q6:e,q8:d,qi:b,qk:f,ql:7,qm:w,qp:k,qu:c,qw:b,qx:h,qz:b,r6:d,r7:7,r9:k,ra:d,rc:b,rf:c,rg:w,ri:g,rk:8,rm:l,rn:f,rp:a',
+    facile: '2k:2,3b:1,3x:2,54:2,6l:2,8u:2,a3:1,dm:2,dw:1,f2:2,h2:1,hr:2,ni:2,nn:2,r6:2,rd:3',
+    moyen: 'x:3,40:1,5l:2,6p:2,7r:2,8c:2,8z:2,94:2,ax:2,b3:2,da:2,e5:1,ek:2,fm:2,gc:3,hb:2,hc:1,ib:2,iv:1,j6:2,jb:1,jh:2,jp:2,jr:2,l7:2,lx:2,lz:2,m9:3,nb:1,oe:2,ok:2,on:1,oo:2,or:1,p3:1,px:2,q4:3,qo:1',
+    difficile: '3:2,b:4,e:3,k:2,q:2,r:2,s:3,u:3,10:1,17:3,1a:2,1h:2,1m:2,1t:3,22:4,2d:2,2g:3,2j:2,2u:1,2v:4,2w:3,30:3,33:3,3n:1,3o:4,3t:2,3u:2,3z:2,42:1,43:3,4n:4,4o:1,4p:3,4u:1,52:3,58:2,5j:3,5o:2,5p:4,5v:2,61:2,62:3,6r:2,74:2,77:2,78:1,79:1,7a:2,7c:3,7d:1,7f:1,7i:2,7y:7,86:2,8a:1,8l:2,8q:1,8u:1,8w:2,9m:2,9s:2,9u:2,9z:2,a3:2,ae:1,af:2,an:2,aq:2,ar:3,aw:2,b0:2,b8:2,b9:5,be:2,bg:4,br:3,bv:2,c6:2,d2:3,dc:2,df:3,dj:3,dl:1,dn:3,dw:2,e3:1,ej:3,es:2,ez:1,f1:1,f5:1,f6:2,fb:2,fg:2,fn:2,fp:2,ft:3,fu:2,g0:2,g3:2,g4:1,g6:2,gg:3,go:1,gr:2,gt:2,h2:2,hb:2,ho:4,hr:2,ht:2,i1:1,i3:2,i7:2,ib:1,ih:2,ii:2,ik:2,ir:2,iw:1,j1:3,j3:2,j5:2,j8:1,jb:6,jg:2,ji:1,jl:2,jq:3,ju:1,jz:2,k6:2,kb:2,kj:3,kk:2,kr:3,kw:1,kx:3,ky:2,l1:2,le:2,lf:7,lr:3,lt:3,lz:2,m1:2,m3:2,mb:2,mg:1,mm:3,mz:1,n4:1,n8:3,n9:2,nc:3,nj:2,nq:2,o0:2,o8:4,o9:2,or:2,ov:2,p1:3,p7:3,pa:2,pe:3,pl:5,pp:2,pw:2,py:3,q4:1,q8:2,qa:1,qd:3,qi:4,qs:2,r6:6,r7:1,rf:2,rl:3,rn:1,rp:1'
   };
   var RACCOURCIS = null;
   function raccourci(f, num) {
@@ -662,6 +666,10 @@
     }
     return (RACCOURCIS[f] && RACCOURCIS[f][num]) || 0;
   }
+  function cfgFleches(f) {
+    var F = FORCES[f];
+    return { mode: 'fleches', W: F.W, H: F.H, pref: F.pref, K: F.K, maxSteps: F.maxSteps, pen2: F.pen2, pD: F.pD, lo: F.lo, essais: 30 };
+  }
   function prepFleches(f) {
     var F = FORCES[f];
     return preparer('fl' + f, function (w, rare) {
@@ -670,11 +678,11 @@
   }
   /* grille n° num (0, 1, 2…) de la force f ; ou le défi du jour (jour = date) */
   function grilleFleches(f, num, jour) {
-    var F = FORCES[f];
+    var F = f === (f | 0) && f >= 1 && f < FORCES.length ? FORCES[f] : null;
     if (!F) return null;
     var cle = jour ? 'fleches|jour|' + jour : 'fleches|' + f + '|' + num;
     var graine = hash(cle);
-    var g = remplir(prepFleches(f), { mode: 'fleches', W: F.W, H: F.H, pref: F.pref, K: F.K, maxSteps: F.maxSteps, pen2: F.pen2, pD: F.pD, lo: F.lo, essais: 30 }, graine, jour ? 0 : raccourci(f, num));
+    var g = remplir(prepFleches(f), cfgFleches(f), graine, jour ? 0 : raccourci(f, num));
     if (!g) return null;
     var W = F.W, mots = g.mots, parCase = {};
     for (var i = 0; i < mots.length; i++) {
@@ -708,13 +716,17 @@
     var C = NIVEAUX[niv];
     return preparer('cr' + niv, function (w, rare) { return w.length <= C.maxLen && w.length <= C.n && (C.rares || !rare); });
   }
+  function cfgCroises(niv) {
+    var C = NIVEAUX[niv];
+    return { mode: 'croises', W: C.n, H: C.n, pref: C.pref, K: 4, maxSteps: 1500, maxB: Math.round(C.n * C.n * 0.22), minCroise: 0.72, pen2: 0.6, penV: 0.5, pD: 0.25, lo: [1, 1, 0.6, 1.3], essais: 30 };
+  }
   var ROMAINS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'];
   function grilleCroises(niv, num, jour) {
-    var C = NIVEAUX[niv];
+    var C = typeof niv === 'string' && Object.prototype.hasOwnProperty.call(NIVEAUX, niv) ? NIVEAUX[niv] : null;
     if (!C) return null;
     var cle = jour ? 'croises|jour|' + jour : 'croises|' + niv + '|' + num;
     var graine = hash(cle);
-    var g = remplir(prepCroises(niv), { mode: 'croises', W: C.n, H: C.n, pref: C.pref, K: 4, maxSteps: 1500, maxB: Math.round(C.n * C.n * 0.22), minCroise: 0.72, pen2: 0.6, penV: 0.5, pD: 0.25, lo: [1, 1, 0.6, 1.3], essais: 30 }, graine);
+    var g = remplir(prepCroises(niv), cfgCroises(niv), graine, jour ? 0 : raccourci(niv, num));
     if (!g) return null;
     var N = C.n, mots = g.mots;
     for (var i = 0; i < mots.length; i++) {
@@ -729,7 +741,7 @@
       return a.ligne - b.ligne || a.cells[0] - b.cells[0];
     });
     choisirDefs(mots, C.defs, rng(graine ^ 0x27d4eb2f), null);
-    return { w: N, h: N, cases: g.cases.replace(/[A-Z]/g, '.'), sol: g.cases, mots: mots };
+    return { w: N, h: N, cases: g.cases.replace(/[A-Z]/g, '.'), sol: g.cases, mots: mots, pas: g.pas, essai: g.essai };
   }
 
   /* ================================================================
@@ -991,17 +1003,23 @@
     if (POLICE_PX !== px) { MESURE.font = '700 ' + px + 'px "Nunito Variable", system-ui, sans-serif'; POLICE_PX = px; }
     return (LARGEURS[cle] = MESURE.measureText(txt).width);
   }
-  function police(txt, larg, haut, max, min) {
-    var mots = String(txt).replace(/’/g, '’ ').split(/\s+/); // on peut couper après une apostrophe
+  /* apos : on s’autorise aussi à passer à la ligne juste après une
+     apostrophe (« d’ | Amérique ») quand le mot entier ne tient pas */
+  function police(txt, larg, haut, max, min, apos) {
+    var mots = String(txt).split(/\s+/), bouts = [];
+    mots.forEach(function (m) {
+      var p = apos ? m.replace(/’/g, '’\n').split('\n') : [m];
+      p.forEach(function (b, k) { if (b) bouts.push({ t: b, colle: k > 0 }); });
+    });
     for (var f = max; f >= min; f -= 0.5) {
       var maxL = Math.floor(haut / (f * 1.04));
       if (maxL < 1) continue;
       var lignes = 1, cur = 0, esp = largeur(' ', f), ok = true;
-      for (var i = 0; i < mots.length; i++) {
-        var w = largeur(mots[i], f);
+      for (var i = 0; i < bouts.length; i++) {
+        var w = largeur(bouts[i].t, f), e = bouts[i].colle ? 0 : esp;
         if (w > larg) { ok = false; break; } // on ne coupe pas un mot : plus petit
         if (cur === 0) cur = w;
-        else if (cur + esp + w <= larg) cur += esp + w;
+        else if (cur + e + w <= larg) cur += e + w;
         else { lignes++; cur = w; }
       }
       if (ok && lignes <= maxL) return f;
@@ -1016,9 +1034,14 @@
       if (!n) return;
       var h = (n > 1 ? (S - 2) / 2 : S - 2) - 2.5;
       hs.forEach(function (t) {
-        var f = police(t.textContent, S - 7, h, 13, 8.5);
+        var brut = t.textContent.replace(/\u200b/g, ''), coupe = false;
+        var f = police(brut, S - 7, h, 13, 8.5, false);
+        if (!f && brut.indexOf('’') >= 0) { f = police(brut, S - 7, h, 13, 8.5, true); coupe = true; }
         t.style.fontSize = (f || 8.5) + 'px';
         t.classList.toggle('serre', !f);
+        // espace de largeur nulle après l’apostrophe, seulement si nécessaire
+        var txt = coupe ? brut.replace(/’/g, '’\u200b') : brut;
+        if (t.textContent !== txt) t.textContent = txt;
       });
     });
   }
@@ -1647,7 +1670,7 @@
     jourSemaine: jourSemaine, dateLisible: dateLisible, chrono: chrono, duree: duree,
     lexique: lexique, preparer: preparer, generer: generer, remplir: remplir, choisirDefs: choisirDefs,
     FORCES: FORCES, NIVEAUX: NIVEAUX, ROMAINS: ROMAINS, FLECHES: FLECHES, PEN: PEN,
-    grilleFleches: grilleFleches, grilleCroises: grilleCroises, dessus: dessus, raccourci: raccourci, prepFleches: prepFleches,
+    grilleFleches: grilleFleches, grilleCroises: grilleCroises, dessus: dessus, raccourci: raccourci, prepFleches: prepFleches, cfgFleches: cfgFleches, prepCroises: prepCroises, cfgCroises: cfgCroises,
     demarrer: demarrer, appliquer: appliquer, masquer: masquer, tempsJeu: tempsJeu, etoiles: etoiles,
     police: police, jouer: jouer
   };
@@ -1676,8 +1699,8 @@
     'ACHETER|Payer pour avoir|Faire ses emplettes|Corrompre d’un billet',
     'ACIDE|Aigre|Piquant au goût|Comme une remarque blessante',
     'ACIER|Fer allié|Métal des lames|Nerfs d’…, très solides',
-    'ACTE|Action|Partie d’une pièce|Document du notaire',
-    'ACTES|Actions|Parties de pièce|Documents notariés',
+    'ACTE|Partie d’une pièce|Document du notaire|Geste, fait',
+    'ACTES|Parties de pièce|Documents notariés|Faits et gestes',
     'ACTEUR|Comédien|Il joue la comédie|Il fait son cinéma',
     'ACTRICE|Comédienne|Vedette de l’écran|Elle fait son cinéma',
     'ADIEU|Au revoir définitif|Salut final|Dernier mot de la séparation',
@@ -1687,13 +1710,13 @@
     'AGE|Nombre d’années|Époque|De pierre ou de bronze',
     'AGENT|Policier|Représentant|Il peut être secret',
     'AGES|Nombres d’années|Époques|Périodes',
-    'AGI|Fait|Passé à l’action|Remué, secoué',
+    'AGI|Fait|Passé à l’action|Intervenu',
     'AGILE|Souple|Leste|Vif comme un chat',
     'AGIR|Faire|Passer à l’action|Ne pas rester les bras croisés',
-    'AGIS|Fais|Passe à l’action|Actionne',
+    'AGIS|Fais|Passe à l’action|Interviens',
     'AGNEAU|Petit de la brebis|Il bêle dans la bergerie|Symbole de douceur',
     'AH|Cri de surprise|Marque l’étonnement|Ça alors !',
-    'AI|Paresseux d’Amérique|J’en … assez|Il ne se presse jamais',
+    'AI|Paresseux|J’en … assez|Il ne se presse jamais',
     'AIDE|Secours|Coup de main|Assistant',
     'AIDER|Secourir|Donner un coup de main|Prêter main-forte',
     'AIE|Cri de douleur|Ouille !|Que j’… raison !',
@@ -1729,7 +1752,7 @@
     '°ALES|Bières anglaises|Blondes d’outre-Manche|Pintes de pub',
     'ALLEE|Chemin bordé d’arbres|Voie de jardin|… et venue',
     'ALLER|Se rendre|Billet sans retour|Partir',
-    'ALLO|Mot du téléphone|Répondre au bout du fil|Y a quelqu’un ?',
+    'ALLO|Mot du téléphone|Premier mot au bout du fil|Y a quelqu’un ?',
     'ALLUMETTE|Tige à flamme|Bâtonnet soufré|Jambe maigre',
     'ALORS|Donc|À ce moment-là|Et … ?',
     'ALPINISTE|Grimpeur|Montagnard|Conquérant des cimes',
@@ -1767,7 +1790,7 @@
     'ANNEE|Période de douze mois|Millésime|Bissextile tous les quatre ans',
     'ANNEES|Périodes de douze mois|Millésimes|Décennies, par dix',
     'ANNONCE|Avis au public|Petite, dans le journal|Déclaration aux cartes',
-    'ANS|Années|Printemps, pour l’âge|Ils s’accumulent sur le gâteau',
+    'ANS|Printemps, pour l’âge|Bougies du gâteau|Le poids des … : la vieillesse',
     'ANTENNE|Récepteur sur le toit|Organe de l’insecte|Succursale',
     'APPEL|Coup de fil|Cri pour faire venir|Recours en justice',
     'APPELER|Téléphoner|Héler|Nommer',
@@ -1788,7 +1811,7 @@
     'ARENE|Amphithéâtre|Lieu de corrida|Piste sablée',
     'ARENES|Amphithéâtres|Lieux de corrida|Pistes sablées',
     '°ARES|Surfaces agraires|Centaines de mètres carrés|Petites mesures de champ',
-    'ARETE|Os de poisson|Ligne de crête|Méfiance dans la sole',
+    'ARETE|Os de poisson|Ligne de crête|Angle vif',
     'ARETES|Os de poisson|Lignes de crête|Angles vifs',
     'ARGENT|Métal précieux|Monnaie|Il ne fait pas le bonheur',
     'ARGILE|Terre de potier|Glaise|Le potier la façonne',
@@ -1843,7 +1866,7 @@
     'AUTEUR|Écrivain|Créateur|Responsable du méfait',
     'AUTO|Voiture|Bagnole|Préfixe du soi-même',
     'AUTOMNE|Saison des feuilles mortes|Après l’été|Saison des vendanges',
-    'AUTOROUTE|Voie rapide|Route à péage|A6, par exemple',
+    'AUTOROUTE|Voie rapide|Voie à péage|A6, par exemple',
     'AUTOS|Voitures|Bagnoles|Véhicules',
     'AUTOUR|Aux alentours|Rapace|Tout près',
     'AUTRE|Différent|Pas le même|Un … jour',
@@ -1873,7 +1896,7 @@
     'AXES|Pivots|Lignes centrales|Grandes routes',
     'AZUR|Bleu du ciel|Côte méditerranéenne|Bleu d’un ciel sans nuage',
     /* B */
-    'BAC|Examen du lycée|Bachot|Bateau passeur',
+    'BAC|Examen du lycée|Bateau passeur|Grand récipient',
     'BACS|Examens du lycée|Bateaux passeurs|Récipients',
     'BAGAGE|Valise|Paquetage|Savoir acquis',
     'BAGARRE|Rixe|Échauffourée|Pugilat',
@@ -1903,7 +1926,7 @@
     'BANS|Applaudissements rythmés|Proclamations|Publications de mariage',
     'BAR|Café|Comptoir|Loup de mer',
     'BARBE|Poils au menton|Quel ennui !|Postiche du père Noël',
-    'BARBECUE|Grill|Gril de jardin|Grillade en plein air',
+    'BARBECUE|Gril de jardin|Grillade en plein air|Il fume l’été au jardin',
     'BARQUE|Petit bateau|Canot|On la mène bien ou mal',
     'BARRE|Tige de métal|Gouvernail|Trait tiré',
     'BARS|Cafés|Comptoirs|Loups de mer',
@@ -1926,7 +1949,7 @@
     'BEBE|Nourrisson|Poupon|Il fait ses dents',
     'BEBES|Nourrissons|Poupons|Petits enfants',
     'BEC|Bouche d’oiseau|Pointe de plume|Clouer le … : faire taire',
-    'BECS|Bouches d’oiseaux|Pointes de plume|Gourmands, familièrement',
+    'BECS|Bouches d’oiseaux|Pointes de plume|Clapets, familièrement',
     'BEE|Grande ouverte|Bouche … : ébahi|Stupéfaite',
     'BEES|Grandes ouvertes|Ébahies|Stupéfaites',
     'BELLE|Jolie|Partie décisive|Se faire la … : s’évader',
@@ -1959,7 +1982,7 @@
     'BIS|Encore !|Deux fois|Pain gris',
     'BISCUIT|Gâteau sec|Petit-beurre|Porcelaine non émaillée',
     'BISE|Baiser sur la joue|Vent du nord|Frais souffle d’hiver',
-    'BISOU|Bise|Baiser d’enfant|Smack',
+    'BISOU|Petit baiser|Câlin sur la joue|Smack',
     'BLAGUE|Plaisanterie|Farce|Pochette à tabac',
     'BLAME|Réprimande|Reproche|Sanction',
     'BLANC|Couleur de neige|Vin de Chablis|Espace vide',
@@ -1990,7 +2013,7 @@
     'BONS|Délicieux|Coupons|Généreux',
     'BORD|Lisière|Rivage|Côté du navire',
     'BOSQUET|Petit bois|Massif d’arbustes|Taillis',
-    'BOSSE|Grosseur|Enflure|Signe du chameau',
+    'BOSSE|Grosseur|Enflure|Avoir la … des maths',
     'BOSSES|Grosseurs|Enflures|Dos du chameau',
     'BOTTE|Chaussure haute|Gerbe|Coup d’escrime',
     'BOTTES|Chaussures hautes|Gerbes|Coups d’escrime',
@@ -2053,7 +2076,7 @@
     'BUTS|Objectifs|Points au foot|Filets du gardien',
     /* C */
     'CA|Cela, en abrégé|Le moi et le …|Siège des pulsions',
-    'CAB|Cabriolet|Voiture de louage|Fiacre anglais',
+    'CAB|Voiture de louage|Fiacre anglais|Taxi de Londres',
     'CABINET|Bureau|Toilettes|Gouvernement',
     'CADEAU|Présent|Surprise emballée|Ce n’est pas un … : pas facile',
     'CADRAN|Face de montre|Tableau gradué|Solaire, sur un mur',
@@ -2086,10 +2109,10 @@
     'CAPABLE|Apte|Compétent|Susceptible de',
     'CAPE|Manteau sans manches|Pèlerine|Rire sous …',
     'CAPITAINE|Chef d’équipe|Commandant de navire|Officier',
-    'CAPITAL|Essentiel|Fortune|Grand A',
+    'CAPITAL|Essentiel|Fortune|Peine … : la mort',
     'CAPOT|Couvercle du moteur|Carrosserie avant|Battu à plate couture aux cartes',
     'CAPRICE|Lubie|Fantaisie|Colère d’enfant gâté',
-    'CAR|Autocar|Parce que|Conjonction de cause',
+    'CAR|Bus de tourisme|Parce que|Conjonction de cause',
     'CARAFE|Pichet|Bouteille à eau|Rester en … : en rade',
     'CARAMEL|Sucre fondu|Bonbon doré|Couleur blond foncé',
     'CARESSE|Câlin|Effleurement tendre|Geste doux',
@@ -2100,7 +2123,7 @@
     'CAROTTES|Légumes orange|Racines croquantes|Les … sont cuites',
     'CARRE|Figure à quatre côtés|Au … : puissance deux|Coin de jardin',
     'CARREAU|Vitre|Couleur de cartes|Rester sur le … : au sol',
-    'CARS|Bus de tourisme|Véhicules d’excursion|Parce que, en vieux français',
+    'CARS|Bus de tourisme|Véhicules d’excursion|Ils font le ramassage scolaire',
     'CARTABLE|Sac d’écolier|Serviette|Il pèse sur le dos',
     'CARTE|Plan|Menu|As ou valet',
     'CARTON|Emballage|Invitation|Faire un … : réussir',
@@ -2139,7 +2162,7 @@
     'CHACUN|Tout le monde|Chaque personne|À … son goût',
     'CHAGRIN|Peine|Tristesse|Cuir grenu',
     'CHAINE|Suite d’anneaux|Programme de télé|Montagnes alignées',
-    'CHAISE|Siège|Siège à dossier|… longue',
+    'CHAISE|Siège à dossier|Meuble de salle à manger|… longue',
     'CHALEUR|Canicule|Température élevée|Ardeur',
     'CHAMBRE|Pièce pour dormir|Assemblée|… à air',
     'CHAMEAU|Il a deux bosses|Méchante personne|Vaisseau du désert',
@@ -2173,13 +2196,13 @@
     'CHEMINER|Avancer|Marcher|Progresser lentement',
     'CHEMISE|Vêtement à col|Dossier cartonné|Donner sa … : être généreux',
     'CHENE|Arbre noble|Il donne des glands|Solide comme un …',
-    'CHENILLE|Future papillon|Larve velue|Danse en file',
+    'CHENILLE|Futur papillon|Larve velue|Danse en file',
     'CHER|Coûteux|Aimé|Onéreux',
     'CHERCHER|Fouiller|Aller quérir|Tenter de trouver',
     'CHERCHEUR|Savant|Scientifique|Prospecteur',
     'CHEVAL|Coursier|Monture|Équidé',
     'CHEVALIER|Cavalier noble|Paladin|Preux',
-    'CHEVEU|Poil de la tête|Couper les … en quatre|Il y a un … : un problème',
+    'CHEVEU|Poil de la tête|Il y a un … : un problème|Il tombe dans la soupe',
     'CHEVRE|Biquette|Bique|Ménager la … et le chou',
     'CHIEN|Toutou|Il aboie|Meilleur ami de l’homme',
     'CHIFFRE|Nombre|Code secret|Montant',
@@ -2207,7 +2230,7 @@
     'CIRQUE|Chapiteau|Spectacle de clowns|Pagaille',
     'CISEAUX|Outil pour couper|Lames croisées|Saut en gymnastique',
     'CITE|Ville|Nommé|Quartier populaire',
-    'CITRON|Agrume acide|Jaune et amer|Tête, en argot',
+    'CITRON|Agrume jaune|Fruit acide|Tête, en argot',
     'CITROUILLE|Courge orange|Potiron|Carrosse de Cendrillon',
     'CLAIR|Lumineux|Limpide|… de lune',
     'CLAN|Tribu|Famille|Bande',
@@ -2215,7 +2238,7 @@
     'CLASSE|Salle de cours|Catégorie|Élégance',
     'CLAVIER|Touches|Piano|Synthétiseur',
     'CLE|Elle ouvre la serrure|Solution|Signe sur la portée',
-    'CLEF|Clé|Solution|… de voûte',
+    'CLEF|Elle ouvre la porte|Solution|… de voûte',
     'CLES|Trousseau|Solutions|Signes de portée',
     'CLIENT|Acheteur|Consommateur|Il est roi',
     'CLIENTS|Acheteurs|Consommateurs|Ils sont rois',
@@ -2225,7 +2248,7 @@
     'CLOCHER|Tour d’église|Campanile|Boiter',
     'CLOU|Pointe de métal|Furoncle|… du spectacle',
     'CLOWN|Auguste|Pitre du cirque|Il a le nez rouge',
-    'COCHON|Porc|Sale|Il ne faut pas le jeter',
+    'COCHON|Porc|Sale|Tout est bon en lui',
     'COCO|Noix des tropiques|Ami, familièrement|Communiste, jadis',
     'COEUR|Organe vital|Centre|Siège des sentiments',
     'COEURS|Organes vitaux|Centres|Couleur de cartes',
@@ -2266,7 +2289,7 @@
     'CONTE|Histoire|Récit merveilleux|Il était une fois',
     'CONTINENT|Afrique ou Europe|Terre émergée|Masse terrestre',
     'CONTRE|Opposé à|Près de|Pour et …',
-    'COPAIN|Pote|Frère d’armes, en civil|Il est de la bande',
+    'COPAIN|Pote|Camarade|Il est de la bande',
     'COPIE|Reproduction|Imitation|Devoir rendu',
     'COPIES|Reproductions|Imitations|Devoirs rendus',
     'COQ|Volaille mâle|Il chante à l’aube|Emblème gaulois',
@@ -2312,7 +2335,7 @@
     'CRAIE|Calcaire blanc|Bâton du tableau noir|Roche tendre',
     'CRAINDRE|Redouter|Avoir peur de|Appréhender',
     'CRAN|Entaille|Courage|Encoche de ceinture',
-    'CRAPAUD|Batracien|Grenouille verrue|Petit fauteuil',
+    'CRAPAUD|Batracien|Il a la peau verruqueuse|Petit fauteuil',
     'CRAVATE|Nœud de cou|Accessoire de costume|Lavallière',
     'CRAYON|Mine|Outil à dessin|Coup de …',
     'CRAYONS|Mines|Outils à dessin|Pastels',
@@ -2325,7 +2348,7 @@
     'CRI|Hurlement|Éclat de voix|Dernier … : mode',
     'CRIER|Hurler|Brailler|… au loup',
     'CRIME|Meurtre|Assassinat|Forfait',
-    'CRINIERE|Poils du lion|Chevelure abondante|Cou du cheval',
+    'CRINIERE|Poils du lion|Chevelure abondante|Parure du cou du cheval',
     'CRIS|Hurlements|Éclats de voix|Clameurs',
     'CRISE|Poussée de fièvre|Période grave|Récession',
     'CROC|Dent pointue|Canine|Avoir les …s : avoir faim',
@@ -2354,7 +2377,7 @@
     'CYCLE|Période|Vélo|Suite d’étapes',
     'CYGNE|Oiseau blanc|Il a un long cou|Son chant est le dernier',
     /* D */
-    'DAIM|Cervidé|Cuir suédé|Chamois',
+    'DAIM|Cervidé|Cuir suédé|Cervidé aux bois plats',
     'DAME|Femme|Reine aux cartes|Pion couronné',
     'DANGER|Péril|Risque|Menace',
     'DANS|À l’intérieur de|En|D’ici … une heure',
@@ -2385,7 +2408,7 @@
     'DELICE|Régal|Plaisir exquis|Pur bonheur',
     'DEMAIN|Le jour suivant|Futur proche|Ce n’est pas … la veille',
     'DEMANDE|Requête|Question|Offre et …',
-    'DEMENAGER|Changer de logement|Emménager ailleurs|Déguerpir',
+    'DEMENAGER|Changer de logement|Faire ses cartons|Déguerpir',
     'DEMEURE|Maison|Domicile|Mettre en …',
     'DEMI|Moitié|Verre de bière|Joueur de rugby',
     'DENI|Refus|Négation|… de justice',
@@ -2415,7 +2438,7 @@
     'DEUIL|Affliction|Perte d’un proche|Faire son … de',
     'DEUX|Paire|Couple|Un plus un',
     'DEVANT|En face de|Avant|Façade',
-    'DEVENIR|Se transformer en|Avenir|Évolution',
+    'DEVENIR|Se transformer en|Évolution|Ce qui adviendra',
     'DEVINER|Trouver|Pressentir|Percer à jour',
     'DEVISE|Maxime|Monnaie étrangère|Slogan',
     'DEVOIR|Obligation|Exercice scolaire|Être redevable',
@@ -2433,7 +2456,7 @@
     'DINERS|Repas du soir|Soupers|Festins du soir',
     'DIRE|Parler|Affirmer|Raconter',
     'DIRECT|Sans détour|En … : en live|Coup de poing',
-    'DIRECTEUR|Patron|Dirigeant|Chef de service',
+    'DIRECTEUR|Patron|Proviseur|Chef de service',
     'DISCOURS|Allocution|Harangue|Laïus',
     'DISQUE|Vinyle|Palet|Rond',
     'DISTANCE|Écart|Éloignement|Kilométrage',
@@ -2455,8 +2478,8 @@
     'DONC|Par conséquent|Ainsi|Alors',
     'DONJON|Tour de château|Réduit fortifié|Tour maîtresse',
     'DONNER|Offrir|Céder|Distribuer',
-    'DORADE|Poisson doré|Daurade|Poisson grillé',
-    'DORE|Couleur d’or|Rissolé|Poisson de lac',
+    'DORADE|Poisson de mer|Poisson à griller|Sparidé royal',
+    'DORE|Blond comme les blés|Rissolé|Poisson de lac',
     'DORMIR|Sommeiller|Faire dodo|Roupiller',
     'DOS|Échine|Verso|Arrière du corps',
     'DOSSIER|Chemise cartonnée|Appui de chaise|Affaire en cours',
@@ -2494,7 +2517,7 @@
     'DURE|Pénible|Coriace|Persiste',
     'DUREE|Temps|Laps|Longueur',
     'DURS|Solides|Pénibles|Coriaces',
-    'DUT|Fut obligé|Était redevable|Il … partir',
+    'DUT|Fut obligé|Fut redevable|Il … partir',
     'DUVET|Plumes fines|Édredon|Premiers poils',
     /* E */
     'EAU|Liquide vital|H2O|Elle dort quand elle est calme',
@@ -2599,7 +2622,7 @@
     'EPICE|Condiment|Aromate|Poivre ou cannelle',
     'EPICERIE|Commerce de quartier|Alimentation|Supérette',
     'EPICES|Condiments|Aromates|Poivre et cannelle',
-    'EPICIER|Commerçant|Marchand de primeurs|Détaillant du coin',
+    'EPICIER|Commerçant|Marchand de denrées|Détaillant du coin',
     'EPINARD|Légume vert|Aliment de Popeye|Feuille riche en fer',
     'EPINE|Piquant|Aiguillon|Colonne vertébrale',
     'EPINES|Piquants|Aiguillons|Couronne du Christ',
@@ -2626,8 +2649,8 @@
     'ESPACE|Étendue|Univers|Intervalle',
     'ESPACES|Étendues|Univers|Intervalles',
     'ESPADRILLE|Chaussure de toile|Sandale basque|Semelle de corde',
-    'ESPOIR|Espérance|Attente|Jeune talent',
-    'ESPOIRS|Espérances|Attentes|Jeunes talents',
+    'ESPOIR|Attente|Confiance en l’avenir|Jeune talent',
+    'ESPOIRS|Attentes|Rêves d’avenir|Jeunes talents',
     'ESPRIT|Intelligence|Humour|Fantôme',
     'ESSAI|Tentative|Test|But au rugby',
     'ESSAIS|Tentatives|Tests|Buts au rugby',
@@ -2636,7 +2659,7 @@
     'EST|Orient|Levant|Point cardinal',
     'ESTIME|Considération|Respect|Navigation à l’…',
     'ET|Conjonction de coordination|Plus, en bref|Mot de liaison',
-    'ETABLE|Écurie|Bouverie|Abri des vaches',
+    'ETABLE|Abri des vaches|Bouverie|Crèche de Bethléem',
     'ETAGE|Niveau|Palier|Degré',
     'ETAGERE|Rayon|Tablette|Rayonnage',
     'ETAGES|Niveaux|Paliers|Degrés',
@@ -2650,7 +2673,7 @@
     'ETAT|Nation|Condition|Situation',
     'ETATS|Nations|Conditions|Situations',
     'ETAU|Presse|Outil de serrage|Mâchoires d’établi',
-    'ETE|Saison chaude|Participe d’être|Période des vacances',
+    'ETE|Saison chaude|Période des vacances|Temps des moissons',
     'ETEINT|Arrêté|Sans éclat|Fermé, pour une lampe',
     'ETEINTS|Arrêtés|Sans éclat|Fermés, pour des lampes',
     'ETES|Saisons chaudes|Vous … ici|Belles saisons',
@@ -2670,7 +2693,7 @@
     'EU|Participe d’avoir|Obtenu|Possédé',
     'EUE|Possédée|Obtenue|Trompée',
     'EUES|Possédées|Obtenues|Trompées',
-    'EURO|Monnaie de l’Union|Devise commune|Pièce de un',
+    'EURO|Monnaie de l’Union|Devise commune|Il a remplacé le franc',
     'EUROS|Monnaies de l’Union|Devises communes|Pièces de la zone',
     'EUS|Possédas|Obtins|Tu … de la chance',
     'EUT|Posséda|Obtint|Il … raison',
@@ -2690,7 +2713,7 @@
     /* F */
     'FA|Note sous le sol|Clé de …|Quatrième note',
     'FABLE|Récit moral|Apologue|Mensonge',
-    'FACE|Visage|Côté pile opposé|Faire … : affronter',
+    'FACE|Visage|Opposé de pile|Faire … : affronter',
     'FACHE|Irrité|En colère|Brouillé',
     'FACILE|Aisé|Simple|Enfantin',
     'FACON|Manière|Sans … : simplement|Main-d’œuvre',
@@ -2729,7 +2752,7 @@
     'FEMME|Épouse|Dame|Madame',
     'FENETRE|Croisée|Baie vitrée|Jeter l’argent par la …',
     'FER|Métal gris|Outil à repasser|Croiser le …',
-    'FERME|Exploitation agricole|Solide|Tais-toi !',
+    'FERME|Exploitation agricole|Solide|Métairie',
     'FERMER|Clore|Boucler|Verrouiller',
     'FERMETURE|Clôture|Arrêt|Éclair ou à glissière',
     'FERMIER|Agriculteur|Paysan|Exploitant',
@@ -2751,7 +2774,7 @@
     'FIGUE|Fruit du Midi|Fruit violet|Mi-… mi-raisin',
     'FIGURE|Visage|Illustration|Personnalité',
     'FIGURINE|Statuette|Santon|Petit personnage',
-    'FIL|Brin|Filament|Au bout du …',
+    'FIL|Brin à coudre|Au bout du …|Tranchant de la lame',
     'FILET|Rets|Morceau de bœuf|Petite quantité d’eau',
     'FILLE|Demoiselle|Enfant féminin|… de l’air : hôtesse',
     'FILM|Long-métrage|Pellicule|Couche fine',
@@ -2827,7 +2850,7 @@
     'FRONTIERE|Limite|Bord|Démarcation',
     'FRUIT|Pomme ou poire|Résultat|… défendu',
     'FUIR|S’échapper|Détaler|Couler goutte à goutte',
-    'FUME|Fumant|Grille une cigarette|Saumon traité',
+    'FUME|Grille une cigarette|Boucané|Comme certains verres',
     'FUMEE|Vapeur|Nuage de feu|Pas de … sans feu',
     'FUMER|Griller une cigarette|Boucaner|Engraisser la terre',
     'FUS|Je … surpris|Existai|Tu … élu',
@@ -2863,10 +2886,10 @@
     'GAZON|Pelouse|Herbe tondue|Terrain vert',
     'GEANT|Colosse|Titan|Énorme',
     'GEANTS|Colosses|Titans|Énormes',
-    'GEL|Glace|Gelée blanche|Pommade',
+    'GEL|Glace|Froid intense|Pommade',
     'GELEE|Confiture de coing|Frimas|Aspic',
     'GELEES|Confitures de coing|Frimas|Aspics',
-    'GELS|Glaces|Gelées blanches|Pommades',
+    'GELS|Glaces|Froids intenses|Pommades',
     'GENDARME|Pandore|Agent|Hareng saur',
     'GENE|Embarras|Malaise|Unité d’hérédité',
     'GENERAL|Officier supérieur|Global|Commun',
@@ -2890,9 +2913,9 @@
     'GLISSER|Déraper|Patiner|Insinuer',
     'GLOIRE|Célébrité|Renommée|Auréole',
     'GLU|Colle|Pot de colle|Importun collant',
-    'GNOU|Antilope africaine|Bête de la savane|Buffle barbu',
-    'GNOUS|Antilopes africaines|Bêtes de la savane|Buffles barbus',
-    'GO|Jeu de pions japonais|Tout de … : sans détour|Jeu sur goban',
+    'GNOU|Antilope africaine|Bête de la savane|Grand migrateur du Serengeti',
+    'GNOUS|Antilopes africaines|Bêtes de la savane|Migrateurs du Serengeti',
+    'GO|Jeu de pions japonais|Tout de … : sans détour|Jeu de stratégie asiatique',
     'GOAL|Gardien de but|Portier|Dernier rempart',
     'GOBELET|Timbale|Verre en plastique|Cornet à dés',
     'GOLF|Sport de green|Dix-huit trous|Pantalon bouffant',
@@ -2939,7 +2962,7 @@
     'GUIDE|Accompagnateur|Manuel|Scout',
     'GUIRLANDE|Feston|Décoration de Noël|Chaîne de fleurs',
     'GUITARE|Instrument à cordes|Six cordes|Folk ou électrique',
-    'GYM|Gymnastique|Sport en salle|Exercices d’assouplissement',
+    'GYM|Sport en salle|Exercices d’assouplissement|Culture physique',
     /* H */
     'HA|Unité de surface agricole|Rire écrit|Surprise brève',
     'HABIT|Vêtement|Costume|L’… ne fait pas le moine',
@@ -2979,7 +3002,7 @@
     'HEUREUX|Content|Ravi|Comblé',
     'HEURTER|Cogner|Choquer|Offenser',
     'HI|Petit rire|Rire étouffé|Cri de l’âne, à moitié',
-    'HIBOU|Rapace nocturne|Chouette à aigrettes|Il hulule',
+    'HIBOU|Rapace nocturne|Oiseau à aigrettes|Il hulule',
     'HIER|La veille|Jour passé|Le jour d’avant',
     'HIRONDELLE|Oiseau migrateur|Elle ne fait pas le printemps|Agent à vélo',
     'HISTOIRE|Récit|Passé|Chichis',
@@ -3022,8 +3045,8 @@
     'IL|Pronom personnel|Lui, en sujet|… était une fois',
     'ILE|Terre entourée d’eau|Atoll|Robinson y a vécu',
     'ILES|Terres entourées d’eau|Archipel|Elles sont sous le vent',
-    'ILOT|Petite île|Pâté de maisons|Terre-plein',
-    'ILOTS|Petites îles|Pâtés de maisons|Terre-pleins',
+    'ILOT|Petite terre entourée d’eau|Pâté de maisons|Terre-plein',
+    'ILOTS|Petites terres isolées|Pâtés de maisons|Terre-pleins',
     'ILS|Pronom pluriel|Eux, en sujet|Ces gens',
     'IMAGE|Illustration|Reflet|Photo',
     'IMMENSE|Énorme|Vaste|Infini',
@@ -3081,7 +3104,7 @@
     'JAUNE|Couleur du citron|Briseur de grève|Cœur de l’œuf',
     'JAVA|Danse populaire|Fête|Île indonésienne',
     'JAVELOT|Lance|Arme de jet|Épreuve olympique',
-    'JE|Moi, en sujet|Pronom de l’ego|… pense donc …',
+    'JE|Moi, en sujet|Pronom de l’ego|… pense, donc … suis',
     'JEAN|Denim|Pantalon bleu|Toile de Nîmes',
     'JET|Jaillissement|Avion|Lancer',
     'JETEE|Digue|Môle|Promenade en mer',
@@ -3193,7 +3216,7 @@
     'LIONS|Rois des animaux|Fauves à crinière|Signes de juillet',
     'LIQUIDE|Fluide|Argent comptant|Eau ou lait',
     'LIRE|Déchiffrer|Parcourir un texte|Ancienne monnaie italienne',
-    'LIS|Fleur blanche|Lys|Fleur royale',
+    'LIS|Fleur blanche|Fleur royale|Déchiffres',
     'LISSE|Uni|Poli|Sans aspérité',
     'LISTE|Énumération|Inventaire|Bordereau',
     'LISTES|Énumérations|Inventaires|Bordereaux',
@@ -3208,13 +3231,13 @@
     'LOI|Règle|Code|La … du plus fort',
     'LOIN|À distance|Éloigné|Au diable Vauvert',
     'LOIR|Rongeur dormeur|Il dort beaucoup|Petit hibernant',
-    'LOIRS|Rongeurs dormeurs|Petits hibernants|Dormir comme eux',
+    'LOIRS|Rongeurs dormeurs|Petits hibernants|Dormir comme des …',
     'LOIS|Règles|Codes|Textes votés',
     'LONG|Étendu|Lent|Le … de : au bord de',
     'LONGUE|Étendue|Voyelle tenue|À la … : à la fin',
     'LORD|Noble anglais|Pair du Royaume|Membre de la Chambre haute',
     'LOT|Part|Rivière du Sud-Ouest|Gros … : jackpot',
-    'LOTERIE|Jeu de hasard|Tombola|Loto',
+    'LOTERIE|Jeu de hasard|Tombola|Tirage au sort',
     'LOTO|Jeu de hasard|Loterie|Numéros gagnants',
     'LOTS|Parts|Gains|Parcelles',
     'LOUER|Prendre à bail|Féliciter|Réserver',
@@ -3240,12 +3263,12 @@
     'LUXE|Faste|Opulence|Superflu',
     'LYCEE|Établissement secondaire|Bahut|École d’Aristote',
     'LYRE|Instrument antique|Harpe grecque|Symbole de poésie',
-    'LYS|Fleur de la monarchie|Symbole royal|Lis',
+    'LYS|Fleur de la monarchie|Symbole royal|Fleur des Bourbons',
     /* M */
     'MA|Possessif féminin|À moi|… foi !',
     'MACHINE|Appareil|Engin|… à laver',
     'MACHOIRE|Maxillaire|Mandibule|Pince d’étau',
-    'MADAME|Titre de civilité|Dame|… Bovary',
+    'MADAME|Titre de civilité|Épouse de monsieur|… Bovary',
     'MAGASIN|Boutique|Grande surface|Chargeur d’arme',
     'MAGE|Sage d’Orient|Devin|Roi … à la crèche',
     'MAGICIEN|Enchanteur|Illusionniste|Merlin',
@@ -3256,7 +3279,7 @@
     'MAIL|Courriel|Promenade plantée|Message électronique',
     'MAILLOT|Tricot|Tenue de bain|Jaune au Tour',
     'MAIN|Paume et doigts|Menotte|Coup de …',
-    'MAINS|Paumes|Menottes|Petites …: aides',
+    'MAINS|Paumes|Menottes|Petites … : aides',
     'MAIRE|Premier magistrat de la commune|Édile|Il marie',
     'MAIS|Cependant|Pourtant|Céréale jaune',
     'MAISON|Demeure|Logis|Foyer',
@@ -3267,7 +3290,7 @@
     'MALLE|Coffre|Bagage|Se faire la … : partir',
     'MALT|Orge germée|Base de la bière|Whisky pur …',
     'MAMAN|Mère|Maternelle|On l’appelle quand on a mal',
-    'MAMANS|Mères|Mères de famille|Elles consolent',
+    'MAMANS|Mères|Elles bordent les enfants|Elles consolent',
     'MANCHE|Poignée|Bras de vêtement|Partie de match',
     'MANEGE|Carrousel|Jeu de chevaux de bois|Manœuvre, stratagème',
     'MANGER|Se nourrir|Dévorer|Dilapider',
@@ -3353,11 +3376,11 @@
     'METAL|Fer ou cuivre|Or ou argent|Hard rock',
     'METIER|Profession|Emploi|Expérience',
     'METRE|Unité de longueur|Ruban gradué|Rythme du vers',
-    'METS|Plats|Mangeailles|Préparations culinaires',
+    'METS|Plats|Préparations culinaires|Poses',
     'METTRE|Poser|Placer|Enfiler',
     'MEUBLE|Buffet ou armoire|Mobilier|Terre facile à labourer',
     'MEUNIER|Minotier|Il tient le moulin|Poisson à la …',
-    'MI|Note entre ré et fa|Milieu|À …-chemin',
+    'MI|Note entre ré et fa|À moitié|À …-chemin',
     'MIDI|Douze heures|Sud|Chercher … à quatorze heures',
     'MIE|Intérieur du pain|Amie, poétiquement|Pain de …',
     'MIEL|Nectar des abeilles|Douceur dorée|Lune de …',
@@ -3399,7 +3422,7 @@
     'MOMENT|Instant|Occasion|En ce …',
     'MONDE|Terre|Foule|Tout le …',
     'MONNAIE|Pièces|Devise|Petite …',
-    'MONSIEUR|Titre de civilité masculin|Homme|Messieurs, au singulier',
+    'MONSIEUR|Titre de civilité masculin|Homme|Mister, en français',
     'MONT|Sommet|Colline|Promettre …s et merveilles',
     'MONTAGNE|Relief élevé|Massif|Tas énorme',
     'MONTER|Grimper|Gravir|Assembler',
@@ -3434,8 +3457,8 @@
     'MUET|Silencieux|Taciturne|Film sans paroles',
     'MUGUET|Fleur de mai|Clochettes blanches|Porte-bonheur du 1er mai',
     'MULE|Hybride|Pantoufle|Têtue comme elle',
-    'MUR|Paroi|Cloison|Muraille',
-    'MURAILLE|Rempart|Mur épais|Grande … de Chine',
+    'MUR|Paroi|Cloison|Rempart',
+    'MURAILLE|Rempart|Enceinte fortifiée|Grande … de Chine',
     'MURE|Baie du roncier|Fruit noir|Prête à cueillir',
     'MURS|Cloisons|Parois|Remparts',
     'MUS|Mis en mouvement|Poussés|Actionnés',
@@ -3471,12 +3494,12 @@
     'NEGLIGER|Délaisser|Omettre|Se laisser aller',
     'NEIGE|Flocons|Poudreuse|Blanc manteau',
     'NEIGES|Flocons|Poudreuses|… éternelles',
-    'NEIGEUX|Enneigé|Blanc|Poudreux',
+    'NEIGEUX|Couvert de flocons|Blanc|Poudreux',
     'NENUPHAR|Fleur d’étang|Lotus|Plante aquatique',
     'NERF|Fibre sensible|Vigueur|Guerre des …s',
     'NERFS|Fibres sensibles|Vigueur|Guerre des …',
-    'NET|Propre|Clair|Hors taxes',
-    'NETS|Propres|Clairs|Hors taxes, au pluriel',
+    'NET|Propre|Clair|Sans bavure',
+    'NETS|Propres|Clairs|Après déductions',
     'NEUF|Flambant|Huit plus un|Quoi de … ?',
     'NEUFS|Nouveaux|Flambants|Récents',
     'NEVEU|Fils du frère|Fils de la sœur|Parent par l’oncle',
@@ -3530,7 +3553,7 @@
     'OBSCURITE|Noir|Ténèbres|Ombre',
     'OBSTACLE|Barrière|Écueil|Haie',
     'OBUS|Projectile|Bombe|Munition d’artillerie',
-    'OC|Langue d’…|Langue du Midi|Oui, en occitan',
+    'OC|Langue d’…|Oui du Midi médiéval|Oui des troubadours',
     'OCCASION|Opportunité|Moment|Seconde main',
     'OCEAN|Grande mer|Atlantique|Immensité bleue',
     'OCRE|Terre jaune|Jaune-brun|Couleur de Roussillon',
@@ -3554,7 +3577,7 @@
     'OLIVE|Fruit à noyau du Midi|Vert-brun|Petite boule d’apéritif',
     'OLIVIER|Arbre du Midi|Symbole de paix|Arbre des Provençaux',
     'OMBRE|Zone sans soleil|Silhouette obscure|Fantôme, spectre',
-    'OMELETTE|Œufs battus|Plat aux œufs|Pas sans casser des œufs',
+    'OMELETTE|Œufs battus|Plat aux œufs|Pas d’… sans casser des œufs',
     'OMIS|Oublié|Négligé|Passé sous silence',
     'ON|Pronom indéfini|Nous, familièrement|Quelqu’un',
     'ONCE|Petite mesure|Panthère des neiges|Pas une … de',
@@ -3634,7 +3657,7 @@
     'PAN|Côté|Coup de feu|Dieu des bergers',
     'PANIER|Corbeille|But au basket|… à salade',
     'PANNE|Avarie|Défaillance|Velours',
-    'PANS|Morceaux|Côtés|Coups de feu',
+    'PANS|Morceaux|Côtés|Parties de toit',
     'PANTALON|Culotte longue|Jean|Froc',
     'PAON|Oiseau qui fait la roue|Vaniteux|Fier comme lui',
     'PAPA|Père|Paternel|Daron, en argot',
@@ -3772,8 +3795,8 @@
     'PLEINS|Remplis|Complets|Faire les … : l’essence',
     'PLEURER|Sangloter|Verser des larmes|Regretter',
     'PLEUVOIR|Tomber des cordes|Bruiner|Affluer',
-    'PLI|Pliure|Lettre|Habitude',
-    'PLIS|Pliures|Lettres|Habitudes',
+    'PLI|Ride de tissu|Lettre|Habitude',
+    'PLIS|Rides de tissu|Lettres|Habitudes',
     'PLOMB|Métal lourd|Fusible|Balle de fusil',
     'PLOMBIER|Réparateur de fuites|Chauffagiste|Zingueur',
     'PLONGER|Piquer une tête|Immerger|Sombrer',
@@ -3786,7 +3809,7 @@
     'POCHE|Petit sac cousu|Cavité|Livre de …',
     'POCHES|Petits sacs cousus|Cavités|Cernes sous les yeux',
     'POELE|Casserole plate|Fourneau|Drap mortuaire',
-    'POESIE|Vers|Poème|Lyrisme',
+    'POESIE|Art des vers|Rimes et strophes|Lyrisme',
     'POETE|Rimeur|Versificateur|Rêveur',
     'POIDS|Masse|Fardeau pesant|Importance',
     'POIGNEE|Manche|Petit nombre|Bouton de porte',
@@ -3808,7 +3831,7 @@
     'POMPIER|Soldat du feu|Sapeur|Emphatique',
     'POMPIERS|Soldats du feu|Sapeurs|Secouristes',
     'PONT|Viaduc|Passerelle|Congé allongé',
-    'POP|Musique populaire|Art de Warhol|Bruit de bouchon',
+    'POP|Musique des Beatles|Art de Warhol|Bruit de bouchon',
     'PORC|Cochon|Goret|Sale type',
     'PORE|Orifice de la peau|Trou minuscule|Suer par tous les …s',
     'PORES|Orifices de la peau|Trous minuscules|Suer par tous les …',
@@ -3836,9 +3859,9 @@
     'POUSSIERE|Saleté|Poudre fine|Grain',
     'POUVOIR|Capacité|Autorité|Être capable',
     'POUX|Parasites|Vermine|Chercher des … : chicaner',
-    'PRAIRIE|Pré|Herbage|Pâturage',
+    'PRAIRIE|Pâturage|Herbage|Étendue herbeuse',
     'PRALINE|Amande sucrée|Bonbon|Balle, en argot',
-    'PRE|Prairie|Champ|Herbage',
+    'PRE|Champ d’herbe|Herbage|… carré : domaine réservé',
     'PREMIER|Initial|Gagnant|Champion',
     'PRENDRE|Saisir|Attraper|Emporter',
     'PRES|Proche|À côté|Environ',
@@ -3874,7 +3897,7 @@
     'PUES|Sens mauvais|Empestes|Infectes',
     'PUITS|Trou profond|Forage|… de science',
     'PULL|Chandail|Tricot|Laine enfilée',
-    'PUMA|Cougar|Félin américain|Couguar',
+    'PUMA|Félin américain|Couguar|Lion des Rocheuses',
     'PUNAISE|Insecte malodorant|Clou de tableau|Zut !',
     'PUNI|Sanctionné|Au coin|Châtié',
     'PUNIR|Châtier|Sanctionner|Mettre au coin',
@@ -3998,7 +4021,7 @@
     'RHUM|Alcool de canne|Punch|Baba au …',
     'RHUME|Coryza|Refroidissement|Nez qui coule',
     'RHUMS|Alcools de canne|Punchs|Babas au …',
-    'RI|Participe de rire|S’est esclaffé|Plaisanté',
+    'RI|Pouffé|Plaisanté|S’est esclaffé',
     '°RIA|Aber galicien|Vallée envahie par la mer|Estuaire en entonnoir',
     'RICHE|Fortuné|Aisé|Abondant',
     'RICHESSE|Fortune|Opulence|Abondance',
@@ -4016,16 +4039,16 @@
     'RIT|S’esclaffe|Se moque|Plaisante',
     'RITE|Cérémonie|Coutume|Rituel',
     'RITES|Cérémonies|Coutumes|Rituels',
-    'RIVAGE|Rive|Littoral|Bord de mer',
+    'RIVAGE|Littoral|Bord de mer|Côte',
     'RIVE|Berge|Bord|Gauche à Paris',
     'RIVIERE|Cours d’eau|Affluent|Collier de diamants',
     'RIZ|Céréale d’Asie|Grain blanc|Paella en contient',
     'ROBE|Habit féminin|Toge|Pelage du cheval',
     'ROBINET|Vanne|Prise d’eau|Il fuit parfois',
     'ROBOT|Automate|Androïde|Machine obéissante',
-    'ROC|Rocher|Pierre dure|Solide comme lui',
+    'ROC|Pierre dure|Bloc de pierre|Solide comme lui',
     'ROCHE|Pierre|Minéral|Caillou massif',
-    'ROCHER|Roc|Récif|Chocolat praliné',
+    'ROCHER|Gros bloc de pierre|Récif|Chocolat praliné',
     'ROCS|Rochers|Pierres dures|Blocs',
     'ROI|Souverain|Monarque|Pièce maîtresse des échecs',
     'ROIS|Souverains|Monarques|Galette des …',
@@ -4051,19 +4074,19 @@
     'ROUTE|Chaussée|Voie|Itinéraire',
     'ROUTES|Chaussées|Voies|Itinéraires',
     'ROUX|Rouquin|Poil de carotte|Sauce liée',
-    'RU|Petit ruisseau|Filet d’eau|Rigole',
-    'RUA|S’élança|Donna des coups de pied|Se … dans les brancards',
+    'RU|Filet d’eau|Rigole|Petit cours d’eau',
+    'RUA|S’élança|Donna des coups de pied|… dans les brancards',
     'RUAS|T’élanças|Donnas des coups de pied|Te jetas',
     'RUBAN|Galon|Bande|Faveur',
     'RUCHE|Abri d’abeilles|Essaim|Fourmilière humaine',
     'RUDE|Rugueux|Pénible|Sévère',
-    'RUE|Voie de ville|Artère|S’élança',
+    'RUE|Voie de ville|Artère|S’élance',
     'RUER|Lancer les sabots|Se précipiter|Se … : se jeter',
-    'RUES|Voies de ville|Artères|S’élances',
+    'RUES|Voies de ville|Artères|T’élances',
     'RUINE|Décombres|Faillite|Vestige',
     'RUINES|Décombres|Faillites|Vestiges',
-    'RUISSEAU|Ru|Petit cours d’eau|Caniveau',
-    'RUS|Ruisseaux|Filets d’eau|Petits cours',
+    'RUISSEAU|Petit cours d’eau|Caniveau|Il fait les grandes rivières',
+    'RUS|Filets d’eau|Rigoles|Petits cours d’eau',
     'RUSE|Astuce|Stratagème|Finaude',
     'RUSES|Astuces|Stratagèmes|Finaudes',
     'RUSSE|Moscovite|Slave|Montagnes …s',
@@ -4121,7 +4144,7 @@
     'SAVANE|Prairie tropicale|Steppe africaine|Territoire du lion',
     'SAVOIR|Connaître|Science|Culture',
     'SAVON|Pain moussant|Détergent|Passer un … : gronder',
-    'SAXO|Instrument de jazz|Cuivre à anche|Sax',
+    'SAXO|Instrument de jazz|Cuivre à anche|Instrument de Coltrane',
     'SCEAU|Cachet|Marque|Empreinte officielle',
     'SCENE|Plateau|Épisode|Querelle',
     'SCENES|Plateaux|Épisodes|Querelles',
@@ -4130,13 +4153,13 @@
     'SCIES|Outils à dents|Rengaines|Refrains lassants',
     'SE|Pronom réfléchi|Lui-même, en complément|Il … lave',
     'SEAU|Récipient à anse|Baquet|Pleuvoir à …x',
-    'SEC|Aride|Desséché|Brusque',
+    'SEC|Aride|Tari|Brusque',
     'SECHE|Aride|Mollusque à encre|Cigarette, en argot',
     'SECOND|Deuxième|Adjoint|Instant',
     'SECRET|Caché|Confidence|Mystère',
     'SECRETAIRE|Assistante|Meuble à écrire|Oiseau d’Afrique',
     'SECRETS|Cachés|Confidences|Mystères',
-    'SECS|Arides|Desséchés|Brusques',
+    'SECS|Arides|Taris|Brusques',
     'SEIGLE|Céréale|Pain gris|Farine de pain noir',
     'SEIN|Poitrine|Mamelle|Au … de : parmi',
     'SEINS|Poitrines|Mamelles|Au … de : parmi',
@@ -4164,8 +4187,8 @@
     'SERVIETTE|Essuie-main|Cartable|Pochette de table',
     'SERVIR|Présenter les plats|Être utile|Mettre la balle en jeu',
     'SES|Possessifs pluriels|À elle, au pluriel|… affaires',
-    'SET|Manche au tennis|Napperon|Jeu décisif',
-    'SETS|Manches de tennis|Napperons|Jeux décisifs',
+    'SET|Manche au tennis|Napperon|Division d’un match',
+    'SETS|Manches de tennis|Napperons|Divisions d’un match',
     'SEUIL|Pas de porte|Limite|Entrée',
     'SEUILS|Pas de porte|Limites|Entrées',
     'SEUL|Solitaire|Unique|Isolé',
@@ -4205,7 +4228,7 @@
     'SOIES|Fils de ver|Étoffes fines|Poils de sanglier',
     'SOIF|Envie de boire|Gosier sec|Désir ardent',
     'SOIR|Crépuscule|Fin de journée|Veillée',
-    'SOIT|Admettons|D’accord|Ainsi … -il',
+    'SOIT|Admettons|D’accord|Ainsi …-il',
     'SOL|Terre|Plancher|Note entre fa et la',
     'SOLDAT|Militaire|Troufion|Figurine de plomb',
     'SOLDE|Rabais|Reste à payer|Paie du militaire',
@@ -4303,9 +4326,9 @@
     'TALON|Arrière du pied|Souche de carnet|Point faible d’Achille',
     'TAMBOUR|Instrument à peau|Caisse|Cylindre de machine',
     'TAMIS|Crible|Passoire|Sas',
-    'TAN|Écorce de chêne|Tannin|Poudre de tanneur',
+    'TAN|Écorce de chêne|Écorce broyée|Poudre du corroyeur',
     'TANK|Char d’assaut|Blindé|Citerne',
-    '°TANS|Écorces de chêne|Tannins|Poudres de tanneur',
+    '°TANS|Écorces de chêne|Écorces broyées|Poudres du corroyeur',
     'TANT|Tellement|Si fort|… pis !',
     'TANTE|Sœur du père|Tata|Parente',
     'TAON|Mouche piqueuse|Insecte des chevaux|Diptère agaçant',
@@ -4382,8 +4405,8 @@
     'TOILE|Tissu|Tableau|Réseau Internet',
     'TOIT|Couverture|Tuiles|Logis',
     'TOITS|Couvertures|Tuiles|Logis',
-    'TOLE|Plaque de métal|Fer laminé|Taule',
-    'TOLES|Plaques de métal|Fers laminés|Taules',
+    'TOLE|Plaque de métal|Fer laminé|Prison, en argot',
+    'TOLES|Plaques de métal|Fers laminés|Prisons, en argot',
     'TOMATE|Légume-fruit rouge|Pomme d’amour|Pastis à la grenadine',
     'TOMATES|Légumes-fruits rouges|Pommes d’amour|Pastis à la grenadine',
     'TOMBE|Sépulture|Chute|Choit',
@@ -4423,12 +4446,12 @@
     'TREFLE|Plante fourragère|Couleur de cartes|Porte-bonheur à quatre feuilles',
     'TRESOR|Magot|Richesse|Chéri',
     'TRESORS|Magots|Richesses|Chéris',
-    'TRI|Sélection|Classement|Triage',
+    'TRI|Sélection|Classement|Répartition',
     'TRIBU|Peuplade|Clan|Grande famille',
     'TRICOT|Pull|Maille|Ouvrage de laine',
-    'TRIO|Trois musiciens|Groupe de trois|Triade',
-    'TRIOS|Groupes de trois|Triades|Ensembles de trois musiciens',
-    'TRIS|Sélections|Classements|Triages',
+    'TRIO|Trois musiciens|Groupe de trois|Ensemble de chambre',
+    'TRIOS|Groupes de trois|Formations de chambre|Ensembles de trois musiciens',
+    'TRIS|Sélections|Classements|Répartitions',
     'TRISTE|Malheureux|Morose|Affligé',
     'TROC|Échange|Commerce sans argent|Donnant-donnant',
     'TROIS|Nombre impair|Deux plus un|Mousquetaires plus un',
@@ -4476,7 +4499,7 @@
     'URGENCE|Nécessité|Hâte|Service d’hôpital',
     'URNE|Vase|Boîte de vote|Bulletin dans l’…',
     'URNES|Vases|Boîtes de vote|Vases funéraires',
-    'US|Usages|… et coutumes|Habitudes',
+    'US|Habitudes|… et coutumes|Traditions',
     'USAGE|Utilisation|Coutume|Mode d’emploi',
     'USAGES|Utilisations|Coutumes|Modes d’emploi',
     'USE|Élimé|Râpé|Abîmé',
@@ -4498,11 +4521,11 @@
     'VAIN|Inutile|Futile|Prétentieux',
     'VAISSEAU|Navire|Artère|Engin spatial',
     'VAISSELLE|Assiettes|Plats|Faire la …',
-    'VAL|Vallée|Vallon|Par monts et par …x',
+    'VAL|Combe|Creux entre deux monts|Par monts et par …x',
     'VALET|Serviteur|Carte à jouer|Domestique',
     'VALEUR|Prix|Courage|Mérite',
     'VALISE|Bagage|Malle|Faire sa …',
-    'VALLEE|Val|Combe|Creux entre montagnes',
+    'VALLEE|Creux entre montagnes|Combe|Dépression du relief',
     'VALSE|Danse à trois temps|Tourbillon|Changement fréquent',
     'VAMPIRE|Suceur de sang|Dracula|Chauve-souris',
     'VANILLE|Gousse parfumée|Arôme|Épice des desserts',
@@ -4535,7 +4558,7 @@
     'VERROU|Loquet|Targette|Blocage',
     'VERS|Poésie|En direction de|Asticots',
     'VERT|Couleur d’herbe|Vif|Pas mûr',
-    'VERTS|Couleur d’herbe|Écologistes|Pas mûrs',
+    'VERTS|Couleurs d’herbe|Écologistes|Pas mûrs',
     'VESTE|Blazer|Blouson|Prendre une … : échouer',
     'VESTIAIRE|Garde-robe|Cabine|Dépôt de manteaux',
     'VETEMENT|Habit|Tenue|Fringue',
@@ -4556,7 +4579,7 @@
     'VILLAGE|Bourg|Hameau|Commune',
     'VILLE|Cité|Agglomération|Métropole',
     'VIN|Bordeaux|Pinard|Vendange mise en bouteille',
-    'VINAIGRE|Condiment acide|Aigre|Tourner au …',
+    'VINAIGRE|Condiment acide|Assaisonnement de salade|Tourner au …',
     'VINGT|Score parfait|Quatre fois cinq|Dix-neuf plus un',
     'VINS|Crus|Nectars|Bordeaux et bourgognes',
     'VIOL|Profanation|Outrage|Crime grave',
@@ -4576,7 +4599,7 @@
     'VITRINE|Étalage|Devanture|Présentoir',
     'VIVRE|Exister|Habiter|Subsister',
     'VOEU|Souhait|Promesse|Engagement religieux',
-    'VOICI|Voilà|Présentation|Ici même',
+    'VOICI|Tiens, regarde|Présentation|Ici même',
     'VOIE|Chemin|Route|Rails',
     'VOILE|Toile de navire|Foulard|Sport nautique',
     'VOIR|Regarder|Observer|Comprendre',
@@ -4608,7 +4631,7 @@
     /* W */
     'WAGON|Voiture de train|Rame|Fourgon',
     /* Y */
-    'YAOURT|Laitage|Yogourt|Pot lacté',
+    'YAOURT|Laitage|Pot lacté|Dessert fermenté',
     'YEUX|Organes de la vue|Mirettes|Coûter les … de la tête',
     /* Z */
     'ZEBRE|Équidé rayé|Rayé noir et blanc|Drôle de type',

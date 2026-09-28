@@ -45,18 +45,23 @@ check('définitions distinctes pour un même mot', L.defs.every(d => new Set(d.m
 check('aucune apostrophe droite dans les définitions', L.defs.every(d => d.every(x => x.indexOf("'") === -1)));
 check('aucun caractère dangereux (< > " |)', L.defs.every(d => d.every(x => !/[<>"|]/.test(x))));
 check('définitions courtes (≤ 34 caractères)', L.defs.every(d => d.every(x => x.length <= 34)));
-// heuristique de la racine : aucun mot de la définition ne commence comme la réponse (4 lettres)
+// heuristique de la racine : aucun mot de la définition n’est la réponse, ne commence par
+// elle (ROC → « Rocher »), n’en est le début (CLEF → « Clé », RIVAGE → « Rive »,
+// hors petits mots grammaticaux) ni ne partage ses 4 premières lettres
+const OUTILS = new Set(['SUR', 'SOUS', 'SANS', 'POUR', 'PAR', 'DES', 'LES', 'UNE', 'AUX', 'QUI', 'QUE', 'DANS',
+  'AVEC', 'EST', 'SON', 'SES', 'MAIS', 'PAS', 'PLUS', 'TRES', 'BIEN', 'TOUT', 'TOUS', 'NON', 'OUI', 'CES', 'CET',
+  'LUI', 'ELLE', 'NOUS', 'VOUS', 'LEUR', 'COMME']);
 const racines = [];
 L.mots.forEach((w, i) => {
   L.defs[i].forEach(d => {
-    GR.norm(d.replace(/[^A-Za-zÀ-ÿŒœÆæ]+/g, ' ').replace(/ /g, '|')).length; // (normalisation)
     const toks = d.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/Œ/g, 'OE').split(/[^A-Z]+/).filter(Boolean);
     toks.forEach(t => {
-      if (t === w) racines.push(w + ' : ' + d);
-      else if (w.length >= 4 && t.length >= 4) {
+      let r = t === w || (w.length >= 3 && t.startsWith(w)) || (t.length >= 3 && !OUTILS.has(t) && w.startsWith(t));
+      if (!r && w.length >= 4 && t.length >= 4) {
         let k = 0; while (k < w.length && k < t.length && w[k] === t[k]) k++;
-        if (k >= 4 || t.includes(w)) racines.push(w + ' : ' + d);
+        r = k >= 4 || t.includes(w);
       }
+      if (r) racines.push(w + ' : ' + d);
     });
   });
 });
@@ -75,13 +80,20 @@ check('un mot très courant a plusieurs définitions (EN, ET, OR)',
 if (process.env.RACCOURCIS) {
   const enc = {};
   for (let f = 1; f <= 5; f++) {
-    const F = GR.FORCES[f], P = GR.prepFleches(f), t = [];
+    const P = GR.prepFleches(f), cfg = GR.cfgFleches(f), t = [];
     for (let g = 0; g < 1000; g++) {
-      const cfg = { mode: 'fleches', W: F.W, H: F.H, pref: F.pref, K: F.K, maxSteps: F.maxSteps, pen2: F.pen2, pD: F.pD, lo: F.lo, essais: 30 };
       const r = GR.remplir(P, cfg, GR.hash('fleches|' + f + '|' + g), 0);
       if (r.pas > 4000) t.push(g.toString(36) + ':' + r.essai.toString(36));
     }
     enc[f] = t.join(',');
+  }
+  for (const l of ['facile', 'moyen', 'difficile']) {
+    const P = GR.prepCroises(l), cfg = GR.cfgCroises(l), t = [];
+    for (let g = 0; g < 1000; g++) {
+      const r = GR.remplir(P, cfg, GR.hash('croises|' + l + '|' + g), 0);
+      if (r.pas > 2500) t.push(g.toString(36) + ':' + r.essai.toString(36));
+    }
+    enc[l] = t.join(',');
   }
   console.log('RACCOURCIS_TXT à recopier dans js/games/fleches-data.js :\n' + JSON.stringify(enc, null, 1));
   process.exit(0);
@@ -147,13 +159,14 @@ check('défi du jour : force 1 le lundi, force 5 le samedi',
 /* ================= 3. LES GRILLES DE CROISÉS ================= */
 console.log('--- Grilles de mots croisés ---');
 for (const lvl of ['facile', 'moyen', 'difficile']) {
-  let bad = 0, minC = 1, noirs = 0, tot = 0, tMax = 0, tSom = 0, dup = 0;
-  const NB = Math.min(PAR_FORCE, 300);
+  let bad = 0, minC = 1, noirs = 0, tot = 0, tMax = 0, tSom = 0, dup = 0, pasMax = 0;
+  const NB = Math.min(PAR_FORCE, 1000);
   for (let g = 0; g < NB; g++) {
     const t0 = Date.now();
     const gr = GR.grilleCroises(lvl, g);
     const ms = Date.now() - t0; tSom += ms; if (ms > tMax) tMax = ms;
     if (!gr) { bad++; continue; }
+    if (gr.pas > pasMax) pasMax = gr.pas;
     const N = gr.w, sol = gr.sol;
     let blanc = 0, cr = 0;
     for (let i = 0; i < N * N; i++) {
@@ -174,9 +187,10 @@ for (const lvl of ['facile', 'moyen', 'difficile']) {
     const vus = new Set(gr.mots.map(m => GR.norm(m.def)));
     if (vus.size !== gr.mots.length) dup++;
   }
-  console.log('    ' + lvl + ' : ' + JSON.stringify({ grilles: NB, croiseesMin: Math.round(minC * 100) + ' %', noires: Math.round(100 * noirs / tot) + ' %', msMoy: +(tSom / NB).toFixed(1), msMax: tMax }));
+  console.log('    ' + lvl + ' : ' + JSON.stringify({ grilles: NB, croiseesMin: Math.round(minC * 100) + ' %', noires: Math.round(100 * noirs / tot) + ' %', pasMax, msMoy: +(tSom / NB).toFixed(1), msMax: tMax }));
   check(lvl + ' : grilles denses (≥ 70 % de cases croisées partout)', bad === 0 && minC >= 0.7, { bad, minC });
   check(lvl + ' : pas de définition répétée dans une grille', dup === 0, dup);
+  check(lvl + ' : calcul borné (≤ 2 500 pas par grille, grâce aux raccourcis)', pasMax <= 2500, pasMax);
 }
 
 /* ================= 4. LES RÈGLES ================= */
@@ -296,6 +310,14 @@ function tape(s, w, lettres, sauf) {
   check('case-définition refusée', !fleches.apply(s, 0, { t: 'l', i: 0, l: 'A', w: 0 }).ok);
   check('force inconnue refusée', !fleches.apply(fleches.create(['A']), 0, { t: 'force', f: 9 }).ok);
   check('date du défi invalide refusée', !fleches.apply(fleches.create(['A']), 0, { t: 'jour', d: '<script>' }).ok);
+  check('croisés : niveau « constructor » ou « __proto__ » refusé',
+    !croises.apply(croises.create(['A']), 0, { t: 'level', l: 'constructor' }).ok &&
+    !croises.apply(croises.create(['A']), 0, { t: 'level', l: '__proto__' }).ok);
+  // une sauvegarde trafiquée n’injecte rien dans le résumé (nombres forcés)
+  const t1 = partie(1, 0), t2 = croises.create(['A']);
+  croises.apply(t2, 0, { t: 'level', l: 'facile', g: 0 });
+  [t1, t2].forEach(x => { x.gnum = '<img src=x onerror=alert(1)>'; x.force = '<b>'; x.players[0].points = '<i>'; x.players[0].errors = '<u>'; });
+  check('résumé sans HTML venu de la sauvegarde', [fleches.summary(t1), croises.summary(t2)].every(h => !/<img|<b>|<i>|<u>/.test(h)));
 }
 
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests grilles (contenu et règles) OK.');

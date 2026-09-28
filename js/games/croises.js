@@ -19,6 +19,10 @@
     moyen: { nom: 'Moyen', ic: '🙂', detail: 'vocabulaire varié · définitions indirectes' },
     difficile: { nom: 'Difficile', ic: '😈', detail: 'grande grille · définitions pièges' }
   };
+  /* niveau connu seulement (« constructor » ou « __proto__ » ne passent pas) */
+  function niveau(l) {
+    return typeof l === 'string' && Object.prototype.hasOwnProperty.call(LEVELS, l) ? LEVELS[l] : { nom: '', ic: '', detail: '' };
+  }
   /* défi du jour : le niveau suit la semaine */
   var NIVEAU_DU_JOUR = ['moyen', 'facile', 'facile', 'moyen', 'moyen', 'difficile', 'difficile'];
 
@@ -81,20 +85,20 @@
 
     summary: function (state) {
       var p = state.players[0] || { points: 0, errors: 0, aides: 0 };
-      var et = M().etoiles(p), L = LEVELS[state.level] || { nom: '' };
+      var et = M().etoiles(p), L = niveau(state.level), g = state.gnum | 0;
       var html = '<div class="gx-resume">' +
         '<div class="gx-res-etoiles">' + stars(et) + '</div>' +
         '<div class="final-line"><span>⏱️ Temps</span><strong>' + M().duree(state.durationSec) + '</strong></div>' +
-        '<div class="final-line"><span>★ Points</span><strong>' + p.points + '</strong></div>' +
-        '<div class="final-line"><span>Erreurs · aides</span><strong>' + (p.errors || 0) + ' · ' + (p.aides || 0) + '</strong></div>';
+        '<div class="final-line"><span>★ Points</span><strong>' + (+p.points || 0) + '</strong></div>' +
+        '<div class="final-line"><span>Erreurs · aides</span><strong>' + (+p.errors || 0) + ' · ' + (+p.aides || 0) + '</strong></div>';
       if (state.jour) {
         var j = lis('gg-croises-jour', {}) || {}, prec = j[state.jour];
         if (!prec || state.durationSec < prec.sec || et > prec.et) j[state.jour] = { sec: state.durationSec, et: et, pts: p.points };
         ecris('gg-croises-jour', j);
         html += '<p>🗓️ Défi du ' + GG.esc(M().dateLisible(state.jour)) + ' relevé ! À demain pour la suivante.</p>';
-      } else if (state.level) {
-        markDone(state.level, state.gnum);
-        html += '<p>Grille n°' + (state.gnum + 1) + ' · niveau ' + L.nom + '.</p>';
+      } else if (L.nom) {
+        markDone(state.level, g);
+        html += '<p>Grille n°' + (g + 1) + ' · niveau ' + L.nom + '.</p>';
         var key = 'gg-croises-best-' + state.level, best = lis(key, null);
         if (!best || state.durationSec < best.sec) {
           ecris(key, { sec: state.durationSec, ts: state.startTs });
@@ -134,7 +138,7 @@
           g = -1;
         } else {
           l = action.l;
-          if (!LEVELS[l]) return { ok: false, error: 'Niveau inconnu.' };
+          if (!niveau(l).nom) return { ok: false, error: 'Niveau inconnu.' };
           g = action.g === undefined ? 0 : action.g | 0;
           if (g < 0 || g > 99999) return { ok: false, error: 'Numéro de grille invalide.' };
         }
@@ -214,13 +218,13 @@
 
   /* ---------- la grille, avec ses numéros en marge ---------- */
   function grilleHTML(s) {
-    var N = s.w, R = M().ROMAINS, i, r, c;
+    var N = s.w | 0, H = s.h | 0, R = M().ROMAINS, i, r, c; // (nombres forcés : rien d’autre dans le HTML)
     var html = '<div class="gx-grille gx-cr" style="grid-template-columns:calc(var(--s) * .62) repeat(' + N + ',var(--s));' +
-      'grid-template-rows:calc(var(--s) * .62) repeat(' + s.h + ',var(--s))">';
+      'grid-template-rows:calc(var(--s) * .62) repeat(' + H + ',var(--s))">';
     html += '<div class="gx-coin"></div>';
     for (c = 0; c < N; c++) html += '<div class="gx-num">' + (c + 1) + '</div>';
-    for (r = 0; r < s.h; r++) {
-      html += '<div class="gx-rom">' + R[r] + '</div>';
+    for (r = 0; r < H; r++) {
+      html += '<div class="gx-rom">' + (R[r] || '') + '</div>';
       for (c = 0; c < N; c++) {
         i = r * N + c;
         html += s.cases.charAt(i) === '.' ? '<div class="gx-c" data-i="' + i + '"><span class="gx-l"></span></div>' : '<div class="gx-n"></div>';
@@ -235,9 +239,9 @@
       var parLigne = {};
       s.words.forEach(function (w, wi) { if (w.dir === dir) (parLigne[w.ligne] = parLigne[w.ligne] || []).push(wi); });
       Object.keys(parLigne).sort(function (a, b) { return a - b; }).forEach(function (k) {
-        html += '<div class="gx-lg"><b>' + (dir === 'h' ? R[+k] : (+k + 1)) + '.</b> ' + parLigne[k].map(function (wi) {
+        html += '<div class="gx-lg"><b>' + (dir === 'h' ? (R[k | 0] || '') : (k | 0) + 1) + '.</b> ' + parLigne[k].map(function (wi) {
           return '<button type="button" class="gx-ld" data-a="mot" data-mot="' + wi + '" data-w="' + wi + '">' +
-            GG.esc(s.words[wi].def) + ' <em>(' + s.words[wi].cells.length + ')</em></button>';
+            GG.esc(s.words[wi].def) + ' <em>(' + (s.words[wi].cells.length | 0) + ')</em></button>';
         }).join('<span class="gx-tiret">–</span>') + '</div>';
       });
     });
@@ -251,18 +255,18 @@
     /* pas de texte dans les cases : on montre toute la grille d’emblée */
     zoomInitial: function (vc) { return Math.max(0.72, Math.min(1, vc.zFit)); },
     titre: function (s) {
-      return s.jour ? '🗓️ Grille du jour' : (LEVELS[s.level] ? LEVELS[s.level].nom : '') + ' · n°' + (s.gnum + 1);
+      return s.jour ? '🗓️ Grille du jour' : niveau(s.level).nom + ' · n°' + ((s.gnum | 0) + 1);
     },
     grille: grilleHTML,
     liste: listeHTML,
     etiquette: function (s, wi) {
       var w = s.words[wi];
-      return '<span class="gx-sens">' + (w.dir === 'h' ? M().ROMAINS[w.ligne] + ' →' : (w.ligne + 1) + ' ↓') + '</span>';
+      return '<span class="gx-sens">' + (w.dir === 'h' ? (M().ROMAINS[w.ligne | 0] || '') + ' →' : ((w.ligne | 0) + 1) + ' ↓') + '</span>';
     },
     fin: function (s) {
       var p = s.players[0] || {};
       return '<div class="gx-fin"><span class="gx-fin-t">🎉 Grille remplie !</span> ' +
-        '<span>⏱️ ' + M().duree(s.durationSec) + ' · ★ ' + (p.points || 0) + ' · ' + stars(M().etoiles(p)) + '</span></div>';
+        '<span>⏱️ ' + M().duree(s.durationSec) + ' · ★ ' + (+p.points || 0) + ' · ' + stars(M().etoiles(p)) + '</span></div>';
     }
   };
 

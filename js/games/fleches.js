@@ -98,28 +98,29 @@
 
     summary: function (state) {
       var p = state.players[0] || { points: 0, errors: 0, aides: 0 };
-      var et = M().etoiles(p);
+      var et = M().etoiles(p), f = state.force | 0, g = state.gnum | 0;
       var html = '<div class="gx-resume">' +
         '<div class="gx-res-etoiles">' + stars(et) + '</div>' +
         '<div class="final-line"><span>⏱️ Temps</span><strong>' + M().duree(state.durationSec) + '</strong></div>' +
-        '<div class="final-line"><span>★ Points</span><strong>' + p.points + '</strong></div>' +
-        '<div class="final-line"><span>Erreurs · aides</span><strong>' + (p.errors || 0) + ' · ' + (p.aides || 0) + '</strong></div>';
+        '<div class="final-line"><span>★ Points</span><strong>' + (+p.points || 0) + '</strong></div>' +
+        '<div class="final-line"><span>Erreurs · aides</span><strong>' + (+p.errors || 0) + ' · ' + (+p.aides || 0) + '</strong></div>';
       if (state.jour) {
         var j = lis('gg-fleches-jour', {}) || {}, prec = j[state.jour];
         if (!prec || state.durationSec < prec.sec || et > prec.et) j[state.jour] = { sec: state.durationSec, et: et, pts: p.points };
         ecris('gg-fleches-jour', j);
         html += '<p>🗓️ Défi du ' + GG.esc(M().dateLisible(state.jour)) + ' relevé ! Revenez demain pour une nouvelle grille.</p>';
       } else {
-        markDone(state.force, state.gnum);
-        noteEtoiles(state.force, state.gnum, et);
-        html += '<p>Grille n°' + (state.gnum + 1) + ' · force ' + state.force + ' — ' +
-          doneCount(state.force) + ' grille' + (doneCount(state.force) > 1 ? 's' : '') + ' terminée' + (doneCount(state.force) > 1 ? 's' : '') + ' dans cette force.</p>';
-        var key = 'gg-fleches-best-f' + state.force, best = lis(key, null);
+        markDone(f, g);
+        noteEtoiles(f, g, et);
+        var nf = doneCount(f);
+        html += '<p>Grille n°' + (g + 1) + ' · force ' + f + ' — ' +
+          nf + ' grille' + (nf > 1 ? 's' : '') + ' terminée' + (nf > 1 ? 's' : '') + ' dans cette force.</p>';
+        var key = 'gg-fleches-best-f' + f, best = lis(key, null);
         if (!best || state.durationSec < best.sec) {
           ecris(key, { sec: state.durationSec, ts: state.startTs });
-          html += '<h2>🏆 Nouveau record de la force ' + state.force + ' !</h2>';
+          html += '<h2>🏆 Nouveau record de la force ' + f + ' !</h2>';
         } else {
-          html += '<p>🏅 Record force ' + state.force + ' : ' + M().duree(best.sec) + '.</p>';
+          html += '<p>🏅 Record force ' + f + ' : ' + M().duree(best.sec) + '.</p>';
         }
       }
       return html + '</div>';
@@ -234,23 +235,23 @@
 
   /* ---------- la grille : cases-lettres, cases-définitions, flèches ---------- */
   function grilleHTML(s, S) {
-    var W = s.w, N = s.w * s.h, parDef = {}, debut = {}, i;
+    var W = s.w | 0, H = s.h | 0, N = W * H, parDef = {}, debut = {}, i; // (nombres forcés : rien d’autre dans le HTML)
     s.words.forEach(function (w, wi) {
       (parDef[w.defCell] = parDef[w.defCell] || []).push(wi);
       (debut[w.cells[0]] = debut[w.cells[0]] || []).push(w.fleche);
     });
-    var html = '<div class="gx-grille" style="grid-template-columns:repeat(' + W + ',var(--s));grid-template-rows:repeat(' + s.h + ',var(--s))">';
+    var html = '<div class="gx-grille" style="grid-template-columns:repeat(' + W + ',var(--s));grid-template-rows:repeat(' + H + ',var(--s))">';
     for (i = 0; i < N; i++) {
       if (s.cases.charAt(i) === '.') {
         html += '<div class="gx-c" data-i="' + i + '"><span class="gx-l"></span>' +
           (debut[i] || []).map(function (f) { return M().FLECHES[f] || ''; }).join('') + '</div>';
       } else if (parDef[i]) {
         var ws = parDef[i].slice().sort(function (a, b) { return (M().dessus(s.words[a]) ? 0 : 1) - (M().dessus(s.words[b]) ? 0 : 1); });
-        // (la taille de chaque texte est ajustée ensuite, en le mesurant)
+        // (la taille de chaque texte est ajustée ensuite, en le mesurant ; une coupure
+        //  après l’apostrophe n’est ajoutée que si le mot entier ne tient pas)
         html += '<div class="gx-d n' + ws.length + '" data-c="' + i + '" data-d="' + ws.join(',') + '">' + ws.map(function (wi) {
-          // (espace de largeur nulle après l’apostrophe : « d’Amérique » peut passer à la ligne)
           return '<div class="gx-dh" data-w="' + wi + '"><span class="gx-dt" lang="fr">' +
-            GG.esc(s.words[wi].def).replace(/’/g, '’\u200b') + '</span></div>';
+            GG.esc(s.words[wi].def) + '</span></div>';
         }).join('') + '</div>';
       } else {
         html += '<div class="gx-d gx-orn" data-c="' + i + '"></div>';
@@ -265,7 +266,7 @@
     taille: function (s, dispo) { return Math.max(s.force <= 2 ? 46 : 50, Math.min(60, Math.floor(dispo / s.w))); },
     zoomLecture: function () { return 1; },
     titre: function (s) {
-      return s.jour ? '🗓️ Défi du jour' : 'Force ' + s.force + ' · n°' + (s.gnum + 1);
+      return s.jour ? '🗓️ Défi du jour' : 'Force ' + (s.force | 0) + ' · n°' + ((s.gnum | 0) + 1);
     },
     grille: grilleHTML,
     etiquette: function (s, wi) {
@@ -275,7 +276,7 @@
     fin: function (s) {
       var p = s.players[0] || {};
       return '<div class="gx-fin"><span class="gx-fin-t">🎉 Grille terminée !</span> ' +
-        '<span>⏱️ ' + M().duree(s.durationSec) + ' · ★ ' + (p.points || 0) + ' · ' + stars(M().etoiles(p)) + '</span></div>';
+        '<span>⏱️ ' + M().duree(s.durationSec) + ' · ★ ' + (+p.points || 0) + ' · ' + stars(M().etoiles(p)) + '</span></div>';
     }
   };
 
