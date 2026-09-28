@@ -464,6 +464,9 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
           await p.waitForFunction(() => window.__ym.current === 0 && window.__ym.rolls === 3, null, { timeout: 40000 });
           return (Date.now() - t0) / 1000;
         };
+        check('contre 3 IA, le mode rapide est choisi d’office', await p.getAttribute('[data-a="vitesse"]', 'aria-pressed') === 'true');
+        await p.click('[data-a="vitesse"]');
+        check('bouton ⏩ : retour au mode normal', await etat(p, () => window.__ym.rapide === false));
         const tNormal = await attente();
         await p.click('[data-a="vitesse"]');
         check('bouton ⏩ : mode rapide', await etat(p, () => window.__ym.rapide === true));
@@ -510,6 +513,94 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
       check('annulé : c’est de nouveau à Léa, avec ses dés', await etat(p, () => window.__ym.current === 0 && window.__ym.rolls === 2));
       await capture(p, 'yams_360_deux');
       await sansDebord(p, 'Yams à deux');
+      await p._ctx.close();
+    }
+  }
+
+  /* ======================= COCHON ======================= */
+  if (joue('cochon')) {
+    const espionP = p => p.evaluate(() => {
+      const m = GG.byId.cochon, ap = m.apply;
+      m.apply = function (s) { window.__pig = s; return ap.apply(this, arguments); };
+    });
+    const etat = (p, f) => p.evaluate(f);
+    const truque = (p, v) => p.evaluate(v => { window.__r = window.__r || Math.random; Math.random = () => v; }, v);
+    const vrai = p => p.evaluate(() => { if (window.__r) Math.random = window.__r; });
+    for (const [w, h] of [[412, 780], [360, 640]]) {
+      console.log('--- Cochon contre 3 IA (' + w + '×' + h + ') ---');
+      const p = await nouvelle(w, h);
+      await espionP(p);
+      await lanceSolo(p, 'cochon', 'difficile', 3);
+      await p.waitForSelector('.pig-v2');
+      check('une jauge vers 100 par joueur', await p.locator('.pig-couloir').count() === 4 &&
+        /🤖 Suzette/.test(await p.textContent('.pig-course')));
+      check('options : tour égal et variante à deux dés', await p.locator('.pig-regle').count() === 2);
+      check('gros dé en 3D au repos', await p.locator('.pig-de.repos .pig-f').count() === 6);
+      // BUG (sécurité) : aucun HTML dans l’état
+      await truque(p, 0.55);
+      await p.click('[data-a="roll"]');
+      await p.locator('[data-a="roll"]').click({ force: true, noWaitAfter: true, timeout: 300 }).catch(() => {});
+      await vrai(p);
+      check('double appui sur « Lancer » : un seul lancer', await etat(p, () => window.__pig.nLancers) === 1);
+      check('le dé roule (animation)', await p.locator('.pig-de.roule').count() === 1);
+      check('options figées après le 1er lancer', await p.locator('.pig-regle').count() === 0);
+      check('suspense : les points n’apparaissent qu’à l’arrêt du dé', (await p.textContent('.pig-tp')).trim() === '0');
+      await attendre(1300);
+      check('points en jeu : 4', (await p.textContent('.pig-tp')).trim() === '4');
+      await p.waitForSelector('[data-a="bank"]:not([disabled])');
+      await p.click('[data-a="bank"]');
+      check('mettre à l’abri : les pièces volent vers la jauge', await p.waitForSelector('[data-gg-fx="vol"] .pig-piece',
+        { state: 'attached', timeout: 800 }).then(() => true, () => false));
+      await capture(p, 'cochon_' + w + '_banque');
+      // 3 IA : rapide d’office ; on mesure l’attente entre deux tours humains
+      const t0 = Date.now();
+      await p.waitForFunction(() => window.__pig.current === 0 || window.__pig.finished, null, { timeout: 30000 });
+      const attenteRapide = (Date.now() - t0) / 1000;
+      check('contre 3 IA, IA rapide d’office', await p.getAttribute('[data-a="vitesse"]', 'aria-pressed') === 'true');
+      mesure('Cochon à 4 (rapide), attente réelle entre deux tours humains', attenteRapide.toFixed(1) + ' s (avant : ≈ 11 s)');
+      check('BUG 8 : attente < 4,5 s en rapide', attenteRapide < 4.5, attenteRapide);
+      // « Cochon ! » quand le dé fait 1
+      await p.waitForSelector('[data-a="roll"]:not([disabled])');
+      await truque(p, 0.01);
+      await p.click('[data-a="roll"]');
+      await vrai(p);
+      await p.waitForSelector('.pig-groin', { timeout: 2000 });
+      check('« COCHON ! » : le cochon surgit (animation drôle)', /COCHON/.test(await p.textContent('.pig-groin')));
+      await capture(p, 'cochon_' + w + '_cochon');
+      await sansDebord(p, 'Cochon');
+      await p._ctx.close();
+    }
+    {
+      console.log('--- Cochon à deux sur un téléphone : tour égal, deux dés ---');
+      const p = await nouvelle(412, 780);
+      await espionP(p);
+      await lanceLocal(p, 'cochon', ['Léa', 'Marc']);
+      await p.waitForSelector('.pig-v2');
+      check('pas de pastilles en double (la course suffit)', await p.locator('#mini-players.hidden').count() === 1);
+      await p.click('[data-r="egal"]');
+      await p.click('[data-r="deuxDes"]');
+      check('options choisies : tour égal, deux dés', await etat(p, () => window.__pig.opts.egal && window.__pig.opts.deuxDes));
+      check('deux gros dés', await p.locator('.pig-de').count() === 2);
+      // Léa part de 92 : 6 + 6 → 104, elle garde : Marc a un dernier tour
+      await p.evaluate(() => { window.__pig.players[0].total = 92; });
+      await truque(p, 0.99);
+      await p.click('[data-a="roll"]');
+      await vrai(p);
+      await p.waitForSelector('[data-a="bank"]:not([disabled])');
+      await p.click('[data-a="bank"]');
+      await p.waitForSelector('.pig-dernier');
+      check('tour égal : 100 atteint, Marc joue son dernier tour', /Léa a atteint 100/.test(await p.textContent('.pig-dernier')) &&
+        await etat(p, () => window.__pig.current === 1 && !window.__pig.finished));
+      await capture(p, 'cochon_412_dernier');
+      // Marc : double 1 → « Gros cochon », la partie se termine, Léa gagne
+      await p.evaluate(() => { window.__pig.players[1].total = 50; });
+      await p.waitForSelector('[data-a="roll"]:not([disabled])');
+      await truque(p, 0);
+      await p.click('[data-a="roll"]');
+      await vrai(p);
+      await p.waitForSelector('#overlay-end:not(.hidden)', { timeout: 5000 });
+      check('double 1 : « Gros cochon », retour à zéro', await etat(p, () => window.__pig.players[1].total === 0));
+      check('fin de partie : Léa gagne', /Léa/.test(await p.textContent('#end-detail')));
       await p._ctx.close();
     }
   }

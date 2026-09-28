@@ -30,6 +30,9 @@
     return c;
   }
   function sum(dice) { return dice.reduce(function (a, b) { return a + b; }, 0); }
+  /* contre l’ordinateur : ses tours d’un coup ? (réglé, ou automatique : oui
+     dès 3 adversaires IA, sinon on regarde chaque lancer) */
+  function vite(s) { return s.rapide === true || (s.rapide == null && s.players.length >= 4); }
 
   /* Score qu’obtiendrait `dice` dans la catégorie `cat`. */
   function catScore(cat, dice) {
@@ -340,7 +343,7 @@
         nLancers: 0,
         nChoix: 0,
         annulable: null,
-        rapide: false
+        rapide: null // null : automatique (rapide dès 3 adversaires IA)
       };
       startTurn(state);
       return state;
@@ -431,7 +434,7 @@
       }
       if (action.t === 'auto') {
         // mode rapide : l’ordinateur joue tout son tour en une fois
-        if (!state.niveauIA || !state.rapide || player === 0) return { ok: false, error: 'Action réservée à l’ordinateur.' };
+        if (!state.niveauIA || !vite(state) || player === 0) return { ok: false, error: 'Action réservée à l’ordinateur.' };
         var etapes = [];
         for (var garde = 0; garde < 6; garde++) {
           var d = decision(state, player, state.niveauIA);
@@ -457,7 +460,7 @@
       if (state.finished || state.current !== me) return null;
       norm(state);
       var niveau = (ctx && ctx.niveau) || state.niveauIA || 'moyen';
-      if (state.rapide && state.niveauIA && me !== 0 && state.rolls === 3) return { t: 'auto' };
+      if (vite(state) && state.niveauIA && me !== 0 && state.rolls === 3) return { t: 'auto' };
       var d = decision(state, me, niveau);
       if (d.t === 'roll') return state.rolls === 3 ? { t: 'roll', n: 3 } : { t: 'roll', keep: d.keep, n: state.rolls };
       return d;
@@ -565,8 +568,8 @@
         CATS.filter(function (c) { return c.id === an.cat; })[0].nom + ' ' + pp0.sheet[an.cat] + '</span>';
     }
     if (enSolo) {
-      html += '<button class="ym-vite' + (s.rapide ? ' on' : '') + '" data-a="vitesse" aria-pressed="' + !!s.rapide + '">⏩ ' +
-        (s.rapide ? 'Rapide' : 'Normal') + '</button>';
+      html += '<button class="ym-vite' + (vite(s) ? ' on' : '') + '" data-a="vitesse" aria-pressed="' + vite(s) + '">⏩ ' +
+        (vite(s) ? 'Rapide' : 'Normal') + '</button>';
     }
     html += '</div>';
 
@@ -698,7 +701,7 @@
         if (a === 'marque' && sel) valider(sel);
         else if (a === 'deselect') { sfx.play('back'); choisir(null); }
         else if (a === 'annule') { sfx.play('erase'); agir({ t: 'annule' }); }
-        else if (a === 'vitesse') { sfx.play('toggle'); agir({ t: 'vitesse', rapide: !s.rapide }); }
+        else if (a === 'vitesse') { sfx.play('toggle'); agir({ t: 'vitesse', rapide: !vite(s) }); }
         else if (a === 'secouer') basculeSecousse(b);
       });
     });
