@@ -2676,7 +2676,7 @@
       miniMod = mod;
       mode = 'local';
       miniBots = 0;
-      miniState = mod.create(names, { dict: dict });
+      miniState = mod.create(names, { dict: dict, mode: 'local' });
       miniMe = 0;
       enterMini();
     });
@@ -2696,7 +2696,7 @@
       var bots = [];
       for (var b = 1; b <= miniSoloBots; b++) bots.push(b);
       miniState = mod.create(names, { dict: dict, niveau: mod.niveaux ? miniNiveau : undefined,
-        solo: true, bots: bots });
+        solo: true, bots: bots, mode: 'local' });
       if (mod.niveaux) miniState.niveauIA = miniNiveau;
       miniMe = 0;
       enterMini();
@@ -2914,7 +2914,7 @@
     // à chaque revanche, le premier joueur change (les jeux qui le gèrent)
     var premier = ((miniState.premier || 0) + 1) % names.length;
     miniState = miniMod.create(names, { dict: dict, niveau: niveauIA, premier: premier,
-      solo: miniBots > 0, bots: indicesBots() });
+      solo: miniBots > 0, bots: indicesBots(), mode: mode === 'local' ? 'local' : 'reseau' });
     if (niveauIA) miniState.niveauIA = niveauIA;
     miniLastViewer = -1;
     showOverlay('overlay-end', false);
@@ -3609,7 +3609,7 @@
       currentGame = pendingGame;
       miniMod = window.GG.byId[currentGame];
       miniBots = 0; // en réseau, tout le monde est humain
-      miniState = miniMod.create(names, { dict: dict });
+      miniState = miniMod.create(names, { dict: dict, mode: 'reseau' });
       miniMe = 0;
       miniLastViewer = -1;
       hostPeers.forEach(function (peer) { sendInitTo(peer); });
@@ -4028,7 +4028,8 @@
       b.textContent = chatNonLus > 9 ? '9+' : String(chatNonLus);
       b.classList.toggle('hidden', chatNonLus === 0);
     });
-    var visible = chatDispo();
+    // la Discussion EST une conversation : pas de 💬 en double dans l'en-tête
+    var visible = chatDispo() && currentGame !== 'chat';
     ['btn-mini-chat', 'btn-game-chat'].forEach(function (id) {
       var b = $(id);
       if (b) b.classList.toggle('hidden', !visible);

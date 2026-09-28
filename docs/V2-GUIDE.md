@@ -220,8 +220,9 @@ Exigences :
 
 - `delaiIA(state)` → millisecondes entre deux actions de l'IA (vitesse
   « rapide », suspense d'un dé…). Par défaut : 650 à 1 200 ms.
-- `create(names, opts)` reçoit aussi `opts.solo`, `opts.bots` (indices des
-  IA) et, à la revanche, `opts.premier` (le premier joueur tourne).
+- `create(names, opts)` reçoit aussi `opts.mode` ('local' ou 'reseau'),
+  `opts.solo`, `opts.bots` (indices des IA) et, à la revanche,
+  `opts.premier` (le premier joueur tourne).
 - Le rendu reçoit `ctx.dict`, `ctx.solo` et `ctx.bots`.
 - `aReprendre(state)` → `false` : rien à reprendre (pas de carte
   « Reprendre »), par exemple sur la carte des mondes de Bonbons.
