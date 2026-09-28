@@ -813,7 +813,7 @@
       el.querySelectorAll('.sol-col').forEach(function (colEl, ci) {
         var col = b.tab[ci], nd2 = 0, nu2 = 0;
         for (var k = 0; k < col.length; k++) { if (col[k].up && col[k].c >= 0) nu2++; else nd2++; }
-        var offD = cardH * 0.16, offU = cardH * 0.3;
+        var offD = cardH * 0.16, offU = cardH * 0.34;
         var besoin = cardH + nd2 * offD + Math.max(0, nu2 - 1) * offU;
         if (besoin > dispo && nu2 > 1) {
           offU = Math.max(cardH * 0.2, (dispo - cardH - nd2 * offD) / (nu2 - 1));

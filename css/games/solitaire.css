@@ -63,6 +63,9 @@
 .sol-waste > .jc { left: 0; }
 .tirage3 .sol-waste > .jc { left: calc(var(--e, 0) * var(--sw) * .36); }
 .sol-inerte { pointer-events: none; }
+/* l'éventail déborde sur la case vide voisine : il passe devant elle */
+.sol-waste { z-index: 2; }
+.sol-espace { pointer-events: none; }
 .sol-found .sol-sous { opacity: 1; }
 
 /* ----- les colonnes : cartes posées en absolu, écarts réglés par l'écran ----- */

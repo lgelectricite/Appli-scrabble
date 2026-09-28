@@ -15,8 +15,10 @@ body.theme-casino {
   background-repeat: no-repeat;
   background-attachment: fixed;
 }
-/* les aurores de la coque restent discrètes dans la salle */
-body.theme-casino::before, body.theme-casino::after { opacity: .35; }
+/* la salle a sa propre lumière : les aurores animées de la coque s'éteignent
+   (elles coûtent cher à chaque image sur un téléphone modeste, et la table
+   animée a besoin de toute la fluidité disponible) */
+body.theme-casino::before, body.theme-casino::after { display: none; animation: none; }
 
 /* ================= le feutre =================
    Vert profond, vignettage, grain discret (deux trames croisées très fines)
