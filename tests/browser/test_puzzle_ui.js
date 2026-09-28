@@ -21,16 +21,23 @@ function check(n, c, e) {
   check('grille 9×9', await p.locator('.sdk-cell').count() === 81);
   const givens = await p.locator('.sdk-cell.given').count();
   check('niveau facile ≈ 40 cases données', givens >= 38 && givens <= 45, givens);
-  // remplit une case : tente 1-9 jusqu'au bon chiffre
-  await p.locator('.sdk-cell:not(.given)').first().click();
-  for (let v = 1; v <= 9; v++) {
-    await p.locator('.sdk-key[data-v="' + v + '"]').click();
-    await p.waitForTimeout(60);
-    const st = await p.textContent('.mem-stats');
-    if (/1\//.test(st)) break;
-  }
-  const stats = await p.textContent('.mem-stats');
-  check('progression et erreurs affichées', /1\//.test(stats) && /❌/.test(stats), stats);
+  // V2 : un mauvais chiffre reste affiché en rouge et compte une erreur (limite de 3) :
+  // on joue d'abord UN mauvais chiffre, puis le bon (retrouvé par le solveur du jeu)
+  const cible = await p.evaluate(() => {
+    const cells = [...document.querySelectorAll('.sdk-cell')].map(c => c.classList.contains('given') ? +c.textContent : 0);
+    const sol = [];
+    GG.byId.sudoku._countSolutions(cells, 1, -1, 0, sol);
+    const i = cells.indexOf(0);
+    return { i, v: sol[i] };
+  });
+  await p.locator('.sdk-cell[data-i="' + cible.i + '"]').click();
+  await p.locator('.sdk-key[data-v="' + (cible.v % 9 + 1) + '"]').click();
+  await p.waitForTimeout(80);
+  check('mauvais chiffre : affiché en rouge dans sa case', await p.locator('.sdk-cell.bad[data-i="' + cible.i + '"]').count() === 1);
+  await p.locator('.sdk-key[data-v="' + cible.v + '"]').click();
+  await p.waitForTimeout(80);
+  const stats = (await p.textContent('#sdk-prog')) + ' ' + (await p.textContent('#sdk-err'));
+  check('progression et erreurs affichées', /1\//.test(stats) && /❌ 1/.test(stats), stats);
   await p.click('#btn-mini-menu'); await p.click('#btn-menu-quit'); await p.click('#btn-confirm-yes');
 
   // Mots mêlés solo : trouve un mot en lisant la grille à l'écran

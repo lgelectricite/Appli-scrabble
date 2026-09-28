@@ -28,7 +28,7 @@ function validSolution(g) {
   }
   return true;
 }
-for (const lvl of ['facile', 'moyen', 'difficile']) {
+for (const lvl of ['facile', 'moyen', 'difficile', 'expert']) {
   const t0 = Date.now();
   const made = sudoku._makePuzzle(lvl);
   const ms = Date.now() - t0;
@@ -44,10 +44,15 @@ check('partie lancée', g.phase === 'play' && g.toFill > 0);
 const empty = g.puzzle.findIndex(v => v === 0);
 const good = g.solution[empty];
 const bad = (good % 9) + 1;
+// V2 : le mauvais chiffre n'est plus seulement refusé par un message fugace :
+// il s'affiche EN ROUGE dans sa case (marqué « bad ») et compte une erreur
 let r = sudoku.apply(g, 1, { t: 'set', i: empty, v: bad });
-check('mauvais chiffre refusé + erreur comptée', !r.ok && g.players[1].errors === 1);
+check('mauvais chiffre posé en rouge + erreur comptée',
+  r.ok && g.players[1].errors === 1 && g.grids[1][empty] === bad && g.bad[1][empty] === 1 &&
+  g.players[1].filled === 0);
 r = sudoku.apply(g, 1, { t: 'set', i: empty, v: good });
-check('bon chiffre accepté', r.ok && g.grids[1][empty] === good && g.players[1].filled === 1);
+check('bon chiffre accepté (remplace le faux)', r.ok && g.grids[1][empty] === good && g.players[1].filled === 1 &&
+  g.bad[1][empty] === 0);
 check('case imposée intouchable', !sudoku.apply(g, 1, { t: 'set', i: g.puzzle.findIndex(v => v !== 0), v: 5 }).ok);
 // B remplit tout → victoire et fin
 for (let i = 0; i < 81; i++) {

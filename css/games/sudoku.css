@@ -1,29 +1,242 @@
 /* ===== GGgames V2 — Sudoku =====
-   Styles propres à ce jeu (chargés après css/style.css). */
+   Styles propres à ce jeu (chargés après css/style.css).
+   La grille est un OBJET : une feuille ivoire épaisse posée sur la nuit,
+   cadre d'encre, traits fins entre les cases, traits épais entre les blocs. */
 
-/* ===== Sudoku ===== */
+/* ---------- accueil du jeu : défi du jour, niveaux, statistiques ---------- */
+.sdk-home { display: flex; flex-direction: column; gap: 12px; max-width: 520px; margin: 6px auto 0; }
+.sdk-daily {
+  position: relative; display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 14px; border-radius: var(--r-l); overflow: hidden; cursor: pointer;
+  color: #fff; text-align: left; font-family: var(--f-texte);
+  background: var(--jeu-grad); border: 1px solid rgba(255, 255, 255, .28);
+  box-shadow: var(--ombre-2), inset 0 1px 0 rgba(255, 255, 255, .35);
+  touch-action: manipulation; transition: transform .16s var(--ressort);
+}
+.sdk-daily::after { /* reflet qui passe */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .26) 45%, transparent 60%);
+  transform: translateX(-100%); animation: sdkReflet 4.2s ease-in-out 1s infinite;
+}
+@keyframes sdkReflet { 55%, 100% { transform: translateX(100%); } }
+.sdk-daily:active { transform: scale(.97); }
+.sdk-daily.fait { background: linear-gradient(135deg, #2fb57a, #1b7e6a); }
+.sdk-daily-cal {
+  flex: none; width: 58px; height: 64px; border-radius: 14px; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #fffdf7; color: #2d2470; box-shadow: 0 6px 14px rgba(0, 0, 0, .28);
+}
+.sdk-daily-cal b { font-family: var(--f-titre); font-size: 27px; font-weight: 600; line-height: 1; }
+.sdk-daily-cal small { font-size: 10.5px; font-weight: 900; text-transform: uppercase; color: #d9336c; letter-spacing: .4px; }
+.sdk-daily-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sdk-daily-t { font-family: var(--f-titre); font-size: 19px; font-weight: 600; }
+.sdk-daily-s { font-size: 13px; font-weight: 700; opacity: .95; }
+.sdk-daily-go {
+  flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 17px; background: rgba(255, 255, 255, .24);
+}
+.sdk-lvls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sdk-lvl {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  min-height: 122px; padding: 16px 12px 12px; overflow: hidden; cursor: pointer;
+  color: var(--txt); text-align: left; font-family: var(--f-texte);
+  background: var(--glass); border: 1px solid var(--stroke); border-radius: var(--r);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+  touch-action: manipulation; transition: transform .16s var(--ressort), background .2s;
+}
+.sdk-lvl::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--c, var(--jeu-grad)); }
+.sdk-lvl::after { /* halo de la couleur du niveau */
+  content: ''; position: absolute; right: -30px; top: -30px; width: 100px; height: 100px; border-radius: 50%;
+  background: var(--c); opacity: .16; filter: blur(8px); pointer-events: none;
+}
+.sdk-lvl[data-lvl="facile"] { --c: linear-gradient(90deg, #45eb95, #17c36b); }
+.sdk-lvl[data-lvl="moyen"] { --c: linear-gradient(90deg, #5ee7ff, #3b82f6); }
+.sdk-lvl[data-lvl="difficile"] { --c: linear-gradient(90deg, #ffc23d, #ff8a3d); }
+.sdk-lvl[data-lvl="expert"] { --c: linear-gradient(90deg, #ff6fa8, #b14dff); }
+.sdk-lvl:active { transform: scale(.96); background: var(--glass-2); }
+.sdk-lvl-ic { font-size: 30px; line-height: 1; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .3)); }
+.sdk-lvl-nom { font-family: var(--f-titre); font-size: 19px; font-weight: 600; }
+.sdk-lvl-tech { font-size: 12.5px; font-weight: 700; color: var(--txt-2); line-height: 1.3; }
+.sdk-lvl-best { margin-top: auto; padding-top: 4px; font-size: 12.5px; font-weight: 800; color: #ffd98a; }
+.sdk-opt {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px;
+  color: var(--txt); text-align: left; font-family: var(--f-texte); font-size: 15px; font-weight: 800;
+  background: var(--glass); border: 1px solid var(--stroke); border-radius: 18px; cursor: pointer;
+  touch-action: manipulation;
+}
+.sdk-opt-tx { flex: 1; }
+.sdk-opt-tx small { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 700; color: var(--txt-3); }
+.sdk-opt.on .interrupteur { background: var(--grad-vert); border-color: transparent; }
+.sdk-opt.on .interrupteur::after { transform: translateX(22px); }
+.sdk-stats { padding: 12px 14px; border-radius: var(--r); background: var(--glass); border: 1px solid var(--stroke); }
+.sdk-stats h3 { margin: 0 0 8px; font-size: 16px; }
+.sdk-stats table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.sdk-stats th { text-align: left; font-size: 11.5px; font-weight: 900; letter-spacing: .5px; text-transform: uppercase; color: var(--txt-3); padding: 4px 2px; }
+.sdk-stats td { padding: 6px 2px; border-top: 1px solid var(--stroke); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ---------- l'écran de jeu ---------- */
+.sdk {
+  /* la grille prend toute la largeur, sans jamais pousser le pavé hors de l'écran */
+  --sdk-w: min(100%, calc(100vh - 322px), 540px);
+  --sdk-w: min(100%, calc(100dvh - 322px), 540px);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding-top: 2px; user-select: none; -webkit-user-select: none;
+}
+.sdk-top { width: var(--sdk-w); display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.sdk-chip {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 5px 10px;
+  font-family: var(--f-titre); font-size: 14px; font-weight: 600; white-space: nowrap;
+  color: var(--txt); background: var(--glass-2); border: 1px solid var(--stroke); border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.sdk-chip.lvl { background: var(--jeu-grad); border-color: rgba(255, 255, 255, .25); color: #fff; }
+.sdk-chip.err { color: #ffd0d6; background: rgba(255, 77, 94, .16); border-color: rgba(255, 77, 94, .5); }
+.sdk-time { cursor: pointer; touch-action: manipulation; min-height: 36px; }
+/* icône pause (deux barres) / lecture (triangle), dessinée : aucune police n'est nécessaire */
+.sdk-pp { position: relative; display: inline-block; width: 10px; height: 12px; margin-left: 2px; opacity: .9; }
+.sdk-pp::before, .sdk-pp::after { content: ''; position: absolute; top: 0; bottom: 0; width: 3.5px; border-radius: 1px; background: currentColor; }
+.sdk-pp::before { left: 0; }
+.sdk-pp::after { right: 0; }
+.sdk-pp.play::before { width: 0; height: 0; border-radius: 0; background: none; top: 0; left: 1px;
+  border-style: solid; border-width: 6px 0 6px 10px; border-color: transparent transparent transparent currentColor; }
+.sdk-pp.play::after { display: none; }
+
+.sdk-board { position: relative; width: var(--sdk-w); }
 .sdk-grid {
-  display: grid; grid-template-columns: repeat(9, 1fr);
-  max-width: min(94vw, 62vh); margin: 4px auto 10px;
-  border: 2px solid var(--ink); border-radius: 6px; overflow: hidden;
-  background: #fff;
-  box-shadow: 0 3px 0 var(--ink);
+  position: relative; display: grid; aspect-ratio: 1;
+  grid-template-columns: repeat(9, minmax(0, 1fr)); grid-template-rows: repeat(9, minmax(0, 1fr));
+  container-type: inline-size;
+  border-radius: 14px; overflow: hidden; touch-action: manipulation;
+  background: linear-gradient(160deg, #fffefa 0%, #fbf7ec 55%, #f4eedd 100%);
+  box-shadow: 0 0 0 3px #231d4d, 0 0 0 7px rgba(127, 140, 255, .28), 0 22px 48px rgba(0, 0, 0, .55),
+    inset 0 -3px 0 rgba(35, 29, 77, .08);
+  transition: filter .3s;
 }
 .sdk-cell {
-  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-  font-size: clamp(14px, 4.6vw, 24px); font-weight: 600;
-  border-right: 1px solid var(--ink-16); border-bottom: 1px solid var(--ink-16);
-  cursor: pointer; color: var(--teal);
-  font-family: 'Fraunces', Georgia, serif;
+  position: relative; display: flex; align-items: center; justify-content: center; min-width: 0;
+  border-right: 1px solid rgba(35, 29, 77, .16); border-bottom: 1px solid rgba(35, 29, 77, .16);
+  font-family: var(--f-titre); font-weight: 500; line-height: 1;
+  font-size: clamp(17px, 6vw, 32px); font-size: 6.3cqw;
+  color: #5b3fd6; cursor: pointer; transition: background-color .12s;
 }
-.sdk-cell.given { color: var(--ink); font-weight: 700; background: var(--tile); cursor: default; }
-.sdk-cell.sel { background: var(--accent); color: var(--accent-ink); }
-.sdk-cell.br { border-right: 2px solid var(--ink); }
-.sdk-cell.bb { border-bottom: 2px solid var(--ink); }
-.sdk-pad { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+.sdk-cell:nth-child(9n) { border-right: 0; }
+.sdk-cell:nth-child(n+73) { border-bottom: 0; }
+.sdk-cell.br { border-right: 2.5px solid #231d4d; }
+.sdk-cell.bb { border-bottom: 2.5px solid #231d4d; }
+.sdk-cell.given { color: #1a1838; font-weight: 600; }
+.sdk-cell.hinted { color: #0c8f61; font-weight: 600; }
+.sdk-cell.hinted::before { /* petit coin : case révélée */
+  content: ''; position: absolute; right: 3px; top: 3px; width: 6px; height: 6px; border-radius: 50%;
+  background: #1fc98a;
+}
+/* surlignages : zone de la case (ligne, colonne, bloc), chiffres identiques, sélection */
+.sdk-cell.zone { background: #ecebfa; }
+.sdk-cell.meme { background: #d9d3ff; }
+.sdk-cell.meme .sdk-v { font-weight: 700; }
+.sdk-cell.sel { background: #b9acff; box-shadow: inset 0 0 0 2.5px #6a4dff; z-index: 1; }
+.sdk-cell.bad { color: #e0183f; }
+.sdk-cell.bad:not(.sel) { background: #ffe1e5; }
+.sdk-cell.conflit { background: #ffc9d1; }
+.sdk-cell.conflit .sdk-v { color: #b3122f; }
+.sdk-v { position: relative; display: block; }
+
+/* notes au crayon : une mini-grille 3×3 dans la case */
+.sdk-notes {
+  position: absolute; inset: 1px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  font-family: var(--f-texte); font-weight: 800; color: #6d6a93;
+  font-size: clamp(8px, 2.4vw, 13px); font-size: 2.45cqw;
+}
+.sdk-notes i { font-style: normal; display: flex; align-items: center; justify-content: center; border-radius: 3px; }
+.sdk-notes i.meme { color: #fff; background: #7c5cff; }
+.sdk-grid.auto-anim .sdk-notes { animation: sdkNotes .42s var(--doux) both; }
+@keyframes sdkNotes { from { opacity: 0; transform: scale(.6); } }
+
+/* un chiffre posé tombe en place ; le mauvais chiffre tremble (GG.fx.shake) */
+.sdk-cell.pose .sdk-v { animation: sdkPose .38s var(--ressort) both; }
+@keyframes sdkPose { from { transform: scale(.35); opacity: .2; } }
+.sdk-cell.brille .sdk-v { animation: sdkBrille 1s ease-out both; }
+@keyframes sdkBrille { 30% { transform: scale(1.3); color: #ff9f1a; text-shadow: 0 0 10px rgba(255, 190, 60, .9); } }
+/* ligne, colonne ou bloc terminé : une vague de lumière part de la case posée */
+.sdk-cell::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle, rgba(255, 232, 150, .95) 0%, rgba(255, 196, 80, .75) 55%, rgba(139, 92, 255, .35) 100%);
+}
+.sdk-cell.vague::after { animation: sdkVague .75s ease-out var(--d, 0ms) both; }
+.sdk-cell.vague .sdk-v { animation: sdkVagueV .7s var(--ressort) var(--d, 0ms) both; }
+@keyframes sdkVague { 0% { opacity: 0; transform: scale(.4); } 30% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+@keyframes sdkVagueV { 35% { transform: scale(1.32); color: #7a3cff; } }
+
+/* pause : la grille se floute (pas de triche en pause) */
+.sdk.en-pause .sdk-grid { filter: blur(10px) saturate(.6); }
+.sdk-pause-voile {
+  position: absolute; inset: 0; z-index: 3; display: grid; place-items: center;
+  border-radius: 14px; background: rgba(12, 12, 36, .35);
+}
+.sdk-pause-carte {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(78%, 280px);
+  padding: 20px 18px 16px; border-radius: 24px; text-align: center;
+  background: linear-gradient(180deg, var(--solid-2), var(--solid)); border: 1px solid var(--stroke-2);
+  box-shadow: var(--ombre-3); animation: carteEntre .4s var(--ressort) both;
+}
+.sdk-pause-ic { font-size: 34px; }
+.sdk-pause-carte b { font-family: var(--f-titre); font-size: 24px; font-weight: 600; }
+.sdk-pause-carte small { color: var(--txt-2); font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+
+/* outils : annuler, effacer, notes, notes auto, indice */
+.sdk-tools { width: var(--sdk-w); display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.sdk-tool {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 54px; padding: 2px 0;
+  color: var(--txt-2); background: none; border: none; border-radius: 14px; cursor: pointer;
+  font-family: var(--f-texte); font-size: 12.5px; font-weight: 800; touch-action: manipulation;
+}
+.sdk-tool-ic {
+  position: relative; display: grid; place-items: center; width: 46px; height: 36px;
+  font-size: 20px; line-height: 1; color: var(--txt);
+  background: var(--glass-2); border: 1px solid var(--stroke); border-radius: 13px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 3px 0 rgba(0, 0, 0, .25);
+  transition: transform .14s var(--ressort), background .2s;
+}
+.sdk-tool:active .sdk-tool-ic { transform: translateY(2px) scale(.94); box-shadow: 0 1px 0 rgba(0, 0, 0, .25); }
+.sdk-tool.on { color: var(--txt); }
+.sdk-tool.on .sdk-tool-ic { background: var(--jeu-grad); border-color: rgba(255, 255, 255, .3); box-shadow: 0 4px 14px rgba(127, 140, 255, .45); }
+.sdk-onoff {
+  position: absolute; right: -9px; bottom: -6px; padding: 1px 4px; border-radius: 6px;
+  font-family: var(--f-texte); font-size: 9.5px; font-weight: 900; letter-spacing: .3px;
+  color: #fff; background: #3a3f78; border: 1px solid rgba(255, 255, 255, .2);
+}
+.sdk-tool.on .sdk-onoff { color: #063019; background: var(--vert); }
+.sdk-badge {
+  position: absolute; right: -8px; top: -7px; min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 999px; font-family: var(--f-texte); font-size: 11px; font-weight: 900; line-height: 18px;
+  color: #3a2200; background: var(--grad-or);
+}
+
+/* pavé : grands chiffres, et sous chacun le nombre qu'il reste à placer */
+.sdk-pad {
+  width: var(--sdk-w); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+}
 .sdk-key {
-  width: 9%; min-width: 34px; padding: 10px 0; font-size: 18px; font-weight: 700;
-  border: 1px solid var(--tile-edge); border-radius: 8px;
-  background: var(--tile); color: var(--tile-text);
-  cursor: pointer; box-shadow: 0 2px 0 var(--tile-edge);
+  flex: 0 0 calc((100% - 24px) / 5); min-height: 52px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  color: var(--txt); cursor: pointer; touch-action: manipulation;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05));
+  border: 1px solid var(--stroke-2); border-radius: 15px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 3px 0 rgba(0, 0, 0, .3);
+  transition: transform .12s var(--doux), box-shadow .12s, background .2s, opacity .3s;
 }
+.sdk-key b { font-family: var(--f-titre); font-size: 27px; font-weight: 600; line-height: 1; }
+.sdk-key small { font-size: 12px; font-weight: 900; color: var(--txt-3); }
+.sdk-key:active { transform: translateY(2px) scale(.97); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15), 0 1px 0 rgba(0, 0, 0, .3); }
+.sdk-key.meme { background: linear-gradient(180deg, rgba(139, 92, 255, .5), rgba(139, 92, 255, .25)); border-color: rgba(200, 190, 255, .6); }
+.sdk-key.fini { opacity: .35; }
+.sdk-key.fini small { color: var(--vert); }
+.sdk.notes-on .sdk-key b { font-size: 20px; color: #cfc6ff; font-family: var(--f-texte); font-weight: 900; }
+.sdk.notes-on .sdk-key { border-style: dashed; }
+@media (min-width: 400px) {
+  .sdk-pad { flex-wrap: nowrap; gap: 4px; }
+  .sdk-key { flex: 1 1 0; min-width: 0; min-height: 60px; border-radius: 13px; }
+  .sdk-key b { font-size: 29px; }
+}
+
+/* fin de partie (dans la fenêtre de la coque) */
+.sdk-fin-titre { text-align: center; font-weight: 800; color: #ffc2c9; }
