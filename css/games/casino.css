@@ -1,40 +1,122 @@
 /* ===== GGgames V2 — Salle de casino (Poker, Blackjack, Solitaire) =====
-   Styles propres à ce jeu (chargés après css/style.css). */
+   Styles communs aux jeux de table (chargés après css/style.css) :
+   l'ambiance de la salle, le feutre, le rail, les jetons en relief. */
 
-/* ================= SALLE DE CASINO — l'ambiance des jeux de table =================
-   Lumière tamisée, lustre doré au-dessus de la table, moquette sombre :
-   la table n'est plus posée sur du papier, elle vit dans sa salle. */
+/* ================= la salle : lumière tamisée, lustre doré =================
+   La nuit indigo de l'appli se réchauffe : un halo doré tombe du plafond
+   sur la table, le reste de la salle reste dans l'ombre. */
 body.theme-casino {
-  background-color: #0b1810;
+  background-color: #070b16;
   background-image:
-    radial-gradient(120% 65% at 50% -8%, rgba(242, 205, 92, .17) 0%, transparent 55%),
-    radial-gradient(95% 45% at 50% 30%, rgba(46, 107, 79, .45) 0%, transparent 72%),
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, .016) 0 2px, transparent 2px 7px),
-    repeating-linear-gradient(-45deg, rgba(0, 0, 0, .05) 0 2px, transparent 2px 7px),
-    linear-gradient(180deg, #132619 0%, #0b1810 55%, #060d09 100%);
-  background-repeat: no-repeat, no-repeat, repeat, repeat, no-repeat;
+    radial-gradient(90% 55% at 50% -6%, rgba(255, 200, 90, .20) 0%, rgba(255, 200, 90, .05) 45%, transparent 70%),
+    radial-gradient(70% 40% at 50% 42%, rgba(20, 140, 110, .20) 0%, transparent 75%),
+    radial-gradient(120% 90% at 50% 120%, rgba(90, 30, 120, .35) 0%, transparent 60%),
+    linear-gradient(180deg, #0d1226 0%, #080b18 55%, #05070f 100%);
+  background-repeat: no-repeat;
   background-attachment: fixed;
-  color: #e8e2cf;
 }
-body.theme-casino #mini-turn, body.theme-casino .mini-msg { color: #e8e2cf; }
-body.theme-casino .waiting { color: #9fb8a6; }
-body.theme-casino .hint { color: #a9c2b0; }
-body.theme-casino .qz-head { color: #e8e2cf; }
-body.theme-casino .icon-btn {
-  background: #ffffff12; border-color: #f2cd5c66; color: #e8e2cf; box-shadow: none;
+/* la salle a sa propre lumière : les aurores animées de la coque s'éteignent
+   (elles coûtent cher à chaque image sur un téléphone modeste, et la table
+   animée a besoin de toute la fluidité disponible) */
+body.theme-casino::before, body.theme-casino::after { display: none; animation: none; }
+
+/* ================= le feutre =================
+   Vert profond, vignettage, grain discret (deux trames croisées très fines)
+   et reflet de la lampe au-dessus. */
+.cz-feutre {
+  background:
+    radial-gradient(75% 60% at 50% 32%, rgba(255, 255, 230, .10) 0%, transparent 70%),
+    repeating-radial-gradient(circle at 30% 40%, rgba(255, 255, 255, .018) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(35deg, rgba(0, 0, 0, .035) 0 1px, transparent 1px 3px),
+    radial-gradient(110% 95% at 50% 40%, #1c8a5e 0%, #13704b 42%, #0b4a31 78%, #06301f 100%);
 }
-body.theme-casino .player-badge { background: #ffffff0d; border-color: #ffffff14; }
-body.theme-casino .player-badge .p-name { color: #cfc7ab; }
-body.theme-casino .player-badge .p-score { color: #f2cd5c; }
-body.theme-casino .player-badge.turn { border-color: #f2cd5c; background: #f2cd5c1f; box-shadow: none; }
-body.theme-casino .pk-mode { color: #b8cbbc; }
-body.theme-casino .pk-mode small { color: #8fa896; }
-body.theme-casino .btn { box-shadow: none; }
-body.theme-casino .btn:not(.primary):not(.danger) {
-  background: #17281d; color: #e8e2cf; border-color: #3a5a45;
+
+/* ================= les jetons de casino, en relief =================
+   Un disque coloré, six inserts blancs sur la tranche, un anneau pointillé,
+   la valeur au centre ; l'épaisseur est une ombre franche sous le jeton. */
+.gg-jeton {
+  --jw: 34px; --jc1: #d23a3a; --jc2: #fff4e6; --jct: #fff;
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  flex: none; width: var(--jw); height: var(--jw); border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, var(--jc1) 0 52%, rgba(255, 255, 255, .55) 53% 55%, var(--jc1) 56% 64%, transparent 65%),
+    repeating-conic-gradient(from 8deg, var(--jc1) 0deg 38deg, var(--jc2) 38deg 60deg);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, .28),
+    inset 0 2px 1px rgba(255, 255, 255, .35),
+    0 2px 0 rgba(0, 0, 0, .45),
+    0 3px 6px rgba(0, 0, 0, .4);
 }
-body.theme-casino .mem-stat { background: #ffffff10; border-color: #ffffff1c; color: #e8e2cf; }
-body.theme-casino .final-line { background: #ffffff10; border-color: #ffffff1c; color: #e8e2cf; }
-body.theme-casino .pk-oval,
-body.theme-casino .bj-rim { filter: drop-shadow(0 26px 26px rgba(0, 0, 0, .55)); }
-body.theme-casino .sol-felt { box-shadow: 0 20px 34px rgba(0, 0, 0, .55); }
+.gg-jeton::after { /* reflet de la lampe */
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(60% 45% at 35% 25%, rgba(255, 255, 255, .45), transparent 70%);
+  pointer-events: none;
+}
+.gg-jeton b {
+  position: relative; z-index: 1; color: var(--jct);
+  font-family: var(--f-titre); font-weight: 700; line-height: 1;
+  font-size: calc(var(--jw) * .34); letter-spacing: -.02em;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .45);
+}
+.gg-jeton.v1 { --jc1: #eeeae0; --jc2: #3a6fd8; --jct: #1d2340; }
+.gg-jeton.v1 b { text-shadow: none; }
+.gg-jeton.v5 { --jc1: #d8373f; --jc2: #fff4e6; }
+.gg-jeton.v25 { --jc1: #179a5b; --jc2: #fff4e6; }
+.gg-jeton.v100 { --jc1: #22232c; --jc2: #f1d27a; }
+.gg-jeton.v500 { --jc1: #7c3fd0; --jc2: #fff0c8; }
+.gg-jeton.v1000 { --jc1: #f0a21a; --jc2: #6b3a00; --jct: #3a1f00; }
+.gg-jeton.v1000 b { text-shadow: 0 1px 0 rgba(255, 255, 255, .4); }
+
+/* une pile de jetons vue de trois quarts : chaque jeton 3 px plus haut */
+.gg-pile {
+  --jw: 22px; position: relative; display: inline-block; flex: none;
+  width: var(--jw); height: calc(var(--jw) + (var(--n, 1) - 1) * 4px);
+}
+.gg-pile .gg-jeton {
+  --jw: inherit; position: absolute; left: 0; bottom: calc(var(--i, 0) * 4px);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .3), 0 1.5px 0 rgba(0, 0, 0, .5), 0 2px 3px rgba(0, 0, 0, .35);
+}
+.gg-pile .gg-jeton b { display: none; }
+
+/* un jeton qui tombe sur la table */
+@keyframes czJetonTombe {
+  0% { transform: translateY(-14px) scale(1.15); opacity: 0; }
+  60% { transform: translateY(1px) scale(.97); opacity: 1; }
+  100% { transform: none; }
+}
+.cz-tombe { animation: czJetonTombe .35s var(--doux) both; }
+
+/* ================= textes de la salle : lisibles sur le fond sombre =================
+   (limité à la zone de jeu : les fenêtres de la coque gardent leur style V2) */
+body.theme-casino #mini-area .mini-msg { color: var(--txt); }
+body.theme-casino #mini-area .waiting { color: var(--txt-2); }
+body.theme-casino #mini-area .hint { color: var(--txt-2); }
+
+/* bouton discret (quitter, passer) : lisible, jamais d'encre sombre sur fond de nuit */
+.cz-lien {
+  background: none; border: none; cursor: pointer; font-family: var(--f-texte);
+  color: var(--txt-2); font-size: 14px; font-weight: 700; text-decoration: underline;
+  text-underline-offset: 3px; padding: 10px 14px; min-height: 44px;
+  touch-action: manipulation;
+}
+.cz-lien:active { opacity: .7; }
+
+/* pastille « verre » de la salle (cagnotte, statistiques) */
+.cz-pastille {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 999px;
+  background: rgba(8, 10, 26, .55); border: 1px solid rgba(255, 214, 128, .35);
+  color: var(--txt); font-size: 14px; font-weight: 700;
+}
+.cz-pastille b { color: #ffd66b; font-family: var(--f-titre); font-weight: 600; }
+
+/* bandeau de réglages de table (vitesse, options) */
+.cz-reglages { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 6px 0; }
+.cz-opt {
+  min-height: 40px; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  font-family: var(--f-titre); font-size: 14px; font-weight: 600;
+  color: var(--txt-2); background: rgba(255, 255, 255, .06);
+  border: 1px solid var(--stroke-2); touch-action: manipulation;
+}
+.cz-opt.on { color: #1b1300; background: var(--grad-or); border-color: transparent; }
+.cz-opt:active { transform: scale(.96); }

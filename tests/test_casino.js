@@ -85,7 +85,8 @@ const C = (suit, rank) => suit * 13 + rank; // rang 0 = As, 9 = 10, 12 = Roi
 
 let b = blackjack.create(['Ana', 'Bob']);
 check('création : phase de mises', b.phase === 'bet' && b.players.length === 2);
-check('mise farfelue refusée', blackjack.apply(b, 0, { t: 'bet', v: 999 }).ok === false);
+check('mises farfelues refusées (0, négative, fractionnaire, texte, au-delà du plafond)',
+  [0, -5, 2.5, '25', 5001, NaN, null].every(v => blackjack.apply(b, 0, { t: 'bet', v: v }).ok === false));
 check('mise minimale de 1 jeton acceptée', blackjack.apply(b, 0, { t: 'bet', v: 1 }).ok === true);
 check('double mise refusée', blackjack.apply(b, 0, { t: 'bet', v: 100 }).ok === false);
 check('jouer avant la donne refusé', blackjack.apply(b, 0, { t: 'hit' }).ok === false);
@@ -164,24 +165,21 @@ check('again réservé à l’hôte', blackjack.apply(s9, 0, { t: 'again' }).ok 
 check('cumul conservé entre les manches', s9.players[0].total === totAvant);
 check('fin de partie : summary avec 🏆', /🏆/.test(blackjack.summary(s9)));
 
-// quitter en pleine manche : la mise engagée revient (cagnotte locale)
+// quitter en pleine manche : la main est jouée d'office (on reste), la mise
+// n'est JAMAIS simplement rendue (bug : +11,4 % d'espérance en quittant)
 {
+  const bq = forced([[C(0, 9), C(1, 1)]], [C(2, 9), C(3, 9)], [C(0, 5)]); // 12 contre 20
+  bq.players[0].engage = 100;
+  blackjack._regler(bq, 0); // la mise a été débitée par l'écran
   const avant = wallet.get();
-  let bq = blackjack.create(['Solo']);
-  blackjack.apply(bq, 0, { t: 'bet', v: 100 }); // (mise débitée par l'écran en vrai)
-  if (bq.phase !== 'result') {
-    blackjack.cashout(bq, 0);
-    check('quitter en pleine manche rembourse la mise', wallet.get() === avant + 100);
-  } else {
-    check('quitter en pleine manche rembourse la mise', true); // blackjack immédiat, rien à rendre
-  }
+  blackjack.cashout(bq, 0);
+  check('quitter en pleine main (12 contre 20) : la mise n’est pas rendue', wallet.get() === avant, wallet.get() - avant);
   let br = blackjack.create(['Solo']);
   br.phase = 'result'; br.players[0].bet = 100; br.players[0].outcome = 'lose';
   const avant2 = wallet.get();
   blackjack.cashout(br, 0);
   check('au résultat, rien n’est rendu deux fois', wallet.get() === avant2);
 }
-
 
 // ===== split : la paire séparée en deux mains =====
 {
@@ -234,12 +232,16 @@ check('fin de partie : summary avec 🏆', /🏆/.test(blackjack.summary(s9)));
   check('les deux mains réglées chacune pour soi',
     s1.phase === 'result' && s1.players[0].outcome !== null && s1.players[0].outcome2 !== null);
 
-  // quitter en pleine manche avec un split : les DEUX mises reviennent
+  // quitter en pleine manche avec un split doublé : rien n'est rendu d'office,
+  // les deux mains sont jouées (on reste) et réglées normalement
+  let sq = forced([[C(0, 7), C(1, 7)]], [C(2, 9), C(3, 9)], [C(2, 5), C(1, 3), C(0, 3)]); // croupier 20
+  sq.players[0].engage = 100;
+  blackjack._regler(sq, 0);
+  blackjack.apply(sq, 0, { t: 'split' });            // 8+4 / 8+4 : 12 et 12
+  blackjack._regler(sq, 0);                          // l'écran débite la 2e mise
   const avantQ = wallet.get();
-  let sq = forced([[C(0, 7), C(1, 7)]], [C(2, 9), C(3, 6)], [C(2, 5), C(1, 3), C(0, 3)]);
-  blackjack.apply(sq, 0, { t: 'split' });
   blackjack.cashout(sq, 0);
-  check('quitter avec un split rembourse les deux mises', wallet.get() === avantQ + 200);
+  check('quitter avec un split (deux 12 contre 20) : aucune mise rendue', wallet.get() === avantQ, wallet.get() - avantQ);
 }
 
 /* ================= SOLITAIRE ================= */

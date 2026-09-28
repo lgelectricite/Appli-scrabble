@@ -1,23 +1,36 @@
-/* ===== GGgames V2 — Cartes à jouer (Poker, cartes.js) =====
-   Styles propres à ce jeu (chargés après css/style.css). */
+/* ===== GGgames V2 — Cartes à jouer (Poker, Blackjack, Solitaire : cartes.js) =====
+   Styles propres à ces jeux (chargés après css/style.css). */
 
 /* ===== Cartes à jouer « grand index », lisibles sur téléphone =====
    Le rang en très gros dans le coin, la couleur dessous, un grand symbole
-   pour le reste. Tout est proportionnel à --jcw (largeur de la carte). */
+   pour le reste. Tout est proportionnel à --jcw (largeur de la carte).
+   V2 : carton satiné (léger dégradé, liseré intérieur), ombre portée en deux
+   couches (contact + halo), dos bordeaux à croisillons dorés. */
 .jc {
   --jcw: 46px;
   position: relative; display: inline-block; vertical-align: middle; flex: none;
   width: var(--jcw); aspect-ratio: 5 / 7; overflow: hidden;
   border-radius: calc(var(--jcw) * .1);
-  background: linear-gradient(165deg, #ffffff 0%, #fbfaf6 60%, #f1ede3 100%);
-  border: 1px solid #bdb3a1;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, .3), 0 3px 7px rgba(0, 0, 0, .28);
-  color: #16171b; user-select: none;
+  background:
+    radial-gradient(120% 70% at 30% 0%, rgba(255, 255, 255, .9), transparent 60%),
+    linear-gradient(165deg, #ffffff 0%, #fbfaf6 55%, #efeadf 100%);
+  border: 1px solid #b9ae9a;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .85),
+    0 1px 1px rgba(0, 0, 0, .35),
+    0 4px 10px rgba(0, 0, 0, .3);
+  color: #16171b; user-select: none; -webkit-user-select: none;
   transform: rotate(var(--jc-rot, 0deg)) translateY(var(--jc-lift, 0px));
+  transition: transform .25s var(--doux, ease), box-shadow .25s, filter .25s, opacity .25s;
 }
 .jc.rouge { color: #d3202a; }
 /* valet, dame, roi : un fond doré pâle, pour les repérer d'un coup d'œil */
-.jc.fig { background: linear-gradient(165deg, #fffdf4 0%, #fbf1d6 60%, #f1dfae 100%); }
+.jc.fig {
+  background:
+    radial-gradient(120% 70% at 30% 0%, rgba(255, 255, 255, .85), transparent 60%),
+    linear-gradient(165deg, #fffdf4 0%, #fbf1d6 55%, #eedba4 100%);
+}
+.jc.fig .jc-g { opacity: .92; }
 .jc.mini { --jcw: 34px; }
 .jc.grande { --jcw: 58px; }
 
@@ -44,23 +57,50 @@
 .jc-g {
   position: absolute; right: 4%; bottom: 3%;
   width: calc(var(--jcw) * .56); height: calc(var(--jcw) * .56); fill: currentColor;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, .6));
 }
 
+/* ----- le dos : bordeaux profond, croisillons et médaillon dorés ----- */
 .jc.dos {
-  background: #b0302a; border-color: #7b1f1a;
+  background:
+    radial-gradient(120% 80% at 30% 10%, rgba(255, 255, 255, .18), transparent 55%),
+    var(--jc-dos, linear-gradient(160deg, #b3263a 0%, #7d1426 100%));
+  border-color: #4f0b18;
+  box-shadow: inset 0 0 0 1px rgba(255, 220, 160, .35), 0 1px 1px rgba(0, 0, 0, .4), 0 4px 10px rgba(0, 0, 0, .32);
 }
 .jc-dos-motif {
-  position: absolute; inset: 7%; border-radius: calc(var(--jcw) * .05);
-  border: 1.5px solid rgba(255, 255, 255, .75);
+  position: absolute; inset: 7%; border-radius: calc(var(--jcw) * .06);
+  border: max(1px, calc(var(--jcw) * .025)) solid rgba(255, 214, 128, .8);
   background:
-    radial-gradient(circle at 50% 50%, transparent 0 17%, rgba(255, 255, 255, .5) 18% 22%, transparent 23%),
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, .2) 0 2px, transparent 2px 6px),
-    repeating-linear-gradient(-45deg, rgba(255, 255, 255, .2) 0 2px, transparent 2px 6px);
+    radial-gradient(circle at 50% 50%, rgba(255, 214, 128, .95) 0 9%, transparent 10% 15%,
+      rgba(255, 214, 128, .6) 16% 19%, transparent 20%),
+    repeating-linear-gradient(45deg, rgba(255, 214, 128, .22) 0 1.5px, transparent 1.5px 5px),
+    repeating-linear-gradient(-45deg, rgba(255, 214, 128, .22) 0 1.5px, transparent 1.5px 5px);
 }
+
 /* la carte gagnante se détache */
 .jc.gagnante {
   --jc-lift: -4px;
-  box-shadow: 0 0 0 2px #d4af37, 0 0 14px rgba(212, 175, 55, .85);
+  box-shadow: 0 0 0 2px #ffd34d, 0 0 16px rgba(255, 205, 70, .9), 0 4px 10px rgba(0, 0, 0, .3);
 }
 /* à l'abattage, les cartes qui ne jouent pas s'estompent */
-.jc.terne { filter: brightness(.62) saturate(.6); }
+.jc.terne { filter: brightness(.6) saturate(.55); }
+
+/* ----- animations des cartes -----
+   .jc-arrive : la carte reste invisible le temps de son vol (--d), puis se
+   pose ; .jc-retourne : elle se retourne face visible (demi-tour en Y).
+   --d peut être négatif : un ré-affichage reprend l'animation là où elle
+   en était, sans rejouer ni couper. */
+@keyframes jcArrive { from { opacity: 0; } to { opacity: 1; } }
+@keyframes jcRetourne {
+  0% { transform: rotate(var(--jc-rot, 0deg)) perspective(500px) rotateY(88deg) scale(1.06); filter: brightness(1.25); }
+  60% { transform: rotate(var(--jc-rot, 0deg)) perspective(500px) rotateY(-8deg) scale(1.03); }
+  100% { transform: rotate(var(--jc-rot, 0deg)) translateY(var(--jc-lift, 0px)); filter: none; }
+}
+@keyframes jcPose {
+  0% { transform: rotate(var(--jc-rot, 0deg)) translateY(-10px) scale(1.08); opacity: 0; }
+  100% { transform: rotate(var(--jc-rot, 0deg)) translateY(var(--jc-lift, 0px)); opacity: 1; }
+}
+.jc.jc-arrive { animation: jcArrive .05s linear var(--d, 0s) both; }
+.jc.jc-retourne { animation: jcArrive .05s linear var(--d, 0s) both, jcRetourne .42s var(--doux, ease-out) var(--d, 0s) both; }
+.jc.jc-pose { animation: jcPose .3s var(--doux, ease-out) var(--d, 0s) both; }

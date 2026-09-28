@@ -1,159 +1,287 @@
 /* ===== GGgames V2 — Blackjack =====
-   Styles propres à ce jeu (chargés après css/style.css). */
+   Styles propres à ce jeu (chargés après css/style.css, casino.css, cartes.css).
+   Une vraie table demi-lune : feutre profond, rail de cuir capitonné bordé
+   d'or, sabot et croupier en haut, votre place en bas ; la console de jeu
+   (jetons, décisions) sous la table. */
 
-/* ===== Blackjack : la table de casino ===== */
+.bj2 { --bj-carte-c: clamp(42px, 12.6vw, 54px); --bj-carte-m: clamp(48px, 14.6vw, 62px); padding-bottom: 6px; }
+
+/* ================= la table ================= */
 .bj-rim {
-  background: linear-gradient(160deg, #6b4a2e, #4a3018 60%, #3a2512);
-  border: 2px solid var(--ink);
-  border-radius: 26px 26px 46% 46% / 26px 26px 22% 22%;
-  padding: 11px 11px 16px;
-  box-shadow: 0 6px 0 rgba(44, 34, 24, .4), inset 0 2px 0 rgba(255, 240, 210, .18);
-  margin-bottom: 10px;
+  position: relative;
+  padding: 7px 7px 11px;
+  border-radius: 26px 26px 50% 50% / 26px 26px 26% 26%;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .12), transparent 30%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, .08) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #5a2f1c 0%, #3d1d10 55%, #2a130a 100%);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 210, 130, .55),
+    inset 0 2px 1px rgba(255, 230, 190, .25),
+    0 18px 30px rgba(0, 0, 0, .55),
+    0 4px 0 #1b0b04;
 }
 .bj-felt {
-  position: relative;
-  background: radial-gradient(140% 120% at 50% 0%, #35704f 0%, #2c5f45 55%, #234c37 100%);
-  border-radius: 18px 18px 44% 44% / 18px 18px 20% 20%;
-  box-shadow: inset 0 0 0 2px rgba(212, 175, 55, .45), inset 0 14px 40px rgba(0, 0, 0, .3);
-  padding: 10px 12px 26px;
-  color: #f2ead2;
-  text-align: center;
+  position: relative; overflow: hidden;
+  border-radius: 20px 20px 50% 50% / 20px 20px 24% 24%;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 214, 128, .45),
+    inset 0 18px 40px rgba(0, 0, 0, .35),
+    inset 0 -30px 60px rgba(0, 0, 0, .35);
+  padding: 8px 10px 16px;
+  color: var(--txt); text-align: center;
+  /* une hauteur FIXE (selon l'écran) : la table ne saute pas d'une phase à l'autre */
+  height: clamp(300px, calc(100vh - 310px), 440px);
+  height: clamp(300px, calc(100dvh - 310px), 440px);
+  display: flex; flex-direction: column;
 }
-.bj-head {
-  display: flex; justify-content: space-between;
-  font-size: 11px; color: #cfe0d4; opacity: .9; letter-spacing: .5px;
+
+/* en-tête du tapis : n° de manche, croupier, sabot */
+.bj-haut { display: grid; grid-template-columns: 70px 1fr 70px; align-items: start; gap: 2px; flex: none; }
+/* la caisse : ma cagnotte, toujours sous les yeux (texte clair sur plaque sombre) */
+.bj-caisse {
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  margin-top: 2px; padding: 4px 2px 3px; border-radius: 12px;
+  background: rgba(4, 8, 20, .62); border: 1px solid rgba(255, 214, 128, .4);
+  font-size: 11px; color: var(--txt-2); font-weight: 700; line-height: 1.15;
 }
-.bj-dealer { margin-top: 2px; }
+.bj-caisse b { font-family: var(--f-titre); font-size: 16px; color: #ffd66b; font-weight: 600; white-space: nowrap; }
+.bj-caisse small { font-size: 11px; color: #ffd66b; margin-top: -2px; }
+.bj-caisse i { font-style: normal; font-size: 11px; color: var(--txt-2); margin-top: 1px; }
+/* le milieu du tapis : l'inscription, les autres joueurs, le verdict */
+.bj-milieu {
+  position: relative; flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+}
+.bj-arc, .bj-rule { transition: opacity .4s; }
+.bj-felt.resultat .bj-arc, .bj-felt.resultat .bj-rule { opacity: .18; }
+.multi .bj-arc { display: none; }
+.bj-dealer { min-width: 0; }
 .bj-deal-lbl {
-  font-size: 11px; letter-spacing: 3px; color: #d9c58a; margin-bottom: 7px;
+  font-family: var(--f-titre); font-size: 12px; letter-spacing: 4px; font-weight: 600;
+  color: rgba(255, 220, 150, .85); margin-bottom: 5px;
 }
-.bj-cartes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; min-height: 62px; }
-.bj-vide { opacity: .8; font-style: italic; font-size: 14px; }
-.bj-card {
-  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
-  width: 44px; height: 62px; border-radius: 7px;
-  background: #fffdf5; color: #21201c; font-weight: 700;
-  border: 1px solid #cfc7b2;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, .4);
+.bj-sabot { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 2px; }
+.bj-sabot-boite {
+  position: relative; width: 42px; height: 46px; border-radius: 6px 6px 10px 10px;
+  background: linear-gradient(180deg, #2a2d3a, #11131b);
+  box-shadow: inset 0 0 0 1px rgba(255, 214, 128, .45), 0 4px 8px rgba(0, 0, 0, .5);
+  transform: perspective(120px) rotateX(18deg);
 }
-.bj-card.red { color: #c62828; }
-.bj-rg { font-size: 1.05rem; line-height: 1.1; }
-.bj-sy { font-size: 1.1rem; line-height: 1.1; }
-.bj-dos {
-  background: repeating-linear-gradient(45deg, #8e3524, #8e3524 6px, #a34630 6px, #a34630 12px);
-  border: 3px solid #fffdf5;
+.bj-sabot-carte { /* le dos de la prochaine carte, qui dépasse de la fente */
+  position: absolute; left: 7px; right: 7px; top: -6px; height: 26px; border-radius: 4px;
+  background: linear-gradient(160deg, #b3263a, #7d1426);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 214, 128, .8), 0 2px 3px rgba(0, 0, 0, .5);
 }
-.bj-total { margin-top: 7px; font-weight: 700; font-size: 15px; }
+.bj-sabot b { font-size: 11px; color: var(--txt-2); font-weight: 800; }
 
-/* l'inscription dorée en arc, comme sur les vrais tapis */
-.bj-arc { display: block; width: min(88%, 300px); margin: 8px auto 0; }
+/* les cartes : grand index, en éventail serré */
+.bj-cartes {
+  display: flex; justify-content: center; align-items: center; flex-wrap: nowrap;
+  min-height: calc(var(--bj-carte-c) * 1.4);
+}
+.bj-main-c .jc { --jcw: var(--bj-carte-c); }
+.bj-main-c .jc + .jc { margin-left: calc(var(--bj-carte-c) * -.28); }
+.bj-cartes-moi { min-height: calc(var(--bj-carte-m) * 1.4); }
+.bj-cartes-moi .jc { --jcw: var(--bj-carte-m); }
+.bj-cartes-moi .jc + .jc { margin-left: calc(var(--bj-carte-m) * -.42); }
+.bj-cartes .jc:nth-child(odd) { --jc-rot: -2deg; }
+.bj-cartes .jc:nth-child(even) { --jc-rot: 2deg; }
+.bj-vide { color: var(--txt-2); font-style: italic; font-size: 15px; }
+
+/* la bulle du total */
+@keyframes bjApparait { from { opacity: 0; transform: scale(.7); } }
+.bj-bulle {
+  display: inline-block; margin-top: 5px; padding: 2px 12px; min-width: 38px;
+  border-radius: 999px; font-family: var(--f-titre); font-weight: 600; font-size: 16px;
+  color: #fff; background: rgba(6, 10, 24, .72); border: 1px solid rgba(255, 255, 255, .22);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+  animation: bjApparait .28s var(--ressort) var(--d, 0s) both;
+}
+.bj-bulle.bj { color: #3a2200; background: var(--grad-or); border-color: transparent; }
+.bj-bulle.vingtun { color: #04301a; background: var(--grad-vert); border-color: transparent; }
+.bj-bulle.saute { color: #fff; background: var(--grad-rouge); border-color: transparent; }
+
+/* l'inscription dorée en arc */
+.bj-arc { display: block; width: min(86%, 300px); margin: 0 auto; flex: none; }
 .bj-arc text {
-  fill: #d9c58a; font-family: 'Fraunces', Georgia, serif;
-  font-size: 14px; font-weight: 600; letter-spacing: 2px;
+  fill: #ffd98a; font-family: var(--f-titre);
+  font-size: 15px; font-weight: 600; letter-spacing: 2.5px;
 }
-.bj-rule { font-size: 10px; color: #b9d0be; letter-spacing: 1px; opacity: .85; margin-top: 2px; }
+.bj-rule { font-size: 12px; color: rgba(236, 255, 244, .78); letter-spacing: .4px; margin-top: -2px; }
 
-/* les autres joueurs : de vraies places à la table, plaque + mini-cartes */
-.bj-autres {
-  display: flex; flex-wrap: wrap; gap: 8px 12px;
-  justify-content: space-around; margin: 8px 4px 2px;
+/* les autres joueurs : une plaque, leurs cartes (petites, face visible) */
+.bj-autres { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: center; margin: 6px 0 0; }
+.bj-oplr { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.bj-ocartes { display: flex; }
+.bj-ocartes .jc { --jcw: 26px; }
+.bj-ocartes .jc + .jc { margin-left: -9px; }
+.bj-plaque {
+  display: flex; align-items: center; gap: 5px; padding: 2px 9px 2px 3px; border-radius: 999px;
+  background: rgba(6, 10, 24, .7); border: 1px solid rgba(255, 255, 255, .18);
 }
-.bj-oplr { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.bj-oplr.turn .pk-plate {
-  border-color: #f2cd5c;
-  box-shadow: 0 0 0 2px rgba(242, 205, 92, .35), 0 0 12px rgba(242, 205, 92, .6);
+.bj-oplr.turn .bj-plaque { border-color: #ffd34d; box-shadow: 0 0 0 2px rgba(255, 211, 77, .3), 0 0 12px rgba(255, 211, 77, .5); }
+.bj-avatar {
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 12px; font-weight: 800; color: #fff; background: var(--grad-primary);
 }
-.bj-ocartes { display: flex; gap: 2px; }
-.bj-mini {
-  width: 15px; height: 21px; border-radius: 3px;
-  background: repeating-linear-gradient(45deg, #a84330, #a84330 4px, #983b29 4px, #983b29 8px);
-  border: 1px solid rgba(255, 255, 255, .5); box-shadow: 0 1px 2px rgba(0, 0, 0, .4);
-}
+.bj-pinfo { display: flex; flex-direction: column; line-height: 1.1; text-align: left; }
+.bj-pname { font-size: 12px; font-weight: 800; color: var(--txt); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bj-pstack { font-size: 12px; font-weight: 700; color: #ffd66b; }
 
-.bj-me-zone { margin-top: 12px; }
-.bj-cartes-moi .bj-card { width: 50px; height: 70px; }
-.bj-total-moi { margin-top: 7px; font-weight: 800; font-size: 1.2rem; }
-.bj-result {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 1.35rem; font-weight: 700; margin: 8px 0 2px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, .5);
-}
-.bj-r-win { color: #ffd766; }
-.bj-r-lose { color: #ff9d8f; }
-.bj-r-push { color: #e9e2ca; }
-
-/* le rond de mise */
+/* ma place */
+.bj-me-zone { position: relative; flex: none; min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.bj-resultats.bj-resultats-moi { top: 8px; transform: none; }
+.bj-total-moi { font-size: 18px; }
 .bj-spot {
-  width: 92px; height: 92px; margin: 12px auto 0;
-  border: 2px dashed rgba(212, 175, 55, .65); border-radius: 50%;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px;
+  position: relative; width: 66px; height: 66px; margin: 7px auto 0; flex: none;
+  border: 2px dashed rgba(255, 214, 128, .7); border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  background: radial-gradient(circle, rgba(0, 0, 0, .12), transparent 70%);
 }
-.bj-spot-lbl { font-size: 11px; letter-spacing: 3px; color: #d9c58a; opacity: .85; }
-.bj-spot.filled { border-style: solid; background: rgba(0, 0, 0, .15); }
-.bj-spot-amt { font-size: 12px; font-weight: 700; color: #ffd766; }
-.bj-stack { display: flex; }
-.bj-stack .bj-chip { margin-left: -14px; }
-.bj-stack .bj-chip:first-child { margin-left: 0; }
+.bj-spot-lbl { font-family: var(--f-titre); font-size: 12px; letter-spacing: 3px; color: rgba(255, 220, 150, .9); }
+.bj-spot.filled { border-style: solid; border-color: rgba(255, 214, 128, .85); background: rgba(0, 0, 0, .22); }
+.bj-spot .bj-pile { --jw: 30px; margin-top: -4px; }
+.bj-spot-amt {
+  font-family: var(--f-titre); font-size: 13px; font-weight: 600; color: #fff;
+  background: rgba(6, 10, 24, .75); border-radius: 999px; padding: 0 7px; line-height: 1.35;
+  position: absolute; bottom: -9px; white-space: nowrap;
+}
+.bj-spot-amt i { font-style: normal; color: #ffd34d; }
+.bj-spot.double { box-shadow: 0 0 0 3px rgba(255, 211, 77, .35); }
+.bj-assur-tag {
+  margin-top: 12px; font-size: 12px; font-weight: 800; color: #1b1300;
+  background: var(--grad-or); border-radius: 999px; padding: 1px 10px;
+}
 
-/* jetons de casino */
-.bj-chip {
-  --c: #bb3b2c; --ct: #fff6ea;
-  position: relative; display: inline-flex; align-items: center; justify-content: center;
-  width: 54px; height: 54px; border-radius: 50%; flex: none;
-  background:
-    radial-gradient(circle, var(--c) 0 57%, transparent 57.5%),
-    repeating-conic-gradient(var(--c) 0deg 24deg, #f4ead2 24deg 48deg);
-  border: 2px solid var(--ink);
-  box-shadow: 0 3px 0 rgba(44, 34, 24, .4);
+/* les deux mains du split, côte à côte, la main en cours soulignée */
+.bj-mains2 { display: flex; gap: 8px; justify-content: center; width: 100%; }
+.bj-main2 {
+  flex: 1; max-width: 50%; border-radius: 14px; padding: 5px 2px 12px; opacity: .72;
+  display: flex; flex-direction: column; align-items: center; transition: opacity .25s, background .25s;
 }
-.bj-chip::after {
-  content: ''; position: absolute; inset: 9px;
-  border: 1.5px dashed rgba(255, 250, 235, .55); border-radius: 50%;
+.bj-main2.actv { opacity: 1; background: rgba(0, 0, 0, .2); box-shadow: inset 0 0 0 2px rgba(255, 214, 128, .75); }
+.bj-main2 .bj-cartes-moi .jc { --jcw: clamp(40px, 11.5vw, 50px); }
+.bj-main2 .bj-cartes-moi { min-height: calc(clamp(40px, 11.5vw, 50px) * 1.4); }
+.bj-main2 { position: relative; }
+.bj-main2 .bj-spot { width: 54px; height: 54px; }
+.bj-r-main {
+  position: absolute; left: 50%; top: -6px; z-index: 3; margin-left: -64px; width: 128px;
+  font-size: 16px; line-height: 1.2; padding: 5px 8px; white-space: normal; text-align: center;
 }
-.bj-chip b {
-  color: var(--ct); font-size: 15px; z-index: 1;
-  font-family: 'Fraunces', Georgia, serif;
-}
-.bj-chip.mini { width: 34px; height: 34px; border-width: 1.5px; box-shadow: 0 2px 0 rgba(44, 34, 24, .4); }
-.bj-chip.mini::after { inset: 5px; }
-.bj-chip.mini b { font-size: 10px; }
+.bj-main2 .bj-spot .bj-pile { --jw: 24px; }
 
-/* la console, sur le rebord de table */
-.bj-console { text-align: center; padding: 2px 4px 8px; }
-.bj-wallet {
-  display: inline-block; font-size: 13px; font-weight: 600;
-  background: var(--card); border: 1.5px solid var(--ink-16);
-  border-radius: 999px; padding: 4px 14px; margin-bottom: 8px;
+/* le verdict, en grand au milieu du tapis */
+@keyframes bjVerdict {
+  0% { opacity: 0; transform: scale(.4) rotate(-6deg); }
+  60% { opacity: 1; transform: scale(1.08) rotate(1deg); }
+  100% { opacity: 1; transform: none; }
 }
-.bj-mises { display: flex; gap: 9px; justify-content: center; flex-wrap: wrap; }
+.bj-resultats {
+  position: absolute; left: -6px; right: -6px; top: 50%; transform: translateY(-50%);
+  z-index: 3; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.bj-result {
+  font-family: var(--f-titre); font-weight: 700; font-size: 21px; letter-spacing: .2px;
+  padding: 6px 16px; border-radius: 16px; white-space: nowrap;
+  background: rgba(6, 10, 24, .82); border: 1.5px solid rgba(255, 255, 255, .25);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .45);
+}
+.bj-apres { animation: bjVerdict .5s var(--ressort) var(--d, 0s) both; }
+.bj-r-win { color: #ffd34d; border-color: rgba(255, 211, 77, .7); }
+.bj-r-bj { color: #3a2200; background: var(--grad-or); border-color: transparent; font-size: 24px; }
+.bj-r-lose { color: #ffb3bb; border-color: rgba(255, 77, 94, .6); }
+.bj-r-push { color: var(--txt); }
+.bj-r-petit { font-size: 14px; padding: 3px 12px; }
+
+/* ================= la console ================= */
+.bj-console { text-align: center; padding: 8px 2px 4px; }
+.bj-bas .cz-opt { min-height: 40px; padding: 4px 12px; align-self: center; }
+.bj-stats {
+  display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; margin: 0 0 8px;
+  padding: 8px 10px; border-radius: 14px; font-size: 13px; color: var(--txt-2);
+  background: rgba(8, 10, 26, .5); border: 1px solid var(--stroke);
+}
+.bj-stats b { color: var(--txt); font-family: var(--f-titre); font-weight: 600; }
+
+.bj-mises { display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; }
 .bj-chipbtn {
-  background: none; border: none; padding: 2px; cursor: pointer;
-  border-radius: 50%; touch-action: manipulation;
+  background: none; border: none; padding: 2px; cursor: pointer; border-radius: 50%;
+  touch-action: manipulation; transition: transform .15s var(--ressort);
 }
-.bj-chipbtn:active .bj-chip { transform: translateY(3px); box-shadow: 0 0 0 rgba(44, 34, 24, .4); }
-.bj-chipbtn:disabled { opacity: .35; pointer-events: none; }
-.bj-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
-.bj-passe {
-  background: none; border: none; color: var(--ink); opacity: .7;
-  text-decoration: underline; margin-top: 6px; font-size: .9rem; cursor: pointer;
-  padding: 12px 16px; min-height: 44px; font-family: inherit;
-}
-.bj-cumul { font-size: 14px; font-weight: 600; margin: 4px 0 8px; }
-.bj-fin { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
+.bj-chipbtn .gg-jeton { --jw: clamp(46px, 13.2vw, 56px); }
+.bj-chipbtn:active:not(:disabled) { transform: translateY(3px) scale(.95); }
+.bj-chipbtn:disabled { opacity: .3; cursor: default; filter: grayscale(.5); }
+.bj-compo { display: flex; align-items: stretch; justify-content: center; gap: 8px; margin: 8px 0 2px; }
+.bj-compo .btn:not(.big) { flex: 0 0 auto; min-height: 56px; padding: 8px 14px; }
+.bj-compo .btn.big { flex: 1; width: auto; }
+.bj-compo b { font-size: 22px; margin: 0 2px; }
+.bj-bas { display: flex; justify-content: center; align-items: center; gap: 2px 6px; flex-wrap: wrap; }
+.bj-msg { margin: 2px 4px; min-height: 0; font-size: 14px; color: #ffc2c8; }
+.bj-msg:empty { display: none; }
 
-/* ===== Blackjack : les deux mains du split ===== */
-.bj-mains2 { display: flex; gap: 10px; justify-content: center; }
-.bj-main2 { flex: 1; max-width: 46%; border-radius: 12px; padding: 6px 2px; opacity: .75; }
-.bj-main2.actv { opacity: 1; background: rgba(0, 0, 0, .18); box-shadow: inset 0 0 0 2px rgba(212, 175, 55, .7); }
-.bj-main2 .bj-card { width: 40px; height: 56px; }
-.bj-mains2 + .bj-result, .bj-result + .bj-result { margin-top: 2px; }
-.bj-result { font-size: 1.1rem; }
-
-/* ===== Blackjack : composer sa mise jeton par jeton ===== */
-.bj-compo {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  margin: 8px 0 4px; color: #f4ead2; font-size: 15px;
+.bj-actions { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
+.bj-actions .btn.big { flex: 1; width: auto; min-height: 54px; }
+.bj-jeu2 .btn { flex: 1; min-height: 46px; padding: 8px 6px; }
+.bj-jeu2 .btn small { font-size: 12px; color: var(--txt-2); margin-left: 2px; }
+.bj-question {
+  margin: 2px 0 4px; font-size: 15px; color: var(--txt); line-height: 1.35;
 }
-.bj-compo-l { opacity: .85; }
-.bj-compo b { color: #f2cd5c; font-size: 22px; }
+.bj-question b { font-family: var(--f-titre); font-weight: 600; color: #ffd66b; }
+.bj-question small { display: block; font-size: 13px; color: var(--txt-2); }
+.bj-question.petit { font-size: 14px; color: #ffd66b; font-weight: 800; margin: 0 0 2px; }
+.bj-conseil {
+  margin: 0 0 4px; font-size: 14px; color: var(--txt-2);
+}
+.bj-conseil b { color: #7dffb0; }
+@keyframes bjConseil { 50% { box-shadow: 0 0 0 3px rgba(125, 255, 176, .75), 0 0 18px rgba(125, 255, 176, .45); } }
+.btn.conseil { box-shadow: 0 0 0 2px rgba(125, 255, 176, .6); animation: bjConseil 1.4s ease-in-out infinite; }
+
+.bj-fin { display: flex; gap: 8px; justify-content: center; margin-top: 2px; }
+.bj-fin .btn.big { flex: 1; width: auto; }
+
+/* petits écrans : la table se resserre pour que tout tienne sans défiler */
+@media (max-height: 720px) {
+  .bj2 { --bj-carte-c: clamp(38px, 11vw, 46px); --bj-carte-m: clamp(44px, 12.5vw, 52px); }
+  .bj-felt { padding-bottom: 12px; }
+  .bj-me-zone { min-height: 124px; }
+  .bj-rule { display: none; }
+  .bj-arc { width: min(78%, 250px); }
+  .bj-spot { width: 56px; height: 56px; margin-top: 4px; }
+  .bj-spot .bj-pile { --jw: 26px; }
+  .bj-actions { margin-top: 4px; }
+  .bj-actions .btn.big { min-height: 48px; padding: 10px; }
+  .bj-jeu2 .btn { min-height: 42px; }
+  .bj-chipbtn .gg-jeton { --jw: 46px; }
+  .bj-compo { margin: 6px 0 0; }
+  .bj-compo .btn:not(.big), .bj-compo .btn.big { min-height: 50px; }
+  .bj-bas .cz-lien { min-height: 40px; padding: 8px 10px; }
+  /* à plusieurs, les autres joueurs se mettent en ligne (cartes à côté de
+     la plaque) : sinon mes cartes montent sur leurs plaques */
+  .multi .bj-autres { gap: 4px 8px; margin-top: 2px; }
+  .multi .bj-oplr { flex-direction: row; gap: 3px; }
+  .multi .bj-ocartes .jc { --jcw: 22px; }
+  .multi .bj-ocartes .jc + .jc { margin-left: -8px; }
+  .multi .bj-plaque { padding-right: 7px; }
+  /* trois autres joueurs : pas la place d'une ligne chacun ; la plaque
+     vient mordre le bas de leurs petites cartes (l'index reste lisible) */
+  .bj-oplr:first-child:nth-last-child(3),
+  .bj-oplr:first-child:nth-last-child(3) ~ .bj-oplr { flex-direction: column; gap: 0; }
+  .bj-oplr:first-child:nth-last-child(3) .bj-ocartes,
+  .bj-oplr:first-child:nth-last-child(3) ~ .bj-oplr .bj-ocartes { margin-bottom: -9px; }
+  .bj-oplr:first-child:nth-last-child(3) .bj-plaque,
+  .bj-oplr:first-child:nth-last-child(3) ~ .bj-oplr .bj-plaque { position: relative; padding-top: 1px; padding-bottom: 1px; }
+  .bj-oplr:first-child:nth-last-child(3) .bj-pname,
+  .bj-oplr:first-child:nth-last-child(3) ~ .bj-oplr .bj-pname { max-width: 58px; }
+}
+@media (max-width: 360px) {
+  .bj-haut { grid-template-columns: 62px 1fr 62px; }
+  .bj-caisse b { font-size: 14px; }
+  .bj-sabot-boite { width: 36px; height: 40px; }
+  .bj-result { font-size: 18px; }
+}
+@media (max-height: 680px) {
+  .bj-arc { display: none; }
+  .bj-total-moi { font-size: 16px; }
+}
