@@ -45,9 +45,11 @@ if (QUOI === 'tout' || QUOI === 'sudoku') {
     const times = [], clues = [], techs = {};
     let uniques = 0, bonsNiveaux = 0, valides = 0, coherents = 0, reserve = 0;
     for (let k = 0; k < N; k++) {
-      const t0 = process.hrtime.bigint();
-      const m = sudoku._makePuzzle(lvl);
-      times.push(Number(process.hrtime.bigint() - t0) / 1e6);
+      // temps PROCESSEUR du calcul (la machine de test est partagée : l'horloge murale mentirait)
+      const c0 = process.cpuUsage();
+      const m = sudoku._makePuzzle(lvl, Math.random, 1e9);
+      const c1 = process.cpuUsage(c0);
+      times.push((c1.user + c1.system) / 1000);
       if (m.reserve) reserve++;
       clues.push(m.clues);
       if (sudoku._countSolutions(m.puzzle, 2) === 1) uniques++;
@@ -64,10 +66,11 @@ if (QUOI === 'tout' || QUOI === 'sudoku') {
       bonsNiveaux === N, bonsNiveaux);
     console.log('       indices ' + Math.min(...clues) + '–' + Math.max(...clues) + ' · techniques : ' +
       Object.keys(techs).map(t => sudoku._TECH[t].nom + ' ' + Math.round(100 * techs[t] / N) + ' %').join(', '));
-    console.log('       génération (Node, processeur ×1) : médiane ' + bilan[lvl].p50 + ' ms, 95 % ' +
+    console.log('       génération (Node, temps processeur) : médiane ' + bilan[lvl].p50 + ' ms, 95 % ' +
       bilan[lvl].p95 + ' ms, pire ' + bilan[lvl].max + ' ms' + (reserve ? ' · réserve ×' + reserve : ''));
     // au processeur ×4 tout est ~4 fois plus long : 95 % des grilles en < 60 ms ici (< 240 ms à ×4) ;
-    // au-delà de 170 ms réels, la réserve prend le relais (la mesure réelle à ×4 est dans le test navigateur)
+    // (budget illimité ici pour mesurer la génération pure ; en jeu, au-delà de 140 ms, la réserve
+    // prend le relais — la mesure réelle à ×4 est dans le test navigateur)
     check(lvl + ' : génération rapide (95 % < 60 ms, jamais > 200 ms)',
       quantile(times, 0.95) < 60 && Math.max(...times) < 200, bilan[lvl]);
   }
@@ -222,6 +225,212 @@ if (QUOI === 'tout' || QUOI === 'sudoku') {
     }
     check('ligne / colonne / bloc terminé : signalé au rendu', vu);
   }
+}
+
+/* =====================================================================
+ * BONBONS
+ * ===================================================================== */
+if (QUOI === 'tout' || QUOI === 'bonbons') {
+  const bb = require(ROOT + '/js/games/bonbons.js');
+  const ARC = bb._ARC, ING = bb._ING;
+  const rnd = bb._mulberry(2026);
+  bb._setRandom(rnd);
+  const ri = n => Math.floor(rnd() * n);
+
+  // ---------------------------------------------------------------
+  console.log('--- Bonbons : la grille est TOUJOURS stable après un coup (bug 1) ---');
+  const COUPS = +(process.env.COUPS || 100000);
+  const niveaux = [1, 3, 11, 20, 21, 30, 41, 49, 58, 60, 75, 123, 404];
+  let coups = 0, instables = 0, fauxAcceptes = 0, essaisFaux = 0, apresMagique = 0, magiqueInstable = 0;
+  let idsDoubles = 0, pertes = 0, melanges = 0, melangesSansPerte = 0, parties = 0, t0 = Date.now();
+  const kinds = { match: 0, combo: 0, bomb: 0, wipe: 0 };
+  while (coups < COUPS) {
+    const st = bb.create(['Solo']);
+    bb.apply(st, 0, { t: 'start', lvl: niveaux[parties++ % niveaux.length] });
+    const p = st.players[0];
+    p.moves = 300;
+    while (st.phase === 'play' && coups < COUPS) {
+      // des spéciaux injectés au hasard : rayés, enveloppés, sucres magiques
+      if (rnd() < 0.3) {
+        for (let k = 0; k < 3; k++) {
+          const pc = p.board[ri(64)];
+          if (pc && pc.t >= 0) { if (rnd() < 0.2) { pc.t = ARC; pc.s = 0; } else pc.s = 1 + ri(3); }
+        }
+      }
+      const E = bb._ctxOf(st, p, null);
+      const moves = bb._allMoves(E);
+      if (!moves.length) break;
+      const speciaux = moves.filter(m => bb._swapKind(E, m[0], m[1]) !== 'match');
+      const mv = speciaux.length && rnd() < 0.4 ? speciaux[ri(speciaux.length)] : moves[ri(moves.length)];
+      const kind = bb._swapKind(E, mv[0], mv[1]);
+      const nAvant = p.board.filter(x => x && x.t !== ING).length;
+      const r = bb.apply(st, 0, { t: 'swap', a: mv[0], b: mv[1], anim: coups % 40 === 0 });
+      if (!r.ok) { pertes++; break; }
+      kinds[kind]++; coups++;
+      if (bb._findRuns(p.board).length) instables++;
+      if (kind === 'bomb' || kind === 'wipe') { apresMagique++; if (bb._findRuns(p.board).length) magiqueInstable++; }
+      const ids = p.board.filter(Boolean).map(x => x.id);
+      if (new Set(ids).size !== ids.length) idsDoubles++;
+      if (p.fx && p.fx.shuffled) {
+        melanges++;
+        const pieces = p.board.filter(x => x && x.t !== ING).length;
+        if (pieces > 0 && nAvant > 0) melangesSansPerte++;
+      }
+      if (st.phase !== 'play') break;
+      // l'ancien bug : après un sucre magique, N'IMPORTE QUEL échange était accepté
+      for (let e = 0; e < 3; e++) {
+        const a = ri(64), dir = [1, -1, 8, -8][ri(4)], b = a + dir;
+        if (b < 0 || b >= 64 || (Math.abs(dir) === 1 && (a >> 3) !== (b >> 3))) continue;
+        const E2 = bb._ctxOf(st, p, null);
+        if (bb._swapKind(E2, a, b)) continue;
+        essaisFaux++;
+        if (bb.apply(st, 0, { t: 'swap', a, b, anim: false }).ok) fauxAcceptes++;
+      }
+    }
+  }
+  const secs = ((Date.now() - t0) / 1000).toFixed(1);
+  console.log('       ' + coups + ' coups en ' + secs + ' s (' + parties + ' parties) : ' + JSON.stringify(kinds) + ', ' + melanges + ' mélanges');
+  check('bug 1 : ' + coups + ' coups (spéciaux et combinaisons compris) : aucun alignement en attente', instables === 0 && pertes === 0, { instables, pertes });
+  check('bug 1 : après ' + apresMagique + ' sucres magiques joués : grille toujours stable', apresMagique > 1000 && magiqueInstable === 0, { apresMagique, magiqueInstable });
+  check('bug 1 : ' + essaisFaux + ' échanges sans alignement tentés : tous refusés', essaisFaux > 10000 && fauxAcceptes === 0, fauxAcceptes);
+  check('toutes les combinaisons jouées (rayé/enveloppé entre eux, sucre magique, deux sucres)',
+    kinds.combo > 1000 && kinds.bomb > 1000 && kinds.wipe > 20, kinds);
+  check('chaque bonbon garde un identifiant unique (animations fiables)', idsDoubles === 0);
+
+  // ---------------------------------------------------------------
+  console.log('--- Bonbons : plus de coup possible → mélange animé qui garde les spéciaux (bug 2) ---');
+  let okMel = 0, essaisMel = 0, detail = null;
+  for (let k = 0; k < 400; k++) {
+    const st = bb.create(['Solo']);
+    bb.apply(st, 0, { t: 'start', lvl: [1, 2, 41, 11][k % 4] });
+    const p = st.players[0];
+    // grille morte : damier 2×2 de quatre couleurs (aucun échange ne forme d'alignement)
+    const coul = [0, 1, 2, 3, 4].sort(() => rnd() - 0.5);
+    for (let i = 0; i < 64; i++) {
+      if (!p.board[i]) continue;
+      p.board[i] = { t: coul[((i >> 3) % 2) * 2 + (i % 2)], s: 0, id: 1000 + i };
+    }
+    // 1 à 4 spéciaux non voisins (deux spéciaux voisins feraient un coup)
+    const places = [];
+    for (let q = 0; q < 40 && places.length < 1 + ri(4); q++) {
+      const i = ri(64);
+      if (!p.board[i] || places.some(j => Math.abs((j >> 3) - (i >> 3)) + Math.abs((j & 7) - (i & 7)) <= 1)) continue;
+      p.board[i].s = 1 + ri(3);
+      places.push(i);
+    }
+    const E0 = bb._ctxOf(st, p, null);
+    if (bb._hasMoveE(E0)) continue;
+    essaisMel++;
+    const avant = p.board.filter(Boolean).map(x => x.id + ':' + x.t + ':' + x.s).sort().join(',');
+    const spAvant = p.board.filter(x => x && x.s).map(x => x.t + ':' + x.s).sort().join(',');
+    const rec = { steps: [], rows: [], cols: [], bombs: [], pops: [], arc: 0, gain: 0 };
+    const E = bb._ctxOf(st, p, rec);
+    const fait = bb._ensureMoves(E);
+    const apres = p.board.filter(Boolean).map(x => x.id + ':' + x.t + ':' + x.s).sort().join(',');
+    const spApres = p.board.filter(x => x && x.s).map(x => x.t + ':' + x.s).sort().join(',');
+    const etape = rec.steps.find(s => s.k === 'shuffle');
+    const ok = fait && spAvant === spApres && bb._hasMoveE(E) && bb._findRuns(p.board).length === 0 &&
+      etape && etape.to.length === p.board.filter(Boolean).length && rec.shuffled === true &&
+      (apres === avant || etape.recolor.length > 0); // mêmes bonbons, à d'autres places
+    if (ok) okMel++; else if (!detail) detail = { spAvant, spApres, etape: !!etape };
+  }
+  check('bug 2 : ' + essaisMel + ' grilles mortes : mélange (jamais régénérée), spéciaux conservés, un coup garanti, aucune alignement',
+    essaisMel >= 200 && okMel === essaisMel, { okMel, essaisMel, detail });
+  check('bug 2 : le mélange est raconté au rendu (message et animation)', melanges > 0 && melangesSansPerte === melanges, { melanges });
+
+  // ---------------------------------------------------------------
+  console.log('--- Bonbons : niveaux, objectifs et courbe de difficulté mesurée (bug 3) ---');
+  const L = bb._LEVELS_DATA;
+  check('60 niveaux dessinés à la main', L.length === 60);
+  const types = {};
+  L.forEach(d => { types[d.g] = (types[d.g] || 0) + 1; });
+  check('objectifs variés : points, gelée, meringues, récolte, noisettes (≥ 6 niveaux chacun)',
+    ['score', 'jelly', 'blocks', 'collect', 'ingr'].every(t => types[t] >= 6), types);
+  // le joueur « meilleur coup immédiat »
+  function joue(n) {
+    const st = bb.create(['Bot']);
+    bb.apply(st, 0, { t: 'start', lvl: n });
+    bb.apply(st, 0, { t: 'go' });
+    const p = st.players[0];
+    while (st.phase === 'play') {
+      const mv = bb._meilleurCoup(st, p);
+      if (!mv) break;
+      bb.apply(st, 0, { t: 'swap', a: mv[0], b: mv[1], anim: false });
+    }
+    return { won: !!(st.res && st.res.won), score: p.score, gagnants: bb.gagnants(st) };
+  }
+  const SIMS = +(process.env.SIMS || 40);
+  const taux = [], ecarts = [];
+  let gOk = true, finale1 = [];
+  const t1 = Date.now();
+  // les couples boss / respiration se jouent trois fois plus (leur écart est l'objet du contrôle)
+  const couples = [10, 11, 20, 21, 30, 31, 40, 41, 50, 51];
+  for (let n = 1; n <= 60; n++) {
+    let w = 0;
+    const nb = couples.includes(n) ? SIMS * 3 : SIMS;
+    for (let k = 0; k < nb; k++) {
+      const r = joue(n);
+      if (r.won) w++;
+      if (JSON.stringify(r.gagnants) !== (r.won ? '[0]' : 'null')) gOk = false;
+      if (n === 1) finale1.push(r.score);
+    }
+    taux.push(w / nb);
+    ecarts.push(Math.abs(w / nb - bb._tauxVise(n)));
+  }
+  for (let m = 0; m < 6; m++) {
+    const t = taux.slice(m * 10, m * 10 + 10);
+    console.log('       monde ' + (m + 1) + ' : ' + t.map(x => String(Math.round(x * 100)).padStart(3)).join(' ') +
+      '   moyenne ' + Math.round(100 * t.reduce((a, b) => a + b) / 10) + ' %');
+  }
+  console.log('       (' + SIMS + ' parties simulées par niveau, ' + ((Date.now() - t1) / 1000).toFixed(0) + ' s)');
+  const moy = m => taux.slice(m * 10, m * 10 + 10).reduce((a, b) => a + b) / 10;
+  check('niveau 1 : réussi ≥ 85 % du temps', taux[0] >= 0.85, taux[0]);
+  check('la difficulté monte régulièrement : moyenne de chaque monde < celle du précédent',
+    [1, 2, 3, 4, 5].every(m => moy(m) < moy(m - 1)), [0, 1, 2, 3, 4, 5].map(m => +moy(m).toFixed(2)));
+  check('respiration après chaque boss : le 1er niveau d’un monde est plus facile que le boss',
+    [1, 2, 3, 4, 5].every(m => taux[m * 10] > taux[m * 10 - 1]), [1, 2, 3, 4, 5].map(m => [taux[m * 10 - 1], taux[m * 10]]));
+  const souffles = [5, 15, 25, 35, 45, 55].map(i => taux[i] - (taux[i - 1] + taux[i + 1]) / 2);
+  check('respiration de mi-monde : plus facile que ses voisins (en moyenne)', souffles.reduce((a, b) => a + b) / 6 > 0.03,
+    souffles.map(x => +x.toFixed(2)));
+  check('mesuré ≈ visé : écart moyen ≤ 9 points, aucun niveau à plus de 30 points',
+    ecarts.reduce((a, b) => a + b) / 60 <= 0.09 && Math.max(...ecarts) <= 0.3, { moyen: +(ecarts.reduce((a, b) => a + b) / 60).toFixed(3), max: +Math.max(...ecarts).toFixed(2) });
+  check('aucun niveau impossible (tous réussis au moins 15 % du temps)', Math.min(...taux) >= 0.15, Math.min(...taux));
+  finale1.sort((a, b) => a - b);
+  const med1 = finale1[Math.floor(finale1.length / 2)], cible1 = L[0].n;
+  check('niveau 1 : un objectif qui compte (score médian ' + med1 + ' pour ' + cible1 + ', ≤ 2,2 fois)', med1 / cible1 <= 2.2, med1 / cible1);
+  check('gagnants() : [0] si le niveau est réussi, null sinon', gOk);
+
+  // niveaux générés : jamais de boucle, difficulté tenue
+  const vus = new Set();
+  let doublons = 0, typesSuite = 0, prec = '';
+  for (let n = 61; n <= 1060; n++) {
+    const d = bb._levelDef(n), cle = JSON.stringify(d);
+    if (vus.has(cle)) doublons++;
+    vus.add(cle);
+    if (d.g === prec) typesSuite++;
+    prec = d.g;
+  }
+  check('1000 niveaux générés (61 à 1060) tous différents, sans boucle', doublons === 0, doublons);
+  check('niveaux générés : l’objectif change d’un niveau à l’autre (rares répétitions)', typesSuite < 150, typesSuite);
+  check('ancienne boucle tous les 105 niveaux disparue', JSON.stringify(bb._levelDef(54)) !== JSON.stringify(bb._levelDef(159)) &&
+    JSON.stringify(bb._levelDef(70)) !== JSON.stringify(bb._levelDef(175)));
+  // de 61 à 1060, chaque niveau généré a été calibré par simulation ; au-delà, le modèle prend le relais
+  const mesureNiveaux = (liste, nb) => liste.map(n => {
+    let w = 0;
+    for (let k = 0; k < nb; k++) if (joue(n).won) w++;
+    return w / nb;
+  });
+  const echantillon = [61, 66, 75, 90, 110, 141, 170, 205, 260, 333, 402, 480, 555, 600, 777, 888, 1001, 1060];
+  const tg = mesureNiveaux(echantillon, 30);
+  console.log('       niveaux générés calibrés ' + echantillon.map((n, k) => n + ':' + Math.round(tg[k] * 100) + '%').join(' '));
+  const moyG = tg.reduce((a, b) => a + b) / tg.length;
+  check('niveaux générés (61 à 1060) : réussis de 15 à 90 % du temps, moyenne entre 30 et 65 %',
+    tg.every(x => x >= 0.15 && x <= 0.9) && moyG >= 0.3 && moyG <= 0.65, { moyG: +moyG.toFixed(2) });
+  const auDela = [1100, 1234, 1500, 2026, 3333];
+  const tm = mesureNiveaux(auDela, 30);
+  console.log('       au-delà (modèle) ' + auDela.map((n, k) => n + ':' + Math.round(tm[k] * 100) + '%').join(' '));
+  check('au-delà de 1060 (modèle ajusté) : aucun niveau impossible ni gratuit (8 à 97 %)', tm.every(x => x >= 0.08 && x <= 0.97), tm);
+  bb._setRandom(null);
 }
 
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 solo OK.');

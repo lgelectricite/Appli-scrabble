@@ -680,7 +680,7 @@
     if (!LEVELS[level]) level = 'moyen';
     rnd = rnd || Math.random;
     var t0 = horloge(), lv = LEVELS[level], essais = 0;
-    budget = budget || 170;
+    budget = budget || 140;
     for (;;) {
       essais++;
       var solution = fullGrid(rnd);
@@ -1526,6 +1526,8 @@
     if (fx.k === 'ok' || fx.k === 'hint') {
       if (c) c.classList.add('pose');
       if (fx.k === 'hint') {
+        // la case révélée devient la case choisie (on voit ses surlignages)
+        if (fx.i !== el._sdkSel) { el._sdkSel = fx.i; peins(el, s, me); }
         sfx.play('reveal');
         if (c) {
           GG.fx.burst(c, { count: 12, shape: 'star', colors: ['#ffc23d', '#fff3b0'] });

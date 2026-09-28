@@ -230,9 +230,334 @@ async function testSudoku(browser) {
   await petit.ctx.close();
 }
 
+/* =====================================================================
+ * BONBONS
+ * ===================================================================== */
+/* le plateau tel qu'il est AFFICHÉ (lu dans le DOM) : [{t, s}] par case */
+async function plateauAffiche(p) {
+  return p.evaluate(() => {
+    const b = new Array(64).fill(null);
+    document.querySelectorAll('#bb-pieces .bb-cell:not(.part)').forEach(e => {
+      const i = +e.getAttribute('data-i'), dt = e.getAttribute('data-t');
+      const m = /bbs-(\d)-(\d)/.exec(e.firstChild.className);
+      b[i] = { t: dt === 'x' ? -1 : dt === 'n' ? -2 : +dt, s: m ? +m[2] : 0 };
+    });
+    return b;
+  });
+}
+async function etatJeu(p) {
+  return p.evaluate(() => { const c = document.getElementById('mini-area')._bbCtx; return c && c.state; });
+}
+async function finAnimation(p) {
+  await p.waitForFunction(() => { const V = document.getElementById('mini-area')._bb; return !V || !V.busy; }, null, { timeout: 30000 });
+}
+/* prépare un état avec le moteur du jeu, puis le fait « reprendre » par la coque */
+async function scenario(p, code) {
+  await p.evaluate((code) => {
+    const bb = GG.byId.bonbons, st = bb.create(['Moi']);
+    new Function('bb', 'st', code)(bb, st);
+    localStorage.setItem('gg-partie', JSON.stringify({ v: 2, type: 'mini', jeu: 'bonbons', bots: 0, state: st, me: 0, ts: Date.now() }));
+  }, code);
+  await p.reload();
+  await p.waitForSelector('#btn-reprise');
+  await p.click('#btn-reprise');
+  await p.waitForSelector('.bb-board');
+  await p.waitForTimeout(700);
+}
+/* un vrai geste : glisser le bonbon a vers b, ou toucher a puis b */
+async function geste(p, a, b, glisse) {
+  if (!glisse) {
+    await p.click('.bb-cell[data-i="' + a + '"]');
+    await p.click('.bb-cell[data-i="' + b + '"]');
+    return;
+  }
+  const ra = await p.locator('.bb-cell[data-i="' + a + '"]').boundingBox();
+  const rb = await p.locator('.bb-cell[data-i="' + b + '"]').boundingBox();
+  await p.mouse.move(ra.x + ra.width / 2, ra.y + ra.height / 2);
+  await p.mouse.down();
+  await p.mouse.move((ra.x + rb.x) / 2 + ra.width / 2, (ra.y + rb.y) / 2 + ra.height / 2, { steps: 3 });
+  await p.mouse.move(rb.x + rb.width / 2, rb.y + rb.height / 2, { steps: 2 });
+  await p.mouse.up();
+}
+/* joue le niveau en cours jusqu'à la fenêtre de résultat (meilleur coup, vrais gestes) */
+async function joueNiveau(p, suivi) {
+  for (let k = 0; k < 80; k++) {
+    if (await p.locator('.bb-res').count()) break;
+    const mv = await p.evaluate(() => {
+      const st = document.getElementById('mini-area')._bbCtx.state;
+      if (st.phase !== 'play') return null;
+      return GG.byId.bonbons._meilleurCoup(st, st.players[0]);
+    });
+    if (!mv) break;
+    await geste(p, mv[0], mv[1], k % 2 === 1);
+    await p.waitForTimeout(40);
+    await finAnimation(p);
+    if (suivi) await suivi(k);
+  }
+  await p.waitForSelector('.bb-res', { timeout: 15000 });
+}
+
+async function testBonbons(browser) {
+  console.log('--- Bonbons ---');
+  const { ctx, p } = await nouvellePage(browser, 412, 780);
+  await p.evaluate(() => { localStorage.removeItem('gg-bonbons-map'); localStorage.removeItem('gg-partie'); });
+  await p.reload();
+  await p.click('.game-tile[data-g="bonbons"]');
+  await p.waitForSelector('.bb-map');
+  check('carte des mondes : monde 1 et niveau 1 prêt', await p.locator('.bb-monde').count() >= 1 &&
+    (await p.textContent('.bb-node.cur')).trim() === '1' && /Prairie Guimauve/.test(await p.textContent('.bb-map')));
+  check('carte : pas de débordement à 412 px', await debord(p) <= 0);
+  await p.click('.bb-node.cur');
+  await p.waitForSelector('.bb-intro');
+  check('début de niveau : objectif, coups et paliers d’étoiles', /Marquez/.test(await p.textContent('.bb-intro')) &&
+    /coups/.test(await p.textContent('.bb-intro')) && await p.locator('.bb-carte-seuils span').count() === 3);
+  await p.click('.bb-intro [data-a="go"]');
+  await p.waitForSelector('.bb-intro', { state: 'detached' });
+
+  // ---- niveau 1 joué en entier, animations normales, gestes glissés et touchés ----
+  let desaccords = 0, alignesVus = 0, animsVues = 0, tombes = 0;
+  await joueNiveau(p, async (k) => {
+    const aff = await plateauAffiche(p), st = await etatJeu(p);
+    if (aff.some((c, i) => (st.players[0].board[i] ? st.players[0].board[i].t : null) !== (c ? c.t : null))) desaccords++;
+    alignesVus += await p.evaluate(b => GG.byId.bonbons._findRuns(b).length, aff);
+  });
+  check('niveau 1 joué au doigt jusqu’au bout : l’écran colle toujours à la grille réelle', desaccords === 0, desaccords);
+  const ecartsFilm = await p.evaluate(() => document.getElementById('mini-area')._bb.ecarts || 0);
+  check('chaque film (échange, éclatements, chutes) s’arrête exactement sur la grille réelle', ecartsFilm === 0, ecartsFilm);
+  check('bug 1 (à l’écran) : jamais d’alignement laissé en attente après un coup', alignesVus === 0, alignesVus);
+  let res = (await etatJeu(p)).res;
+  check('fin de niveau : fenêtre de résultat', !!res && await p.locator('.bb-res').count() === 1);
+  if (res.won) {
+    await p.waitForTimeout(600 + 560 * res.stars);
+    check('les étoiles tombent une à une (' + res.stars + ')', await p.locator('.bb-etoile.on').count() === res.stars &&
+      await p.locator('.bb-etoile.tombe').count() === res.stars);
+    check('gagnants() = [0] après un niveau réussi', await p.evaluate(() => JSON.stringify(GG.byId.bonbons.gagnants(document.getElementById('mini-area')._bbCtx.state))) === '[0]');
+    await p.click('[data-a="next"]');
+  } else {
+    check('gagnants() = null après un échec', await p.evaluate(() => GG.byId.bonbons.gagnants(document.getElementById('mini-area')._bbCtx.state)) === null);
+    await p.click('[data-a="retry"]');
+  }
+
+  // ---- niveaux suivants, en animations réduites (le réglage de la coque) pour aller vite ----
+  await p.evaluate(() => GG.reglages.set('animations', 'reduites'));
+  let joues = 1;
+  for (let essai = 0; essai < 6 && joues < 4; essai++) {
+    await p.waitForSelector('.bb-intro');
+    const lvl = (await etatJeu(p)).soloLvl;
+    await p.click('.bb-intro [data-a="go"]');
+    await p.waitForSelector('.bb-intro', { state: 'detached' });
+    await joueNiveau(p);
+    res = (await etatJeu(p)).res;
+    joues++;
+    console.log('       niveau ' + lvl + ' : ' + (res.won ? 'réussi ' + '★'.repeat(res.stars) : 'raté') + ' (' + res.score + ' pts)');
+    await p.waitForTimeout(400);
+    await p.click(res.won ? '[data-a="next"]' : '[data-a="retry"]');
+  }
+  await p.evaluate(() => GG.reglages.set('animations', 'normales'));
+  const prog = await p.evaluate(() => JSON.parse(localStorage.getItem('gg-bonbons-map')));
+  check('plusieurs niveaux joués, progression et étoiles enregistrées', joues >= 4 && prog.lvl >= 2 && Object.keys(prog.stars).length >= 1, prog);
+
+  // ---- reprise : on ferme l'appli en plein niveau ----
+  await p.waitForSelector('.bb-intro');
+  await p.click('.bb-intro [data-a="go"]');
+  await p.waitForSelector('.bb-intro', { state: 'detached' });
+  const mv0 = await p.evaluate(() => { const st = document.getElementById('mini-area')._bbCtx.state; return GG.byId.bonbons._meilleurCoup(st, st.players[0]); });
+  await geste(p, mv0[0], mv0[1], true);
+  await finAnimation(p);
+  const avant = { b: await plateauAffiche(p), coups: await p.textContent('#bb-coups') };
+  await p.waitForTimeout(400);
+  await p.reload();
+  await p.click('#btn-reprise');
+  await p.waitForSelector('.bb-board');
+  await p.waitForTimeout(500);
+  const apres = { b: await plateauAffiche(p), coups: await p.textContent('#bb-coups') };
+  check('reprise : même plateau et mêmes coups restants', JSON.stringify(avant) === JSON.stringify(apres));
+
+  // ---- quitter un niveau pour la carte, avec confirmation ----
+  await p.click('.bb-carte-btn');
+  await p.waitForSelector('[data-a="part"]');
+  check('quitter le niveau : confirmation demandée', /Quitter le niveau/.test(await p.textContent('#bb-modal')));
+  await p.click('[data-a="reste"]');
+  check('« Continuer à jouer » referme la fenêtre sans rien perdre', await p.locator('[data-a="part"]').count() === 0 &&
+    (await p.textContent('#bb-coups')) === apres.coups);
+  await p.click('.bb-carte-btn');
+  await p.click('[data-a="part"]');
+  await p.waitForSelector('.bb-map');
+  check('retour à la carte, avatar du joueur sur le niveau en cours', await p.locator('.bb-node.cur + .bb-node-go + .bb-avatar, .bb-step .bb-avatar').count() === 1);
+
+  // ---- bug 1 à l'écran : sucre magique puis échange qui ne forme rien ----
+  await scenario(p, `bb.apply(st, 0, { t: 'start', lvl: 1 }); bb.apply(st, 0, { t: 'go' });
+    const b = st.players[0].board; b[27].t = -1; b[27].s = 0; b[28].s = 1;`);
+  const coupsAvant = +(await p.textContent('#bb-coups'));
+  await geste(p, 27, 28, true);
+  const eclairs = await (await p.waitForFunction(() => document.querySelectorAll('.bb-eclairs path').length, null, { timeout: 15000, polling: 'raf' })).jsonValue();
+  check('sucre magique + rayé : éclairs vers toute la couleur, rayons', eclairs > 4, eclairs);
+  await finAnimation(p);
+  const apresMagique = await plateauAffiche(p);
+  check('bug 1 : après le sucre magique, la grille affichée est stable (aucun alignement)',
+    await p.evaluate(b => GG.byId.bonbons._findRuns(b).length, apresMagique) === 0);
+  const faux = await p.evaluate(() => {
+    const st = document.getElementById('mini-area')._bbCtx.state, bb = GG.byId.bonbons;
+    const E = bb._ctxOf(st, st.players[0], null);
+    for (let i = 0; i < 63; i++) if ((i & 7) < 7 && st.players[0].board[i] && st.players[0].board[i + 1] && !bb._swapKind(E, i, i + 1)) return [i, i + 1];
+    return null;
+  });
+  const coupsMilieu = +(await p.textContent('#bb-coups'));
+  await geste(p, faux[0], faux[1], true);
+  await p.waitForTimeout(500);
+  check('bug 1 : ensuite, un échange qui ne forme rien est refusé (aucun coup consommé)',
+    coupsMilieu === coupsAvant - 1 && +(await p.textContent('#bb-coups')) === coupsMilieu, { coupsAvant, coupsMilieu });
+
+  // ---- combinaisons : déflagrations et annonce de cascade ----
+  await scenario(p, `bb.apply(st, 0, { t: 'start', lvl: 20 }); bb.apply(st, 0, { t: 'go' });
+    const b = st.players[0].board; b[35] = b[35] || { t: 0, s: 0 }; b[35].s = 3; b[36].s = 3;`);
+  await geste(p, 35, 36, false);
+  const blasts = await (await p.waitForFunction(() => document.querySelectorAll('.bb-blast').length, null, { timeout: 15000, polling: 'raf' })).jsonValue();
+  check('enveloppé + enveloppé : déflagration géante', blasts >= 1, blasts);
+  await finAnimation(p);
+  // une cascade annoncée en grand : on cherche (avec le hasard du jeu) un coup qui en déclenche une
+  const trouve = await p.evaluate(() => {
+    const bb = GG.byId.bonbons, st0 = document.getElementById('mini-area')._bbCtx.state;
+    for (let graine = 1; graine < 3000; graine++) {
+      const st = JSON.parse(JSON.stringify(st0)), q = st.players[0];
+      const moves = bb._allMoves(bb._ctxOf(st, q, null));
+      const mv = moves[graine % moves.length];
+      bb._setRandom(bb._mulberry(graine));
+      bb.apply(st, 0, { t: 'swap', a: mv[0], b: mv[1] });
+      if (q.fx && q.fx.combo >= 3) { bb._setRandom(bb._mulberry(graine)); return mv; }
+    }
+    return null;
+  });
+  if (trouve) {
+    await geste(p, trouve[0], trouve[1], false);
+    // l'annonce ne reste qu'un instant : on la lit au moment où elle paraît
+    const cri = await (await p.waitForFunction(() => { const c = document.querySelector('.bb-combo'); return c && c.textContent; }, null, { timeout: 15000, polling: 'raf' })).jsonValue();
+    check('grande cascade : annoncée en grand (« ' + String(cri).replace(/cascade.*/, '').trim() + ' »)', !!cri);
+    await finAnimation(p);
+  } else check('grande cascade : annoncée en grand', false, 'aucune cascade trouvée');
+  await p.evaluate(() => GG.byId.bonbons._setRandom(null));
+
+  // ---- bug 2 à l'écran : plus aucun coup → mélange animé, spéciaux gardés ----
+  const melange = await p.evaluate(() => {
+    const bb = GG.byId.bonbons;
+    // petit plateau (beaucoup de trous) et 6 couleurs : les grilles mortes y sont fréquentes
+    for (let graine = 1; graine < 4000; graine++) {
+      bb._setRandom(bb._mulberry(graine));
+      const st = bb.create(['Moi']);
+      bb.apply(st, 0, { t: 'start', lvl: 1 });
+      bb.apply(st, 0, { t: 'go' });
+      const q = st.players[0];
+      st.types = 6;
+      for (let i = 0; i < 64; i++) {
+        const r = i >> 3, c = i & 7;
+        if (r < 3 || c < 2 || c > 5) { st.holes[i] = 1; q.board[i] = null; }
+      }
+      const E = bb._ctxOf(st, q, null);
+      for (let i = 0; i < 64; i++) if (q.board[i]) q.board[i] = { t: Math.floor(Math.random() * 6), s: 0, id: 500 + i };
+      if (bb._findRuns(q.board).length) continue;
+      const moves = bb._allMoves(E);
+      if (!moves.length) continue;
+      // deux spéciaux posés loin du coup
+      const sp = [];
+      for (let i = 0; i < 64 && sp.length < 2; i++) if (q.board[i] && moves.every(m => Math.abs((m[0] >> 3) - (i >> 3)) + Math.abs((m[0] & 7) - (i & 7)) > 2)) { q.board[i].s = 1 + sp.length; sp.push(i); }
+      if (sp.length < 2 || bb._allMoves(E).length !== moves.length) continue;
+      const avant = JSON.parse(JSON.stringify(st));
+      const mv = moves[0];
+      bb._setRandom(bb._mulberry(graine * 7 + 1));
+      bb.apply(st, 0, { t: 'swap', a: mv[0], b: mv[1] });
+      if (q.fx && q.fx.shuffled) return { etat: avant, mv, graine: graine * 7 + 1 };
+    }
+    return null;
+  });
+  if (melange) {
+    await p.evaluate((m) => localStorage.setItem('gg-partie', JSON.stringify({ v: 2, type: 'mini', jeu: 'bonbons', bots: 0, state: m.etat, me: 0, ts: Date.now() })), melange);
+    await p.reload();
+    await p.click('#btn-reprise');
+    await p.waitForSelector('.bb-board');
+    await p.waitForTimeout(600);
+    await p.evaluate((g) => GG.byId.bonbons._setRandom(GG.byId.bonbons._mulberry(g)), melange.graine);
+    await geste(p, melange.mv[0], melange.mv[1], false);
+    const banniere = await (await p.waitForFunction(() => { const c = document.querySelector('.bb-banniere.melange'); return c && c.textContent; }, null, { timeout: 15000, polling: 'raf' })).jsonValue();
+    check('bug 2 : plus de coup → message « on mélange » et animation', /mélange/.test(banniere), banniere);
+    await finAnimation(p);
+    const b2 = await plateauAffiche(p);
+    const st2 = await etatJeu(p);
+    const spApres = b2.filter(c => c && c.s).map(c => c.s).sort().join(',');
+    check('bug 2 : après le mélange, les bonbons spéciaux sont toujours là et un coup existe',
+      spApres.split(',').length >= 2 && await p.evaluate((st) => GG.byId.bonbons._hasMoveE(GG.byId.bonbons._ctxOf(st, st.players[0], null)), st2), spApres);
+    await p.evaluate(() => GG.byId.bonbons._setRandom(null));
+  } else check('bug 2 : scénario de grille morte trouvé', false);
+
+  // ---- bug 3 à l'écran : des objectifs variés, des mondes qui ne bouclent pas ----
+  await p.evaluate(() => localStorage.setItem('gg-bonbons-map', JSON.stringify({ lvl: 75, stars: { 1: 3, 2: 2 }, best: {} })));
+  await p.reload();
+  await p.click('.game-tile[data-g="bonbons"]');
+  await p.waitForSelector('.bb-map');
+  const mondes = await p.evaluate(() => [...document.querySelectorAll('.bb-monde-tx b')].map(x => x.textContent));
+  check('carte : au-delà du niveau 60, des mondes nouveaux (' + mondes.join(', ') + ')',
+    mondes.length >= 3 && new Set(mondes).size === mondes.length && !mondes.includes('Prairie Guimauve'));
+  const icones = {};
+  for (const lvl of [3, 11, 21, 25, 26]) {
+    await scenario(p, `bb.apply(st, 0, { t: 'start', lvl: ${lvl} });`);
+    icones[lvl] = await p.evaluate(() => [...document.querySelectorAll('.bb-intro .bb-carte-obj i')].map(i => i.className).join(' '));
+  }
+  check('objectifs variés à l’écran : gelée, meringues, noisettes, récolte, points',
+    /bbs-j1/.test(icones[3]) && /bbs-m1/.test(icones[11]) && /bbs-n/.test(icones[21]) && /bbs-\d-0/.test(icones[25]) && /etoile/.test(icones[26]), icones);
+
+  // ---- fluidité au processeur ×4 (deux coups mesurés, on garde le meilleur : la machine de test est partagée) ----
+  const cdp = await ctx.newCDPSession(p);
+  await cdp.send('Performance.enable');
+  const mesures = [];
+  for (let essai = 0; essai < 2; essai++) {
+    await scenario(p, `bb.apply(st, 0, { t: 'start', lvl: 1 }); bb.apply(st, 0, { t: 'go' });`);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    const m0 = (await cdp.send('Performance.getMetrics')).metrics;
+    const perf = await p.evaluate(() => new Promise(res => {
+      const V = document.getElementById('mini-area')._bb, st = V.ctx.state;
+      const mv = GG.byId.bonbons._meilleurCoup(st, st.players[0]);
+      const ts = []; let d = 0, t0 = 0;
+      function b(t) { ts.push(t - d); d = t; if (V.busy) requestAnimationFrame(b); else res({ ts, duree: t - t0 }); }
+      requestAnimationFrame(t => { d = t0 = t; V.ctx.act({ t: 'swap', a: mv[0], b: mv[1] }); requestAnimationFrame(b); });
+    }));
+    const m1 = (await cdp.send('Performance.getMetrics')).metrics;
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    const met = k => ((m1.find(x => x.name === k) || {}).value || 0) - ((m0.find(x => x.name === k) || {}).value || 0);
+    const code = (met('ScriptDuration') + met('RecalcStyleDuration') + met('LayoutDuration')) * 1000;
+    const n = perf.ts.length, moy = perf.ts.reduce((a, b) => a + b, 0) / n;
+    mesures.push({ n, duree: Math.round(perf.duree), moy, parImage: code / n });
+  }
+  mesures.sort((a, b) => a.parImage - b.parImage);
+  const mb = mesures[0];
+  console.log('       coup animé au processeur ×4 : ' + mb.n + ' images en ' + mb.duree + ' ms, ' + mb.moy.toFixed(1) +
+    ' ms/image (' + Math.round(1000 / mb.moy) + ' i/s sur cette machine sans GPU) ; script + styles + mise en page : ' +
+    mb.parImage.toFixed(1) + ' ms par image');
+  check('processeur ×4 : le travail de la page par image tient dans 16 ms (60 i/s possibles)', mb.parImage < 16, mb.parImage.toFixed(1));
+  await ctx.close();
+
+  // ---- 360 × 640 ----
+  const pt = await nouvellePage(browser, 360, 640);
+  await pt.p.evaluate(() => localStorage.setItem('gg-bonbons-map', JSON.stringify({ lvl: 41, stars: {}, best: {} })));
+  await pt.p.reload();
+  await pt.p.click('.game-tile[data-g="bonbons"]');
+  await pt.p.waitForSelector('.bb-map');
+  check('360 px : carte sans débordement', await debord(pt.p) <= 0);
+  await pt.p.click('.bb-map-bas .btn');
+  await pt.p.waitForSelector('.bb-intro');
+  check('360 px : début de niveau sans débordement', await debord(pt.p) <= 0);
+  await pt.p.click('.bb-intro [data-a="go"]');
+  await pt.p.waitForSelector('.bb-intro', { state: 'detached' });
+  const bas = await pt.p.evaluate(() => document.querySelector('.bb-board').getBoundingClientRect().bottom);
+  check('360×640 : tout le plateau est visible sans défiler', bas <= 640, bas);
+  check('360 px : jeu sans débordement', await debord(pt.p) <= 0);
+  const cell = await pt.p.evaluate(() => document.querySelector('.bb-cell').getBoundingClientRect().width);
+  check('360 px : bonbons de 40 px au moins (cible tactile)', cell >= 40, cell);
+  await pt.ctx.close();
+}
+
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   if (QUOI === 'tout' || QUOI === 'sudoku') await testSudoku(browser);
+  if (QUOI === 'tout' || QUOI === 'bonbons') await testBonbons(browser);
   await browser.close();
   console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 solo (navigateur) OK.');
   process.exit(failures ? 1 : 0);

@@ -149,9 +149,15 @@ function check(n, c, e) {
   check('carte de l’aventure : niveau 1 prêt', await p.locator('.bb-node.cur').count() === 1);
   await p.click('.bb-node.cur');
   await p.waitForSelector('.bb-grid', { timeout: 15000 });
+  // V2 : un écran de début de niveau présente l'objectif, puis « Jouer ! »
+  await p.waitForSelector('.bb-intro [data-a="go"]');
+  check('début de niveau : objectif et coups annoncés', /Marquez/.test(await p.textContent('.bb-intro')) &&
+    /20 coups/.test(await p.textContent('.bb-intro')));
+  await p.click('.bb-intro [data-a="go"]');
+  await p.waitForSelector('.bb-intro', { state: 'detached' });
   check('grille de 64 bonbons', await p.locator('.bb-cell').count() === 64);
   check('objectif du niveau affiché', await p.locator('.bb-obj').count() === 1 &&
-    /24 coups/.test(await p.textContent('#mini-area')));
+    (await p.textContent('#bb-coups')).trim() === '20');
   check('chaque bonbon porte sa famille (data-t) et sa forme CSS',
     await p.locator('.bb-cell[data-t] .bb-candy').count() === 64);
   // trouve un échange valable en lisant la grille avec le moteur du jeu
@@ -172,9 +178,11 @@ function check(n, c, e) {
     await p.waitForTimeout(150);
     check('bonbon sélectionné', await p.locator('.bb-cell.sel').count() === 1);
     await p.click('.bb-cell[data-i="' + swap[1] + '"]');
-    await p.waitForTimeout(400);
-    const stats = await p.textContent('#mini-area');
-    check('coup joué : 23 restants et des points', /23 coups/.test(stats) && /\+\d+/.test(stats), stats.slice(0, 80));
+    // V2 : le coup se rejoue en animation (échange, éclatements, chutes), puis le bandeau suit
+    await p.waitForFunction(() => { const V = document.getElementById('mini-area')._bb; return V && !V.busy; }, null, { timeout: 15000 });
+    const coups = (await p.textContent('#bb-coups')).trim();
+    const pts = +(await p.textContent('#bb-score')).replace(/\D/g, '');
+    check('coup joué : 19 restants et des points', coups === '19' && pts > 0, { coups, pts });
   }
 
   await browser.close();

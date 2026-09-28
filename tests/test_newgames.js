@@ -387,8 +387,14 @@ check('échange non voisin refusé', bonbons.apply(bg, 0, { t: 'swap', a: 0, b: 
   const ok = bonbons.apply(st, 0, { t: 'swap', a: 0, b: 1 });
   const gain = st.players[0].lastGain;
   check('sucre magique : échange accepté', ok.ok === true);
+  // V2 : la couleur entière est croquée d'un coup (première vague), PUIS la grille retombe
+  // et les alignements formés en tombant éclatent aussi (l'ancien moteur les oubliait) :
+  // le gain compte donc au moins toute la couleur.
+  const vague1 = st.players[0].fx.steps.find(e => e.k === 'clear');
   check('sucre magique : toute la couleur croquée (' + avant + ' bonbons)',
-    gain === avant * 15 || gain === (avant + 1) * 15, gain);
+    vague1 && vague1.eats[0].cells.length === avant && gain >= avant * 20, { gain, eats: vague1 && vague1.eats[0].cells.length });
+  check('sucre magique : puis la grille se stabilise (aucun alignement en attente)',
+    bonbons._findRuns(st.players[0].board).length === 0);
   check('sucre magique : coup consommé', st.players[0].moves === 24);
 }
 
@@ -429,12 +435,16 @@ check('échange non voisin refusé', bonbons.apply(bg, 0, { t: 'swap', a: 0, b: 
 // ===== mode aventure : niveaux infinis =====
 {
   const cfgs = [1, 2, 7, 25, 100, 500].map(n => bonbons._levelCfg(n));
+  // V2 : 60 niveaux dessinés puis générés ; coups, cibles et étoiles viennent du calibrage
+  // (la courbe de difficulté mesurée est dans tests/test_v2_solo.js)
   check('aventure : réglages déterministes et jouables',
-    cfgs.every(c => c.coups >= 12 && c.coups <= 24 && (c.types === 5 || c.types === 6) && c.cible > 0));
-  check('aventure : la difficulté grimpe', bonbons._levelCfg(100).cible > bonbons._levelCfg(1).cible);
-  check('aventure : 8 mondes qui tournent',
-    bonbons._zoneOf(1) === 0 && bonbons._zoneOf(11) === 1 && bonbons._zoneOf(81) === 0 &&
-    bonbons._ZONES.length === 8);
+    cfgs.every(c => c.coups >= 10 && c.coups <= 45 && (c.types === 5 || c.types === 6) && c.cible > 0 && !!c.goal) &&
+    JSON.stringify([1, 2, 7, 25, 100, 500].map(n => bonbons._levelCfg(n))) === JSON.stringify(cfgs), cfgs);
+  check('aventure : la difficulté visée grimpe (taux de réussite visé en baisse)',
+    bonbons._tauxVise(59) < bonbons._tauxVise(29) && bonbons._tauxVise(29) < bonbons._tauxVise(2));
+  check('aventure : des mondes qui ne tournent jamais en boucle',
+    bonbons._mondeDe(1) === 0 && bonbons._mondeDe(11) === 1 && bonbons._mondeDe(81) === 8 &&
+    new Set(Array.from({ length: 262 }, (_, w) => bonbons._monde(w).nom)).size === 262);
   check('étoiles : 1 à l’objectif, 3 au double',
     bonbons._stars(999, 1000) === 0 && bonbons._stars(1000, 1000) === 1 &&
     bonbons._stars(1400, 1000) === 2 && bonbons._stars(1900, 1000) === 3);

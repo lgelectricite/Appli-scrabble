@@ -3,6 +3,10 @@
    La grille est un OBJET : une feuille ivoire épaisse posée sur la nuit,
    cadre d'encre, traits fins entre les cases, traits épais entre les blocs. */
 
+/* Pendant le jeu, les aurores du fond se figent (elles restent visibles) : leur
+   flou animé saturait le rendu des téléphones modestes. */
+body[data-jeu="sudoku"]::before, body[data-jeu="sudoku"]::after { animation-play-state: paused; }
+
 /* ---------- accueil du jeu : défi du jour, niveaux, statistiques ---------- */
 .sdk-home { display: flex; flex-direction: column; gap: 12px; max-width: 520px; margin: 6px auto 0; }
 .sdk-daily {
@@ -138,11 +142,11 @@
 .sdk-cell.bad:not(.sel) { background: #ffe1e5; }
 .sdk-cell.conflit { background: #ffc9d1; }
 .sdk-cell.conflit .sdk-v { color: #b3122f; }
-.sdk-v { position: relative; display: block; }
+.sdk-v { position: relative; z-index: 1; display: block; }
 
 /* notes au crayon : une mini-grille 3×3 dans la case */
 .sdk-notes {
-  position: absolute; inset: 1px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  position: absolute; inset: 1px; z-index: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
   font-family: var(--f-texte); font-weight: 800; color: #6d6a93;
   font-size: clamp(8px, 2.4vw, 13px); font-size: 2.45cqw;
 }
