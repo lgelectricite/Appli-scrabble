@@ -12,7 +12,7 @@ function check(n, c, e) {
 }
 
 (async () => {
-  const relais = await demarrer(8795);
+  const relais = await demarrer(parseInt(process.env.GG_PORT_RELAIS_POKER || '8795', 10));
   const browser = await chromium.launch({
     executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox']
   });

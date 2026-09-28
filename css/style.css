@@ -207,6 +207,9 @@ body::after {
 }
 body.en-partie::before, body.en-partie::after,
 body.anim-reduites::before, body.anim-reduites::after { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  body::before, body::after { animation-play-state: paused; }
+}
 @keyframes aurore1 { to { transform: translate(18vmax, 22vmax) scale(1.15); } }
 @keyframes aurore2 { to { transform: translate(-20vmax, -16vmax) scale(1.2); } }
 
@@ -769,6 +772,15 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-we
   background: var(--glass); border: 1px solid var(--stroke);
 }
 #btn-end-new:disabled { opacity: .75; }
+#overlay-end .fin-liens { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+#overlay-end .fin-liens .btn { width: auto; }
+.fin-retour {
+  position: fixed; z-index: 55; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%); padding: 12px 22px; border: 0; border-radius: 999px; cursor: pointer;
+  font-family: var(--f-titre); font-weight: 600; font-size: 16px; color: #fff;
+  background: var(--grad-primary); box-shadow: var(--ombre-3);
+  animation: carteEntre .4s var(--ressort) both;
+}
 #overlay-switch .grille-jeux { margin: 12px 0 8px; max-height: 56vh; overflow-y: auto; padding: 4px 2px; }
 
 /* ===== fenêtres superposées ===== */

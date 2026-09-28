@@ -144,7 +144,11 @@
     var avant = !el.classList.contains('hidden');
     el.classList.toggle('hidden', !visible);
     if (visible && !avant) window.GG.sfx.play(el.classList.contains('sheet') ? 'open' : 'pop');
-    if (id === 'overlay-end' && visible) majFinReseau();
+    if (id === 'overlay-end') {
+      var retourFin = $('btn-fin-retour');
+      if (retourFin) retourFin.classList.add('hidden');
+      if (visible) majFinReseau();
+    }
   }
 
   function toast(msg) {
@@ -2022,7 +2026,7 @@
   var sauveMinuteur = null;
   function sauvePartie() {
     clearTimeout(sauveMinuteur);
-    sauveMinuteur = setTimeout(sauveMaintenant, 250);
+    sauveMinuteur = setTimeout(function () { sauveMinuteur = null; sauveMaintenant(); }, 250);
   }
   function sauveMaintenant() {
     var sv = null;
@@ -2044,6 +2048,19 @@
     }
     if (sv) ecris(SAUVE_CLE, sv);
   }
+  /* On quitte l'appli (écran éteint, autre appli, onglet fermé) : on
+     enregistre tout de suite, sans attendre le délai habituel. */
+  function sauveEnSortant() {
+    if (!sauveMinuteur) return;
+    clearTimeout(sauveMinuteur);
+    sauveMinuteur = null;
+    try { sauveMaintenant(); } catch (e) {}
+  }
+  window.addEventListener('pagehide', sauveEnSortant);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') sauveEnSortant();
+  });
+
   function lisSauvegarde() {
     var sv = lis(SAUVE_CLE, null);
     if (!sv || sv.v !== 2 || !sv.state) return null;
@@ -2850,7 +2867,10 @@
     effaceSauvegarde();
     var g = null;
     try { g = miniMod.gagnants ? miniMod.gagnants(miniState) : gagnantsParScore(); } catch (e) { g = null; }
-    var humains = mode === 'local' ? (miniBots ? [0] : null) : [miniViewer()];
+    // seul contre l'IA, ou jeu solitaire : c'est bien « vous » qui gagnez
+    var humains = mode === 'local'
+      ? (miniBots || (miniState.players && miniState.players.length === 1) ? [0] : null)
+      : [miniViewer()];
     celebreFin(currentGame, g, humains);
     showOverlay('overlay-end', true);
   }
@@ -4759,6 +4779,15 @@
       if (currentGame === 'mots') newGameSamePlayers(); else miniRematch();
     });
     $('btn-end-switch').addEventListener('click', ouvreChangeJeu);
+    // admirer le plateau final (grille remplie, dernier coup…) puis revenir
+    $('btn-end-voir').addEventListener('click', function () {
+      showOverlay('overlay-end', false);
+      $('btn-fin-retour').classList.remove('hidden');
+    });
+    $('btn-fin-retour').addEventListener('click', function () {
+      $('btn-fin-retour').classList.add('hidden');
+      showOverlay('overlay-end', true);
+    });
     $('btn-switch-close').addEventListener('click', function () { showOverlay('overlay-switch', false); });
     $('btn-end-home').addEventListener('click', quitToHome);
 

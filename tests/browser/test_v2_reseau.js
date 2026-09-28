@@ -9,7 +9,7 @@ const net = require('net');
 const { chromium } = require('playwright');
 const { demarrer } = require('../relais-local.js');
 const URL_APP = (process.env.GG_URL || 'http://localhost:8642/index.html');
-const PORT_RELAIS = parseInt(process.env.GG_PORT_RELAIS || '8795', 10);
+const PORT_RELAIS = parseInt(process.env.GG_PORT_RELAIS || '8805', 10);
 const PORT_PROXY = PORT_RELAIS + 1;
 let failures = 0;
 function check(n, c, e) {
