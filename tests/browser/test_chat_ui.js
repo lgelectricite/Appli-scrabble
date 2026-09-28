@@ -101,6 +101,52 @@ function check(n, c, e) {
     null, { timeout: 8000 });
   check('emoji rapide reçu par l’hôte', /👍/.test(await host.textContent('.ch-log')));
 
+  // ----- V2 : signal discret, sécurité, frappe, réactions -----
+  await guest.evaluate(() => {
+    window.__sons = [];
+    const jouer = GG.sfx.play.bind(GG.sfx);
+    GG.sfx.play = (n, o) => { window.__sons.push(n); return jouer(n, o); };
+  });
+  await host.fill('#ch-in', '<img src=x onerror="window.__xss=1">');
+  await host.click('.ch-send');
+  await guest.waitForFunction(() => document.querySelectorAll('.ch-bub').length === 5, null, { timeout: 8000 });
+  await guest.waitForTimeout(300);
+  check('sécurité : le HTML d’un message est affiché, jamais exécuté',
+    await guest.locator('.ch-log img').count() === 0 && /<img src=x/.test(await guest.textContent('.ch-log')) &&
+    await guest.evaluate(() => window.__xss === undefined));
+  check('signal discret (son « notify ») à l’arrivée d’un message', await guest.evaluate(() => window.__sons.includes('notify')));
+  check('bulles regroupées : le nom n’est affiché qu’au début d’une série',
+    await guest.locator('.ch-row:not(.mine)').count() > await guest.locator('.ch-row:not(.mine) .ch-name').count());
+  // Nina tape : Hugo voit « Nina est en train d'écrire… »
+  await guest.click('#ch-in');
+  await guest.keyboard.type('On y va', { delay: 40 });
+  await host.waitForSelector('.ch-typing.on', { timeout: 8000 });
+  check('« Nina est en train d’écrire… » chez Hugo', /Nina/.test(await host.textContent('.ch-typing')) && /écrire/.test(await host.textContent('.ch-typing')));
+  check('le brouillon reste pendant que l’autre voit la frappe', (await guest.inputValue('#ch-in')) === 'On y va');
+  // Hugo réagit par un appui long sur la bulle de Nina
+  const bulle = host.locator('.ch-row:not(.mine) .ch-bub').last();
+  const bb = await bulle.boundingBox();
+  await host.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
+  await host.mouse.down();
+  await host.waitForTimeout(650);
+  await host.mouse.up();
+  check('appui long : la palette de réactions s’ouvre', await host.locator('.ch-picker:not(.hidden) [data-re]').count() === 6);
+  if (process.env.GG_SHOTS) await host.screenshot({ path: process.env.GG_SHOTS + 'vh_chat_picker.png' });
+  await host.click('.ch-picker [data-re="❤️"]');
+  await guest.waitForSelector('.ch-row.mine .ch-re', { timeout: 8000 });
+  check('la réaction ❤️ apparaît sous la bulle de Nina, chez Nina', /❤️/.test(await guest.textContent('.ch-row.mine .ch-re')));
+  // Nina appuie sur la réaction : elle s'ajoute (compteur 2)
+  await guest.locator('.ch-row.mine .ch-re').first().click();
+  await host.waitForFunction(() => /2/.test((document.querySelector('.ch-re') || {}).textContent || ''), null, { timeout: 8000 });
+  check('toucher une réaction la partage (compteur 2)', true);
+  await guest.press('#ch-in', 'Enter');
+  await host.waitForFunction(() => !document.querySelector('.ch-typing.on'), null, { timeout: 8000 });
+  check('envoyer efface « en train d’écrire »', true);
+  if (process.env.GG_SHOTS) {
+    await guest.screenshot({ path: process.env.GG_SHOTS + 'vh_chat_guest.png' });
+    await host.screenshot({ path: process.env.GG_SHOTS + 'vh_chat_host.png' });
+  }
+
   // les règles expliquent la confidentialité
   await host.click('#btn-mini-rules');
   await host.waitForSelector('#overlay-rules:not(.hidden)');

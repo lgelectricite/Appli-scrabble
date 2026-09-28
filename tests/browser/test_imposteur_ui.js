@@ -1,4 +1,6 @@
-/* L'Imposteur : partie complète à 3 joueurs sur un téléphone (pass-device). */
+/* L'Imposteur : partie complète à 3 joueurs sur un téléphone (pass-device),
+   indices à l'oral (réglage par défaut sur un seul téléphone), puis une
+   manche à l'écrit. */
 const { chromium } = require('playwright');
 let failures = 0;
 function check(n, c, e) {
@@ -14,7 +16,7 @@ function check(n, c, e) {
   async function passIfNeeded() {
     if (await p.locator('#overlay-pass:not(.hidden)').count()) {
       await p.click('#btn-pass-ready');
-      await p.waitForTimeout(120);
+      await p.waitForTimeout(150);
     }
   }
 
@@ -30,16 +32,25 @@ function check(n, c, e) {
   await p.click('#btn-mini-rules');
   await p.waitForSelector('#overlay-rules:not(.hidden)');
   const regles = await p.textContent('#rules-body');
-  check('règles : but, indices, votes, victoire expliqués',
+  check('règles : but, indices, votes, victoire, Mister White expliqués',
     /démasquer/i.test(regles) && /indice/i.test(regles) &&
-    /vote/i.test(regles) && /victoire/i.test(regles));
+    /vote/i.test(regles) && /victoire/i.test(regles) && /Mister White/.test(regles));
   await p.click('#btn-rules-close');
+
+  // réglages de la manche
+  await p.waitForSelector('[data-a="deal"]');
+  check('choix de la catégorie (11)', await p.locator('.imp-cat').count() === 11);
+  check('trois niveaux', await p.locator('[data-k="niv"]').count() === 3);
+  check('sur un téléphone : indices à l’oral par défaut', await p.locator('.imp-opt.on[data-k="oral"]').count() === 1);
+  check('Mister White indisponible à 3', await p.locator('.imp-opt.off[data-k="white"]').count() === 1);
+  await p.click('[data-a="deal"]');
 
   // phase découverte : chacun voit SON mot (écrans de passage entre les joueurs)
   const words = [];
   for (let i = 0; i < 3; i++) {
     await passIfNeeded();
     await p.waitForSelector('.imp-word', { timeout: 15000 });
+    await p.locator('.imp-carte').click(); // appui : la carte se retourne
     words.push((await p.textContent('.imp-word')).trim());
     await p.click('[data-a="seen"]');
     await p.waitForTimeout(150);
@@ -48,28 +59,31 @@ function check(n, c, e) {
   const distinct = new Set(words);
   check('un seul imposteur : exactement 2 mots différents', distinct.size === 2, words);
 
-  // phase indices : écran de passage vers chaque orateur, dans l'ordre affiché
+  // indices à l'oral : le téléphone reste sur la table
   for (let k = 0; k < 3; k++) {
     await passIfNeeded();
-    await p.waitForSelector('#imp-clue', { timeout: 15000 });
-    await p.fill('#imp-clue', 'indice' + k);
-    await p.click('[data-a="clue"]');
-    await p.waitForTimeout(150);
+    await p.waitForSelector('[data-a="oral"]', { timeout: 15000 });
+    await p.click('[data-a="oral"]');
+    await p.waitForTimeout(450);
   }
   await passIfNeeded();
-  check('3 indices affichés', await p.locator('.imp-clue').count() === 3);
+  check('3 indices notés (à l’oral)', await p.locator('.imp-clue').count() === 3);
+  await p.waitForSelector('[data-a="finDebat"]');
+  check('débat minuté avant le vote', await p.locator('.imp-timer').count() === 1);
+  await p.click('[data-a="finDebat"]');
 
   // phase vote : chacun vote (les votes des autres restent cachés)
   for (let k = 0; k < 3; k++) {
     await passIfNeeded();
-    await p.waitForSelector('.imp-target', { timeout: 15000 });
-    check('2 cibles possibles (pas soi-même)', await p.locator('.imp-target').count() === 2);
-    await p.locator('.imp-target').first().click();
-    await p.waitForTimeout(150);
+    await p.waitForSelector('.imp-cible', { timeout: 15000 });
+    check('2 cibles possibles (pas soi-même)', await p.locator('.imp-cible').count() === 2);
+    await p.locator('.imp-cible').first().click();
+    await p.waitForTimeout(450);
   }
 
   // résultat : élimination ou égalité, puis suite gérée par l'hôte
   await passIfNeeded();
+  await p.waitForTimeout(600);
   const body = await p.textContent('#mini-area');
   check('résultat du vote affiché',
     /éliminé|Égalité|gagne/i.test(body), body.slice(0, 120));
@@ -79,6 +93,8 @@ function check(n, c, e) {
   if (hasAgain) {
     check('fin de manche : les deux mots révélés', /Mot des civils/.test(body));
     check('camps révélés', await p.locator('.imp-role-tag').count() === 3);
+    const sc = await p.locator('.imp-score').first().textContent();
+    check('scores lisibles : « prénom 5 pts », jamais collés', /[a-z0-9] \d+ pts/i.test(sc) || / \d+ pts/.test(sc), sc);
   }
 
   await browser.close();

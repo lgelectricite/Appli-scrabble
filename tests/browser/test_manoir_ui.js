@@ -12,10 +12,14 @@ function check(n, c, e) {
 
 /* Retrouve la réponse d'une énigme à partir du texte affiché. */
 function answerFor(questionText) {
-  const clean = s => s.replace(/\s+/g, ' ').trim().slice(0, 30);
+  const clean = s => s.replace(/\s+/g, ' ').trim();
   const q = clean(questionText);
-  const e = manoir._ENIGMES.find(x => clean(x.q) === q);
-  return e ? e.a[0] : null;
+  for (const sc of manoir._SCENARIOS) {
+    for (const p of sc.pistes) {
+      for (const e of p.enigmes) if (clean(e.q) === q) return e.a[0];
+    }
+  }
+  return null;
 }
 
 (async () => {
@@ -37,26 +41,35 @@ function answerFor(questionText) {
   await p.waitForSelector('#screen-mini.active');
   check('thème sombre appliqué', await p.evaluate(() =>
     document.body.classList.contains('theme-manoir')));
+  await p.waitForSelector('.mn-letter');
   const intro = await p.textContent('#mini-area');
-  check('lettre d’introduction (décor tiré au sort)',
-    /Lord Edmond|Elvira Marsan|Auguste Ferrand/.test(intro), intro.slice(0, 80));
-  check('titre du décor affiché',
-    /LE MANOIR|L’OPÉRA|LE TRAIN DE NUIT/.test(await p.textContent('.mn-title')));
-  check('carte de rôle personnelle sur la lettre', await p.locator('.mn-role').count() === 1);
-  check('info confidentielle affichée', intro.includes('🤫'));
+  check('lettre d’introduction (affaire tirée au sort)',
+    manoir._SCENARIOS.some(sc => intro.includes(sc.victime.replace(/^(le |la |l’)/, ''))), intro.slice(0, 80));
+  const titre = (await p.textContent('.mn-title')).trim();
+  check('titre de l’affaire affiché', manoir._SCENARIOS.map(sc => sc.titre).includes(titre), titre);
+  check('règles de la nuit rappelées (le coupable ment)', intro.includes('le coupable ment'));
+  check('les cinq suspects présentés', await p.locator('.mn-cast-one').count() === 5);
+  check('choix de la difficulté (3 niveaux)', await p.locator('.mn-niv-b').count() === 3);
   await p.click('[data-a="start"]');
   await p.waitForSelector('.mn-pistes');
   check('6 pistes affichées', await p.locator('.mn-piste').count() === 6);
-  // bouton « mon rôle » : ouvre la carte puis revient aux pistes
-  check('bouton mon rôle présent', await p.locator('.mn-role-btn').count() === 1);
-  await p.click('.mn-role-btn');
+  check('horloge de la nuit', /22 h/.test(await p.textContent('.mn-clock-t')));
+  // onglet « dossier » : rôle et informations confidentielles
+  await p.click('[data-a="tab"][data-v="dossier"]');
   await p.waitForSelector('.mn-role');
-  check('vue rôle ouverte', await p.locator('.mn-role').count() === 1);
-  await p.click('[data-a="back"]');
-  await p.waitForSelector('.mn-pistes');
+  check('carte de rôle personnelle', await p.locator('.mn-role').count() === 1);
+  check('info confidentielle affichée', (await p.textContent('#mini-area')).includes('🤫'));
+  await p.click('[data-a="tab"][data-v="carnet"]');
   check('carnet : 15 entrées', await p.locator('.mn-item').count() === 15);
+  check('carnet vierge : rien ne se barre tout seul', await p.locator('.mn-item.m1').count() === 0);
+  await p.locator('.mn-item').first().click();
+  await p.waitForSelector('.mn-item.m1');
+  check('carnet : une touche barre un suspect', await p.locator('.mn-item.m1').count() === 1);
+  await p.click('[data-a="tab"][data-v="temoins"]');
+  check('cinq témoignages', await p.locator('.mn-temoin').count() === 5);
+  await p.click('[data-a="tab"][data-v="pistes"]');
 
-  // ouvre la 1re piste, tente une mauvaise réponse puis la bonne
+  // ouvre la 1re piste, tente une mauvaise réponse puis la bonne (avec article)
   await p.locator('.mn-piste').first().click();
   await p.waitForSelector('.mn-parchment');
   const q = await p.textContent('.mn-parchment');
@@ -66,38 +79,39 @@ function answerFor(questionText) {
   await p.click('[data-a="answer"]');
   await p.waitForSelector('.mn-wrong');
   check('mauvaise réponse signalée', true);
-  await p.fill('#mn-answer', answer.toLowerCase());
+  await p.fill('#mn-answer', 'la ' + answer.toLowerCase());
   await p.click('[data-a="answer"]');
   await p.waitForSelector('.mn-clue');
-  check('piste élucidée : indices révélés', await p.locator('.mn-clue').count() === 2);
+  check('piste élucidée : indices révélés', await p.locator('.mn-clue').count() >= 1);
   await p.click('[data-a="back"]');
   await p.waitForSelector('.mn-pistes');
   check('progression 1/6', (await p.textContent('.mn-progress')).includes('1/6'));
-  check('2 suspects/armes/lieux barrés au carnet',
-    await p.locator('.mn-item.out').count() === 2);
 
   // accusation volontairement fausse deux fois → révélation de la solution
   for (let round = 0; round < 2; round++) {
     await p.click('[data-a="goaccuse"]');
     await p.waitForSelector('.mn-pick');
-    for (const grp of await p.locator('.mn-pick').all()) {
-      await grp.locator('.mn-opt.out, .mn-opt').last().click();
-    }
-    await p.click('[data-a="accuse"]');
-    await p.waitForTimeout(300);
-    const body = await p.textContent('#mini-area');
-    if (body.includes('C’était')) break; // coup de chance : accusation juste
+    for (const g of ['s', 'a', 'l']) await p.locator('[data-a="pick"][data-g="' + g + '"]').last().click();
+    await p.click('[data-a="confirmer"]');
+    await p.waitForSelector('.mn-modal');
+    await p.waitForTimeout(450);
+    await p.click('[data-a="propose"]');
+    await p.waitForSelector('.mn-verdict');
+    await p.waitForTimeout(3000);
+    await p.click('[data-a="suite"]');
+    await p.waitForTimeout(400);
+    if (await p.locator('#overlay-end:not(.hidden)').count()) break; // coup de chance : accusation juste
     if (round === 0) {
-      check('alarme après la 1re erreur',
-        body.includes('une seule tentative') || body.includes('C’était'), body.slice(0, 60));
+      const body = await p.textContent('#mini-area');
+      check('alarme après la 1re erreur', /Plus que/.test(body), body.slice(0, 60));
     }
   }
-  const endTxt = await p.textContent('#mini-area');
-  check('écran final avec révélation', endTxt.includes('C’était'), endTxt.slice(0, 80));
+  await p.waitForSelector('#overlay-end:not(.hidden)');
+  const endTxt = await p.textContent('#end-detail');
+  check('fenêtre de fin avec révélation', endTxt.includes('C’était'), endTxt.slice(0, 80));
   check('statistiques affichées', endTxt.includes('pistes') && endTxt.includes('erreurs'));
-  await p.click('#btn-mini-menu');
-  await p.click('#btn-menu-quit');
-  await p.click('#btn-confirm-yes');
+  await p.click('#btn-end-home');
+  await p.waitForTimeout(200);
   check('thème sombre retiré à la sortie', await p.evaluate(() =>
     !document.body.classList.contains('theme-manoir')));
   await ctx.close();
@@ -143,9 +157,19 @@ function answerFor(questionText) {
   for (const g of guests) await g.page.waitForSelector('#screen-mini.active', { timeout: 20000 });
   check('les 5 téléphones sont en jeu', true);
   await host.click('[data-a="start"]');
+  // chacun lit son dossier secret sur SON téléphone
+  for (const g of guests) {
+    await g.page.waitForSelector('[data-a="lu"]', { timeout: 10000 });
+  }
+  check('chaque invité reçoit son dossier secret', true);
+  for (const g of guests.slice(0, 3)) await g.page.click('[data-a="lu"]');
+  await host.click('[data-a="lu"]');
+  // le dernier est distrait : l'hôte lance sans lui
+  await host.waitForSelector('[data-a="goplay"]');
+  await host.click('[data-a="goplay"]');
   for (const g of guests) await g.page.waitForSelector('.mn-pistes', { timeout: 10000 });
-  check('enquête lancée partout', true);
-  check('équipe de 5 affichée', (await guests[3].page.textContent('.mn-team')).includes('5'));
+  check('enquête lancée partout (hôte : « sans attendre »)', true);
+  check('équipe de 5 affichée', (await guests[3].page.textContent('.mn-progress')).includes('5'));
 
   // l'invité 4 résout une énigme : tout le monde voit la progression
   const g4 = guests[3].page;
@@ -163,9 +187,9 @@ function answerFor(questionText) {
   check('progression 1/6 chez l’hôte', true);
   await guests[0].page.waitForFunction(() =>
     document.querySelector('.mn-progress').textContent.includes('1/6'), null, { timeout: 10000 });
+  await guests[0].page.click('[data-a="tab"][data-v="carnet"]');
   const clue0 = await guests[0].page.textContent('#mini-area');
-  check('l’indice révélé est visible chez l’invité 1', clue0.includes('Hors de cause') ||
-    clue0.includes('arme du crime') || clue0.includes('lieu'), clue0.slice(0, 60));
+  check('l’indice révélé est visible chez l’invité 1', /Indices récoltés \([1-9]/.test(clue0), clue0.slice(0, 60));
 
   await ctxH.close();
   for (const g of guests) await g.ctx.close();

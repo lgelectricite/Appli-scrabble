@@ -50,7 +50,12 @@ function check(n, c, e) {
   await p.waitForSelector('.qz-theme[data-th]', { timeout: 15000 });
   check('choix du thème proposé (≥ 2 thèmes)', await p.locator('.qz-theme[data-th]').count() >= 2);
   await p.click('.qz-theme[data-th="melange"]');
+  check('difficulté, nombre de questions et chrono proposés',
+    await p.locator('[data-k="diff"]').count() === 4 && await p.locator('[data-k="nb"]').count() === 3 &&
+    await p.locator('[data-k="chrono"]').count() >= 3);
+  await p.click('[data-a="go"]');
   await p.waitForSelector('.qz-q', { timeout: 15000 });
+  check('chrono affiché', await p.locator('.qz-timer').count() === 1);
   check('question affichée avec 4 choix', await p.locator('.qz-choice[data-i]').count() === 4);
   for (let qn = 0; qn < 10; qn++) {
     await p.locator('.qz-choice[data-i]').first().click();
@@ -73,7 +78,13 @@ function check(n, c, e) {
   await p.click('.game-tile[data-g="proche"]');
   await p.click('#btn-mini-hotseat');
   await p.click('#btn-mini-start');
+  await p.waitForSelector('[data-a="go"]', { timeout: 15000 });
+  check('réglages : nombre de manches', await p.locator('[data-k="nb"]').count() === 3);
+  await p.click('[data-a="go"]');
+  await p.waitForTimeout(200);
+  await passIfNeeded();
   await p.waitForSelector('#pr-guess', { timeout: 15000 });
+  check('pavé numérique géant (12 touches)', await p.locator('.pr-touche').count() === 12);
   await p.fill('#pr-guess', '100');
   await p.click('[data-a="guess"]');
   await p.waitForTimeout(150);

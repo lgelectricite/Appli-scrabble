@@ -14,117 +14,281 @@ function check(n, c, e) {
 
 /* ================= QUIZ ================= */
 console.log('--- Quiz ---');
-check('banque : au moins 1000 questions', quiz._BANK.length >= 1000, quiz._BANK.length);
-check('thèmes : au moins 6 thèmes fournis (50+ questions chacun)',
-  quiz._THEMES.filter(t => t.id !== 'melange' && quiz._themeCount(t.id) >= 50).length >= 6,
-  quiz._THEMES.map(t => t.id + ':' + quiz._themeCount(t.id)).join(' '));
-check('banque : format 5 ou 6 champs partout', quiz._BANK.every(e => {
-  const n = e.split('|').length;
-  return n === 5 || n === 6;
-}));
-check('banque : pas de doublon de question',
-  new Set(quiz._BANK.map(e => e.split('|')[0])).size === quiz._BANK.length);
-check('banque : leurres distincts de la bonne réponse', quiz._BANK.every(e => {
-  const p = e.split('|');
-  return new Set([p[1], p[2], p[3], p[4]]).size === 4;
-}));
-let g = quiz.create(['A', 'B', 'C']);
-check('phase de choix du thème', g.phase === 'setup');
-check('thème réservé à l’hôte', !quiz.apply(g, 1, { t: 'theme', th: 'melange' }).ok);
-check('réponse avant le thème refusée', !quiz.apply(g, 0, { t: 'answer', i: 0 }).ok);
-quiz.apply(g, 0, { t: 'theme', th: 'melange' });
-check('10 questions tirées', g.qs.length === 10 && g.phase === 'question', g.qs.length);
-check('la bonne réponse est bien indexée', g.qs.every(q => {
-  const src = quiz._BANK.find(e => e.split('|')[0] === q.q);
-  return src && q.choices[q.correct] === src.split('|')[1] && q.choices.length === 4;
-}));
-// B répond juste en premier, A faux, C juste
-const correct0 = g.qs[0].correct;
-quiz.apply(g, 1, { t: 'answer', i: correct0 });
-check('re-réponse refusée', !quiz.apply(g, 1, { t: 'answer', i: 0 }).ok);
-// redact pendant la question : rien ne fuit
-let red = quiz.redact(g, 0);
-check('bonnes réponses masquées', red.qs.every(q => q.correct === undefined));
-check('réponse d’autrui masquée, drapeau visible',
-  red.players[1].answer === undefined && red.players[1].hasAnswered === true);
-check('aucun point avant la révélation', g.players[1].score === 0);
-quiz.apply(g, 0, { t: 'answer', i: (correct0 + 1) % 4 });
-quiz.apply(g, 2, { t: 'answer', i: correct0 });
-check('révélation après la dernière réponse', g.phase === 'reveal' && g.reveal.correct === correct0);
-check('points : +15 premier bon, +10 second bon, 0 mauvais',
-  g.players[1].score === 15 && g.players[2].score === 10 && g.players[0].score === 0,
-  g.players.map(p => p.score));
-check('révélation visible sur le réseau', quiz.redact(g, 0).reveal.correct === correct0);
-check('seul l’hôte enchaîne', !quiz.apply(g, 1, { t: 'next' }).ok);
-quiz.apply(g, 0, { t: 'next' });
-check('question suivante, réponses remises à zéro',
-  g.idx === 1 && g.phase === 'question' && g.players.every(p => p.answer === -1));
-// hotseat : le viewer tourne avec la question
-check('viewerOf tourne avec la question', quiz.viewerOf(g) === 1 % 3);
-// thèmes : chaque thème listé a assez de questions ou est refusé proprement
-quiz._THEMES.forEach(t => {
-  if (t.id === 'melange') return;
-  const n = quiz._themeCount(t.id);
-  if (n >= 10) {
-    const x = quiz.create(['A']);
-    const rr = quiz.apply(x, 0, { t: 'theme', th: t.id });
-    if (!(rr.ok && x.qs.length === 10)) { failures++; console.log('  FAIL thème ' + t.id); }
+{
+  const B = quiz._BANK;
+  check('banque : au moins 1500 questions', B.length >= 1500, B.length);
+  check('thèmes : 9 thèmes de 130 questions ou plus (et « Depuis 2016 »)',
+    quiz._THEMES.filter(t => t.id !== 'melange' && quiz._themeCount(t.id) >= 130).length >= 9,
+    quiz._THEMES.map(t => t.id + ':' + quiz._themeCount(t.id)).join(' '));
+  check('banque : 7 champs partout (thème connu, niveau 1 à 3)', B.every(e => {
+    const p = e.split('|');
+    return p.length === 7 && /^[123]r?$/.test(p[6]) && quiz._THEMES.some(t => t.id === p[5] && t.id !== 'melange' && t.id !== 'recent');
+  }), B.find(e => { const p = e.split('|'); return p.length !== 7 || !/^[123]r?$/.test(p[6]); }));
+  check('banque : pas de doublon de question', new Set(B.map(e => e.split('|')[0])).size === B.length);
+  check('banque : quatre réponses distinctes', B.every(e => {
+    const p = e.split('|');
+    return new Set([p[1], p[2], p[3], p[4]].map(x => x.toLowerCase())).size === 4 && p.slice(1, 5).every(x => x.trim());
+  }));
+  check('banque : apostrophes typographiques (aucune apostrophe droite)', B.every(e => e.indexOf("'") === -1));
+  const niv = [1, 2, 3].map(n => B.filter(e => e.split('|')[6][0] === String(n)).length);
+  check('trois niveaux : au moins 10 % de questions difficiles', niv[2] >= B.length * 0.1 && niv[0] > 0 && niv[1] > 0, niv);
+  const rec = B.filter(e => /r$/.test(e.split('|')[6])).length;
+  check('au moins 150 questions récentes (depuis 2016)', rec >= 150, rec);
+  const jamel = B.find(e => /Jamel Debbouze/.test(e) && /série H/.test(e));
+  check('la série H : Jamel Debbouze est le standardiste', jamel && jamel.split('|')[1] === 'Un standardiste', jamel);
+
+  let g = quiz.create(['A', 'B', 'C']);
+  check('phase de réglages', g.phase === 'setup');
+  check('réglages réservés à l’hôte', !quiz.apply(g, 1, { t: 'go', opts: { th: 'melange' } }).ok);
+  check('réponse avant le lancement refusée', !quiz.apply(g, 0, { t: 'answer', i: 0 }).ok);
+  check('thème inconnu refusé', !quiz.apply(g, 0, { t: 'go', opts: { th: 'bidule' } }).ok);
+  check('nombre de questions invalide refusé', !quiz.apply(g, 0, { t: 'go', opts: { nb: 7 } }).ok);
+  check('chrono invalide refusé', !quiz.apply(g, 0, { t: 'go', opts: { chrono: 15 } }).ok);
+  let res = quiz.apply(g, 0, { t: 'go', opts: { th: 'melange', diff: 'progressif', nb: 10, chrono: 20 } });
+  check('lancement : 10 questions et un chrono de 20 s (échéance dans l’état)',
+    res.ok && g.qs.length === 10 && g.phase === 'question' && g.ech && g.ech.fin - g.debut === 20000 &&
+    res.timer && res.timer.action.t === 'expire' && res.timer.ms >= 20000, [res, g.ech]);
+  check('difficulté progressive : du facile au difficile',
+    g.qs[0].niv === 1 && g.qs[9].niv === 3 && g.qs.every((q, k) => k === 0 || q.niv >= g.qs[k - 1].niv), g.qs.map(q => q.niv).join(''));
+  check('la bonne réponse est bien indexée', g.qs.every(q => {
+    const src = B.find(e => e.split('|')[0] === q.q);
+    return src && q.choices[q.correct] === src.split('|')[1] && q.choices.length === 4;
+  }));
+  // B juste en 5 s, A faux, C juste en 10 s
+  const c0 = g.qs[0].correct;
+  g.debut = Date.now() - 5000;
+  quiz.apply(g, 1, { t: 'answer', i: c0 });
+  check('re-réponse refusée', !quiz.apply(g, 1, { t: 'answer', i: (c0 + 1) % 4 }).ok);
+  let red = quiz.redact(g, 0);
+  check('réseau : bonnes réponses masquées', red.qs.every(q => q.correct === undefined));
+  check('réseau : les questions à venir ne circulent pas', red.qs[5].q === undefined && red.qs[0].q === g.qs[0].q);
+  check('réseau : réponse d’autrui masquée, drapeau visible',
+    typeof red.players[1].answer !== 'number' && red.players[1].hasAnswered === true && red.players[0].hasAnswered === false);
+  red = quiz.redact(g, 1);
+  check('compteur d’attente juste (bug « 4/4 ») : 1 réponse sur 3',
+    red.players.filter(p => p.hasAnswered).length === 1 && red.players[1].answer === c0);
+  check('aucun point avant la révélation', g.players[1].score === 0);
+  quiz.apply(g, 0, { t: 'answer', i: (c0 + 1) % 4 });
+  g.debut = Date.now() - 10000;
+  quiz.apply(g, 2, { t: 'answer', i: c0 });
+  check('révélation dès la dernière réponse', g.phase === 'reveal' && g.reveal.correct === c0 && g.ech === null);
+  check('points dégressifs : 875 en 5 s, 750 en 10 s, 0 si faux',
+    g.players[1].score === 875 && g.players[2].score === 750 && g.players[0].score === 0, g.players.map(p => p.score));
+  check('le plus rapide est désigné', g.reveal.premier === 1);
+  check('réponse tardive refusée', !quiz.apply(g, 0, { t: 'answer', i: c0 }).ok);
+  check('révélation visible sur le réseau', quiz.redact(g, 2).reveal.correct === c0);
+  check('seul l’hôte enchaîne', !quiz.apply(g, 1, { t: 'next', k: 0 }).ok);
+  res = quiz.apply(g, 0, { t: 'next', k: 0 });
+  check('question suivante : réponses remises à zéro, nouveau chrono',
+    g.idx === 1 && g.phase === 'question' && g.players.every(p => p.answer === -1) && res.timer, g.idx);
+  check('double appui sur « suivant » sans effet', quiz.apply(g, 0, { t: 'next', k: 0 }).ok && g.idx === 1 && g.phase === 'question');
+  // série : B et C répondent juste immédiatement → bonus de série
+  const c1 = g.qs[1].correct;
+  g.debut = Date.now();
+  quiz.apply(g, 1, { t: 'answer', i: c1 });
+  quiz.apply(g, 2, { t: 'answer', i: (c1 + 1) % 4 });
+  // A absent : le chrono tranche
+  check('fin de chrono prématurée ignorée', quiz.apply(g, -1, { t: 'expire', k: g.ech.k }).ok && g.phase === 'question');
+  check('fin de chrono périmée ignorée', quiz.apply(g, -1, { t: 'expire', k: 'q0:0' }).ok && g.phase === 'question');
+  g.ech.fin = Date.now() - 10;
+  quiz.apply(g, -1, { t: 'expire', k: g.ech.k });
+  check('chrono écoulé : on révèle sans l’absent (bug de l’absent)', g.phase === 'reveal' && g.reveal.pourquoi === 'temps');
+  check('série : 2 bonnes réponses d’affilée = +100 de bonus', g.reveal.gains[1] >= 1000 && g.players[1].serie === 2, g.reveal.gains);
+  check('série cassée par une erreur', g.players[2].serie === 0);
+  quiz.apply(g, 0, { t: 'next', k: 1 });
+  // l'hôte passe sans attendre
+  quiz.apply(g, 1, { t: 'answer', i: 0 });
+  check('« ne plus attendre » : réservé à l’hôte', !quiz.apply(g, 1, { t: 'skip', k: g.ech.k }).ok);
+  check('« ne plus attendre » : l’hôte révèle', quiz.apply(g, 0, { t: 'skip', k: g.ech.k }).ok && g.phase === 'reveal');
+  // le robot ne répond jamais plus vite que la réalité
+  quiz.apply(g, 0, { t: 'next', k: 2 });
+  g.debut = Date.now() - 4000;
+  quiz.apply(g, 1, { t: 'answer', i: 0, dt: 0 });
+  check('temps de réponse jamais inférieur au temps réel', g.players[1].t >= 4000, g.players[1].t);
+  // partie jusqu'au bout
+  while (!g.finished) {
+    if (g.phase === 'question') { g.players.forEach((p, i) => { if (p.answer === -1) quiz.apply(g, i, { t: 'answer', i: g.qs[g.idx].correct }); }); }
+    if (g.phase === 'reveal') quiz.apply(g, 0, { t: 'next', k: g.idx });
   }
-});
-check('thèmes cohérents (tirage 10 questions par thème fourni)', true);
-// on termine la partie
-for (let qn = g.idx; qn < g.qs.length; qn++) {
-  for (let pl = 0; pl < 3; pl++) quiz.apply(g, pl, { t: 'answer', i: g.qs[qn].correct });
-  quiz.apply(g, 0, { t: 'next' });
+  check('partie finie après la 10e question', g.finished === true && quiz.over(g));
+  check('podium et classement', /🥇/.test(quiz.summary(g)) && /🏆/.test(quiz.summary(g)));
+  const top = Math.max(...g.players.map(p => p.score));
+  const gg = quiz.gagnants(g);
+  check('gagnants : le meilleur score (ou [] si égalité)',
+    Array.isArray(gg) && (gg.length === 0 || g.players[gg[0]].score === top), gg);
+
+  // ----- mode animateur : un téléphone, aucun passage -----
+  let a = quiz.create(['Léa', 'Marc', 'Nina']);
+  res = quiz.apply(a, 0, { t: 'go', opts: { th: 'cinema', mode: 'animateur', chrono: 0 } });
+  check('animateur : lancé sans chrono', res.ok && !res.timer && a.ech === null && a.opts.mode === 'animateur');
+  check('animateur : l’écran reste chez l’animateur (aucun passage)', quiz.viewerOf(a) === 0);
+  check('animateur : seul l’animateur note', !quiz.apply(a, 1, { t: 'answer', i: 0, pour: 1 }).ok);
+  const ca = a.qs[0].correct;
+  quiz.apply(a, 0, { t: 'answer', i: ca, pour: 0 });
+  quiz.apply(a, 0, { t: 'answer', i: ca, pour: 1 });
+  quiz.apply(a, 0, { t: 'answer', i: (ca + 1) % 4, pour: 2 });
+  quiz.apply(a, 0, { t: 'answer', i: (ca + 1) % 4, pour: 2 });   // retouché : effacé
+  check('animateur : retoucher une forme efface la réponse', a.players[2].answer === -1);
+  quiz.apply(a, 0, { t: 'answer', i: (ca + 2) % 4, pour: 2 });
+  check('animateur : pas de révélation automatique (on peut corriger)', a.phase === 'question' && quiz.viewerOf(a) === 0);
+  check('animateur : les réponses notées restent visibles', quiz.redact(a, 0).players[1].answer === ca);
+  quiz.apply(a, 0, { t: 'skip' });
+  check('animateur : révélation, 1 000 points par bonne réponse',
+    a.phase === 'reveal' && a.players[0].score === 1000 && a.players[1].score === 1000 && a.players[2].score === 0, a.players.map(p => p.score));
+  check('animateur : les robots ne jouent pas', quiz.bot(JSON.parse(JSON.stringify(a)), 1) === null);
+
+  // ----- chacun son tour : réponses secrètes -----
+  let h = quiz.create(['A', 'B', 'C']);
+  quiz.apply(h, 0, { t: 'go', opts: { mode: 'secret', chrono: 20 } });
+  check('chacun son tour : sans chrono', h.opts.chrono === 0 && h.ech === null);
+  quiz.apply(h, 0, { t: 'answer', i: 0 });
+  check('chacun son tour : l’écran passe au suivant', quiz.viewerOf(h) === 1);
+  quiz.apply(h, 1, { t: 'answer', i: 1 });
+  quiz.apply(h, 2, { t: 'answer', i: 2 });
+  check('chacun son tour : la révélation reste chez le dernier (pas de passage inutile)',
+    h.phase === 'reveal' && quiz.viewerOf(h) === 2);
+  check('chacun son tour : le dernier peut enchaîner', quiz.apply(h, 2, { t: 'next', k: 0 }).ok && h.idx === 1);
+  check('chacun son tour : l’ordre tourne', quiz.viewerOf(h) === 1);
+
+  // ----- solo -----
+  let s1 = quiz.create(['Solo']);
+  quiz.apply(s1, 0, { t: 'go', opts: { mode: 'animateur' } });
+  check('seul : toujours au chrono', s1.opts.mode === 'chrono' && s1.ech);
+  s1.players[0].bons = 6; s1.qs.length = 10;
+  check('solo : gagné à 5 bonnes réponses sur 10 ou plus', JSON.stringify(quiz.gagnants(s1)) === '[0]');
+  s1.players[0].bons = 3;
+  check('solo : perdu en dessous', quiz.gagnants(s1) === null);
+  check('égalité : aucun gagnant', JSON.stringify(quiz.gagnants({ players: [{ score: 5 }, { score: 5 }], qs: [] })) === '[]');
+
+  // ----- niveaux de l'ordinateur : mesure -----
+  const mesure = {};
+  ['facile', 'moyen', 'difficile'].forEach(nv => {
+    let pts = 0, justes = 0, nq = 0;
+    for (let k = 0; k < 40; k++) {
+      const st = quiz.create(['🤖 x', '🤖 y']);
+      quiz.apply(st, 0, { t: 'go', opts: { nb: 10, diff: 'moyen' } });
+      while (!st.finished) {
+        if (st.phase === 'question') {
+          for (let i = 0; i < 2; i++) { const ac = quiz.bot(JSON.parse(JSON.stringify(st)), i, { niveau: nv }); if (ac) quiz.apply(st, i, ac); }
+        } else quiz.apply(st, 0, { t: 'next', k: st.idx });
+      }
+      st.players.forEach(p => { pts += p.score; justes += p.bons; nq += 10; });
+    }
+    mesure[nv] = { pts: Math.round(pts / nq), justes: Math.round(100 * justes / nq) };
+  });
+  console.log('    ordinateur (points par question, % juste) : ' + JSON.stringify(mesure));
+  check('niveaux de l’ordinateur réellement différents',
+    mesure.facile.pts < mesure.moyen.pts && mesure.moyen.pts < mesure.difficile.pts, mesure);
+  check('« difficile » fait transpirer : plus de 80 % de bonnes réponses, plus de 800 points par question',
+    mesure.difficile.justes >= 80 && mesure.difficile.pts >= 800, mesure.difficile);
+
+  // ----- une partie reprise d'une ancienne version -----
+  const vieux = { players: [{ name: 'A', score: 10, answer: -1 }, { name: 'B', score: 0, answer: -1 }],
+    qs: [{ q: 'x', choices: ['a', 'b', 'c', 'd'], correct: 0 }, { q: 'y', choices: ['a', 'b', 'c', 'd'], correct: 1 }],
+    theme: 'melange', idx: 0, phase: 'reveal', order: [], reveal: { correct: 0, first: -1, answers: [0, 1] }, gameTs: 1, finished: false };
+  check('reprise d’une partie V1 : elle continue', quiz.apply(vieux, 0, { t: 'next' }).ok && vieux.idx === 1 && vieux.phase === 'question');
 }
-check('partie finie après la 10e question', g.finished === true && quiz.over(g));
-check('classement affiché', /🏆/.test(quiz.summary(g)));
 
 /* ================= LE PLUS PROCHE ================= */
 console.log('--- Le Plus Proche ---');
-check('banque : au moins 80 questions', proche._BANK.length >= 80, proche._BANK.length);
-check('banque : nombres entiers valides', proche._BANK.every(e => {
-  const p = e.split('|');
-  return p.length === 3 && /^\d+$/.test(p[1]);
-}));
-check('banque : pas de doublon',
-  new Set(proche._BANK.map(e => e.split('|')[0])).size === proche._BANK.length);
-g = proche.create(['A', 'B']);
-check('8 manches tirées', g.qs.length === 8, g.qs.length);
-const a0 = g.qs[0].a;
-check('estimation invalide refusée', !proche.apply(g, 0, { t: 'guess', n: 'abc' }).ok);
-proche.apply(g, 0, { t: 'guess', n: String(a0) });      // exact
-red = proche.redact(g, 1);
-check('réponses masquées pendant la manche',
-  red.qs.every(q => q.a === undefined) && red.players[0].guess === undefined &&
-  red.players[0].hasGuessed === true);
-proche.apply(g, 1, { t: 'guess', n: String(a0 + 10) }); // à 10
-check('révélation : exact +5, l’autre 0',
-  g.phase === 'reveal' && g.players[0].score === 5 && g.players[1].score === 0 &&
-  g.reveal.exact === true && g.reveal.winners.join() === '0');
-proche.apply(g, 0, { t: 'next' });
-// égalité : mêmes distances
-const a1 = g.qs[1].a;
-// écart symétrique toujours valide, même quand la réponse est petite
-const ec = a1 > 5 ? 5 : 1;
-if (a1 - ec >= 0) {
-  proche.apply(g, 0, { t: 'guess', n: String(a1 + ec) });
-  proche.apply(g, 1, { t: 'guess', n: String(a1 - ec) });
-  check('égalité : +3 chacun', g.players[0].score === 8 && g.players[1].score === 3,
-    [a1, g.players.map(p => p.score)]);
-} else {
-  proche.apply(g, 0, { t: 'guess', n: String(a1 + 1) });
-  proche.apply(g, 1, { t: 'guess', n: String(a1 + 3) });
-  check('égalité : +3 chacun', true); // réponse 0 : pas d'égalité possible, cas ignoré
+{
+  const B = proche._BANK;
+  check('banque : au moins 150 questions', B.length >= 150, B.length);
+  check('banque : réponse entière, unité, source et catégorie partout', B.every(e => {
+    const p = e.split('|');
+    return p.length === 5 && /^\d+$/.test(p[1]) && p[2] && p[3].length >= 3 && proche._CATEGORIES[p[4]];
+  }), B.find(e => { const p = e.split('|'); return p.length !== 5 || !/^\d+$/.test(p[1]); }));
+  check('banque : pas de doublon', new Set(B.map(e => e.split('|')[0])).size === B.length);
+  let g = proche.create(['A', 'B', 'C']);
+  check('phase de réglages', g.phase === 'setup');
+  check('réglages réservés à l’hôte', !proche.apply(g, 1, { t: 'go', opts: {} }).ok);
+  check('estimation avant le lancement refusée', !proche.apply(g, 0, { t: 'guess', n: '5' }).ok);
+  check('nombre de manches invalide refusé', !proche.apply(g, 0, { t: 'go', opts: { nb: 7 } }).ok);
+  let res = proche.apply(g, 0, { t: 'go', opts: { nb: 8, chrono: 45 } });
+  check('lancement : 8 manches, chrono de 45 s (échéance dans l’état)',
+    res.ok && g.qs.length === 8 && g.phase === 'guess' && g.ech.fin - g.debut === 45000 && res.timer && res.timer.action.t === 'expire');
+  check('tirage varié : jamais deux fois la même catégorie d’affilée, au plus une date',
+    g.qs.every((q, k) => k === 0 || q.cat !== g.qs[k - 1].cat) && g.qs.filter(q => q.unit === 'année').length <= 1,
+    g.qs.map(q => q.cat).join(' '));
+  // question connue pour mesurer les points
+  g.qs[0] = { q: 'Test', a: 1000, unit: 'm', src: 'Source test', cat: 'geo' };
+  check('estimation invalide refusée', !proche.apply(g, 0, { t: 'guess', n: 'abc' }).ok && !proche.apply(g, 0, { t: 'guess', n: '-5' }).ok);
+  check('espaces et points de milliers acceptés', proche._lireNombre('1 000') === 1000 && proche._lireNombre('2.500') === 2500);
+  proche.apply(g, 0, { t: 'guess', n: '1000' });
+  check('estimation déjà donnée refusée', !proche.apply(g, 0, { t: 'guess', n: '5' }).ok);
+  let red = proche.redact(g, 1);
+  check('réseau : réponse et source masquées pendant la manche', red.qs[0].a === undefined && red.qs[0].src === undefined);
+  check('réseau : manches à venir masquées', red.qs[3].q === undefined);
+  check('réseau : estimations d’autrui masquées, drapeau visible', red.players[0].guess === null && red.players[0].hasGuessed === true);
+  check('compteur d’attente juste : 1 estimation sur 3', red.players.filter(p => p.hasGuessed).length === 1);
+  proche.apply(g, 1, { t: 'guess', n: '1500' });
+  g.debut -= 1000;
+  proche.apply(g, 2, { t: 'guess', n: '2500' });
+  check('révélation dès la dernière estimation', g.phase === 'reveal' && g.reveal.answer === 1000 && g.reveal.src === 'Source test');
+  check('points selon la distance : exact 100 + 30 + 50, à mi-chemin 50, au-delà du double 0',
+    g.players[0].score === 180 && g.players[1].score === 50 && g.players[2].score === 0, g.players.map(p => p.score));
+  check('la réponse circule après la révélation', proche.redact(g, 2).qs[0].a === 1000);
+  check('dates : 25 ans d’écart = 50 points', proche._points(1842, { a: 1817, unit: 'année' }) === 50 &&
+    proche._points(1900, { a: 1817, unit: 'année' }) === 0);
+  check('seul l’hôte enchaîne', !proche.apply(g, 1, { t: 'next', k: 0 }).ok);
+  res = proche.apply(g, 0, { t: 'next', k: 0 });
+  check('manche suivante, estimations remises à zéro', res.ok && g.idx === 1 && g.players.every(p => p.guess === null) && res.timer);
+  check('double appui sur « suivant » sans effet', proche.apply(g, 0, { t: 'next', k: 0 }).ok && g.idx === 1);
+  // un absent : le chrono tranche
+  proche.apply(g, 0, { t: 'guess', n: String(g.qs[1].a) });
+  check('fin de chrono prématurée ignorée', proche.apply(g, -1, { t: 'expire', k: g.ech.k }).ok && g.phase === 'guess');
+  g.ech.fin = Date.now() - 10;
+  proche.apply(g, -1, { t: 'expire', k: g.ech.k });
+  check('chrono écoulé : on révèle sans les absents (0 point)', g.phase === 'reveal' && g.reveal.gains[1] === 0 && g.reveal.gains[0] >= 180);
+  proche.apply(g, 0, { t: 'next', k: 1 });
+  proche.apply(g, 1, { t: 'guess', n: '3' });
+  check('« ne plus attendre » réservé à l’hôte', !proche.apply(g, 1, { t: 'skip', k: g.ech.k }).ok);
+  check('« ne plus attendre » : l’hôte révèle', proche.apply(g, 0, { t: 'skip', k: g.ech.k }).ok && g.phase === 'reveal');
+  while (!g.finished) {
+    if (g.phase === 'guess') g.players.forEach((p, i) => { if (p.guess === null) proche.apply(g, i, { t: 'guess', n: String(g.qs[g.idx].a + i) }); });
+    else proche.apply(g, 0, { t: 'next', k: g.idx });
+  }
+  check('partie finie après 8 manches', g.finished === true && proche.over(g));
+  check('podium final', /🥇/.test(proche.summary(g)) && /🏆/.test(proche.summary(g)));
+  const gg2 = proche.gagnants(g);
+  check('gagnants : le meilleur score', Array.isArray(gg2) && (gg2.length === 0 || g.players[gg2[0]].score === Math.max(...g.players.map(p => p.score))));
+
+  // ----- un seul téléphone : on se le passe -----
+  let h = proche.create(['A', 'B', 'C']);
+  proche.apply(h, 0, { t: 'go', opts: { mode: 'secret', chrono: 45 } });
+  check('un téléphone : pas de chrono', h.opts.chrono === 0 && h.ech === null);
+  proche.apply(h, 0, { t: 'guess', n: '10' });
+  check('un téléphone : l’écran passe au suivant', proche.viewerOf(h) === 1);
+  proche.apply(h, 1, { t: 'guess', n: '20' });
+  proche.apply(h, 2, { t: 'guess', n: '30' });
+  check('un téléphone : la révélation reste chez le dernier', h.phase === 'reveal' && proche.viewerOf(h) === 2);
+  check('un téléphone : le dernier peut enchaîner', proche.apply(h, 2, { t: 'next', k: 0 }).ok && h.idx === 1);
+
+  // ----- niveaux de l'ordinateur -----
+  const mes = {};
+  ['facile', 'moyen', 'difficile'].forEach(nv => {
+    let pts = 0, n = 0;
+    for (let k = 0; k < 60; k++) {
+      const st = proche.create(['🤖 x', '🤖 y']);
+      proche.apply(st, 0, { t: 'go', opts: { nb: 10 } });
+      while (!st.finished) {
+        if (st.phase === 'guess') { for (let i = 0; i < 2; i++) { const a = proche.bot(JSON.parse(JSON.stringify(st)), i, { niveau: nv }); if (a) proche.apply(st, i, a); } }
+        else proche.apply(st, 0, { t: 'next', k: st.idx });
+      }
+      st.players.forEach(p => { pts += p.score; n += 10; });
+    }
+    mes[nv] = Math.round(pts / n);
+  });
+  console.log('    ordinateur (points par manche) : ' + JSON.stringify(mes));
+  check('niveaux de l’ordinateur réellement différents', mes.facile < mes.moyen && mes.moyen < mes.difficile, mes);
+
+  // ----- reprise d'une partie V1 -----
+  const v1 = { players: [{ name: 'A', score: 3, guess: null }, { name: 'B', score: 0, guess: null }],
+    qs: [{ q: 'x', a: 10, unit: 'm' }, { q: 'y', a: 20, unit: 'm' }], idx: 0, phase: 'guess', reveal: null, finished: false };
+  proche.apply(v1, 0, { t: 'guess', n: '10' });
+  proche.apply(v1, 1, { t: 'guess', n: '12' });
+  check('reprise d’une partie V1 : elle continue', v1.phase === 'reveal' && proche.apply(v1, 0, { t: 'next' }).ok && v1.idx === 1);
 }
-for (let m = g.idx; m < g.qs.length; m++) {
-  if (g.phase === 'reveal') proche.apply(g, 0, { t: 'next' });
-  if (g.finished) break;
-  proche.apply(g, 0, { t: 'guess', n: '1' });
-  proche.apply(g, 1, { t: 'guess', n: '2' });
-}
-if (g.phase === 'reveal') proche.apply(g, 0, { t: 'next' });
-check('partie finie après 8 manches', g.finished === true);
 
 /* ================= 8 AMÉRICAIN ================= */
 console.log('--- 8 américain ---');
@@ -640,6 +804,29 @@ console.log('--- Discussion ---');
   check('la conversation garde les 500 derniers messages',
     c.messages.length === 500 && c.messages[499].txt === 'm599');
   check('pas de fuite : aucune censure nécessaire (tout est public)', !chat.redact);
+  // V2 : identifiants, réactions (liste blanche), « en train d'écrire »
+  const d = chat.create(['Léa', 'Marc']);
+  chat.apply(d, 0, { t: 'msg', txt: 'Salut' });
+  chat.apply(d, 1, { t: 'msg', txt: 'Yo' });
+  check('chaque message a un identifiant unique', d.messages[0].id === 1 && d.messages[1].id === 2);
+  check('réaction acceptée', chat.apply(d, 1, { t: 'react', id: 1, e: '❤️' }).ok && d.messages[0].re['❤️'].join() === '1');
+  chat.apply(d, 0, { t: 'react', id: 1, e: '❤️' });
+  check('réactions cumulées', d.messages[0].re['❤️'].length === 2);
+  chat.apply(d, 1, { t: 'react', id: 1, e: '❤️' });
+  check('second appui : la réaction est retirée', d.messages[0].re['❤️'].join() === '0');
+  check('réaction hors liste refusée (sécurité)', !chat.apply(d, 0, { t: 'react', id: 1, e: '<img src=x onerror=alert(1)>' }).ok &&
+    !chat.apply(d, 0, { t: 'react', id: 1, e: 'constructor' }).ok);
+  check('réaction sur un message inconnu refusée', !chat.apply(d, 0, { t: 'react', id: 99, e: '👍' }).ok);
+  check('« en train d’écrire » signalé', chat.apply(d, 1, { t: 'typing', on: true }).ok && d.typing[1] === 1);
+  chat.apply(d, 1, { t: 'typing', on: true });
+  check('chaque frappe signalée change le compteur', d.typing[1] === 2);
+  chat.apply(d, 1, { t: 'msg', txt: 'fini' });
+  check('envoyer efface « en train d’écrire »', d.typing[1] === undefined);
+  chat.apply(d, 0, { t: 'typing', on: true });
+  chat.apply(d, 0, { t: 'typing', on: false });
+  check('arrêt de frappe', d.typing[0] === undefined);
+  check('un salon ancien (sans identifiants) accepte les nouveaux messages',
+    chat.apply({ players: [{ name: 'A' }], messages: [{ p: 0, txt: 'x', h: '10:00' }] }, 0, { t: 'msg', txt: 'y' }).ok);
 }
 
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests nouveaux jeux OK.');
