@@ -799,6 +799,29 @@ console.log('--- Discussion ---');
   check('la conversation garde les 500 derniers messages',
     c.messages.length === 500 && c.messages[499].txt === 'm599');
   check('pas de fuite : aucune censure nécessaire (tout est public)', !chat.redact);
+  // V2 : identifiants, réactions (liste blanche), « en train d'écrire »
+  const d = chat.create(['Léa', 'Marc']);
+  chat.apply(d, 0, { t: 'msg', txt: 'Salut' });
+  chat.apply(d, 1, { t: 'msg', txt: 'Yo' });
+  check('chaque message a un identifiant unique', d.messages[0].id === 1 && d.messages[1].id === 2);
+  check('réaction acceptée', chat.apply(d, 1, { t: 'react', id: 1, e: '❤️' }).ok && d.messages[0].re['❤️'].join() === '1');
+  chat.apply(d, 0, { t: 'react', id: 1, e: '❤️' });
+  check('réactions cumulées', d.messages[0].re['❤️'].length === 2);
+  chat.apply(d, 1, { t: 'react', id: 1, e: '❤️' });
+  check('second appui : la réaction est retirée', d.messages[0].re['❤️'].join() === '0');
+  check('réaction hors liste refusée (sécurité)', !chat.apply(d, 0, { t: 'react', id: 1, e: '<img src=x onerror=alert(1)>' }).ok &&
+    !chat.apply(d, 0, { t: 'react', id: 1, e: 'constructor' }).ok);
+  check('réaction sur un message inconnu refusée', !chat.apply(d, 0, { t: 'react', id: 99, e: '👍' }).ok);
+  check('« en train d’écrire » signalé', chat.apply(d, 1, { t: 'typing', on: true }).ok && d.typing[1] === 1);
+  chat.apply(d, 1, { t: 'typing', on: true });
+  check('chaque frappe signalée change le compteur', d.typing[1] === 2);
+  chat.apply(d, 1, { t: 'msg', txt: 'fini' });
+  check('envoyer efface « en train d’écrire »', d.typing[1] === undefined);
+  chat.apply(d, 0, { t: 'typing', on: true });
+  chat.apply(d, 0, { t: 'typing', on: false });
+  check('arrêt de frappe', d.typing[0] === undefined);
+  check('un salon ancien (sans identifiants) accepte les nouveaux messages',
+    chat.apply({ players: [{ name: 'A' }], messages: [{ p: 0, txt: 'x', h: '10:00' }] }, 0, { t: 'msg', txt: 'y' }).ok);
 }
 
 console.log(failures ? failures + ' ÉCHEC(S)' : '\nTests nouveaux jeux OK.');
