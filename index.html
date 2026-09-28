@@ -446,7 +446,7 @@
     <!-- le plateau : un objet posé sur la table (cadre, relief) ; il défile
          quand on zoome pour poser ses lettres du bout du doigt -->
     <div id="board-wrap">
-      <div id="board-scroll"><div id="board"></div></div>
+      <div id="board-scroll"><div id="board-zoom"><div id="board"></div></div></div>
       <div id="ia-pense" class="hidden" aria-live="polite"><span class="ip-ic">🤖</span>
         <span class="ip-tx">réfléchit</span><span class="ip-pts"><i></i><i></i><i></i></span></div>
     </div>
@@ -475,7 +475,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg><span>Valider</span></button>
     </div>
     <div id="exchange-bar" class="hidden">
-      <span class="eb-tx">Touchez les lettres à rendre au sac</span>
+      <span class="eb-tx">⇄ Lettres à rendre au sac</span>
       <button class="btn small" id="btn-exchange-cancel">Annuler</button>
       <button class="btn small primary" id="btn-exchange-ok">Échanger (0)</button>
     </div>

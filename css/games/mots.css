@@ -58,7 +58,9 @@
 
 /* ===== le plateau ===== */
 #board-wrap {
-  position: relative; width: 100%; aspect-ratio: 1; padding: 6px; border-radius: 20px;
+  position: relative; width: 100%; aspect-ratio: 1; padding: 6px; border-radius: 20px; margin: 0 auto;
+  /* écran couché ou très bas : le plateau se limite à la hauteur disponible */
+  max-width: max(300px, calc(100vh - 290px)); max-width: max(300px, calc(100dvh - 290px));
   background: linear-gradient(150deg, #ffc86a 0%, #ff9a4d 40%, #ff5e62 100%);
   box-shadow: 0 5px 0 #a3344b, 0 18px 38px rgba(0, 0, 0, .55),
     inset 0 2px 0 rgba(255, 255, 255, .55), inset 0 -2px 0 rgba(120, 20, 40, .35);
@@ -70,9 +72,10 @@
 }
 #board-scroll::-webkit-scrollbar { display: none; }
 #board-scroll.zoom { overflow: auto; touch-action: pan-x pan-y; }
+#board-zoom { position: relative; width: 100%; height: 100%; }
 #board {
   position: relative; display: grid; grid-template-columns: repeat(15, 1fr); grid-auto-rows: 1fr;
-  gap: 2px; padding: 2px; width: 100%; height: 100%;
+  gap: 2px; padding: 2px; width: 100%; height: 100%; transform-origin: 0 0;
   user-select: none; -webkit-user-select: none;
 }
 #board .cell {
@@ -101,7 +104,7 @@
 #board .cell.cible-ko { box-shadow: inset 0 0 0 2px var(--rouge); }
 
 /* tuiles d'ivoire biseautées, posées sur le plateau */
-#board .tile, .mots-vol .tile {
+#board .tile, .mots-vol .tile, .mots-fantome .tile {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   border-radius: 18%; font-family: var(--f-titre); font-weight: 600; line-height: 1;
   font-size: calc(var(--c) * .64); color: #3a2710; z-index: 1;
@@ -109,11 +112,11 @@
   box-shadow: inset 0 calc(var(--c) * -.08) 0 rgba(166, 118, 45, .6), inset 0 1px 0 #fff,
     0 1px 2px rgba(0, 0, 0, .55);
 }
-#board .tile .val, .mots-vol .tile .val {
+#board .tile .val, .mots-vol .tile .val, .mots-fantome .tile .val {
   position: absolute; right: 8%; bottom: 5%; font-family: var(--f-texte); font-weight: 900;
   font-size: calc(var(--c) * .27); color: #6b4a1f;
 }
-#board .tile.blank, .mots-vol .tile.blank { color: #c2410c; }
+#board .tile.blank, .mots-vol .tile.blank, .mots-fantome .tile.blank { color: #c2410c; }
 #board .tile.blank::after {
   content: ''; position: absolute; left: 12%; top: 12%; width: 14%; height: 14%;
   border-radius: 50%; background: rgba(194, 65, 12, .5);
@@ -298,6 +301,7 @@
   box-shadow: inset 0 -4px 0 rgba(166, 118, 45, .65), 0 14px 22px rgba(0, 0, 0, .5);
 }
 #screen-game .rack-tile.vers-plateau { opacity: .25; }
+#screen-game .rack-tile.a-venir { opacity: 0; }
 #screen-game .rack-tile.nouvelle { animation: motsArrive .45s var(--ressort) both; animation-delay: var(--d, 0ms); }
 @keyframes motsArrive { from { transform: translateY(-40px) scale(.6); opacity: 0; } }
 #rack.attention .rack-tile { animation: motsAttention .5s ease-in-out; }
@@ -382,11 +386,13 @@
 #end-detail .fin-stats h3 { margin: 6px 0 8px; font-size: 16px; color: var(--txt); text-align: center; }
 #end-detail .fs-grille { display: grid; gap: 6px; }
 #end-detail .fs-carte {
-  padding: 9px 11px; border-radius: 14px; background: var(--glass); border: 1px solid var(--stroke);
-  font-size: 13.5px; line-height: 1.45;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px;
+  padding: 8px 11px; border-radius: 14px; background: var(--glass); border: 1px solid var(--stroke);
+  font-size: 13.5px; line-height: 1.4;
 }
 #end-detail .fs-carte b { color: var(--txt); }
-#end-detail .fs-carte .fs-nom { display: block; font-family: var(--f-titre); font-size: 15px; color: var(--txt); margin-bottom: 2px; }
+#end-detail .fs-carte .fs-nom { flex-basis: 100%; font-family: var(--f-titre); font-size: 15px; color: var(--txt); }
+#end-detail .fs-carte .fs-l { white-space: nowrap; }
 
 /* ===== options de partie (écrans de configuration) ===== */
 #ai-level { display: grid; grid-template-columns: 1fr 1fr; }

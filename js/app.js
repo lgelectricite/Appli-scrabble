@@ -197,6 +197,7 @@
   var dernierTap = { idx: -1, t: 0 };
   var astuce = null;          // {ic, texte, fin} — petit conseil passager
   var marquePose = -1;        // case dont la tuile vient d'être posée (petite animation)
+  var zoomDoigt = null;       // dernier point touché sur le plateau (le zoom se fait autour)
 
   /* Peut-on jouer maintenant (en plus des règles de canAct) ? */
   function peutJouer() { return canAct() && !tirageEnCours; }
@@ -238,19 +239,44 @@
     }
   }
 
+  /* Taille d'une case du plateau « au repos » (le zoom est une simple mise
+     à l'échelle : pas de nouvelle mise en page, rien ne saccade). */
+  var zoomK = 1;
   function majTailleCase() {
-    var b = $('board');
-    if (!b) return;
-    var w = b.clientWidth;
+    var sc = $('board-scroll'), b = $('board');
+    if (!sc || !b) return;
+    var w = sc.clientWidth;
     if (!w) return;
     var c = Math.max(14, (w - 4 - 28) / 15);
     $('screen-game').style.setProperty('--c', c.toFixed(1) + 'px');
+    if (zoom) appliqueZoom();
+  }
+
+  /* Taille et échelle du plateau zoomé (cases d'au moins 44 px). */
+  function appliqueZoom() {
+    var sc = $('board-scroll'), b = $('board'), z = $('board-zoom');
+    var base = sc.clientWidth;
+    if (!base) return;
+    if (zoom) {
+      zoomK = Math.max(1, (15 * 44 + 14 * 2 + 4) / base);
+      b.style.width = base + 'px';
+      b.style.height = base + 'px';
+      b.style.transform = 'scale(' + zoomK.toFixed(4) + ')';
+      z.style.width = (base * zoomK).toFixed(1) + 'px';
+      z.style.height = (base * zoomK).toFixed(1) + 'px';
+    } else {
+      zoomK = 1;
+      b.style.width = b.style.height = b.style.transform = '';
+      z.style.width = z.style.height = '';
+    }
   }
 
   /* Zoom : le plateau grandit (cases d'au moins 44 px) et défile sous le
-     doigt ; animation « FLIP » (du plateau d'avant vers celui d'après),
-     entièrement sur le compositeur : fluide même sur un petit téléphone. */
-  function setZoom(on, centreIdx) {
+     doigt. Une simple mise à l'échelle animée (« FLIP »), entièrement sur
+     le compositeur : fluide même sur un petit téléphone.
+     centreIdx : case à centrer ; ancre {x, y} : point de l'écran qui reste
+     sous le doigt (on zoome « autour du doigt ») ; sec : sans animation. */
+  function setZoom(on, centreIdx, sec, ancre) {
     var sc = $('board-scroll'), b = $('board');
     if (!sc || !b) return;
     if (on === zoom) {
@@ -258,31 +284,29 @@
       return;
     }
     var avant = b.getBoundingClientRect();
+    var scAvant = sc.getBoundingClientRect();
     zoom = on;
     sc.classList.toggle('zoom', on);
     $('btn-zoom').classList.toggle('zoome', on);
     $('btn-zoom').setAttribute('aria-label', on ? 'Voir tout le plateau' : 'Zoomer sur le plateau');
     $('btn-zoom').title = on ? 'Voir tout le plateau' : 'Zoomer sur le plateau';
-    if (on) {
-      var taille = Math.max(sc.clientWidth + 2, 15 * 44 + 14 * 2 + 4);
-      b.style.width = taille + 'px';
-      b.style.height = taille + 'px';
-    } else {
-      b.style.width = '';
-      b.style.height = '';
-    }
-    majTailleCase();
-    if (on) centrerSur(centreIdx != null ? centreIdx : S.CENTER, false);
+    appliqueZoom();
+    if (on && ancre) {
+      // le point du plateau sous le doigt reste sous le doigt
+      sc.scrollLeft = (ancre.x - avant.left) * zoomK - (ancre.x - scAvant.left);
+      sc.scrollTop = (ancre.y - avant.top) * zoomK - (ancre.y - scAvant.top);
+    } else if (on) centrerSur(centreIdx != null ? centreIdx : S.CENTER, false);
     else { sc.scrollLeft = 0; sc.scrollTop = 0; }
-    if (!reduit() && b.animate) {
+    if (!sec && !reduit() && b.animate) {
       var apres = b.getBoundingClientRect();
-      if (apres.width) {
-        var k = avant.width / apres.width;
+      var base = sc.clientWidth;
+      if (apres.width && base) {
+        var k0 = avant.width / base;
         try {
           b.animate([
             { transformOrigin: '0 0', transform: 'translate(' + (avant.left - apres.left).toFixed(1) + 'px,' +
-              (avant.top - apres.top).toFixed(1) + 'px) scale(' + k.toFixed(4) + ')' },
-            { transformOrigin: '0 0', transform: 'none' }
+              (avant.top - apres.top).toFixed(1) + 'px) scale(' + k0.toFixed(4) + ')' },
+            { transformOrigin: '0 0', transform: 'scale(' + zoomK.toFixed(4) + ')' }
           ], { duration: 300, easing: 'cubic-bezier(.22, 1, .36, 1)' });
         } catch (e) {}
       }
@@ -293,8 +317,8 @@
   function centrerSur(idx, doux) {
     var sc = $('board-scroll'), cell = cells[idx];
     if (!sc || !cell) return;
-    var x = cell.offsetLeft + cell.offsetWidth / 2 - sc.clientWidth / 2;
-    var y = cell.offsetTop + cell.offsetHeight / 2 - sc.clientHeight / 2;
+    var x = (cell.offsetLeft + cell.offsetWidth / 2) * zoomK - sc.clientWidth / 2;
+    var y = (cell.offsetTop + cell.offsetHeight / 2) * zoomK - sc.clientHeight / 2;
     if (doux && sc.scrollTo) {
       try { sc.scrollTo({ left: x, top: y, behavior: 'smooth' }); return; } catch (e) {}
     }
@@ -378,8 +402,15 @@
   }
 
   /* Tuile fantôme qui suit le doigt pendant un glissement vers le plateau. */
+  var fantomeActif = null;
+  function retireFantome() {
+    if (fantomeActif) { fantomeActif.remove(); fantomeActif = null; }
+    marqueCible(-1, false);
+  }
   function creeFantome(letter, blank) {
+    retireFantome();
     var f = document.createElement('div');
+    fantomeActif = f;
     f.className = 'mots-fantome';
     f.setAttribute('aria-hidden', 'true');
     f.innerHTML = tileHtml(letter === S.JOKER ? '★' : letter, blank, false);
@@ -408,6 +439,8 @@
 
   function renderRack() {
     var rackEl = $('rack');
+    // un rendu pendant un glissement (message réseau…) : on nettoie le fantôme
+    if (fantomeActif && fantomeActif.dataset.depuis === 'chevalet') retireFantome();
     rackEl.innerHTML = '';
     if (!state) return;
     var rack = myRack();
@@ -445,6 +478,7 @@
             drag.mode = 'plateau';
             b.classList.add('vers-plateau');
             drag.fantome = creeFantome(letter, false);
+            drag.fantome.dataset.depuis = 'chevalet';
             son('pop', { volume: 0.35 });
           } else if (Math.abs(dx) > 12) {
             drag.mode = 'chevalet';
@@ -457,11 +491,18 @@
           drag.cible = idx;
           marqueCible(idx, caseLibre(idx));
           // survol du plateau non zoomé : il s'agrandit autour du doigt
+          drag.px = e.clientX;
+          drag.py = e.clientY;
           if (idx >= 0 && !zoom) {
             if (!drag.survol) {
               drag.survol = setTimeout(function () {
-                if (drag && drag.mode === 'plateau' && !zoom) setZoom(true, drag.cible >= 0 ? drag.cible : idx);
-              }, 320);
+                if (drag && drag.mode === 'plateau' && !zoom && caseSous(drag.px, drag.py) >= 0) {
+                  setZoom(true, null, false, { x: drag.px, y: drag.py });
+                  drag.cible = caseSous(drag.px, drag.py);
+                  marqueCible(drag.cible, caseLibre(drag.cible));
+                }
+                if (drag) drag.survol = null;
+              }, 380);
             }
           } else if (drag.survol) { clearTimeout(drag.survol); drag.survol = null; }
           return;
@@ -492,10 +533,11 @@
         if (d.survol) clearTimeout(d.survol);
         d.rects.forEach(function (rc) { rc.el.style.transform = ''; });
         b.classList.remove('dragging', 'vers-plateau');
+        if (d.fantome) { if (fantomeActif === d.fantome) fantomeActif = null; d.fantome.remove(); }
         marqueCible(-1, false);
-        if (d.fantome) d.fantome.remove();
         if (annule) return;
         if (d.mode === 'plateau') {
+          zoomDoigt = d.px != null ? { x: d.px, y: d.py } : null;
           if (caseLibre(d.cible) && peutJouer()) poseLettre(pos, d.cible, true);
           else render();
         } else if (d.mode === 'chevalet') moveRackTileTo(pos, d.target);
@@ -513,6 +555,7 @@
     if (!rackEl.childElementCount && !state.over) {
       rackEl.innerHTML = pending.length ? '' : '<span class="rack-vide">Chevalet vide</span>';
     }
+    marquePioche();
   }
 
   /* Glisser une lettre déjà posée (pas encore validée) vers une autre case,
@@ -542,6 +585,7 @@
       if (!g) return; // simple appui : le clic s'en charge
       ignoreClic = true;
       setTimeout(function () { ignoreClic = false; }, 60);
+      if (fantomeActif === g.fantome) fantomeActif = null;
       g.fantome.remove();
       marqueCible(-1, false);
       var cible = ev.type === 'pointercancel' ? idx : caseSous(ev.clientX, ev.clientY);
@@ -859,8 +903,10 @@
     var t = Date.now();
     var double = dernierTap.idx === idx && t - dernierTap.t < 380;
     dernierTap = { idx: idx, t: double ? 0 : t };
+    var doigt = ev.clientX || ev.clientY ? { x: ev.clientX, y: ev.clientY } : null;
+    zoomDoigt = doigt;
     if (!peutJouer() || exchangeMode) {
-      if (double) setZoom(!zoom, idx);
+      if (double) setZoom(!zoom, idx, false, doigt);
       return;
     }
     // Reprendre une lettre en attente
@@ -872,13 +918,13 @@
       return;
     }
     if (state.board[idx]) {
-      if (double) { setZoom(!zoom, idx); return; }
+      if (double) { setZoom(!zoom, idx, false, doigt); return; }
       if (selected !== -1) { indice('⛔', 'Cette case est déjà occupée.'); vibre('warning'); }
       return;
     }
     if (selected === -1) {
       // double appui sur une case vide : zoom ; sinon on guide le joueur
-      if (double) { setZoom(!zoom, idx); return; }
+      if (double) { setZoom(!zoom, idx, false, doigt); return; }
       indice('👆', 'Choisissez d’abord une lettre de votre chevalet, puis touchez la case.');
       var rk = $('rack');
       rk.classList.remove('attention');
@@ -918,7 +964,7 @@
     vibre('light');
     var autoZoom = !zoom && pending.length === 1;
     marquePose = idx;
-    if (autoZoom) setZoom(true, idx);
+    if (autoZoom) setZoom(true, idx, false, zoomDoigt);
     else if (zoom) centrerSiCache(idx);
     render();
     // la tuile vole du chevalet à sa case (quand le plateau ne bouge pas)
@@ -1168,7 +1214,7 @@
     }
     sauvePartie();
     if (mode === 'solo' && state.current === 1) {
-      delaiSuite = setTimeout(aiTurn, Math.min(delai, 900));
+      delaiSuite = setTimeout(aiTurn, Math.min(delai, 1300));
       return;
     }
     if (mode === 'local') {
@@ -1194,8 +1240,9 @@
           if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.text();
         })
-        .then(function (text) {
-          dict = window.AI.buildDict(text);
+        .then(construitDict)
+        .then(function (d) {
+          dict = d;
           // le dictionnaire arrive en cours de partie : l'aperçu donne son verdict
           if (state && currentGame === 'mots' && $('screen-game').classList.contains('active')) render();
           return dict;
@@ -1208,7 +1255,27 @@
     return dictPromise;
   }
 
-  var ia = { worker: null, ok: typeof Worker !== 'undefined', seq: 0, attente: {}, courants: null };
+  /* Le Set des 315 000 mots, construit par morceaux : jamais de longue
+     tâche qui figerait l'écran (l'invité le charge en pleine partie). */
+  function construitDict(text) {
+    return new Promise(function (resolve) {
+      var mots = String(text || '').split('\n');
+      var set = new Set();
+      var i = 0;
+      (function morceau() {
+        var fin = Math.min(mots.length, i + 20000);
+        for (; i < fin; i++) {
+          var w = mots[i];
+          if (w.charCodeAt(w.length - 1) === 13) w = w.slice(0, -1);
+          if (w.length >= 2 && w.charCodeAt(0) !== 35) set.add(w);
+        }
+        if (i < mots.length) setTimeout(morceau, 0);
+        else resolve({ set: set, trie: null, niveau: null });
+      })();
+    });
+  }
+
+  var ia = { worker: null, ok: typeof Worker !== 'undefined', seq: 0, attente: {}, courants: null, dernierMs: null };
   function iaWorker() {
     if (ia.worker || !ia.ok) return ia.worker;
     try {
@@ -1289,6 +1356,7 @@
     var cle = state.id + ':' + state.history.length;
     var debut = Date.now();
     demandeIA('coup', { state: state, joueur: 1, niveau: aiLevel }).then(function (rep) {
+      ia.dernierMs = rep && typeof rep.ms === 'number' ? rep.ms : Date.now() - debut;
       // la partie a pu changer entre-temps (quittée, recommencée)
       if (!state || mode !== 'solo' || cle !== state.id + ':' + state.history.length || state.current !== 1) {
         aiThinking = false;
@@ -1397,7 +1465,8 @@
     if (mode === 'local') dernierVuLocal[h.player] = n + 1;
     if (h.type === 'move') {
       var idxs = (h.cells || []).map(function (c) { return c.i; });
-      if (moi) illumine(h, idxs, 0);
+      if (zoom) setZoom(false, null, true); // on voit le coup en entier (sans animation : les vols partent juste)
+      if (moi) illumine(h, idxs, 0, true);
       else arriveeAdverse(h, idxs);
       return;
     }
@@ -1417,7 +1486,7 @@
   }
 
   /* Mot validé : les lettres s'illuminent l'une après l'autre, les points jaillissent. */
-  function illumine(h, idxs, delai) {
+  function illumine(h, idxs, delai, moi) {
     var fx = fxM();
     idxs.forEach(function (i, k) {
       var t = cells[i] && cells[i].querySelector('.tile');
@@ -1438,15 +1507,16 @@
       if (!h.bingo) vibre(pts >= 30 ? 'medium' : 'light');
       if (c && pts >= 20 && !h.bingo) fx.burst(c, { count: Math.min(30, 8 + pts / 2), shape: 'star' });
     }, delai + idxs.length * 85 + 80);
-    // nouvelles lettres tirées du sac (pas sur un seul téléphone : c'est le suivant qui regarde)
-    if (mode !== 'local' && h.tires) piocheAnimee(h.tires, delai + idxs.length * 85 + 450);
+    // mes nouvelles lettres tirées du sac, pendant que le mot brille (pas sur un seul
+    // téléphone : c'est déjà le joueur suivant qui regarde)
+    if (moi && mode !== 'local' && h.tires) piocheAnimee(h.tires, delai + 250);
   }
 
   /* Coup adverse : ses tuiles arrivent de son badge et se posent une à une. */
   function arriveeAdverse(h, idxs) {
     var fx = fxM();
     var badge = $('badge-' + h.player);
-    if (zoom) setZoom(false);
+    if (zoom) setZoom(false, null, true);
     if (reduit() || !badge) { illumine(h, idxs, 0); return; }
     idxs.forEach(function (i, k) {
       var t = cells[i] && cells[i].querySelector('.tile');
@@ -1467,28 +1537,48 @@
     setTimeout(function () { illumine(h, idxs, 0); }, idxs.length * 110 + 380);
   }
 
-  /* Nouvelles lettres : elles volent du sac jusqu'au chevalet. */
+  /* Nouvelles lettres : elles volent du sac jusqu'au chevalet. Les tuiles
+     encore « en vol » restent cachées même si le chevalet est redessiné
+     entre-temps (tour de l'IA, message réseau). */
+  var pioche = { reste: 0, filet: null };
+  function tuilesChevalet() { return Array.prototype.slice.call($('rack').querySelectorAll('.rack-tile')); }
+  function marquePioche() {
+    if (!pioche.reste) return;
+    var t = tuilesChevalet();
+    t.slice(-pioche.reste).forEach(function (el) { el.classList.add('a-venir'); });
+  }
   function piocheAnimee(n, delai) {
-    if (!n || reduit()) return;
+    if (!n || reduit() || passHidden) return;
+    n = Math.min(n, tuilesChevalet().length);
+    if (!n) return;
+    pioche.reste = n;
+    marquePioche();
+    clearTimeout(pioche.filet);
+    // filet de sécurité : jamais de tuile cachée pour de bon
+    pioche.filet = setTimeout(function () {
+      pioche.reste = 0;
+      tuilesChevalet().forEach(function (el) { el.classList.remove('a-venir'); });
+    }, (delai || 0) + n * 90 + 1500);
     setTimeout(function () {
-      if (passHidden) return;
-      var tuiles = Array.prototype.slice.call($('rack').querySelectorAll('.rack-tile'));
-      var nouvelles = tuiles.slice(-n);
       var sac = $('bag-count');
-      nouvelles.forEach(function (el, k) {
-        el.style.opacity = '0';
-        setTimeout(function () {
-          fxM().flyTo(sac, el, {
-            html: '<div class="mots-vol" style="--c:' + Math.round(el.offsetWidth) + 'px">' +
-              '<div class="tile" style="background:var(--bois)"></div></div>',
-            duration: 380, arc: 0.25, scaleTo: 1
-          }).then(function () {
-            el.style.opacity = '';
-            el.classList.add('nouvelle');
-          });
-          son('deal', { volume: 0.4 });
-        }, k * 90);
-      });
+      for (var k = 0; k < n; k++) {
+        (function (k) {
+          setTimeout(function () {
+            var t = tuilesChevalet(), el = t[t.length - n + k];
+            if (!el || passHidden) { pioche.reste = Math.max(0, pioche.reste - 1); return; }
+            son('deal', { volume: 0.4 });
+            fxM().flyTo(sac, el, {
+              html: '<div class="mots-vol" style="width:' + Math.round(el.offsetWidth) + 'px;height:' +
+                Math.round(el.offsetHeight) + 'px"><div class="tile" style="background:var(--bois)"></div></div>',
+              duration: 380, arc: 0.25, scaleTo: 1
+            }).then(function () {
+              pioche.reste = Math.max(0, pioche.reste - 1);
+              var t2 = tuilesChevalet(), el2 = t2[t2.length - n + k];
+              if (el2) { el2.classList.remove('a-venir'); el2.classList.add('nouvelle'); }
+            });
+          }, k * 90);
+        })(k);
+      }
     }, delai || 0);
   }
 
@@ -1596,8 +1686,7 @@
   function rejoueDepuisDernierTour() {
     if (mode !== 'local' || !state || reduit()) return;
     var moi = state.current;
-    var depuis = dernierVuLocal[moi];
-    if (depuis == null) return;
+    var depuis = dernierVuLocal[moi] != null ? dernierVuLocal[moi] : 0; // 1er tour : depuis le début
     var liste = [];
     for (var n = depuis; n < state.history.length; n++) {
       var h = state.history[n];
@@ -1647,10 +1736,10 @@
       (fd.detail || []).forEach(function (d) { parJoueur[d.player] = d; });
       if (fd.reason === 'playout') {
         lines.push('<p class="fin-raison">🏁 <b>' + esc(state.players[fd.finisher].name) + '</b> a posé toutes ses ' +
-          'lettres : il empoche la valeur des lettres restant aux autres, qui la perdent.</p>');
+          'lettres, sac vide : la valeur des lettres restant aux autres passe dans son score.</p>');
       } else {
         lines.push('<p class="fin-raison">🏁 Chaque joueur a passé trois fois de suite : chacun perd la ' +
-          'valeur des lettres qui lui restent.</p>');
+          'valeur de ses lettres restantes.</p>');
       }
     }
     var ranked = state.players.map(function (p, i) { return { name: p.name, score: p.score, i: i }; })
@@ -1671,7 +1760,7 @@
       }
       lines.push('<div class="final-line"><span class="fl-g"><span class="fl-n">' + (medailles[k] || '') +
         esc(r.name) + '</span>' + (detail ? '<span class="fl-d">' + detail + '</span>' : '') +
-        '</span><strong>' + r.score + ' pts</strong></div>');
+        '</span><strong>' + r.score + ' pt' + (Math.abs(r.score) > 1 ? 's' : '') + '</strong></div>');
     });
     // statistiques de la partie
     var st = S.stats(state);
@@ -1679,12 +1768,11 @@
       state.players.map(function (p, i) {
         var s = st[i];
         return '<div class="fs-carte"><span class="fs-nom">' + esc(p.name) + '</span>' +
-          'Meilleur mot : ' + (s.meilleur ? '<b>' + esc(s.meilleur.mot) + '</b> (' + s.meilleur.points + ' pts)' : '—') +
-          '<br>Moyenne : <b>' + String(s.moyenne).replace('.', ',') + '</b> pts par coup (' + s.coups + ' coup' +
-          (s.coups > 1 ? 's' : '') + ')' +
-          '<br>Scrabbles : <b>' + s.scrabbles + '</b>' +
-          (s.echanges ? ' · échanges : ' + s.echanges : '') +
-          (s.refus ? ' · mots refusés : ' + s.refus : '') + '</div>';
+          '<span class="fs-l">⭐ ' + (s.meilleur ? '<b>' + esc(s.meilleur.mot) + '</b> ' + s.meilleur.points + ' pts' : '—') +
+          '</span><span class="fs-l">⌀ <b>' + String(s.moyenne).replace('.', ',') + '</b> pts/coup</span>' +
+          '<span class="fs-l">🎉 <b>' + s.scrabbles + '</b> scrabble' + (s.scrabbles > 1 ? 's' : '') + '</span>' +
+          (s.refus ? '<span class="fs-l">❌ ' + s.refus + ' refusé' + (s.refus > 1 ? 's' : '') + '</span>' : '') +
+          '</div>';
       }).join('') + '</div></div>');
     det.innerHTML = lines.join('');
     var w = $('end-winner');
@@ -4020,8 +4108,14 @@
       rendu: function () { render(); },
       mode: function () { return mode; },
       dico: function () { return !!dict; },
-      ia: function () { return { worker: !!ia.worker, ok: ia.ok }; },
-      zoom: function () { return zoom; }
+      ia: function () { return { worker: !!ia.worker, ok: ia.ok, dernierMs: ia.dernierMs }; },
+      zoom: function () { return zoom; },
+      // un coup proposé par l'IA pour le joueur de ce téléphone (les tests le jouent à la main)
+      suggestion: function (niveau) {
+        if (!dict || !state) return null;
+        window.AI.prepare(dict);
+        return window.AI.chooseAction(S, state, myIndex(), dict, niveau || 'moyen');
+      }
     };
 
     // Passage du téléphone
