@@ -339,6 +339,45 @@ const erreursJS = [];
     await p.context().close();
   }
 
+  console.log('--- Sécurité : un hôte malveillant qui glisse du HTML dans les nombres ---');
+  {
+    const p = await page(412, 780);
+    const r = await p.evaluate(() => {
+      const piege = '<img src=x onerror="window.__pirate=1">';
+      document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
+      document.getElementById('screen-mini').classList.add('active');
+      const el = document.getElementById('mini-area');
+      const res = {};
+      // poker : piles, mises, pot et blinds empoisonnés
+      const pk = GG.byId.poker;
+      const s = pk.create(['Ana', 'Bob', 'Cléo']);
+      pk.apply(s, 0, { t: 'mode', m: 'cash' });
+      const v = JSON.parse(JSON.stringify(pk.redact(s, 1)));
+      v.players.forEach(q => { q.chips = piege; q.bet = piege; q.cont = piege; });
+      v.maxBet = piege; v.handNum = piege; v.blinds = [piege, piege];
+      el.innerHTML = '';
+      pk.render(el, { state: v, me: 1, mode: 'guest', act() {} });
+      res.poker = el.querySelectorAll('img').length;
+      // blackjack : mises, gains et totaux empoisonnés
+      const bj = GG.byId.blackjack;
+      const b = bj.create(['Ana', 'Bob']);
+      bj.apply(b, 0, { t: 'bet', v: 10 }); bj.apply(b, 1, { t: 'bet', v: 10 });
+      const w = JSON.parse(JSON.stringify(bj.redact(b, 1)));
+      w.players.forEach(q => { q.bet = piege; q.total = piege; q.bilan = piege; q.net = piege; });
+      w.round = piege; w.shoeCount = piege;
+      el.innerHTML = '';
+      bj.render(el, { state: w, me: 1, mode: 'guest', act() {} });
+      res.blackjack = el.querySelectorAll('img').length;
+      return res;
+    });
+    await p.waitForTimeout(300);
+    const pirate = await p.evaluate(() => window.__pirate === 1);
+    check('poker : les nombres de l’hôte sont assainis (aucune balise injectée)', r.poker === 0, r);
+    check('blackjack : les nombres de l’hôte sont assainis (aucune balise injectée)', r.blackjack === 0, r);
+    check('aucun script de l’hôte ne s’exécute', !pirate);
+    await p.context().close();
+  }
+
   console.log('--- Poker en ligne : délai de parole (bug 5) et double appui sur la recave (bug 6) ---');
   {
     const hote = await page(412, 780), inv = await page(412, 780);

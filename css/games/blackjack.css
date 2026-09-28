@@ -130,7 +130,8 @@
 .bj-pstack { font-size: 12px; font-weight: 700; color: #ffd66b; }
 
 /* ma place */
-.bj-me-zone { flex: none; min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.bj-me-zone { position: relative; flex: none; min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.bj-resultats.bj-resultats-moi { top: 8px; transform: none; }
 .bj-total-moi { font-size: 18px; }
 .bj-spot {
   position: relative; width: 66px; height: 66px; margin: 7px auto 0; flex: none;
@@ -256,6 +257,23 @@
   .bj-compo { margin: 6px 0 0; }
   .bj-compo .btn:not(.big), .bj-compo .btn.big { min-height: 50px; }
   .bj-bas .cz-lien { min-height: 40px; padding: 8px 10px; }
+  /* à plusieurs, les autres joueurs se mettent en ligne (cartes à côté de
+     la plaque) : sinon mes cartes montent sur leurs plaques */
+  .multi .bj-autres { gap: 4px 8px; margin-top: 2px; }
+  .multi .bj-oplr { flex-direction: row; gap: 3px; }
+  .multi .bj-ocartes .jc { --jcw: 22px; }
+  .multi .bj-ocartes .jc + .jc { margin-left: -8px; }
+  .multi .bj-plaque { padding-right: 7px; }
+  /* trois autres joueurs : pas la place d'une ligne chacun ; la plaque
+     vient mordre le bas de leurs petites cartes (l'index reste lisible) */
+  .bj-oplr:first-child:nth-last-child(3),
+  .bj-oplr:first-child:nth-last-child(3) ~ .bj-oplr { flex-direction: column; gap: 0; }
+  .bj-oplr:first-child:nth-last-child(3) .bj-ocartes,
+  .bj-oplr:first-child:nth-last-child(3) ~ .bj-oplr .bj-ocartes { margin-bottom: -9px; }
+  .bj-oplr:first-child:nth-last-child(3) .bj-plaque,
+  .bj-oplr:first-child:nth-last-child(3) ~ .bj-oplr .bj-plaque { position: relative; padding-top: 1px; padding-bottom: 1px; }
+  .bj-oplr:first-child:nth-last-child(3) .bj-pname,
+  .bj-oplr:first-child:nth-last-child(3) ~ .bj-oplr .bj-pname { max-width: 58px; }
 }
 @media (max-width: 360px) {
   .bj-haut { grid-template-columns: 62px 1fr 62px; }

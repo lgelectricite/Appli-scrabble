@@ -366,6 +366,27 @@
     return j;
   }
 
+  /* L'état affiché chez un invité vient de l'hôte, qui peut être
+     malveillant : tout nombre qui finit dans le HTML est d'abord ramené à un
+     vrai nombre (une mise qui contiendrait du HTML devient 0). */
+  function nb(x) { return typeof x === 'number' && isFinite(x) ? x : 0; }
+  function assainir(s) {
+    s.round = nb(s.round) || 1;
+    s.shoeCount = nb(s.shoeCount);
+    s.turn = nb(s.turn);
+    if (!Array.isArray(s.dealer)) s.dealer = [];
+    s.dealer = s.dealer.map(function (c) { return c === -1 ? -1 : nb(c); });
+    s.players.forEach(function (p) {
+      ['bet', 'bet2', 'net', 'net2', 'total', 'engage', 'retour', 'bilan', 'hi'].forEach(function (k) { p[k] = nb(p[k]); });
+      if (p.assur !== null) p.assur = nb(p.assur);
+      p.name = String(p.name == null ? '' : p.name);
+      p.hand = Array.isArray(p.hand) ? p.hand.map(nb) : [];
+      p.hand2 = Array.isArray(p.hand2) ? p.hand2.map(nb) : [];
+      if (p.stats) Object.keys(p.stats).forEach(function (k) { p.stats[k] = nb(p.stats[k]); });
+    });
+    return s;
+  }
+
   var mod = {
     id: 'blackjack',
     nom: 'Blackjack',
@@ -682,7 +703,7 @@
     },
 
     render: function (el, ctx) {
-      var s = ctx.state;
+      var s = assainir(ctx.state);
       var me = ctx.me;
       var moi = (me >= 0 && s.players[me]) ? s.players[me] : null;
       var fx = GG.fx, sfx = GG.sfx;
@@ -790,7 +811,7 @@
       html += '<div class="bj-rim"><div class="bj-felt cz-feutre' + (enResultat && s.dealer.length ? ' resultat' : '') + '">';
 
       // la caisse (ma cagnotte) à gauche, le croupier au milieu, le sabot à droite
-      var restant = s.shoe ? s.shoe.length : (s.shoeCount || 0);
+      var restant = s.shoe ? s.shoe.length : s.shoeCount;
       var soldeAffiche = enResultat && el._bjSoldeVu !== undefined ? el._bjSoldeVu :
         (enResultat && moi && moi.bet > 0 && !T.fait.res ? soldeAvant : solde);
       html += '<div class="bj-haut">' +
@@ -956,9 +977,12 @@
           (enCours > 0 ? GG.pileJetons(enCours, { classe: 'bj-pile', classeJeton: 'bj-chip' }) + '<span class="bj-spot-amt">' + enCours + '</span>'
             : '<span class="bj-spot-lbl">MISE</span>') + '</div>';
       }
-      if (resultats.length) html += '<div class="bj-resultats">' + resultats.join('') + '</div>';
+      /* seul à table, le verdict trône au milieu du tapis ; avec d'autres
+         joueurs, il se pose sur mes cartes pour ne pas cacher les leurs */
+      var verdictHtml = resultats.length ? '<div class="bj-resultats' + (autres ? ' bj-resultats-moi' : '') + '">' + resultats.join('') + '</div>' : '';
+      if (!autres) html += verdictHtml;
       html += '</div>'; // fin du milieu
-      html += '<div class="bj-me-zone">' + mesHtml + '</div>';
+      html += '<div class="bj-me-zone">' + mesHtml + (autres ? verdictHtml : '') + '</div>';
 
       html += '</div></div>'; // fin tapis + rail
 

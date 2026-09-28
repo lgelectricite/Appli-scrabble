@@ -1212,8 +1212,34 @@
     return (p ? '<b>' + GG.esc(p.name.replace(/^🤖 /, '')) + '</b> ' : '') + GG.esc(l.t);
   }
 
+  /* L'état affiché chez un invité vient de l'hôte, qui peut être
+     malveillant : chaque nombre qui finit dans le HTML est d'abord ramené à
+     un vrai nombre (une « pile » qui contiendrait du HTML devient 0). */
+  function nb(x) { return typeof x === 'number' && isFinite(x) ? x : 0; }
+  function assainir(s) {
+    ['handNum', 'maxBet', 'minRaise', 'delaiMs', 'echeance', 'tourId', 'dealer', 'current'].forEach(function (k) { s[k] = nb(s[k]); });
+    s.blinds = [nb(s.blinds && s.blinds[0]), nb(s.blinds && s.blinds[1])];
+    if (!Array.isArray(s.community)) s.community = [];
+    s.community = s.community.map(nb);
+    s.players.forEach(function (p) {
+      ['chips', 'bet', 'cont', 'achats', 'recaves'].forEach(function (k) { p[k] = nb(p[k]); });
+      p.name = String(p.name == null ? '' : p.name);
+      p.hole = Array.isArray(p.hole) ? p.hole.map(function (c) { return c === -1 ? -1 : nb(c); }) : [];
+      if (p.lastAct != null) p.lastAct = String(p.lastAct);
+    });
+    if (s.resultat) {
+      s.resultat.pot = nb(s.resultat.pot);
+      if (!Array.isArray(s.resultat.gagnants)) s.resultat.gagnants = [];
+      if (!Array.isArray(s.resultat.lignes)) s.resultat.lignes = [];
+      var g = {};
+      Object.keys(s.resultat.gains || {}).forEach(function (k) { g[nb(+k)] = nb(s.resultat.gains[k]); });
+      s.resultat.gains = g;
+    }
+    return s;
+  }
+
   function rendu(el, ctx) {
-    var s = normaliser(ctx.state);
+    var s = assainir(normaliser(ctx.state));
     var me = ctx.me;
     var my = s.players[me];
     var fx = GG.fx, sfx = GG.sfx;
