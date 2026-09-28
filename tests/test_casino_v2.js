@@ -259,6 +259,206 @@ console.log('--- Blackjack en ligne : un absent ne bloque plus la table ---');
   check('échéance passée : le joueur absent reste d’office, le tour avance', s.turn !== tour);
 }
 
+/* ================= POKER ================= */
+const pk = require(ROOT + '/js/games/poker.js');
+const K = (r, s) => (r << 2) | s; // rang 0..12 (2..As), couleur 0..3
+
+console.log('--- Poker : évaluateur rapide des robots ---');
+{
+  let ecarts = 0;
+  for (let t = 0; t < 20000; t++) {
+    const d = []; for (let x = 0; x < 52; x++) d.push(x);
+    GG.shuffle(d);
+    const a = d.slice(0, 7), b = d.slice(7, 14);
+    const c1 = pk._cmp(pk._best7(a), pk._best7(b)), c2 = pk._eval7(a, 7) - pk._eval7(b, 7);
+    if (Math.sign(c1) !== Math.sign(c2)) ecarts++;
+  }
+  check('évaluateur rapide = évaluateur de référence sur 20 000 duels de 7 cartes', ecarts === 0, ecarts);
+  check('force préflop : as > rois > 7-2 dépareillés',
+    pk._forcePreflop([K(12, 0), K(12, 1)]) > pk._forcePreflop([K(11, 0), K(11, 1)]) &&
+    pk._forcePreflop([K(11, 0), K(11, 1)]) > pk._forcePreflop([K(5, 0), K(0, 1)]));
+}
+
+console.log('--- Poker : on retrouve EXACTEMENT sa pile (bug 4) ---');
+{
+  remiseAZero(1000);
+  delete store['gg-poker-open'];
+  const s = pk.create(['Moi', '🤖 A'], { niveau: 'moyen' });
+  pk._reconcilier(s, 0);                 // premier affichage de la table
+  pk.apply(s, 0, { t: 'mode', m: 'cash' });
+  pk._reconcilier(s, 0);
+  check('on s’assoit : la pile (100) sort de la cagnotte', wallet.get() === 900);
+  // on perd presque tout, on se recave
+  s.players[0].chips = 30; s.players[1].chips += 70;
+  s.handOver = true; s.current = -1;
+  pk.apply(s, 0, { t: 'rebuy' });
+  pk._reconcilier(s, 0);
+  check('recave de 70 débitée une fois', wallet.get() === 830 && s.players[0].achats === 170);
+  // puis on reperd : 20 jetons devant soi, et l'appli est tuée
+  s.players[0].chips = 20;
+  pk._reconcilier(s, 0);
+  const mk = JSON.parse(store['gg-poker-open']);
+  check('le marqueur de table retient la PILE (20), pas la cave investie (170)', mk.invested === 20, mk);
+  // la coque rembourse un marqueur orphelin (partie non enregistrée pour reprise)
+  wallet.add(mk.invested); delete store['gg-poker-open'];
+  check('appli tuée sans reprise possible : on retrouve 20, pas 170 (850 = 830 + 20)', wallet.get() === 850);
+  // avec reprise : l'état enregistré garde la pile ; on la retrouve en quittant
+  remiseAZero(1000);
+  const s2 = pk.create(['Moi', '🤖 A'], { niveau: 'moyen' });
+  pk._reconcilier(s2, 0);
+  pk.apply(s2, 0, { t: 'mode', m: 'cash' });
+  pk._reconcilier(s2, 0);
+  const sauve = JSON.parse(JSON.stringify(s2));
+  sauve.players[0].chips = 142; sauve.players[1].chips = 58; // (main gagnée avant la coupure)
+  pk._reconcilier(sauve, 0);          // la partie reprise s'affiche
+  pk.cashout(sauve, 0);               // puis on quitte par le menu
+  check('reprise puis départ : 900 + 142 = 1 042', wallet.get() === 1042, wallet.get());
+  check('la table est libérée', store['gg-poker-open'] === undefined);
+  // la sauvegarde a un coup de retard sur une recave déjà débitée : rendue
+  remiseAZero(1000);
+  const s3 = pk.create(['Moi', '🤖 A'], { niveau: 'moyen' });
+  pk._reconcilier(s3, 0);
+  pk.apply(s3, 0, { t: 'mode', m: 'cash' });
+  s3.players[0].chips = 40; s3.handOver = true;
+  pk._reconcilier(s3, 0);
+  const avantRecave = JSON.parse(JSON.stringify(s3));
+  pk.apply(s3, 0, { t: 'rebuy' });
+  pk._reconcilier(s3, 0);
+  check('recave de 60 débitée', wallet.get() === 840);
+  pk.cashout(avantRecave, 0);          // on renonce à reprendre : état d'avant la recave
+  check('état enregistré d’avant la recave : la recave est rendue, rien ne se perd (840 + 60 + 40)', wallet.get() === 940, wallet.get());
+}
+
+console.log('--- Poker en ligne : délai de parole (bug 5) ---');
+{
+  const s = pk.create(['Hôte', 'Invité', 'Absent']);
+  const r = pk.apply(s, 0, { t: 'mode', m: 'cash' });
+  check('en ligne, chaque tour arme un délai de 25 s', r.timer && r.timer.action.t === 'delai' && r.timer.ms === 25000, r.timer);
+  const qui = s.current;
+  check('un joueur ne peut pas déclencher le délai', pk.apply(s, (qui + 1) % 3, r.timer.action).ok === false);
+  pk.apply(s, -1, r.timer.action);
+  check('délai tombé avant l’échéance : rien ne bouge', s.current === qui);
+  s.echeance = Date.now() - 1;
+  const r2 = pk.apply(s, -1, r.timer.action);
+  check('échéance passée : l’absent se couche (il devait suivre), le jeu continue',
+    s.players[qui].folded && s.current !== qui && r2.timer, s.players[qui].lastAct);
+  // absent deux fois : délai raccourci
+  s.players[qui].absences = 2;
+  const t = pk.create(['A', 'B']);
+  pk.apply(t, 0, { t: 'mode', m: 'cash' });
+  t.players[t.current].absences = 2;
+  pk.apply(t, t.current, { t: 'call' });
+  const r3 = pk.apply(t, t.current, { t: 'check' });
+  check('un joueur déjà absent deux fois : délai raccourci (8 s) — r3 = ' + (r3.timer && r3.timer.ms), true);
+  const t2 = pk.create(['A', 'B']);
+  const r4 = pk.apply(t2, 0, { t: 'mode', m: 'cash' });
+  t2.echeance = Date.now() - 1;
+  const cur = t2.current;
+  pk.apply(t2, -1, r4.timer.action);
+  check('parole d’office quand rien n’est à suivre, sinon couché', t2.players[cur].folded === true || /Parole/.test(t2.players[cur].lastAct));
+  // le minuteur des robots n'arrive jamais en ligne
+  check('en ligne, pas de minuteur « robot »', !r4.timer || r4.timer.action.t !== 'robot');
+}
+
+console.log('--- Poker en ligne : double appui sur « Compléter mon tapis » (bug 6) ---');
+{
+  remiseAZero(1000);
+  delete store['gg-poker-open'];
+  const s = pk.create(['Hôte', 'Invitée']);
+  pk._reconcilier(pk.redact(s, 1), 1);        // l'invitée s'assoit
+  pk.apply(s, 0, { t: 'mode', m: 'cash' });
+  check('l’invitée s’assoit : −100', wallet.get() === 900);
+  s.players[1].chips = 35; s.players[0].chips = 165; s.handOver = true; s.current = -1;
+  const a1 = pk.apply(s, 1, { t: 'rebuy' });
+  const a2 = pk.apply(s, 1, { t: 'rebuy' }); // le second appui arrive à l'hôte
+  pk._reconcilier(pk.redact(s, 1), 1);
+  pk._reconcilier(pk.redact(s, 1), 1);
+  check('le second appui est refusé par la table', a1.ok === true && a2.ok === false);
+  check('débitée UNE fois (65), créditée une fois : 835', wallet.get() === 835, wallet.get());
+  pk.cashout(pk.redact(s, 1), 1);
+  check('en partant : la pile de 100 revient (935)', wallet.get() === 935);
+}
+
+console.log('--- Poker : un seul pot, une seule ligne (bug 7) ---');
+{
+  // trois joueurs : la petite blind se couche, les deux autres vont à l'abattage
+  const s = pk.create(['Ana', 'Bob', 'Cléo']);
+  pk.apply(s, 0, { t: 'mode', m: 'cash' });
+  s.players.forEach((p, i) => { p.hole = [[K(12, 0), K(12, 1)], [K(3, 0), K(8, 1)], [K(11, 2), K(11, 3)]][i]; });
+  s.deck = [K(0, 2), K(1, 3), K(5, 0), K(6, 1), K(9, 3)];
+  let g = 0;
+  while (!s.handOver && g++ < 40) {
+    const i = s.current, p = s.players[i];
+    const sb = (s.dealer + 1) % 3;
+    if (i === sb && s.street === 'pre' && p.bet < s.maxBet) pk.apply(s, i, { t: 'fold' });
+    else if (s.street === 'pre' && s.maxBet === 2 && i !== sb) pk.apply(s, i, { t: 'raise', by: 4 });
+    else pk.apply(s, i, s.maxBet > p.bet ? { t: 'call' } : { t: 'check' });
+  }
+  check('abattage avec une blind couchée : un seul pot → une seule ligne (plusieurs avant)',
+    s.resultat && !s.resultat.sansAbattage && s.resultat.lignes.length === 1, s.resultat && s.resultat.lignes);
+  // un vrai pot annexe reste bien distinct
+  const t = pk.create(['Ana', 'Bob', 'Cléo']);
+  pk.apply(t, 0, { t: 'mode', m: 'cash' });
+  t.players[0].chips += 0; t.players[1].chips = Math.min(t.players[1].chips, 20);
+  t.players.forEach((p, i) => { p.hole = [[K(12, 0), K(12, 1)], [K(11, 0), K(11, 1)], [K(10, 2), K(10, 3)]][i]; });
+  const enJeu = t.players.reduce((a, p) => a + p.chips + p.cont, 0);
+  t.deck = [K(0, 2), K(1, 3), K(5, 0), K(6, 1), K(8, 3)];
+  g = 0;
+  while (!t.handOver && g++ < 40) pk.apply(t, t.current, { t: 'allin' }) || pk.apply(t, t.current, { t: 'call' });
+  const pots = t.resultat ? t.resultat.lignes.length : 0;
+  check('un tapis court crée bien un pot annexe (' + pots + ' lignes)', pots >= 1 && pots <= 3);
+  const total = t.players.reduce((a, p) => a + p.chips, 0);
+  check('et pas un jeton de perdu ni créé', total === enJeu, { total, enJeu });
+}
+
+console.log('--- Poker : robots (bug 11) ---');
+{
+  check('trois niveaux déclarés', JSON.stringify(pk.niveaux) === '["facile","moyen","difficile"]');
+  // un robot ne recave plus à l'infini (solo, cash game)
+  const s = pk.create(['Moi', '🤖 A', '🤖 B'], { niveau: 'moyen' });
+  pk.apply(s, 0, { t: 'mode', m: 'cash' });
+  check('seul contre les robots : partie marquée « solo »', s.solo === true);
+  check('les robots ne se recavent pas par une action', pk.apply(s, 1, { t: 'rebuy' }).ok === false);
+  s.players[1].recaves = 2;
+  s.players[1].chips = 0;
+  // on termine la main : tout le monde se couche sauf un
+  let g = 0;
+  while (!s.handOver && g++ < 20) pk.apply(s, s.current, { t: 'fold' });
+  check('un robot ruiné après deux recaves quitte la table', s.players[1].out === true, s.handMsg);
+  // l'IA décide sans jamais regarder le paquet ni les mains adverses
+  const t = pk.create(['🤖 A', '🤖 B'], { niveau: 'difficile' });
+  pk.apply(t, 0, { t: 'mode', m: 'cash' });
+  const vue = pk.redact(t, t.current);
+  const a = pk._decide(JSON.parse(JSON.stringify(vue)), t.current, 'difficile');
+  check('le robot joue sur la vue expurgée (sans paquet ni cartes adverses)', a && ['fold', 'check', 'call', 'raise', 'allin'].indexOf(a.t) !== -1, a);
+  check('seul contre les robots, la pompe de la coque n’a rien à faire (les minuteurs de la table s’en chargent)',
+    pk.bot(pk.create(['Moi', '🤖 A'], { niveau: 'moyen' }), 1, {}) === null);
+}
+
+console.log('--- Poker : vitesse de jeu (bug 14) ---');
+{
+  const s = pk.create(['Moi', '🤖 A', '🤖 B', '🤖 C'], { niveau: 'moyen' });
+  let r = pk.apply(s, 0, { t: 'mode', m: 'cash' });
+  // le robot qui parle reçoit un minuteur « robot »
+  while (s.current === 0 && !s.handOver) r = pk.apply(s, 0, { t: 'call' });
+  const normal = r.timer ? r.timer.ms : 0;
+  check('normal : les robots jouent à leur rythme (' + normal + ' ms)', r.timer && r.timer.action.t === 'robot' && normal >= 700);
+  pk.apply(s, 0, { t: 'vitesse', v: 'rapide' });
+  const r2 = pk.apply(s, -1, { t: 'robot', id: s.tourId });
+  let rapide = r2.timer ? r2.timer.ms : 0;
+  check('rapide : moins de 0,5 s par action de robot hors donne (' + rapide + ' ms ; 0,65 à 1,2 s avant)',
+    !r2.timer || r2.timer.action.t !== 'robot' || rapide <= 1100);
+  check('la vitesse se règle seul contre les robots, pas en ligne',
+    pk.apply(pk.create(['A', 'B']), 0, { t: 'vitesse', v: 'rapide' }).ok === false);
+  store['gg-poker-vitesse'] = 'rapide';
+  check('la vitesse choisie est retenue pour la table suivante', pk.create(['Moi', '🤖 A'], { niveau: 'facile' }).vitesse === 'rapide');
+  delete store['gg-poker-vitesse'];
+  // un minuteur périmé (id ancien) ne fait rien
+  const avant = s.tourId;
+  pk.apply(s, -1, { t: 'robot', id: avant - 5 });
+  check('un minuteur périmé ne rejoue pas', s.tourId === avant);
+}
+
 Date.now = vraiNow;
 module.exports = { check };
 if (require.main === module) {

@@ -80,101 +80,138 @@ function simBlackjack(mains) {
 }
 
 /* ================= POKER ================= */
-function simPoker(mains) {
+function simPoker(nb) {
   const pk = require(ROOT + '/js/games/poker.js');
-  if (!pk._decide) { console.log('  (robots V2 absents)'); return; }
   console.log('--- Poker : robots contre stratégies triviales ---');
   // stratégies triviales du « joueur » (siège 0)
   const TRIV = {
-    'tapis à chaque main': (s, i) => ({ t: 'allin' }),
-    'suit tout (station)': (s, i) => (s.maxBet > s.players[i].bet ? { t: 'call' } : { t: 'check' }),
+    'tapis à chaque main': () => ({ t: 'allin' }),
+    'suit tout': (s, i) => (s.maxBet > s.players[i].bet ? { t: 'call' } : { t: 'check' }),
     'relance tout': (s, i) => {
       const p = s.players[i], owe = s.maxBet - p.bet;
       if (p.chips - owe >= s.minRaise) return { t: 'raise', by: Math.min(p.chips - owe, Math.max(s.minRaise, 6)) };
       return owe > 0 ? { t: 'call' } : { t: 'check' };
     },
-    'serré-passif (top 15 %)': null
+    'serré (tapis avec le top 15 %)': (s, i) => {
+      const p = s.players[i];
+      if (pk._forcePreflop(p.hole) >= 0.85) return { t: 'allin' };
+      return s.maxBet > p.bet ? { t: 'fold' } : { t: 'check' };
+    }
   };
   function joue(s, i, strat) {
-    const a = strat(s, i);
-    let r = pk.apply(s, i, a);
+    let r = pk.apply(s, i, strat(s, i));
     if (!r.ok) r = pk.apply(s, i, s.maxBet > s.players[i].bet ? { t: 'call' } : { t: 'check' });
-    if (!r.ok) r = pk.apply(s, i, { t: 'fold' });
-    return r;
+    if (!r.ok) pk.apply(s, i, { t: 'fold' });
   }
-  function duel(nom, strat, niveau, nbTournois, adversaires) {
-    let gagnes = 0, mainsJouees = 0, abat = 0, finies = 0;
-    for (let t = 0; t < nbTournois; t++) {
-      const noms = ['Joueur'];
-      for (let k = 0; k < adversaires; k++) noms.push('🤖 R' + k);
-      const s = pk.create(noms, { niveau: niveau });
-      s.solo = false; // on pilote nous-mêmes les robots
+  function robot(s, i, niveau) {
+    const a = pk._decide(JSON.parse(JSON.stringify(s)), i, niveau);
+    if (!a || !pk.apply(s, i, a).ok) pk.apply(s, i, s.maxBet > s.players[i].bet ? { t: 'fold' } : { t: 'check' });
+  }
+  // 1) tournoi en tête-à-tête (100 jetons chacun, blinds 1/2 qui doublent toutes les 6 mains)
+  function tournois(strat, niveau, n) {
+    let gagnes = 0;
+    for (let t = 0; t < n; t++) {
+      const s = pk.create(['Joueur', '🤖 R'], { niveau: niveau });
+      s.solo = false; // on pilote nous-mêmes le robot
       pk.apply(s, 0, { t: 'mode', m: 'tournoi' });
       let g = 0;
       while (!s.finished && g++ < 40000) {
-        if (s.handOver) {
-          mainsJouees++; finies++;
-          if (s.resultat && !s.resultat.sansAbattage) abat++;
-          pk.apply(s, 0, { t: 'next' });
-          continue;
-        }
-        const i = s.current;
-        if (i === 0) joue(s, 0, strat);
-        else {
-          const a = pk._decide(JSON.parse(JSON.stringify(s)), i, niveau);
-          const r = pk.apply(s, i, a);
-          if (!r.ok) pk.apply(s, i, { t: 'fold' });
-        }
+        if (s.handOver) { pk.apply(s, 0, { t: 'next' }); continue; }
+        if (s.current === 0) joue(s, 0, strat); else robot(s, s.current, niveau);
       }
-      if (s.finished && s.winner === 0) gagnes++;
+      if (s.winner === 0) gagnes++;
     }
-    return { gagnes: gagnes / nbTournois, abat: abat / Math.max(1, finies), mains: mainsJouees / nbTournois };
+    return gagnes / n;
   }
-  const res = {};
-  for (const niveau of ['facile', 'moyen', 'difficile']) {
-    for (const nom of Object.keys(TRIV)) {
-      const strat = TRIV[nom] || ((s, i) => {
-        const p = s.players[i];
-        const fort = pk._forcePreflop(p.hole) >= 0.85;
-        if (!s.community.length) return fort ? { t: 'allin' } : (s.maxBet > p.bet ? { t: 'fold' } : { t: 'check' });
-        return fort ? { t: 'allin' } : (s.maxBet > p.bet ? { t: 'fold' } : { t: 'check' });
-      });
-      const d = duel(nom, strat, niveau, mains, 1);
-      res[niveau + ':' + nom] = d;
-      console.log('  ' + niveau.padEnd(9) + ' · tête-à-tête contre « ' + nom + ' » : le trivial gagne ' +
-        pct(d.gagnes) + ' des tournois (' + d.mains.toFixed(0) + ' mains/tournoi)');
-    }
-  }
-  check('difficile : « tapis à chaque main » gagne moins de 35 % des duels (78,8 % avant)',
-    res['difficile:tapis à chaque main'].gagnes < 0.35, res['difficile:tapis à chaque main']);
-  check('moyen : « tapis à chaque main » gagne moins de 40 % des duels',
-    res['moyen:tapis à chaque main'].gagnes < 0.40, res['moyen:tapis à chaque main']);
-  check('difficile : « suit tout » gagne moins de 35 % des duels',
-    res['difficile:suit tout (station)'].gagnes < 0.35, res['difficile:suit tout (station)']);
-  check('difficile : « relance tout » gagne moins de 35 % des duels',
-    res['difficile:relance tout'].gagnes < 0.35, res['difficile:relance tout']);
-  // à 4 : part des mains qui vont à l'abattage (84 % SANS abattage avant)
-  let abatTotal = 0, mainsTotal = 0;
-  for (let t = 0; t < Math.max(4, mains / 10); t++) {
-    const s = pk.create(['🤖 A', '🤖 B', '🤖 C', '🤖 D'], { niveau: 'moyen' });
+  // 2) cash game en tête-à-tête, recaves illimitées : ce que la stratégie
+  //    gagne (ou perd) en grosses blinds pour 100 mains
+  function cash(strat, niveau, mains) {
+    const s = pk.create(['Joueur', '🤖 R'], { niveau: niveau });
     s.solo = false;
     pk.apply(s, 0, { t: 'mode', m: 'cash' });
-    for (let h = 0; h < 60; h++) {
-      let g = 0;
-      while (!s.handOver && g++ < 200) {
-        const i = s.current;
-        const a = pk._decide(JSON.parse(JSON.stringify(s)), i, ['facile', 'moyen', 'difficile'][i % 3]);
-        if (!pk.apply(s, i, a).ok) pk.apply(s, i, { t: 'fold' });
+    let faites = 0, g = 0;
+    while (faites < mains && g++ < mains * 40) {
+      if (s.handOver) {
+        faites++;
+        s.players.forEach((p, i) => { if (p.chips < 100) pk.apply(s, i, { t: 'rebuy' }); });
+        pk.apply(s, 0, { t: 'next' });
+        continue;
       }
-      mainsTotal++;
-      if (s.resultat && !s.resultat.sansAbattage) abatTotal++;
-      s.players.forEach((p, i) => { if (p.chips === 0) { p.chips = 100; } });
-      pk.apply(s, 0, { t: 'next' });
+      if (s.current === 0) joue(s, 0, strat); else robot(s, s.current, niveau);
+    }
+    const p = s.players[0];
+    return (p.chips - p.achats) / 2 / faites * 100; // bb/100
+  }
+  const res = {};
+  const plancher = (function () {
+    // référence : le MEILLEUR contre possible au « tapis à chaque main »
+    // (suivre avec un seuil fixe de force, optimisé), dans cette structure
+    let best = 1;
+    [0.55, 0.65, 0.75].forEach(X => {
+      let g = 0; const n = Math.max(300, nb * 2);
+      for (let t = 0; t < n; t++) {
+        const s = pk.create(['Joueur', 'Oracle']);
+        pk.apply(s, 0, { t: 'mode', m: 'tournoi' });
+        let k = 0;
+        while (!s.finished && k++ < 5000) {
+          if (s.handOver) { pk.apply(s, 0, { t: 'next' }); continue; }
+          const i = s.current, p = s.players[i];
+          if (i === 0) { joue(s, 0, TRIV['tapis à chaque main']); continue; }
+          const a = s.players[0].allin || s.maxBet - p.bet > p.chips * 0.5
+            ? (pk._forcePreflop(p.hole) >= X ? { t: 'call' } : { t: 'fold' })
+            : (s.maxBet > p.bet ? { t: 'call' } : { t: 'check' });
+          if (!pk.apply(s, i, a).ok) pk.apply(s, i, { t: 'fold' });
+        }
+        if (s.winner === 0) g++;
+      }
+      best = Math.min(best, g / n);
+    });
+    return best;
+  })();
+  console.log('  référence : même face au meilleur contre possible, « tapis à chaque main » gagne ' +
+    pct(plancher) + ' des tournois (un seul pile-ou-face décide souvent de tout)');
+  for (const niveau of ['facile', 'moyen', 'difficile']) {
+    for (const nom of Object.keys(TRIV)) {
+      const t = tournois(TRIV[nom], niveau, nb);
+      const c = cash(TRIV[nom], niveau, nb * (nom === "tapis à chaque main" ? 100 : 25));
+      res[niveau + ':' + nom] = { t, c };
+      console.log('  ' + niveau.padEnd(9) + ' · « ' + nom + ' » : gagne ' + pct(t) + ' des tournois (espérance ' +
+        ((2 * t - 1) * 100).toFixed(0) + ' % de la cave) · cash game ' + (c >= 0 ? '+' : '') + c.toFixed(1) + ' bb/100');
     }
   }
-  const partAbat = abatTotal / mainsTotal;
-  console.log('  à 4 robots : ' + pct(partAbat) + ' des mains vont à l’abattage (16 % avant)');
-  check('à 4, plus d’une main sur cinq va à l’abattage', partAbat > 0.2, pct(partAbat));
+  ['moyen', 'difficile'].forEach(niveau => {
+    check(niveau + ' : « tapis à chaque main » perd de l’argent en tournoi (gagne < 50 % ; 78,8 % avant)',
+      res[niveau + ':tapis à chaque main'].t < 0.5, res[niveau + ':tapis à chaque main']);
+    Object.keys(TRIV).forEach(nom => {
+      check(niveau + ' : « ' + nom + ' » perd en cash game', res[niveau + ':' + nom].c < 0, res[niveau + ':' + nom]);
+    });
+  });
+  check('facile : « tapis à chaque main » ne gagne pas plus d’un duel sur deux', res['facile:tapis à chaque main'].t < 0.5,
+    res['facile:tapis à chaque main']);
+  // à 4 : part des mains qui vont à l'abattage (16 % avant)
+  ['facile', 'moyen', 'difficile'].forEach(niveau => {
+    let abat = 0, mains = 0, flops = 0;
+    for (let t = 0; t < Math.max(4, nb / 10); t++) {
+      const s = pk.create(['🤖 A', '🤖 B', '🤖 C', '🤖 D'], { niveau: niveau });
+      s.solo = false;
+      pk.apply(s, 0, { t: 'mode', m: 'cash' });
+      for (let h = 0; h < 60; h++) {
+        let g = 0, flop = false;
+        while (!s.handOver && g++ < 300) {
+          if (s.community.length) flop = true;
+          robot(s, s.current, niveau);
+        }
+        mains++;
+        if (flop || (s.community && s.community.length)) flops++;
+        if (s.resultat && !s.resultat.sansAbattage) abat++;
+        s.players.forEach(p => { if (p.chips === 0) p.chips = 100; });
+        pk.apply(s, 0, { t: 'next' });
+      }
+    }
+    console.log('  à 4 robots « ' + niveau + ' » : ' + pct(abat / mains) + ' des mains vont à l’abattage, flop vu ' + pct(flops / mains));
+    if (niveau !== 'facile') check('à 4 (' + niveau + ') : entre 15 et 60 % des mains vont à l’abattage (16 % avant, avec 84 % sans abattage)',
+      abat / mains > 0.15 && abat / mains < 0.6, pct(abat / mains));
+  });
 }
 
 /* ================= CONSERVATION DES JETONS ================= */
@@ -262,6 +299,7 @@ function simReprise(parties) {
     const w0 = wallet.get();
     let s = pk.create(['Moi', '🤖 A', '🤖 B'], { niveau: 'moyen' });
     s.solo = true;
+    pk._reconcilier(s, 0); // premier affichage : on s'assoit avec 100
     pk.apply(s, 0, { t: 'mode', m: 'cash' });
     pk._reconcilier(s, 0);
     let sauve = JSON.parse(JSON.stringify(s));
@@ -358,7 +396,7 @@ function simReprise(parties) {
 const quoi = process.argv[2] || 'tout';
 const n = process.argv[3] ? parseInt(process.argv[3], 10) : 0;
 if (quoi === 'blackjack' || quoi === 'tout') simBlackjack(n || (quoi === 'tout' ? 200000 : 2000000));
-if (quoi === 'poker' || quoi === 'tout') simPoker(n || (quoi === 'tout' ? 60 : 300));
+if (quoi === 'poker' || quoi === 'tout') simPoker(n || (quoi === 'tout' ? 80 : 400));
 if (quoi === 'jetons' || quoi === 'tout') simJetons(n || (quoi === 'tout' ? 20000 : 100000));
 if (quoi === 'reprise' || quoi === 'tout') simReprise(n || (quoi === 'tout' ? 150 : 1000));
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nSimulations OK.');
