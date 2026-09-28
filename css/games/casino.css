@@ -84,10 +84,11 @@ body.theme-casino::before, body.theme-casino::after { opacity: .35; }
 }
 .cz-tombe { animation: czJetonTombe .35s var(--doux) both; }
 
-/* ================= textes de la salle : lisibles sur le fond sombre ================= */
-body.theme-casino .mini-msg { color: var(--txt); }
-body.theme-casino .waiting { color: var(--txt-2); }
-body.theme-casino .hint { color: var(--txt-2); }
+/* ================= textes de la salle : lisibles sur le fond sombre =================
+   (limité à la zone de jeu : les fenêtres de la coque gardent leur style V2) */
+body.theme-casino #mini-area .mini-msg { color: var(--txt); }
+body.theme-casino #mini-area .waiting { color: var(--txt-2); }
+body.theme-casino #mini-area .hint { color: var(--txt-2); }
 
 /* bouton discret (quitter, passer) : lisible, jamais d'encre sombre sur fond de nuit */
 .cz-lien {
