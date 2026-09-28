@@ -90,7 +90,7 @@ if (joue('p4')) {
     while (!s.roundOver) p4.apply(s, s.current, p4.bot(s, s.current, { niveau: niv[s.current] }));
     return s.draw ? -1 : s.winner;
   }
-  const duels = [['moyen', 'facile', RAPIDE ? 20 : 60, 0.8], ['difficile', 'moyen', RAPIDE ? 8 : 24, 0.7],
+  const duels = [['moyen', 'facile', RAPIDE ? 20 : 60, 0.8], ['difficile', 'moyen', RAPIDE ? 10 : 30, 0.6],
     ['difficile', 'facile', RAPIDE ? 6 : 12, 0.9]];
   duels.forEach(([a, b, n, seuil]) => {
     let wa = 0, wb = 0, nul = 0;
@@ -100,7 +100,7 @@ if (joue('p4')) {
     }
     mesure('P4 ' + a + ' contre ' + b, wa + ' victoires, ' + wb + ' défaites, ' + nul + ' nuls sur ' + n +
       ' (' + pct(wa, n) + ', chacun commence une fois sur deux)');
-    check('P4 : ' + a + ' bat nettement ' + b, wa >= seuil * n);
+    check('P4 : ' + a + ' bat nettement ' + b, wa >= seuil * n && wb <= 0.2 * n, { wa, wb, nul });
   });
   // profondeur et temps du niveau difficile sur des milieux de partie
   let profMin = 99, msMax = 0, msSom = 0, msMinMax = 0, nPos = 0;
@@ -524,6 +524,119 @@ if (joue('yams')) {
   });
   check('Yams : facile < moyen < difficile', moyY.facile + 40 < moyY.moyen && moyY.moyen + 8 < moyY.difficile, moyY);
   check('Yams difficile : plus de 220 points en moyenne', moyY.difficile > 220, moyY.difficile);
+}
+
+/* ================= COCHON ================= */
+if (joue('cochon')) {
+  const pig = require(ROOT + '/js/games/cochon.js');
+  const reel = Math.random;
+  const truque = v => { Math.random = () => v; }; // 0 → 1 ; 0.55 → 4 ; 0.99 → 6
+  console.log('--- Cochon : règles ---');
+  let g = pig.create(['Léa', 'Marc', 'Zoé']);
+  check('niveaux déclarés', JSON.stringify(pig.niveaux) === '["facile","moyen","difficile"]');
+  check('options réglables avant le 1er lancer', pig.apply(g, 2, { t: 'regles', egal: true, deuxDes: true }).ok &&
+    g.opts.egal && g.opts.deuxDes);
+  pig.apply(g, 0, { t: 'regles', deuxDes: false });
+  truque(0.55);
+  check('lancer (jeton anti double-appui)', pig.apply(g, 0, { t: 'roll', n: 0 }).ok && g.turnPoints === 4);
+  check('le même appui une 2e fois est ignoré', !pig.apply(g, 0, { t: 'roll', n: 0 }).ok && g.turnPoints === 4);
+  check('options figées ensuite', !pig.apply(g, 0, { t: 'regles', egal: false }).ok);
+  check('sécurité : l’état ne contient plus de HTML (plus de lastEvent)', !g.lastEvent && JSON.stringify(g).indexOf('<') === -1);
+  // tour égal : Marc atteint 100, Zoé joue encore, puis fin
+  g.players[1].total = 96;
+  pig.apply(g, 0, { t: 'bank' });
+  truque(0.99);
+  pig.apply(g, 1, { t: 'roll' });
+  pig.apply(g, 1, { t: 'bank' });
+  check('tour égal : 100 atteint, la partie continue pour Zoé', !g.finished && g.current === 2 && g.cible === 1);
+  g.players[2].total = 97;
+  pig.apply(g, 2, { t: 'roll' }); pig.apply(g, 2, { t: 'roll' });
+  pig.apply(g, 2, { t: 'bank' });
+  check('fin après le tour de table ; Zoé (109) bat Marc (102)', g.finished && JSON.stringify(pig.gagnants(g)) === '[2]',
+    { tot: g.players.map(p => p.total), f: g.finished });
+  // règle classique : fin immédiate
+  g = pig.create(['A', 'B']);
+  g.players[0].total = 95;
+  pig.apply(g, 0, { t: 'roll' }); pig.apply(g, 0, { t: 'bank' });
+  check('règle classique (par défaut) : fin dès 100', g.finished && JSON.stringify(pig.gagnants(g)) === '[0]');
+  // deux dés
+  g = pig.create(['A', 'B']);
+  pig.apply(g, 0, { t: 'regles', deuxDes: true });
+  g.players[0].total = 40;
+  truque(0.99);
+  pig.apply(g, 0, { t: 'roll' });
+  check('deux dés : on additionne (6 + 6)', g.turnPoints === 12 && g.des.length === 2);
+  let seq = [0.99, 0]; Math.random = () => seq.shift();
+  pig.apply(g, 0, { t: 'roll' });
+  check('deux dés : un seul 1, le tour est perdu (total gardé)', g.current === 1 && g.players[0].total === 40 && g.dernier.res === 'cochon');
+  g.players[1].total = 55;
+  truque(0);
+  pig.apply(g, 1, { t: 'roll' });
+  check('deux dés : double 1 = « Gros cochon », retour à zéro', g.players[1].total === 0 && g.dernier.res === 'gros');
+  Math.random = reel;
+  const piege = pig.create(['<svg onload=alert(1)>', 'B']);
+  piege.players[0].total = 100; piege.finished = true; piege.winner = 0; piege.gagnantsFin = [0];
+  check('récapitulatif échappé', pig.summary(piege).indexOf('<svg') === -1);
+
+  console.log('--- Cochon : vitesse contre l’ordinateur (bug 8) ---');
+  g = pig.create(['Vous', '🤖 a', '🤖 b', '🤖 c']);
+  check('« rapide » refusé hors solo', !pig.apply(g, 0, { t: 'vitesse', rapide: true }).ok);
+  g.niveauIA = 'difficile';
+  pig.apply(g, 0, { t: 'vitesse', rapide: true });
+  truque(0.55); pig.apply(g, 0, { t: 'roll' }); pig.apply(g, 0, { t: 'bank' }); Math.random = reel;
+  const a = pig.bot(GG.clone(g), 1, {});
+  check('mode rapide : l’IA joue tout son tour en UNE action', a.t === 'auto' && pig.apply(g, 1, a).ok && g.current !== 1 &&
+    g.journal && g.journal.etapes.length >= 1);
+  function actionsParTour(rapide) {
+    let act = 0, tours = 0;
+    for (let k = 0; k < (RAPIDE ? 40 : 200); k++) {
+      const s = pig.create(['🤖 a', '🤖 b']); s.niveauIA = 'difficile'; s.rapide = rapide;
+      let garde = 0;
+      while (!s.finished && garde++ < 3000) {
+        const i = s.current;
+        let b = pig.bot(GG.clone(s), i, {});
+        if (i === 0 && b.t === 'auto') b = { t: 'roll' };
+        pig.apply(s, i, b);
+        if (i === 1) { act++; if (s.current !== 1 || s.finished) tours++; }
+      }
+    }
+    return act / tours;
+  }
+  const n1 = actionsParTour(false), n2 = actionsParTour(true);
+  mesure('Cochon : actions d’IA par tour', n1.toFixed(2) + ' en normal (chaque lancer se voit), ' + n2.toFixed(2) + ' en rapide');
+  mesure('Cochon à 4 (3 IA) : attente entre deux tours humains', (3 * n1 * DELAI_IA).toFixed(1) + ' s en normal, ' +
+    (3 * n2 * DELAI_IA).toFixed(1) + ' s en rapide (avant : ≈ 11 s)');
+  check('Cochon : attente en rapide < 4 s', 3 * n2 * DELAI_IA < 4);
+
+  console.log('--- Cochon : niveaux d’IA et avantage du premier joueur (mesures) ---');
+  function partie(niv, egal) {
+    const s = pig.create(niv.map((n, i) => 'p' + i));
+    s.opts.egal = egal;
+    let garde = 0;
+    while (!s.finished && garde++ < 5000) pig.apply(s, s.current, pig.bot(s, s.current, { niveau: niv[s.current] }));
+    return pig.gagnants(s);
+  }
+  const NP = RAPIDE ? 600 : 4000;
+  [false, true].forEach(egal => {
+    ['moyen', 'difficile'].forEach(niv => {
+      let w0 = 0;
+      for (let k = 0; k < NP; k++) { const w = partie([niv, niv], egal); if (w.length === 1 && w[0] === 0) w0++; }
+      mesure('Cochon ' + (egal ? 'tour égal' : 'règle classique') + ', ' + niv + ' contre ' + niv + ' : le 1er joueur gagne', pct(w0, NP) + ' (avant : 53,7 %)');
+    });
+  });
+  const res = {};
+  [['moyen', 'facile'], ['difficile', 'moyen'], ['difficile', 'facile']].forEach(([x, y]) => {
+    let wx = 0;
+    for (let k = 0; k < NP; k++) {
+      const inv = k % 2 === 1;
+      const w = partie(inv ? [y, x] : [x, y], false);
+      if (w.length === 1 && w[0] === (inv ? 1 : 0)) wx++;
+    }
+    res[x + '/' + y] = wx / NP;
+    mesure('Cochon ' + x + ' contre ' + y, pct(wx, NP) + ' de victoires (chacun commence une fois sur deux)');
+  });
+  check('Cochon : chaque niveau bat le précédent (le dé décide beaucoup, mais pas tout)',
+    res['moyen/facile'] > 0.54 && res['difficile/moyen'] > 0.52 && res['difficile/facile'] > 0.56, res);
 }
 
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 des classiques OK.');

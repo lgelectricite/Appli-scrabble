@@ -61,7 +61,7 @@
      Position interne : 0 vide, 1 rouge, 2 jaune. On tient à jour, coup par
      coup, le nombre de jetons de chaque camp dans chacune des 69 fenêtres de
      4 cases : l’évaluation d’une position ne coûte alors plus rien. */
-  var FEN = [], FEN_DE = [];
+  var FEN = [], FEN_DE = [], FEN_C = [];
   (function () {
     var DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];
     for (var i = 0; i < NB; i++) FEN_DE.push([]);
@@ -71,8 +71,13 @@
           var dc = DIRS[d][0], dr = DIRS[d][1];
           var r3 = r + 3 * dr, c3 = c + 3 * dc;
           if (r3 < 0 || r3 >= ROWS || c3 < 0 || c3 >= COLS) continue;
-          for (var k = 0; k < 4; k++) FEN_DE[(r + k * dr) * COLS + c + k * dc].push(FEN.length);
+          var cl = [];
+          for (var k = 0; k < 4; k++) {
+            FEN_DE[(r + k * dr) * COLS + c + k * dc].push(FEN.length);
+            cl.push((r + k * dr) * COLS + c + k * dc);
+          }
           FEN.push(1);
+          FEN_C.push(cl);
         }
       }
     }
@@ -87,6 +92,12 @@
     }
   })();
   var CENTRE = [0, 1, 2, 4, 2, 1, 0]; // tenir le milieu rapporte
+  /* La parité des menaces (la clé des fins de partie) : une menace (3 jetons
+     et un trou) vaut bien plus quand le trou est sur une rangée « à soi » —
+     impaire (1re, 3e, 5e en partant du bas) pour celui qui a commencé la
+     manche, paire pour l’autre : c’est lui qui finira par y poser. */
+  var PARITE = 30;
+  var D3 = [[1, 0], [1, 1], [1, -1]];
 
   // clés de hachage (deux entiers de 32 bits) pour la table de transposition
   var Z = [[], [], []], Z2 = [[], [], []];
@@ -103,13 +114,18 @@
 
   var GAGNE = 100000;
 
-  function Position(grid) {
+  function Position(grid, trait, parite) {
     this.b = new Int8Array(NB);
     this.h = new Int8Array(COLS);
     this.n = [null, new Int8Array(FEN.length), new Int8Array(FEN.length)];
     this.score = 0; // du point de vue des rouges
     this.k1 = 0; this.k2 = 0;
     this.coups = 0;
+    // qui a commencé la manche ? celui qui a un jeton de plus, sinon celui qui a le trait
+    var nr = 0, nj = 0;
+    for (var q0 = 0; q0 < NB; q0++) { if (grid[q0] === 'R') nr++; else if (grid[q0] === 'J') nj++; }
+    this.premier = nr > nj ? 1 : (nj > nr ? 2 : (trait || 1));
+    this.parite = parite || 0;
     for (var c = 0; c < COLS; c++) {
       for (var r = ROWS - 1; r >= 0; r--) {
         var v = grid[r * COLS + c];
@@ -118,17 +134,33 @@
       }
     }
   }
+  /* valeur d’une fenêtre, parité des menaces comprise */
+  Position.prototype.terme = function (w) {
+    var a = this.n[1][w], b = this.n[2][w], v = VAL[a][b];
+    if ((a === 3 && b === 0) || (b === 3 && a === 0)) {
+      var cl = FEN_C[w];
+      for (var k = 0; k < 4; k++) {
+        var e = cl[k];
+        if (!this.b[e]) {
+          var qui = a === 3 ? 1 : 2;
+          var impaire = ((ROWS - Math.floor(e / COLS)) & 1) === 1;
+          if ((qui === this.premier) === impaire) v += qui === 1 ? this.parite : -this.parite;
+          break;
+        }
+      }
+    }
+    return v;
+  };
   Position.prototype.jouer = function (c, q) {
     var i = (ROWS - 1 - this.h[c]) * COLS + c;
-    var fs = FEN_DE[i], n1 = this.n[1], n2 = this.n[2], s = this.score;
-    for (var k = 0; k < fs.length; k++) {
-      var w = fs[k];
-      s -= VAL[n1[w]][n2[w]];
-      if (q === 1) n1[w]++; else n2[w]++;
-      s += VAL[n1[w]][n2[w]];
+    var fs = FEN_DE[i], n1 = this.n[1], n2 = this.n[2], s = this.score, k;
+    for (k = 0; k < fs.length; k++) s -= this.terme(fs[k]);
+    this.b[i] = q;
+    for (k = 0; k < fs.length; k++) {
+      if (q === 1) n1[fs[k]]++; else n2[fs[k]]++;
+      s += this.terme(fs[k]);
     }
     this.score = s + (q === 1 ? CENTRE[c] : -CENTRE[c]);
-    this.b[i] = q;
     this.h[c]++;
     this.coups++;
     this.k1 ^= Z[q][i]; this.k2 ^= Z2[q][i];
@@ -138,32 +170,23 @@
     this.h[c]--;
     var i = (ROWS - 1 - this.h[c]) * COLS + c;
     var q = this.b[i];
-    var fs = FEN_DE[i], n1 = this.n[1], n2 = this.n[2], s = this.score;
-    for (var k = 0; k < fs.length; k++) {
-      var w = fs[k];
-      s -= VAL[n1[w]][n2[w]];
-      if (q === 1) n1[w]--; else n2[w]--;
-      s += VAL[n1[w]][n2[w]];
+    var fs = FEN_DE[i], n1 = this.n[1], n2 = this.n[2], s = this.score, k;
+    for (k = 0; k < fs.length; k++) s -= this.terme(fs[k]);
+    this.b[i] = 0;
+    for (k = 0; k < fs.length; k++) {
+      if (q === 1) n1[fs[k]]--; else n2[fs[k]]--;
+      s += this.terme(fs[k]);
     }
     this.score = s - (q === 1 ? CENTRE[c] : -CENTRE[c]);
-    this.b[i] = 0;
     this.coups--;
     this.k1 ^= Z[q][i]; this.k2 ^= Z2[q][i];
   };
-  /* le camp q gagnerait-il en jouant dans la colonne c ? */
+  /* le camp q gagnerait-il en jouant dans la colonne c ? (une fenêtre qui
+     contient la case d’arrivée compte déjà 3 jetons de q et aucun adverse) */
   Position.prototype.gagnerait = function (c, q) {
     if (this.h[c] >= ROWS) return false;
-    var r = ROWS - 1 - this.h[c], b = this.b;
-    // vertical : trois jetons de q juste en dessous
-    if (r <= 2 && b[(r + 1) * COLS + c] === q && b[(r + 2) * COLS + c] === q &&
-        b[(r + 3) * COLS + c] === q) return true;
-    var D = [[1, 0], [1, 1], [1, -1]];
-    for (var d = 0; d < 3; d++) {
-      var dc = D[d][0], dr = D[d][1], n = 0, cc, rr;
-      for (cc = c + dc, rr = r + dr; cc < COLS && rr >= 0 && rr < ROWS && b[rr * COLS + cc] === q; cc += dc, rr += dr) n++;
-      for (cc = c - dc, rr = r - dr; cc >= 0 && rr >= 0 && rr < ROWS && b[rr * COLS + cc] === q; cc -= dc, rr -= dr) n++;
-      if (n >= 3) return true;
-    }
+    var fs = FEN_DE[(ROWS - 1 - this.h[c]) * COLS + c], nq = this.n[q], no = this.n[3 - q];
+    for (var k = 0; k < fs.length; k++) if (nq[fs[k]] === 3 && no[fs[k]] === 0) return true;
     return false;
   };
 
@@ -192,11 +215,13 @@
     o.noeuds++;
     if (o.limite && (o.noeuds & 2047) === 0 && maintenant() > o.limite) o.stop = true;
     if (o.stop) return 0;
-    var adv = 3 - q;
-    for (c = 0; c < COLS; c++) if (pos.gagnerait(c, q)) return GAGNE - ply;
+    var adv = 3 - q, forcee = -1, menaces = 0;
+    for (c = 0; c < COLS; c++) {
+      if (pos.h[c] >= ROWS) continue;
+      if (pos.gagnerait(c, q)) return GAGNE - ply;
+      if (pos.gagnerait(c, adv)) { menaces++; forcee = c; }
+    }
     if (pos.coups >= NB - 1) return 0; // le dernier jeton ne peut plus rien gagner
-    var forcee = -1, menaces = 0;
-    for (c = 0; c < COLS; c++) if (pos.gagnerait(c, adv)) { menaces++; forcee = c; }
     if (menaces >= 2) return -(GAGNE - ply - 1);
     if (prof <= 0) return q === 1 ? pos.score : -pos.score;
     var T = o.table, slot = 0, coupTT = -1, alpha0 = alpha;
@@ -215,13 +240,19 @@
       }
     }
     var liste = o.listes[ply] || (o.listes[ply] = new Int8Array(COLS));
-    var nb = 0;
+    var nb = 0, H = o.hist, base = q * NB;
     if (forcee >= 0) { liste[nb++] = forcee; }
     else {
       if (coupTT >= 0 && pos.h[coupTT] < ROWS) liste[nb++] = coupTT;
+      var debut = nb;
       for (k = 0; k < COLS; k++) {
         c = ORDRE[k];
-        if (c !== coupTT && pos.h[c] < ROWS) liste[nb++] = c;
+        if (c === coupTT || pos.h[c] >= ROWS) continue;
+        // tri par insertion selon l’historique des coupures (centre à égalité)
+        var sc = H[base + (ROWS - 1 - pos.h[c]) * COLS + c], j = nb;
+        while (j > debut && H[base + (ROWS - 1 - pos.h[liste[j - 1]]) * COLS + liste[j - 1]] < sc) { liste[j] = liste[j - 1]; j--; }
+        liste[j] = c;
+        nb++;
       }
     }
     var best = -GAGNE * 2, bestC = liste[0];
@@ -233,7 +264,10 @@
       if (o.stop) return 0;
       if (v > best) { best = v; bestC = c; }
       if (v > alpha) alpha = v;
-      if (alpha >= beta) break;
+      if (alpha >= beta) {
+        H[base + (ROWS - 1 - pos.h[c]) * COLS + c] += prof * prof;
+        break;
+      }
     }
     if (T) {
       var sv = best;
@@ -249,8 +283,8 @@
   /* Analyse de chaque coup possible à la racine : [{col, val, offre}] où
      « offre » signale un coup qui laisse une victoire immédiate à l’adversaire. */
   function analyseRacine(grid, q, prof, opts) {
-    var pos = new Position(grid);
-    var o = { pos: pos, noeuds: 0, limite: 0, stop: false, table: opts.table ? tt() : null, listes: [] };
+    var pos = new Position(grid, q, opts.parite ? PARITE : 0);
+    var o = { pos: pos, noeuds: 0, limite: 0, stop: false, table: opts.table ? tt() : null, listes: [], hist: new Int32Array(3 * NB) };
     var coups = [];
     for (var k = 0; k < COLS; k++) {
       var c = ORDRE[k];
@@ -262,7 +296,7 @@
       pos.annuler(c);
       coups.push({ col: c, val: 0, offre: offre });
     }
-    if (coups.some(function (cp) { return cp.val === GAGNE; })) return { coups: coups, prof: 0, noeuds: 0 };
+    if (coups.some(function (cp) { return cp.val === GAGNE; })) return { coups: coups, prof: 0, noeuds: 0, ms: 0, msMin: 0 };
     var t0 = maintenant(), faite = 0, meilleur = null, msMin = 0;
     var budget = opts.budget || 0, minProf = opts.minProf || prof;
     for (var d = opts.iteratif ? Math.min(2, prof) : prof; d <= prof; d++) {
@@ -304,7 +338,7 @@
   function auHasard(liste) { return liste[Math.floor(Math.random() * liste.length)]; }
 
   function coupFacile(grid, q) {
-    var pos = new Position(grid), libres = [], c;
+    var pos = new Position(grid, q), libres = [], c;
     for (c = 0; c < COLS; c++) if (pos.h[c] < ROWS) libres.push(c);
     if (!libres.length) return -1;
     var gagnants = libres.filter(function (cc) { return pos.gagnerait(cc, q); });
@@ -336,7 +370,7 @@
     if (niveau === 'facile') return coupFacile(grid, q);
     if (niveau === 'difficile') {
       if (poses === 0) return 3;
-      var an = analyseRacine(grid, q, 16, { table: true, iteratif: true, minProf: 8, budget: 90 });
+      var an = analyseRacine(grid, q, 16, { table: true, iteratif: true, minProf: 8, budget: 90, parite: true });
       var cs = sansCadeau(an.coups), top = -GAGNE * 3, choix = cs[0];
       cs.forEach(function (cp) { if (cp.val > top) { top = cp.val; choix = cp; } });
       if (top < -GAGNE / 2) {
