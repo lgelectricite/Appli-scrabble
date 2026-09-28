@@ -534,6 +534,7 @@
     if (avant && avant.vueTour === s.current + ':' + s.nChoix && avant.vue !== undefined && avant.vue < s.players.length) vue = avant.vue;
     var sel = avant && avant.selTour === s.current + ':' + s.nLancers ? avant.sel : null;
     if (sel && s.players[s.current].sheet[sel] !== null) sel = null;
+    if (!avant) sfx.prepare(['dice']); // le bruit des dés se prépare d’avance
     el._v2 = {
       jeu: 'yams', id: s.id, nLancers: s.nLancers, nChoix: s.nChoix, journal: s.journal ? s.journal.n : null,
       vue: vue, vueTour: s.current + ':' + s.nChoix, sel: sel, selTour: s.current + ':' + s.nLancers

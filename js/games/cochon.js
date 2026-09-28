@@ -248,6 +248,7 @@
     var dern = s.dernier;
     var nouveau = !!(avant && dern && dern.n > avant.n);
     var nouveauJournal = !!(avant && s.journal && s.journal.n > avant.n && (!avant.journal || avant.journal !== s.journal.n));
+    if (!avant) sfx.prepare(['dice']); // le bruit des dés se prépare d’avance
     el._v2 = { jeu: 'cochon', id: s.id, n: dern ? dern.n : 0, totaux: s.players.map(function (p) { return p.total; }), journal: s.journal ? s.journal.n : 0 };
     var totauxAvant = avant ? avant.totaux : null;
 

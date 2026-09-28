@@ -522,6 +522,8 @@
     var vu = avant ? avant.vu : {};
     var dern = s.dernier;
     var nouveauTir = !!(avant && dern && (vu[me] || 0) < dern.n);
+    // les sons lourds (éclaboussure, bulles) se préparent pendant le placement
+    if (!avant) sfx.prepare(['splash', 'sink']);
     el._v2 = { jeu: 'bataille', cle: cle, vu: vu };
     if (dern) vu[me] = dern.n;
 

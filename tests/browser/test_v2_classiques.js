@@ -605,6 +605,58 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
     }
   }
 
+  /* ============ Fluidité au processeur ×4 ============ */
+  if (!SEUL || SEUL === 'fluidite') {
+    console.log('--- Fluidité des animations au processeur ×4 ---');
+    const p = await nouvelle(412, 780);
+    const cdp = await p._ctx.newCDPSession(p);
+    // Les aurores de fond de la coque (flou de 60 px animé) coûtent très cher
+    // en rendu logiciel (navigateur sans GPU des tests) : on les coupe pour
+    // mesurer le coût des JEUX seuls.
+    await p.addStyleTag({ content: 'body::before, body::after { animation: none !important; display: none !important; }' });
+    const images = async action => {
+      await p.evaluate(() => {
+        window.__img = []; const t0 = performance.now(); let last = t0;
+        const f = t => { window.__img.push(t - last); last = t; if (t - t0 < 1200) requestAnimationFrame(f); };
+        requestAnimationFrame(f);
+      });
+      await action();
+      await attendre(1350);
+      const im = await p.evaluate(() => window.__img.slice(2));
+      return im.reduce((a, b) => a + b, 0) / Math.max(1, im.length);
+    };
+    const quitteVite = async () => { await quitte(p); };
+    const res = {};
+    // on chauffe chaque jeu une fois (compilation, sons) puis on mesure au ×4
+    await lanceLocal(p, 'p4', ['A', 'B']);
+    await p.locator('.p4-cell[data-col="2"]').first().click();
+    await p.waitForSelector('.p4-board[data-pret="1"]');
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    res.p4 = await images(() => p.locator('.p4-cell[data-col="3"]').first().click());
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    await quitteVite();
+    await lanceLocal(p, 'yams', ['A', 'B']);
+    await p.click('[data-a="roll"]');
+    await p.waitForSelector('[data-a="roll"]:not([disabled])');
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    res.yams = await images(() => p.click('[data-a="roll"]'));
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    await quitteVite();
+    await lanceLocal(p, 'cochon', ['A', 'B']);
+    await p.click('[data-a="roll"]');
+    await attendre(900);
+    await p.waitForSelector('[data-a="roll"]:not([disabled])');
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    res.cochon = await images(() => p.click('[data-a="roll"]'));
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    await quitteVite();
+    Object.keys(res).forEach(k => {
+      mesure('Fluidité ' + k + ' au processeur ×4 (animation d’un coup)', (1000 / res[k]).toFixed(0) + ' images/s');
+      check(k + ' : animation fluide au processeur ×4 (≥ 30 images/s)', 1000 / res[k] >= 30, res[k]);
+    });
+    await p._ctx.close();
+  }
+
   /* ============ Sécurité : un état hostile (hôte malveillant) ============ */
   if (!SEUL || SEUL === 'securite') {
     console.log('--- Sécurité : rendu d’états piégés ---');
