@@ -53,6 +53,8 @@ function check(n, c, e) {
   check('inscription du tapis (3 contre 2)', /3 CONTRE 2/.test(await p.textContent('.bj-arc')));
   // la carte du croupier est cachée tant que la main se joue (un blackjack
   // d'entrée résout la manche immédiatement : carte déjà révélée, c'est normal)
+  // V2 : les boutons d'action arrivent après la distribution animée
+  await p.waitForSelector('#bj-stand, .bj-result', { timeout: 8000 }).catch(() => {});
   if (await p.locator('#bj-stand').count()) {
     check('carte du croupier cachée pendant la main', await p.locator('.bj-dos').count() === 1);
     await p.click('#bj-stand');
