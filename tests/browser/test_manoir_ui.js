@@ -110,7 +110,7 @@ function answerFor(questionText) {
   await p.waitForSelector('#overlay-end:not(.hidden)');
   const endTxt = await p.textContent('#end-detail');
   check('fenêtre de fin avec révélation', endTxt.includes('C’était'), endTxt.slice(0, 80));
-  check('statistiques affichées', endTxt.includes('pistes') && endTxt.includes('erreurs'));
+  check('statistiques affichées', endTxt.includes('pistes') && /\d+ erreurs?/.test(endTxt));
   await p.click('#btn-end-home');
   await p.waitForTimeout(200);
   check('thème sombre retiré à la sortie', await p.evaluate(() =>
