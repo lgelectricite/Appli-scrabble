@@ -791,6 +791,7 @@
     if (frais) {
       mm = el._mm = { cle: cle, n: tries.length, typed: first, absorbe: false, arme: maintenant + 350,
         entree: tries.length === 0, flip: null, vague: null };
+      if (ent(s.round) === 1 && !tries.length) { try { if ((root.scrollY || 0) > 0) root.scrollTo(0, 0); } catch (e) {} }
       if (s.phase === 'reveal') {
         // reprise d’une partie sur l’écran de révélation : pas de fanfare rejouée
         mm.vague = { r: tries.length - 1, t0: maintenant - 5000, joue: true };

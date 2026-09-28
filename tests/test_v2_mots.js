@@ -498,5 +498,122 @@ if (partie('pendu')) {
   }
 }
 
+/* ================= MOTS MÊLÉS ================= */
+if (partie('meles')) {
+  console.log('--- Mots mêlés ---');
+  const meles = require(ROOT + '/js/games/meles.js');
+  const L = meles._LEVELS;
+  check('bug 8 : grilles en hauteur pour le téléphone (7×8, 8×9, 9×10 au lieu de 13×13)',
+    L.facile.cols === 7 && L.facile.rows === 8 && L.moyen.cols === 8 && L.moyen.rows === 9 &&
+    L.difficile.cols === 9 && L.difficile.rows === 10);
+  // grilles à thème + mot mystère formé des lettres restantes
+  for (const lvl of ['facile', 'moyen', 'difficile']) {
+    let ok = 0, avecMyst = 0, mots = 0, horsTheme = 0, doublons = 0, mystFaux = 0, pire = 0;
+    const N = 110;
+    for (let k = 0; k < N; k++) {
+      const th = GG.MOTS_THEMES[k % GG.MOTS_THEMES.length];
+      const t0 = Date.now();
+      const b = meles._construit(lvl, th.id, 4242 + k * 7919);
+      pire = Math.max(pire, Date.now() - t0);
+      if (!b) continue;
+      ok++;
+      mots += b.words.length;
+      const duTheme = new Set([].concat(th.mots[0], th.mots[1], th.mots[2]));
+      if (b.theme !== th.id || b.words.some(w => !duTheme.has(w.w))) horsTheme++;
+      if (b.words.some(w => meles._occurrences(b.grid, b.cols, b.rows, w.w) !== 1)) doublons++;
+      if (b.mystere) {
+        avecMyst++;
+        const prises = new Set();
+        b.words.forEach(w => w.cells.forEach(i => prises.add(i)));
+        const reste = b.grid.filter((c, i) => !prises.has(i)).join('');
+        if (reste !== b.mystere || !duTheme.has(b.mystere)) mystFaux++;
+      }
+    }
+    console.log('    → ' + lvl + ' : ' + (mots / ok).toFixed(1) + ' mots par grille, ' + pct(avecMyst, N) +
+      ' % avec mot mystère, génération ≤ ' + pire + ' ms');
+    check(lvl + ' : 110 grilles à thème (tous les mots du thème choisi, chacun une seule fois)',
+      ok === N && horsTheme === 0 && doublons === 0, { ok, horsTheme, doublons });
+    check(lvl + ' : mot mystère du thème = lettres restantes lues dans l’ordre (≥ 97 % des grilles)',
+      pct(avecMyst, N) >= 97 && mystFaux === 0, { avecMyst, mystFaux });
+  }
+  // défi du jour : même grille pour tous
+  {
+    const a = meles.create(['A']), b = meles.create(['B', 'C']);
+    meles.apply(a, 0, { t: 'level', m: 'jour' });
+    meles.apply(b, 0, { t: 'level', m: 'jour' });
+    check('défi du jour : la même grille pour tout le monde (calculée depuis la date)',
+      a.grid.join('') === b.grid.join('') && a.mystere === b.mystere && a.theme === b.theme && a.jour === meles._jourCle());
+  }
+  // partie : mot à l'envers, mot mystère, fin
+  {
+    const g = meles.create(['A', 'B']);
+    meles.apply(g, 0, { t: 'level', l: 'moyen', th: 'animaux' });
+    check('thème choisi respecté (Animaux)', g.theme === 'animaux');
+    const w0 = g.words[0];
+    let r = meles.apply(g, 1, { t: 'claim', a: w0.cells[w0.cells.length - 1], b: w0.cells[0] });
+    check('mot sélectionné à l’envers accepté', r.ok && w0.foundBy === 1);
+    check('mot mystère caché aux invités tant qu’il n’est pas trouvé', meles.redact(g, 1).mystere === undefined &&
+      meles.redact(g, 1).mystereLen === g.mystere.length);
+    r = meles.apply(g, 0, { t: 'mystere', w: 'ZZZ' });
+    check('mauvais mot mystère refusé', !r.ok);
+    r = meles.apply(g, 0, { t: 'mystere', w: g.mystere.toLowerCase() });
+    check('bon mot mystère : +3 points', r.ok && g.players[0].bonus === 3 && meles.scoreOf(g, 0) === 3);
+    let timer = null;
+    g.words.forEach(w => {
+      if (w.foundBy === -1) { const rr = meles.apply(g, 0, { t: 'claim', a: w.cells[0], b: w.cells[w.cells.length - 1] }); if (rr.timer) timer = rr.timer; }
+    });
+    check('tous les mots trouvés : révélation du mot mystère (minuteur), pas encore fini', g.phase === 'mystere' && !g.finished && timer && timer.action.t === 'fin');
+    check('… puis fin de partie', meles.apply(g, -1, timer.action).ok && g.finished && meles.over(g));
+    check('gagnants : le meilleur score', JSON.stringify(meles.gagnants(g)) === '[0]');
+  }
+  // chrono : une longue absence ne compte pas des heures
+  {
+    const g = meles.create(['A']);
+    meles.apply(g, 0, { t: 'level', l: 'facile' });
+    g.lastTs -= 5 * 3600 * 1000; g.startTs -= 5 * 3600 * 1000;
+    const w = g.words[0];
+    meles.apply(g, 0, { t: 'claim', a: w.cells[0], b: w.cells[w.cells.length - 1] });
+    check('chrono : une pause de 5 h (application fermée) compte au plus 3 min', g.chrono <= 180000 + 1000, g.chrono);
+  }
+  // sur ce téléphone à plusieurs : chacun son tour
+  {
+    const g = meles.create(['A', 'B']);
+    meles.apply(g, 0, { t: 'level', l: 'facile', tour: true });
+    check('à 2 sur un téléphone : chacun son tour (tour de A)', meles.turnOf(g) === 0);
+    const w = g.words[0];
+    check('… B ne peut pas jouer au tour de A', !meles.apply(g, 1, { t: 'claim', a: w.cells[0], b: w.cells[w.cells.length - 1] }).ok);
+    meles.apply(g, 0, { t: 'claim', a: w.cells[0], b: w.cells[w.cells.length - 1] });
+    check('… un mot trouvé et on passe à B', meles.turnOf(g) === 1 && g.players[0].found === 1);
+  }
+  // l'ordinateur (Jouer seul) : parties tout-IA et rythme par niveau
+  check('Jouer seul : IA et niveaux déclarés', typeof meles.bot === 'function' &&
+    JSON.stringify(meles.niveaux) === '["facile","moyen","difficile"]');
+  {
+    const rythme = {};
+    let ok = true, err = null;
+    for (const niv of ['facile', 'moyen', 'difficile']) {
+      let tics = 0, trouves = 0;
+      for (let k = 0; k < 6; k++) {
+        const r = partieToutIA(meles, ['🤖 A', '🤖 B'], niv, st => (st.phase === 'setup'
+          ? { player: 0, action: { t: 'level', l: ['facile', 'moyen', 'difficile'][k % 3] } } : null), 20000);
+        if (!r.ok) { ok = false; err = niv + ' : ' + r.err; break; }
+        tics += r.st.tic;
+        trouves += r.st.words.length;
+      }
+      rythme[niv] = 2 * tics / Math.max(1, trouves); // par robot (ils cherchent à deux)
+    }
+    check('18 parties tout-IA (2 robots) menées à leur terme sans accroc', ok, err);
+    console.log('    → IA des Mots mêlés : un mot toutes les ' + rythme.facile.toFixed(1) + ' / ' + rythme.moyen.toFixed(1) + ' / ' +
+      rythme.difficile.toFixed(1) + ' secondes environ par robot (facile / moyen / difficile ; 1 battement ≈ 1 s)');
+    check('niveaux d’IA réellement différents (facile nettement plus lente que difficile)',
+      rythme.facile > rythme.moyen * 1.3 && rythme.moyen > rythme.difficile * 1.3);
+    // l'IA ne triche pas sur le temps : jamais un mot avant d'avoir « cherché »
+    const g = meles.create(['Vous', '🤖 Margot'], { niveau: 'difficile' });
+    meles.apply(g, 0, { t: 'level', l: 'moyen' });
+    const a = meles.bot(GG.clone(g), 1, { niveau: 'difficile' });
+    check('l’IA ne trouve rien à la première seconde (elle cherche, comme un joueur)', a && a.t === 'attente');
+  }
+}
+
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 jeux de mots OK.');
 process.exit(failures ? 1 : 0);

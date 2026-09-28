@@ -712,6 +712,7 @@
     var v = el._pdu;
     var neuf = false, nouvelles = [], nouvelleFausse = '';
     if (!v || v.cle !== cle) {
+      if (ent(s.round) === 1 && !tried.length) { try { if ((root.scrollY || 0) > 0) root.scrollTo(0, 0); } catch (e) {} }
       v = el._pdu = { cle: cle, errs: errs, tried: tried.slice(), rev: revealed.map(function (r) { return lettreSure(r); }).join(','),
         arme: now + 400, fin: !!s.roundOver, entree: true };
     } else {

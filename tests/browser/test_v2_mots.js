@@ -468,6 +468,171 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
     await d.context().close();
   }
 
+  /* ======================= MOTS MÊLÉS ======================= */
+  if (partie('meles')) {
+    /* trouve un mot de la liste dans la grille affichée (comme un joueur) */
+    const trouveMot = p => p.evaluate(() => {
+      const g = document.querySelector('.mel-grid');
+      const C = +g.dataset.cols, R = +g.dataset.rows;
+      const cells = [...document.querySelectorAll('.mel-cell')].map(c => c.textContent);
+      const words = [...document.querySelectorAll('.mel-word:not(.found)')].map(w => w.textContent);
+      const dirs = [[0, 1], [1, 0], [1, 1], [1, -1], [0, -1], [-1, 0], [-1, -1], [-1, 1]];
+      for (const w of words) for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) for (const d of dirs) {
+        const er = r + d[0] * (w.length - 1), ec = c + d[1] * (w.length - 1);
+        if (er < 0 || er >= R || ec < 0 || ec >= C) continue;
+        let ok = true;
+        for (let k = 0; k < w.length; k++) if (cells[(r + d[0] * k) * C + c + d[1] * k] !== w[k]) { ok = false; break; }
+        if (ok) return { a: r * C + c, b: er * C + ec, w };
+      }
+      return null;
+    });
+    /* glisse le doigt de la case a à la case b ; renvoie l'état de la gélule à mi-chemin */
+    async function glisse(p, a, b, pendant) {
+      const A = await p.locator('.mel-cell[data-i="' + a + '"]').boundingBox();
+      const B = await p.locator('.mel-cell[data-i="' + b + '"]').boundingBox();
+      await p.mouse.move(A.x + A.width / 2, A.y + A.height / 2);
+      await p.mouse.down();
+      let mi = null;
+      for (let s = 1; s <= 6; s++) {
+        await p.mouse.move(A.x + A.width / 2 + (B.x - A.x) * s / 6, A.y + A.height / 2 + (B.y - A.y) * s / 6);
+        if (s === 3) {
+          mi = await p.evaluate(() => {
+            const l = document.querySelector('.mel-sel');
+            return { cls: l.getAttribute('class'), x2: +l.getAttribute('x2'), y2: +l.getAttribute('y2') };
+          });
+          if (pendant) await pendant();
+        }
+      }
+      await p.mouse.up();
+      return mi;
+    }
+
+    console.log('--- Mots mêlés : solo contre l’ordinateur (360×640) ---');
+    const p = await nouveauTelephone(360, 640);
+    await lanceSolo(p, 'meles', 'difficile');
+    await p.waitForSelector('.mel-accueil [data-lvl="difficile"]', { timeout: 20000 });
+    check('accueil : défi du jour, 22 thèmes + surprise, 3 niveaux', await p.locator('.mel-jour').count() === 1 &&
+      await p.locator('.mel-theme').count() >= 21 && await p.locator('.mel-accueil [data-lvl]').count() === 3);
+    check('accueil sans débordement (360)', !(await debordement(p)), await debordement(p));
+    await p.click('.mel-theme[data-th="animaux"]');
+    await p.click('[data-lvl="difficile"]');
+    await p.waitForSelector('.mel-grid');
+    await attendre(900);
+    const taille = await p.evaluate(() => {
+      const r = document.querySelector('.mel-cell').getBoundingClientRect();
+      return { w: r.width, h: r.height };
+    });
+    check('bug 8 : cases assez grandes en difficile (≥ 32 px sur un écran de 360 px, avant : 28 px)',
+      taille.w >= 32 && taille.h >= 32, taille);
+    check('grille à thème : « Animaux », 9×10, mot mystère annoncé',
+      /Animaux/.test(await p.textContent('.mel-theme-pill')) && await p.locator('.mel-cell').count() === 90 &&
+      await p.locator('.mel-mys-case').count() >= 4);
+    check('partie sans débordement (360)', !(await debordement(p)), await debordement(p));
+    // bug 8 : on glisse le doigt, une gélule suit
+    let f = await trouveMot(p);
+    let perf = null;
+    const mi = await glisse(p, f.a, f.b, async () => {});
+    check('bug 8 : sélection au doigt en glissant : la gélule suit le doigt pendant le geste',
+      mi && /\bon\b/.test(mi.cls) && (mi.x2 > 0 || mi.y2 > 0), mi);
+    await attendre(250);
+    check('bug 8 : mot trouvé en glissant : gélule posée, mot barré dans la liste',
+      await p.locator('.mel-traits .mel-trait').count() === 1 && await p.locator('.mel-word.found').count() >= 1);
+    // un deuxième mot (mesure de la fluidité pendant le geste, processeur ×4)
+    f = await trouveMot(p);
+    perf = await fluidite(p, () => glisse(p, f.a, f.b), 700);
+    console.log('    → fluidité au processeur ×4 pendant la sélection au doigt : médiane ' + perf.med.toFixed(1) +
+      ' ms, 95e centile ' + perf.p95.toFixed(1) + ' ms');
+    check('fluide au processeur ×4 (médiane ≤ 20 ms, 95 % ≤ 50 ms)', perf.med <= 20 && perf.p95 <= 50, perf);
+    await attendre(200);
+    const couleurs = await p.evaluate(() => [...document.querySelectorAll('.mel-trait')].map(l => l.style.getPropertyValue('--c')));
+    check('bug 8 : chaque mot trouvé a SA couleur (plus une seule tache)', couleurs.length >= 2 && new Set(couleurs).size === couleurs.length, couleurs);
+    // l'ancien geste marche encore : toucher la première puis la dernière lettre
+    f = await trouveMot(p);
+    await p.locator('.mel-cell[data-i="' + f.a + '"]').click();
+    check('toucher la première lettre : elle est marquée, consigne affichée', await p.locator('.mel-cell.ancre').count() === 1 &&
+      /dernière lettre/.test(await p.textContent('#mel-msg')));
+    await p.locator('.mel-cell[data-i="' + f.b + '"]').click();
+    await attendre(250);
+    check('… puis la dernière : mot trouvé', await p.locator('.mel-traits .mel-trait').count() >= 3);
+    // une mauvaise sélection : la gélule devient rouge et s'efface
+    await glisse(p, 0, 2);
+    const rate = await p.evaluate(() => document.querySelector('.mel-sel').getAttribute('class'));
+    check('sélection fausse : la gélule rougit (refus visible)', /rate/.test(rate) ||
+      (await p.locator('.mel-traits .mel-trait').count()) >= 4, rate);
+    // mot mystère proposé trop tôt et faux
+    await p.click('[data-a="proposer"]');
+    await p.fill('#mel-mys-in', 'ZZZZZZZZZZZ'.slice(0, await p.locator('.mel-mys-case').count()));
+    await p.click('.mel-mys-form [data-a="valider"]');
+    await attendre(200);
+    check('mot mystère faux : refusé, le champ reste ouvert', await p.locator('#mel-mys-in').count() === 1);
+    await p.click('[data-a="proposer"]');
+    // l'ordinateur cherche lui aussi (niveau difficile : quelques secondes par mot)
+    let iaTrouve = false;
+    try {
+      await p.waitForFunction(() => {
+        const b = [...document.querySelectorAll('#mini-players .player-badge')];
+        return b.length === 2 && parseInt(b[1].querySelector('.p-score').textContent, 10) > 0;
+      }, null, { timeout: 30000 });
+      iaTrouve = true;
+    } catch (e) {}
+    check('contre l’ordinateur : Margot trouve des mots de son côté', iaTrouve);
+    // on termine la grille : lettres restantes → mot mystère, confettis, fin
+    for (let k = 0; k < 30; k++) {
+      if (await p.locator('#overlay-end:not(.hidden)').count() || await p.evaluate(() => {
+        const e = document.querySelector('.mel-jeu'); return !e || !document.querySelector('.mel-word:not(.found)');
+      })) break;
+      const g = await trouveMot(p);
+      if (!g) { await attendre(300); continue; }
+      await glisse(p, g.a, g.b);
+      await attendre(120);
+    }
+    await p.waitForSelector('.mel-cell.restante', { timeout: 10000 });
+    const lettres = await p.evaluate(() => [...document.querySelectorAll('.mel-cell.restante')].map(c => c.textContent).join(''));
+    await attendre(2500);
+    const banniere = await p.evaluate(() => [...document.querySelectorAll('.mel-mys-case')].map(c => c.textContent).join(''));
+    check('mot mystère : les lettres restantes, lues dans l’ordre, forment le mot du bandeau', lettres.length >= 4 && lettres === banniere,
+      { lettres, banniere });
+    await p.waitForSelector('#overlay-end:not(.hidden)', { timeout: 8000 });
+    check('fin de partie : écran de fin de la coque (résumé avec le mot mystère)', /Mot mystère/.test(await p.textContent('#end-detail')));
+    await p.context().close();
+
+    console.log('--- Mots mêlés : à 2 sur ce téléphone, chacun son tour (412×780) ---');
+    const t = await nouveauTelephone(412, 780);
+    await lanceTel(t, 'meles', 2);
+    await t.waitForSelector('[data-lvl="facile"]', { timeout: 20000 });
+    check('à 2 sur ce téléphone : « chacun son tour » annoncé', /chacun son tour/.test(await t.textContent('.mel-accueil')));
+    await t.click('[data-lvl="facile"]');
+    await t.waitForSelector('.mel-grid');
+    await attendre(700);
+    const t412 = await t.evaluate(() => document.querySelector('.mel-cell').getBoundingClientRect().width);
+    check('cases confortables à 412 px (≥ 40 px)', t412 >= 40, t412);
+    check('à 2 : au tour du joueur 1', /Joueur 1/.test(await t.textContent('#mini-turn')));
+    const f2 = await trouveMot(t);
+    await glisse(t, f2.a, f2.b);
+    await attendre(250);
+    check('à 2 : un mot trouvé, au tour du joueur 2', /Joueur 2/.test(await t.textContent('#mini-turn')) &&
+      await t.locator('.mel-joueur.tour').count() === 1);
+    check('partie à 2 sans débordement (412)', !(await debordement(t)), await debordement(t));
+    await quitte(t);
+    // défi du jour : la même grille à chaque ouverture
+    const lireGrille = async () => {
+      await t.click('.game-tile[data-g="meles"]');
+      await t.click('#btn-mini-hotseat');
+      await t.locator('#mini-count .count-btn[data-n="1"]').click();
+      await t.click('#btn-mini-start');
+      await t.waitForSelector('.mel-jour');
+      await t.click('.mel-jour');
+      await t.waitForSelector('.mel-grid');
+      const g = await t.evaluate(() => [...document.querySelectorAll('.mel-cell')].map(c => c.textContent).join(''));
+      await quitte(t);
+      return g;
+    };
+    const j1 = await lireGrille(), j2 = await lireGrille();
+    check('défi du jour : la même grille à chaque fois (calculée depuis la date)', j1.length >= 56 && j1 === j2);
+    await t.context().close();
+  }
+
+  check('aucune erreur JavaScript pendant toutes ces parties', erreurs.length === 0, erreurs);
   await browser.close();
   console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 jeux de mots (navigateur) OK.');
   process.exit(failures ? 1 : 0);

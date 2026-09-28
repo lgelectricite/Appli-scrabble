@@ -43,13 +43,14 @@ function check(n, c, e) {
   await p.waitForSelector('.mel-grid', { timeout: 20000 });
   const found = await p.evaluate(() => {
     const cells = [...document.querySelectorAll('.mel-cell')].map(c => c.textContent);
-    const N = Math.sqrt(cells.length);
+    const N = +document.querySelector('.mel-grid').dataset.cols;   // V2 : grilles rectangulaires
+    const NR = +document.querySelector('.mel-grid').dataset.rows;
     const words = [...document.querySelectorAll('.mel-word:not(.found)')].map(w => w.textContent);
     const dirs = [[0, 1], [1, 0], [1, 1], [1, -1], [0, -1], [-1, 0], [-1, -1], [-1, 1]];
     for (const w of words) {
-      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) for (const d of dirs) {
+      for (let r = 0; r < NR; r++) for (let c = 0; c < N; c++) for (const d of dirs) {
         const er = r + d[0] * (w.length - 1), ec = c + d[1] * (w.length - 1);
-        if (er < 0 || er >= N || ec < 0 || ec >= N) continue;
+        if (er < 0 || er >= NR || ec < 0 || ec >= N) continue;
         let ok = true;
         for (let k = 0; k < w.length; k++) {
           if (cells[(r + d[0] * k) * N + (c + d[1] * k)] !== w[k]) { ok = false; break; }
@@ -65,8 +66,8 @@ function check(n, c, e) {
     await p.locator('.mel-cell[data-i="' + found.b + '"]').click();
     await p.waitForTimeout(300);
     check('mot barré de la liste', await p.locator('.mel-word.found').count() === 1);
-    check('cases colorées', await p.evaluate(() =>
-      [...document.querySelectorAll('.mel-cell')].some(c => c.style.background)));
+    // V2 : chaque mot trouvé est surligné par une gélule de sa couleur
+    check('cases colorées', await p.locator('.mel-traits .mel-trait').count() === 1);
   }
   await p.click('#btn-mini-menu'); await p.click('#btn-menu-quit'); await p.click('#btn-confirm-yes');
 
@@ -102,7 +103,7 @@ function check(n, c, e) {
     check('clavier neutre : les couleurs restent sur le tableau, pas sur les touches', true);
   }
   // on résout par les couleurs (comme un joueur) : essais illimités
-  for (let it = 0; it < 14; it++) {
+  for (let it = 0; it < 30; it++) { // essais illimités : on va au bout
     if (await p.locator('.mot-reveal').count()) break;
     const prochain = await p.evaluate(() => {
       const rows = [...document.querySelectorAll('.mot-board .mot-row')]

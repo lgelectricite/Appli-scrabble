@@ -67,11 +67,12 @@ for (const lvl of ['facile', 'moyen', 'difficile']) {
     w.cells.every((c, k) => built.grid[c] === w.w[k])));
   check(lvl + ' : toutes les cases remplies', built.grid.every(ch => /^[A-Z]$/.test(ch)));
 }
-// niveaux : tailles, nombres de mots, répartition des directions
-check('niveaux : 9×9/7, 11×11/10, 13×13/13', (() => {
+// niveaux (V2 : grilles en hauteur pour le téléphone, cases ≥ 32 px) :
+// 7×8, 8×9, 9×10, de plus en plus de mots, et un mot mystère
+check('niveaux : 7×8, 8×9, 9×10, de plus en plus de mots, mot mystère', (() => {
   const a = meles._buildGrid('facile'), b = meles._buildGrid('moyen'), c = meles._buildGrid('difficile');
-  return a.size === 9 && a.words.length === 7 && b.size === 11 && b.words.length === 10 &&
-    c.size === 13 && c.words.length === 13;
+  return a.cols === 7 && a.rows === 8 && b.cols === 8 && b.rows === 9 && c.cols === 9 && c.rows === 10 &&
+    a.words.length >= 6 && c.words.length >= 9 && !!a.mystere && !!c.mystere;
 })());
 check('facile : mélange garanti d’horizontaux ET de verticaux', (() => {
   for (let t = 0; t < 10; t++) {
@@ -95,7 +96,7 @@ check('les mots viennent de la liste des mots courants', (() => {
 })());
 g = meles.create(['A', 'B']);
 meles.apply(g, 0, { t: 'level', l: 'facile' }, { dict });
-check('partie lancée', g.phase === 'play' && g.words.length === 7);
+check('partie lancée', g.phase === 'play' && g.words.length >= 6);
 const w0 = g.words[0];
 r = meles.apply(g, 1, { t: 'claim', a: w0.cells[0], b: w0.cells[w0.cells.length - 1] });
 check('mot revendiqué', r.ok && w0.foundBy === 1 && g.players[1].found === 1);
@@ -107,7 +108,8 @@ check('mot à l’envers accepté', r.ok && w1.foundBy === 0);
 g.words.forEach(w => {
   if (w.foundBy === -1) meles.apply(g, 0, { t: 'claim', a: w.cells[0], b: w.cells[w.cells.length - 1] });
 });
-check('tous trouvés → fin', g.finished === true);
+check('tous trouvés → révélation du mot mystère, puis fin', g.phase === 'mystere' &&
+  meles.apply(g, -1, { t: 'fin' }).ok && g.finished === true);
 check('lignes brisées refusées', (() => {
   const t = meles.create(['A']);
   meles.apply(t, 0, { t: 'level', l: 'facile' }, { dict });
