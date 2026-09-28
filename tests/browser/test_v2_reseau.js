@@ -343,16 +343,26 @@ function mandataire(portEcoute, portRelais) {
     check('le second devient « Joueur 2 »', /Joueur 2/.test(noms), noms);
     await lancer(H, G);
     const J2 = G[1];
+    const J1 = G[0];
+    // l'appli de « Joueur 2 » se recharge : l'accueil propose de revenir
     await J2.page.reload();
     await J2.page.waitForSelector('#catalog .game-tile');
-    await J2.page.click('#btn-home-online');
-    await J2.page.fill('#online-name', 'Joueur');
-    const codeJ = await H.page.evaluate(() => JSON.parse(localStorage.getItem('gg-partie') || '{}').code);
-    await J2.page.fill('#online-code', codeJ || '');
-    await J2.page.click('#btn-online-go');
+    check('invité rechargé : carte « Revenir dans la partie » sur l’accueil',
+      /Revenir dans la partie/.test(await J2.page.textContent('#home-reprise')), await J2.page.textContent('#home-reprise'));
+    await J2.page.click('#btn-reprise');
     await J2.page.waitForSelector('#screen-mini.active', { timeout: 10000 }).catch(() => {});
-    check('« Joueur 2 » retrouve SA place malgré le prénom tapé (jeton)',
+    check('« Joueur 2 » retrouve SA place d’un appui (jeton)',
       await J2.page.locator('#screen-mini.active').count() === 1 && !(await banniere(H.page)), await banniere(H.page));
+    // l'autre « Joueur » tape son prénom et le code à la main : le code est déjà rempli
+    await J1.page.reload();
+    await J1.page.waitForSelector('#catalog .game-tile');
+    await J1.page.click('#btn-home-online');
+    check('code de la partie prérempli après un rechargement', (await J1.page.inputValue('#online-code')).length === 6);
+    await J1.page.fill('#online-name', 'Joueur');
+    await J1.page.click('#btn-online-go');
+    await J1.page.waitForSelector('#screen-mini.active', { timeout: 10000 }).catch(() => {});
+    check('« Joueur » retrouve aussi sa place', await J1.page.locator('#screen-mini.active').count() === 1 &&
+      !(await banniere(H.page)), await banniere(H.page));
     for (const t of [H].concat(G)) await t.ctx.close();
   }
 
