@@ -346,154 +346,193 @@ check('réponses des autres cachées pendant la manche', redBac.answers[0] === u
 
 /* ================= LE MANOIR ================= */
 console.log('--- Le Manoir ---');
-g = manoir.create(['A', 'B', 'C']);
-check('6 pistes, 2 déductions chacune', g.pistes.length === 6 &&
-  g.pistes.every(p => p.deductions.length === 2));
-check('12 déductions au total', g.pistes.reduce((t, p) => t + p.deductions.length, 0) === 12);
-const sol = g.solution;
-const dedIds = g.pistes.flatMap(p => p.deductions).map(d => d.kind + ':' + d.id);
-check('la solution n’apparaît JAMAIS dans les déductions',
-  !dedIds.includes('suspect:' + sol.suspect) &&
-  !dedIds.includes('arme:' + sol.arme) &&
-  !dedIds.includes('lieu:' + sol.lieu));
-check('lancement réservé à l’hôte', !manoir.apply(g, 2, { t: 'start' }).ok);
-check('énigme avant le lancement refusée', !manoir.apply(g, 0, { t: 'answer', piste: 0, text: 'x' }).ok);
-manoir.apply(g, 0, { t: 'start' });
-check('enquête lancée', g.phase === 'play');
-// normalisation des réponses
-check('normalisation accents/espaces', manoir._norm("L'Épongé  ") === 'LEPONGE');
-// mauvaise réponse comptée
-manoir.apply(g, 1, { t: 'answer', piste: 0, text: 'quarante-douze' });
-check('mauvaise réponse comptée', g.wrongAnswers === 1 && !g.pistes[0].solved);
-// bonne réponse : la piste s'élucide et révèle 2 déductions
-const bonne = g.pistes[0].answers[0];
-manoir.apply(g, 2, { t: 'answer', piste: 0, text: bonne.toLowerCase() + ' ' });
-check('bonne réponse acceptée (insensible casse/espaces)', g.pistes[0].solved);
-check('2 déductions révélées', g.eliminated.length === 2);
-check('l’auteur de la trouvaille est noté', g.pistes[0].solvedBy === 'C');
-check('re-répondre à une piste élucidée refusé', !manoir.apply(g, 0, { t: 'answer', piste: 0, text: bonne }).ok);
-// indice compté une seule fois (rôles neutralisés : pas d'indice gratuit ici)
-g.players.forEach(p => { p.freeHintUsed = true; });
-manoir.apply(g, 0, { t: 'hint', piste: 1 });
-manoir.apply(g, 1, { t: 'hint', piste: 1 });
-check('indice compté une seule fois par piste', g.hintsUsed === 1);
-// accusation fausse puis fausse → défaite
-manoir.apply(g, 1, { t: 'accuse',
-  suspect: sol.suspect === 'safran' ? 'cobalt' : 'safran', arme: sol.arme, lieu: sol.lieu });
-check('accusation erronée : plus qu’une tentative', g.tries === 1 && g.phase === 'play');
-manoir.apply(g, 1, { t: 'accuse',
-  suspect: sol.suspect === 'safran' ? 'cobalt' : 'safran', arme: sol.arme, lieu: sol.lieu });
-check('2e échec : défaite', g.phase === 'end' && g.won === false);
-// nouvelle affaire + accusation juste → victoire
-manoir.apply(g, 0, { t: 'again' });
-check('nouvelle affaire générée', g.phase === 'brief' && g.tries === 2 && g.eliminated.length === 0);
-manoir.apply(g, 0, { t: 'start' });
-manoir.apply(g, 2, { t: 'accuse', suspect: g.solution.suspect, arme: g.solution.arme, lieu: g.solution.lieu });
-check('accusation juste : victoire', g.phase === 'end' && g.won === true && g.lastAccuser === 'C');
-// redact
-g = manoir.create(['A', 'B']);
-manoir.apply(g, 0, { t: 'start' });
-manoir.apply(g, 0, { t: 'answer', piste: 2, text: g.pistes[2].answers[0] });
-const redM = manoir.redact(g, 1);
-check('solution masquée sur le réseau', redM.solution === undefined);
-check('réponses des énigmes masquées', redM.pistes.every(p => p.answers === undefined));
-check('déductions des pistes non élucidées masquées',
-  redM.pistes.every((p, i) => i === 2 ? p.deductions.length === 2 : p.deductions === undefined));
-g.phase = 'end';
-check('solution visible en fin de partie', manoir.redact(g, 1).solution !== undefined);
-// 12 joueurs
-g = manoir.create('ABCDEFGHIJKL'.split(''));
-check('12 joueurs acceptés', g.players.length === 12);
-manoir.apply(g, 0, { t: 'start' });
-check('le 12e joueur peut répondre',
-  manoir.apply(g, 11, { t: 'answer', piste: 0, text: g.pistes[0].answers[0] }).ok &&
-  g.pistes[0].solvedBy === 'L');
-// trois décors d'affaires
-check('3 décors d’affaires disponibles', manoir._SCENARIOS.length >= 3, manoir._SCENARIOS.length);
-check('chaque décor : titre, intro, 5 lieux, 6 pistes', manoir._SCENARIOS.every(sc =>
-  sc.id && sc.titre && sc.lieuTexte && sc.intro &&
-  sc.lieux.length === 5 && sc.lieux.every(l => l.id && l.nom && l.dans && l.icone) &&
-  sc.pistes.length === 6 && sc.pistes.every(p => p.id && p.nom && p.icone && p.desc)));
-g = manoir.create(['A']);
-check('un décor est tiré au sort', g.scenario &&
-  manoir._SCENARIOS.some(sc => sc.id === g.scenario.id));
-check('le lieu du crime appartient au décor', g.scenario.lieux.some(l => l.id === g.solution.lieu));
-check('les pistes viennent du décor', g.pistes.every((p, i) => p.id === g.scenario.pistes[i].id));
-const seenScen = new Set();
-for (let i = 0; i < 80 && seenScen.size < 3; i++) seenScen.add(manoir.create(['A']).scenario.id);
-check('les 3 décors sortent au tirage', seenScen.size === 3, [...seenScen].join(','));
-manoir.apply(g, 0, { t: 'start' });
-const redScen = manoir.redact(g, 0);
-check('le décor reste visible sur le réseau', redScen.scenario &&
-  redScen.scenario.lieux.length === 5);
-// rôles personnels
-check('12 rôles distincts définis', manoir._ROLES.length === 12 &&
-  new Set(manoir._ROLES.map(r => r.id)).size === 12);
-g = manoir.create('ABCDEFGHIJKL'.split(''));
-check('12 joueurs = 12 rôles uniques', new Set(g.players.map(p => p.role.id)).size === 12);
-check('chaque joueur a au moins une info confidentielle',
-  g.players.every(p => p.clues && p.clues.length >= 1));
-check('les infos privées ne désignent jamais la solution', g.players.every(p =>
-  p.clues.every(cl =>
-    !(cl.kind === 'suspect' && cl.id === g.solution.suspect) &&
-    !(cl.kind === 'arme' && cl.id === g.solution.arme) &&
-    !(cl.kind === 'lieu' && cl.id === g.solution.lieu))));
-const redRole = manoir.redact(g, 2);
-check('infos privées des autres masquées (réseau)',
-  redRole.players.every((p, i) => i === 2 ? !!p.clues : p.clues === undefined));
-check('les rôles eux-mêmes sont publics', redRole.players.every(p => p.role && p.role.id));
-// détective : premier indice gratuit
-g = manoir.create(['A']);
-g.players[0].role = manoir._ROLES.find(r => r.id === 'detective');
-g.players[0].freeHintUsed = false;
-manoir.apply(g, 0, { t: 'start' });
-manoir.apply(g, 0, { t: 'hint', piste: 0 });
-check('détective : 1er indice gratuit', g.hintsUsed === 0 && g.pistes[0].hintShown);
-manoir.apply(g, 0, { t: 'hint', piste: 1 });
-check('détective : 2e indice compté', g.hintsUsed === 1);
-// voyante : deux infos différentes
-let gVoy = null;
-for (let t = 0; t < 500 && !gVoy; t++) {
-  const x = manoir.create(['A', 'B']);
-  if (x.players[1].role.id === 'voyante') gVoy = x;
+{
+  const M = manoir;
+  const faitsDe = st => M._tousLesFaits(st);
+  g = M.create(['A', 'B', 'C']);
+  check('six pistes, chacune avec au moins un indice', g.pistes.length === 6 &&
+    g.pistes.every(p => p.faits.length >= 1));
+  check('cinq témoignages publics (un par suspect)', g.temoignages.length === 5 &&
+    new Set(g.temoignages.map(f => f.par)).size === 5);
+  const sol = g.solution;
+  const cand = M._solveur(g.scenario, faitsDe(g));
+  check('le solveur trouve UNE seule solution : la bonne', cand.length === 1 &&
+    cand[0][0] === sol.suspect && cand[0][1] === sol.arme && cand[0][2] === sol.lieu, cand.length);
+  check('les pistes seules ne concluent pas (il faut les dossiers secrets)',
+    M._solveur(g.scenario, g.temoignages.concat(g.pistes.flatMap(p => p.faits))).length >= 3);
+  check('les dossiers seuls ne concluent pas (il faut les pistes)',
+    M._solveur(g.scenario, g.temoignages.concat(g.players.flatMap(p => p.prive))).length >= 2);
+  check('aucun indice ne nomme le coupable', faitsDe(g).every(f => !/coupable est (le |la )?[A-Z]/.test(f.txt)));
+  check('lancement réservé à l’hôte', !M.apply(g, 2, { t: 'start' }).ok);
+  check('énigme avant le lancement refusée', !M.apply(g, 0, { t: 'answer', piste: 0, text: 'x' }).ok);
+  M.apply(g, 0, { t: 'start' });
+  check('à plusieurs : chacun lit son dossier secret', g.phase === 'roles');
+  check('viewerOf : le téléphone passe au premier qui n’a pas lu', M.viewerOf(g) === 0);
+  M.apply(g, 0, { t: 'lu' });
+  check('viewerOf : puis au suivant', M.viewerOf(g) === 1);
+  M.apply(g, 1, { t: 'lu' }); M.apply(g, 2, { t: 'lu' });
+  check('enquête lancée quand tous ont lu', g.phase === 'play' && g.startTs > 0);
+  // normalisation tolérante : articles, accents, casse, pluriel
+  check('normalisation accents/espaces', M._norm("L'Épongé  ") === 'LEPONGE');
+  check('« une horloge » accepté pour HORLOGE', M._accepte('une horloge', ['HORLOGE']));
+  check('« Une ombre » accepté pour OMBRE', M._accepte('Une ombre', ['OMBRE']));
+  check('« la clé » et « une clef » acceptés', M._accepte('la clé', ['CLÉ', 'CLEF']) && M._accepte('une clef', ['CLÉ', 'CLEF']));
+  check('« un coffre », « c’est le coffre ! » acceptés', M._accepte('un coffre', ['COFFRE']) &&
+    M._accepte('c’est le coffre !', ['COFFRE']));
+  check('« une chandelle » / « des étoiles » acceptés', M._accepte('une chandelle', ['CHANDELLE']) &&
+    M._accepte('des étoiles', ['ÉTOILE']));
+  check('« 8 jours » accepté pour 8, « 23 h 30 » pour 23H30', M._accepte('8 jours', ['8']) &&
+    M._accepte('à 23 h 30', ['23H30', '2330']));
+  check('une autre réponse reste refusée', !M._accepte('une pendule', ['HORLOGE']) && !M._accepte('83', ['8']));
+  // mauvaise réponse comptée
+  M.apply(g, 1, { t: 'answer', piste: 0, text: 'quarante-douze' });
+  check('mauvaise réponse comptée', g.wrongAnswers === 1 && !g.pistes[0].solved);
+  const bonne = g.pistes[0].answers[0];
+  M.apply(g, 2, { t: 'answer', piste: 0, text: 'le ' + bonne.toLowerCase() + ' ' });
+  check('bonne réponse acceptée (article, casse, espaces)', g.pistes[0].solved);
+  check('l’auteur de la trouvaille est noté', g.pistes[0].solvedBy === 'C');
+  check('re-répondre à une piste élucidée : sans effet', M.apply(g, 0, { t: 'answer', piste: 0, text: bonne }).ok &&
+    g.wrongAnswers === 1);
+  g.players.forEach(p => { p.freeHintUsed = true; });
+  M.apply(g, 0, { t: 'hint', piste: 1 });
+  M.apply(g, 1, { t: 'hint', piste: 1 });
+  check('indice compté une seule fois par piste', g.hintsUsed === 1);
+  // accusation : proposée, votée, confirmée
+  const faux = { s: sol.suspect === 'safran' ? 'cobalt' : 'safran', a: sol.arme, l: sol.lieu };
+  const sc0 = g.scenario;
+  const autreS = sc0.suspects.find(x => x.id !== sol.suspect).id;
+  const seq = g.accSeq;
+  M.apply(g, 1, { t: 'propose', s: autreS, a: sol.arme, l: sol.lieu, seq: seq });
+  check('une proposition ouvre un vote (pas d’accusation solitaire)', g.phase === 'vote' && g.tries === 2);
+  check('double appui sur « Porter l’accusation » : ignoré', M.apply(g, 1, { t: 'propose', s: autreS, a: sol.arme, l: sol.lieu, seq: seq }).ok &&
+    g.tries === 2 && g.phase === 'vote');
+  const redV = M.redact(g, 2);
+  check('les voix restent secrètes pendant le vote', redV.vote.votes['1'] === null);
+  M.apply(g, 0, { t: 'vote', id: g.vote.id, v: false });
+  check('1 pour, 1 contre : le vote continue', g.phase === 'vote');
+  M.apply(g, 2, { t: 'vote', id: g.vote.id, v: true });
+  check('majorité : l’accusation est portée (erronée)', g.phase === 'verdict' && g.tries === 1 && !g.verdict.win);
+  check('vote tardif ou en double : sans effet', M.apply(g, 2, { t: 'vote', id: seq, v: true }).ok && g.tries === 1);
+  check('verdict non final : rien n’est dévoilé', g.verdict.ok === null && M.redact(g, 0).solution === undefined);
+  M.apply(g, 0, { t: 'suite', id: g.verdict.id });
+  check('retour à l’enquête', g.phase === 'play');
+  // un vote refusé ne coûte rien
+  M.apply(g, 0, { t: 'propose', s: autreS, a: sol.arme, l: sol.lieu, seq: g.accSeq });
+  M.apply(g, 1, { t: 'vote', id: g.vote.id, v: false });
+  M.apply(g, 2, { t: 'vote', id: g.vote.id, v: false });
+  check('accusation refusée par la majorité : aucune tentative perdue', g.phase === 'play' && g.tries === 1);
+  // l'hôte peut clore le vote (joueur absent)
+  M.apply(g, 1, { t: 'propose', s: sol.suspect, a: sol.arme, l: sol.lieu, seq: g.accSeq });
+  check('seul l’hôte clôt le vote', !M.apply(g, 1, { t: 'clore', id: g.vote.id }).ok);
+  M.apply(g, 0, { t: 'clore', id: g.vote.id });
+  check('vote clos avec les voix exprimées (1 pour) : accusation juste', g.phase === 'verdict' && g.verdict.win && g.verdict.final);
+  M.apply(g, 0, { t: 'suite', id: g.verdict.id });
+  check('affaire résolue : fin de partie', g.phase === 'end' && M.over(g) && g.won === true && g.lastAccuser === 'B');
+  check('gagnants : victoire collective', M.gagnants(g) === 'tous');
+  check('récapitulatif de fin', /C’était/.test(M.summary(g)));
+  check('solution visible en fin de partie', M.redact(g, 1).solution !== undefined);
+  M.apply(g, 0, { t: 'again' });
+  check('nouvelle affaire générée', g.phase === 'brief' && g.tries === 2 && !M.over(g));
+  // défaite
+  g = M.create(['A']);
+  M.apply(g, 0, { t: 'start' });
+  check('en solo : pas d’écran de dossier, l’enquête démarre', g.phase === 'play');
+  const s2 = g.solution;
+  const x2 = g.scenario.suspects.find(x => x.id !== s2.suspect).id;
+  M.apply(g, 0, { t: 'propose', s: x2, a: s2.arme, l: s2.lieu, seq: g.accSeq });
+  check('en solo : l’accusation confirmée part aussitôt', g.phase === 'verdict' && g.tries === 1);
+  M.apply(g, 0, { t: 'suite', id: g.verdict.id });
+  M.apply(g, 0, { t: 'propose', s: x2, a: s2.arme, l: s2.lieu, seq: g.accSeq });
+  M.apply(g, 0, { t: 'suite', id: g.verdict.id });
+  check('2e échec : défaite', g.phase === 'end' && g.won === false && M.gagnants(g) === null);
+  // redact
+  g = M.create(['A', 'B']);
+  M.apply(g, 0, { t: 'start' }); M.apply(g, 0, { t: 'lu' }); M.apply(g, 1, { t: 'lu' });
+  M.apply(g, 0, { t: 'answer', piste: 2, text: g.pistes[2].answers[0] });
+  const redM = M.redact(g, 1);
+  check('solution masquée sur le réseau', redM.solution === undefined);
+  check('réponses des énigmes masquées', redM.pistes.every(p => p.answers === undefined));
+  check('indices des pistes non élucidées masqués',
+    redM.pistes.every((p, i) => i === 2 ? p.faits.length >= 1 : p.faits === undefined));
+  check('dossier des autres masqué, le sien visible', redM.players[0].prive === undefined && redM.players[1].prive.length >= 1);
+  check('rien de caché ne fuit dans le texte envoyé', !JSON.stringify(redM).includes('"coeur"') &&
+    !JSON.stringify(redM).includes('"answers"'));
+  // 12 joueurs, rôles
+  g = M.create('ABCDEFGHIJKL'.split(''));
+  check('12 joueurs acceptés', g.players.length === 12);
+  check('12 joueurs = 12 rôles uniques', new Set(g.players.map(p => p.role.id)).size === 12);
+  check('chaque joueur a au moins une info confidentielle', g.players.every(p => p.prive && p.prive.length >= 1));
+  const redRole = M.redact(g, 2);
+  check('infos privées des autres masquées (réseau)',
+    redRole.players.every((p, i) => i === 2 ? !!p.prive : p.prive === undefined));
+  check('les rôles eux-mêmes sont publics', redRole.players.every(p => p.role && p.role.id));
+  M.apply(g, 0, { t: 'start' });
+  g.players.forEach((p, i) => M.apply(g, i, { t: 'lu' }));
+  check('le 12e joueur peut répondre',
+    M.apply(g, 11, { t: 'answer', piste: 0, text: g.pistes[0].answers[0] }).ok && g.pistes[0].solvedBy === 'L');
+  // six affaires riches
+  check('6 affaires disponibles', M._SCENARIOS.length >= 6, M._SCENARIOS.length);
+  check('chaque affaire : 5 suspects, 5 armes, 5 lieux aux signes distincts, 6 pistes de 3 énigmes',
+    M._SCENARIOS.every(sc => sc.suspects.length === 5 && sc.armes.length === 5 && sc.lieux.length === 5 &&
+      new Set(sc.lieux.map(l => l.tags.slice().sort().join('+'))).size === 5 &&
+      sc.pistes.length === 6 && sc.pistes.every(p => p.enigmes.length === 3)));
+  const seenScen = new Set();
+  for (let i = 0; i < 80 && seenScen.size < 6; i++) seenScen.add(M.create(['A']).scenario.id);
+  check('les 6 affaires sortent au tirage', seenScen.size === 6, [...seenScen].join(','));
+  // détective : premier indice gratuit
+  g = M.create(['A']);
+  g.players[0].role = M._ROLES.find(r => r.id === 'detective');
+  g.players[0].freeHintUsed = false;
+  M.apply(g, 0, { t: 'start' });
+  M.apply(g, 0, { t: 'hint', piste: 0 });
+  check('détective : 1er indice gratuit', g.hintsUsed === 0 && g.pistes[0].hintShown);
+  M.apply(g, 0, { t: 'hint', piste: 1 });
+  check('détective : 2e indice compté', g.hintsUsed === 1);
+  // voyante : une info de plus
+  let gVoy = null;
+  for (let t = 0; t < 500 && !gVoy; t++) {
+    const x = M.create(['A', 'B', 'C']);
+    if (x.players[2].role.id === 'voyante') gVoy = x;
+  }
+  check('voyante : une information de plus', !!gVoy && gVoy.players[2].prive.length >= 2);
+  // inspecteur : décompte d'accusation pour lui seul
+  g = M.create(['A', 'B']);
+  g.players[0].role = M._ROLES.find(r => r.id === 'majordome');
+  g.players[1].role = M._ROLES.find(r => r.id === 'inspecteur');
+  M.apply(g, 0, { t: 'start' }); M.apply(g, 0, { t: 'lu' }); M.apply(g, 1, { t: 'lu' });
+  const autre = g.scenario.suspects.find(x => x.id !== g.solution.suspect).id;
+  M.apply(g, 0, { t: 'propose', s: autre, a: g.solution.arme, l: g.solution.lieu, seq: g.accSeq });
+  M.apply(g, 1, { t: 'vote', id: g.vote.id, v: true });
+  check('décompte d’éléments exacts enregistré', g.accuseFailed.right === 2);
+  check('l’inspecteur voit le décompte', M.redact(g, 1).accuseFailed.right === 2);
+  check('les autres ne le voient pas', M.redact(g, 0).accuseFailed.right === undefined);
+  // cryptographe et archiviste
+  g = M.create(['A', 'B']);
+  g.players[0].role = M._ROLES.find(r => r.id === 'cryptographe');
+  g.players[1].role = M._ROLES.find(r => r.id === 'archiviste');
+  M.apply(g, 0, { t: 'start' });
+  const redCry = M.redact(g, 0);
+  check('cryptographe : première lettre visible, réponses masquées',
+    redCry.pistes.every((p, i) => p.answers === undefined && (!p.first || p.first.length === 1)) &&
+    redCry.pistes.some(p => p.first));
+  check('cryptographe : jamais la réponse entière',
+    redCry.pistes.every((p, i) => !p.first || !g.pistes[i].answers.includes(p.first)));
+  const redArc = M.redact(g, 1);
+  check('archiviste : nature des révélations de chaque piste',
+    redArc.pistes.every(p => p.kinds && p.kinds.length >= 1) && redArc.pistes.every(p => p.first === undefined));
+  // secours : faire parler un témoin
+  g = M.create(['A', 'B', 'C']);
+  M.apply(g, 0, { t: 'start' }); g.players.forEach((p, i) => M.apply(g, i, { t: 'lu' }));
+  const m0 = g.malus;
+  M.apply(g, 1, { t: 'secours', n: 0 });
+  check('un témoin parle : une info secrète devient publique (+30 min)', g.revelesTxt.length === 1 && g.malus === m0 + 30);
+  check('double appui sur « faire parler » : sans effet', M.apply(g, 1, { t: 'secours', n: 0 }).ok && g.revelesTxt.length === 1);
+  // carnet commun
+  const k0 = 'suspect:' + g.scenario.suspects[0].id;
+  M.apply(g, 1, { t: 'note', k: k0, v: 1 });
+  check('carnet d’équipe : une marque posée est partagée', M.redact(g, 2).notes[k0] === 1);
+  check('carnet : clé inconnue refusée', !M.apply(g, 1, { t: 'note', k: 'suspect:<img>', v: 1 }).ok);
 }
-check('voyante : DEUX infos confidentielles', !!gVoy &&
-  gVoy.players[1].clues.length === 2 &&
-  gVoy.players[1].clues[0].text !== gVoy.players[1].clues[1].text);
-// inspecteur : décompte d'accusation pour lui seul
-g = manoir.create(['A', 'B']);
-g.players[0].role = manoir._ROLES.find(r => r.id === 'majordome');
-g.players[1].role = manoir._ROLES.find(r => r.id === 'inspecteur');
-manoir.apply(g, 0, { t: 'start' });
-manoir.apply(g, 0, { t: 'accuse',
-  suspect: g.solution.suspect === 'safran' ? 'cobalt' : 'safran',
-  arme: g.solution.arme, lieu: g.solution.lieu });
-check('décompte d’éléments exacts enregistré', g.accuseFailed.right === 2);
-check('l’inspecteur voit le décompte', manoir.redact(g, 1).accuseFailed.right === 2);
-check('les autres ne le voient pas', manoir.redact(g, 0).accuseFailed.right === undefined);
-// cryptographe et archiviste : pouvoirs matérialisés à la redaction
-g = manoir.create(['A', 'B']);
-g.players[0].role = manoir._ROLES.find(r => r.id === 'cryptographe');
-g.players[1].role = manoir._ROLES.find(r => r.id === 'archiviste');
-manoir.apply(g, 0, { t: 'start' });
-const redCry = manoir.redact(g, 0);
-check('cryptographe : première lettre visible, réponses masquées',
-  redCry.pistes.every((p, i) => p.answers === undefined &&
-    (g.pistes[i].answers.some(a => a.length > 1)
-      ? p.first && p.first.length === 1     // don actif : l'initiale d'une vraie réponse
-      : p.first === undefined)));           // réponse d'une lettre : le don se tait
-check('cryptographe : jamais la réponse entière',
-  redCry.pistes.every((p, i) => !p.first || !g.pistes[i].answers.includes(p.first)));
-check('cryptographe : pas les natures de pistes', redCry.pistes.every(p => p.kinds === undefined));
-const redArc = manoir.redact(g, 1);
-check('archiviste : nature des révélations de chaque piste',
-  redArc.pistes.every(p => p.kinds && p.kinds.length === 2) &&
-  redArc.pistes.every(p => p.first === undefined));
-// banque d'énigmes saine
-check('au moins 24 énigmes en réserve', manoir._ENIGMES.length >= 24, manoir._ENIGMES.length);
-check('chaque énigme a réponse(s) et indice', manoir._ENIGMES.every(e =>
-  e.q && e.hint && Array.isArray(e.a) && e.a.length > 0 &&
-  e.a.every(x => x === manoir._norm(x))));
 
 /* ================= L'IMPOSTEUR ================= */
 console.log('--- L’Imposteur ---');
