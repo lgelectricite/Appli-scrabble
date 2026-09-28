@@ -225,5 +225,149 @@ if (!only || only === 'huit') {
   console.log('  (mesures IA : ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)');
 }
 
+/* ============================== MEMORY ============================== */
+if (!only || only === 'memory') {
+  console.log('--- Memory : l’IA a une vraie mémoire (bug 4) ---');
+  // Une partie IA contre IA, instrumentée : à chaque 2e carte, la jumelle de
+  // la 1re avait-elle déjà été montrée ? Si non, l'IA ne peut que deviner au
+  // hasard — on compare son taux de réussite au hasard pur.
+  function partie(niveaux, stats) {
+    const s = memory.create(niveaux.map((x, i) => 'IA' + i));
+    s.pret = true;
+    for (let k = 0; k < 2000 && !s.finished; k++) {
+      const me = s.current, niv = niveaux[me];
+      const up = s.mismatch ? [] : s.up;
+      const a = memory.bot(clone(s), me, { niveau: niv });
+      if (up.length === 1 && stats) {
+        const e = s.cards[up[0]].e;
+        const jumelle = s.cards.findIndex((c, i) => i !== up[0] && c.e === e && !c.matched);
+        const dejaVue = s.journal.indexOf(jumelle) !== -1;
+        if (!dejaVue) {
+          const mem = memory._souvenirs(s, me, niv);
+          const cand = s.cards.filter((c, i) => !c.matched && i !== up[0] && !mem.hasOwnProperty(i)).length;
+          stats.aveugle++;
+          stats.hasard += cand ? 1 / cand : 0;
+          if (a.i === jumelle) stats.devine++;
+        } else {
+          stats.connue++;
+          if (a.i === jumelle) stats.retrouvee++;
+        }
+      }
+      const r = memory.apply(s, me, a);
+      if (!r.ok) throw new Error('coup IA refusé ' + r.error);
+    }
+    return s;
+  }
+  const res = {};
+  ['facile', 'moyen', 'difficile'].forEach(niv => {
+    const st = { aveugle: 0, devine: 0, hasard: 0, connue: 0, retrouvee: 0, essais: 0, parties: 0 };
+    for (let k = 0; k < 250; k++) {
+      const s = partie([niv], st);
+      st.essais += s.players[0].tries; st.parties++;
+    }
+    res[niv] = st;
+  });
+  ['facile', 'moyen', 'difficile'].forEach(niv => {
+    const st = res[niv];
+    const taux = st.devine / st.aveugle, hasard = st.hasard / st.aveugle;
+    check(niv + ' : jumelle JAMAIS montrée trouvée au seul hasard (avant : 35 % « devinés »)',
+      taux < hasard * 1.35 + 0.01 && taux < 0.12,
+      pct(taux) + ' trouvées, hasard attendu ' + pct(hasard) + ' (' + st.aveugle + ' cas)');
+  });
+  const tr = n => res[n].retrouvee / res[n].connue;
+  check('jumelle déjà vue : difficile la retrouve toujours', tr('difficile') > 0.999, pct(tr('difficile')));
+  check('… moyen presque toujours, facile beaucoup moins (il oublie)',
+    tr('moyen') > 0.7 && tr('facile') < 0.6 && tr('facile') < tr('moyen'),
+    'moyen ' + pct(tr('moyen')) + ', facile ' + pct(tr('facile')));
+  const ess = n => res[n].essais / res[n].parties;
+  check('essais moyens pour 12 paires en solo : facile > moyen > difficile',
+    ess('facile') > ess('moyen') + 2 && ess('moyen') > ess('difficile') + 1,
+    'facile ' + ess('facile').toFixed(1) + ', moyen ' + ess('moyen').toFixed(1) + ', difficile ' + ess('difficile').toFixed(1));
+  {
+    // la mémoire du facile : 2 à 4 cartes au plus
+    const s = memory.create(['A', 'B']);
+    s.journal = [];
+    for (let i = 0; i < 20; i++) s.journal.push(i);
+    let max = 0;
+    for (let k = 0; k < 40; k++) { s.journal.push(k % 20); max = Math.max(max, Object.keys(memory._souvenirs(s, 1, 'facile')).length); }
+    check('facile : retient au plus 4 cartes', max <= 4 && max >= 1, max);
+    check('difficile : retient tout ce qui a été montré',
+      Object.keys(memory._souvenirs(s, 1, 'difficile')).length === 20);
+  }
+  {
+    // duel : difficile contre facile
+    let vd = 0;
+    for (let k = 0; k < 200; k++) {
+      const s = partie(k % 2 ? ['difficile', 'facile'] : ['facile', 'difficile']);
+      const d = k % 2 ? 0 : 1;
+      if (s.players[d].pairs > s.players[1 - d].pairs) vd++;
+    }
+    check('duel : difficile bat facile', vd / 200 > 0.7, pct(vd / 200));
+  }
+
+  console.log('--- Memory : rien ne fuit en réseau (bug 5) ---');
+  {
+    const s = memory.create(['A', 'B', 'C']);
+    memory.apply(s, 0, { t: 'config', theme: 'fruits', taille: 12 });
+    memory.apply(s, 0, { t: 'flip', i: 0 });
+    for (let v = 0; v < 3; v++) {
+      const red = memory.redact(s, v);
+      const cachees = red.cards.filter((c, i) => i !== 0 && !c.matched);
+      check('joueur ' + v + ' : les ' + cachees.length + ' cartes cachées sont masquées',
+        cachees.every(c => c.e === null) && red.cards[0].e === s.cards[0].e);
+    }
+    // une paire trouvée reste visible de tous
+    const j = s.cards.findIndex((c, i) => i !== 0 && c.e === s.cards[0].e);
+    memory.apply(s, 0, { t: 'flip', i: j });
+    const red = memory.redact(s, 2);
+    check('paire trouvée : visible de tous', red.cards[0].e && red.cards[j].e === red.cards[0].e);
+    check('l’état complet garde les vraies cartes (l’hôte arbitre)', s.cards.every(c => typeof c.e === 'string'));
+  }
+
+  console.log('--- Memory : thèmes, tailles, défi du jour, chrono ---');
+  {
+    const TH = memory._THEMES;
+    check('7 thèmes, chacun assez riche pour 24 paires',
+      Object.keys(TH).length >= 7 && Object.keys(TH).every(k => new Set(TH[k].items).size >= 24),
+      Object.keys(TH).map(k => k + ':' + TH[k].items.length).join(' '));
+    [12, 18, 24].forEach(t => {
+      const s = memory.create(['A']);
+      memory.apply(s, 0, { t: 'config', theme: 'drapeaux', taille: t });
+      check('grille de ' + t + ' paires', s.cards.length === 2 * t && s.theme === 'drapeaux');
+    });
+    const a = memory.create(['A']), b = memory.create(['B', 'C']);
+    memory.apply(a, 0, { t: 'config', defi: true });
+    memory.apply(b, 0, { t: 'config', defi: true });
+    check('défi du jour : la même grille pour tout le monde',
+      JSON.stringify(a.cards) === JSON.stringify(b.cards) && a.defi && a.defi === b.defi);
+    const c = memory.create(['A']);
+    check('thème inconnu → liste blanche (animaux)',
+      memory.apply(c, 0, { t: 'config', theme: '<img src=x>', taille: 99 }).ok && c.theme === 'animaux' && c.taille === 12);
+    check('config refusée une fois la partie commencée',
+      !memory.apply(c, 0, { t: 'config', theme: 'fruits' }).ok);
+    check('config réservée à l’hôte', !memory.apply(memory.create(['A', 'B']), 1, { t: 'config', theme: 'fruits' }).ok);
+    // chrono : une longue pause ne compte que 20 s
+    const s = memory.create(['A']);
+    const vraiNow = Date.now;
+    let t = 1e12;
+    Date.now = () => t;
+    s.cards = [{ e: 'x', matched: false }, { e: 'x', matched: false }, { e: 'y', matched: false }, { e: 'y', matched: false }];
+    memory.apply(s, 0, { t: 'flip', i: 0 }); t += 2000;
+    memory.apply(s, 0, { t: 'flip', i: 1 }); t += 3600 * 1000; // une heure de pause
+    memory.apply(s, 0, { t: 'flip', i: 2 }); t += 1000;
+    memory.apply(s, 0, { t: 'flip', i: 3 });
+    Date.now = vraiNow;
+    check('chrono : une pause d’une heure ne compte que 20 s', s.durationSec === 23, s.durationSec);
+    check('gagnants(state) : en solo, victoire', JSON.stringify(memory.gagnants(s)) === '[0]');
+    // bug 6 : la grille se calcule pour tenir dans l'écran
+    const d412 = memory._disposition(24, 392, 780 - 120 - 114, 7);
+    const d360 = memory._disposition(36, 340, 640 - 120 - 114, 5);
+    check('12 paires à 412×780 : cartes ≥ 80 px, tout tient', d412.s >= 80 &&
+      Math.ceil(24 / d412.cols) * (d412.s + 7) <= 780 - 120 - 114 + 7, d412);
+    check('18 paires à 360×640 : cartes ≥ 50 px, tout tient', d360.s >= 50 &&
+      Math.ceil(36 / d360.cols) * (d360.s + 5) <= 640 - 120 - 114 + 5, d360);
+  }
+}
+
 console.log(failures ? '\n' + failures + ' ÉCHEC(S)' : '\nTests V2 cartes, Memory, Petit Bac OK.');
 process.exit(failures ? 1 : 0);
