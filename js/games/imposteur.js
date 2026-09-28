@@ -918,6 +918,8 @@
         p.hasVoted = p.vote !== -1;
         if (i !== viewer && !ouvert) delete p.vote;
       });
+      // heure d'envoi : le téléphone qui reçoit corrige le décalage d'horloge
+      if (copy.ech) copy.ech.maintenant = Date.now();
       return copy;
     },
 
@@ -1161,13 +1163,25 @@
     minuteur(racine);
   }
 
+  /* Décalage entre l'horloge de l'hôte et la nôtre, mesuré à la première
+     réception de chaque échéance (la latence, < 0,4 s, est ignorée). */
+  var decalages = {};
+  function decalage(ech) {
+    if (!ech || !ech.maintenant) return 0;
+    if (decalages[ech.k] === undefined) {
+      var d = Date.now() - ech.maintenant;
+      decalages[ech.k] = Math.abs(d) < 400 ? 0 : d;
+    }
+    return decalages[ech.k];
+  }
+
   function teteHtml(s, ctx) {
     var c = nbImposteurs(s.players.length);
     var cat = CATEGORIES.filter(function (x) { return x.id === s.opts.cat; })[0] || CATEGORIES[0];
     var out = '<div class="imp-top"><div class="imp-top-l"><strong>Manche ' + s.manche + '</strong>' +
       '<span>' + cat.ic + ' ' + GG.esc(cat.nom) + ' · ' + c + ' imposteur' + (c > 1 ? 's' : '') +
       (s.opts.white && s.players.length >= 5 ? ' · 🎩' : '') + '</span></div>' +
-      (s.ech ? '<div class="imp-timer" data-fin="' + Math.round(+s.ech.fin || 0) + '" data-duree="' + Math.round(+s.ech.duree || 0) + '" data-k="' +
+      (s.ech ? '<div class="imp-timer" data-fin="' + Math.round((+s.ech.fin || 0) + decalage(s.ech)) + '" data-duree="' + Math.round(+s.ech.duree || 0) + '" data-k="' +
         GG.esc(s.ech.k) + '"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="imp-timer-f"/>' +
         '<circle cx="22" cy="22" r="19" class="imp-timer-p"/></svg><b></b></div>' : '') + '</div>';
     out += '<div class="imp-joueurs">' + s.players.map(function (p, i) {

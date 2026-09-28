@@ -204,6 +204,7 @@
     if (!msgs.length) {
       if (!log.querySelector('.ch-none')) log.innerHTML = '<p class="ch-none">💬 Le salon est ouvert.<br>Écrivez le premier message !</p>';
       R.ids = {};
+      R.init = true;
       return;
     }
     var vide = log.querySelector('.ch-none');

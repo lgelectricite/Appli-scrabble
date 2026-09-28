@@ -2437,6 +2437,8 @@
           b.disabled = true;
         });
         try { GG.fx.pop(cible); } catch (e) {}
+        var v0 = root.querySelector('.qz-etat .qz-verrou');
+        if (v0) { v0.className = 'qz-verrou'; v0.textContent = '✔ Réponse verrouillée'; }
         if (ctx.act({ t: 'answer', i: i }) === false) {
           R.local = null;
           root.querySelectorAll('.qz-choice[data-i]').forEach(function (b) {
