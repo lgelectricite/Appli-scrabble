@@ -128,7 +128,8 @@
   /* ================= IA =================
      Les 252 combinaisons possibles de 5 dés sont indexées une fois pour
      toutes (clé = nombre de 1, de 2… en base 6). */
-  var MULTI = [], IDX = {}, ISSUES = [];
+  // IDX : clé (base 6) → rang de la combinaison ; un tableau typé, pour aller vite
+  var MULTI = [], IDX = typeof Int16Array !== 'undefined' ? new Int16Array(46656) : [], ISSUES = [];
   (function () {
     function cle(c) { return c[1] + 6 * c[2] + 36 * c[3] + 216 * c[4] + 1296 * c[5] + 7776 * c[6]; }
     // issues d’un lancer de n dés : [{k (clé des comptes), p}]
@@ -154,6 +155,12 @@
       MULTI.push({ k: o.k, c: o.c, des: d });
     });
   })();
+  // (issues rangées en deux tableaux parallèles : clés et probabilités)
+  var ISS_K = [], ISS_P = [];
+  ISSUES.forEach(function (liste, n) {
+    ISS_K[n] = liste.map(function (o) { return o.k; });
+    ISS_P[n] = liste.map(function (o) { return o.p; });
+  });
   function cleDes(dice) {
     var c = counts(dice);
     return c[1] + 6 * c[2] + 36 * c[3] + 216 * c[4] + 1296 * c[5] + 7776 * c[6];
@@ -203,8 +210,8 @@
   }
   // espérance du meilleur choix de dés gardés, étant donné la table suivante
   function esperance(k, n, table) {
-    var iss = ISSUES[5 - n], e = 0;
-    for (var q = 0; q < iss.length; q++) e += iss[q].p * table[IDX[k + iss[q].k]];
+    var ik = ISS_K[5 - n], ip = ISS_P[5 - n], e = 0;
+    for (var q = 0; q < ik.length; q++) e += ip[q] * table[IDX[k + ik[q]]];
     return e;
   }
   function meilleureGarde(dice, table) {
@@ -500,6 +507,8 @@
   function secousse(ev) {
     var a = ev.accelerationIncludingGravity || ev.acceleration;
     if (!a || !dernierEl || !dernierEl._ymSecoue) return;
+    // la zone de jeu sert à tous les jeux : on ne lance que si le Yams est affiché
+    if (!dernierEl.isConnected || !dernierEl.querySelector('.ym-v2')) { dernierEl._ymSecoue = null; return; }
     var m = Math.sqrt((a.x || 0) * (a.x || 0) + (a.y || 0) * (a.y || 0) + (a.z || 0) * (a.z || 0));
     var now = Date.now();
     if (Math.abs(m - 9.81) > 14) {

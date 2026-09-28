@@ -88,12 +88,16 @@
 .p4-disc.red, .p4-fant.red {
   background:
     radial-gradient(circle, transparent 0 50%, rgba(110, 0, 12, .38) 53%, transparent 61%),
+    radial-gradient(circle, rgba(120, 0, 15, .28) 0 16%, transparent 17%),
     radial-gradient(circle at 34% 27%, #ffb0a6 0%, #ff4d4d 30%, #da1c2c 66%, #8f0d1a 100%);
   box-shadow: inset 0 -5px 8px rgba(60, 0, 8, .45), inset 0 4px 5px rgba(255, 255, 255, .35);
 }
+/* le jaune porte en plus un soleil en relief : on reconnaît les jetons même
+   sans distinguer les couleurs */
 .p4-disc.yellow, .p4-fant.yellow {
   background:
     radial-gradient(circle, transparent 0 50%, rgba(140, 80, 0, .35) 53%, transparent 61%),
+    repeating-conic-gradient(from 0deg, rgba(150, 85, 0, .22) 0 12deg, transparent 12deg 30deg),
     radial-gradient(circle at 34% 27%, #fff6c4 0%, #ffd83a 32%, #f3a500 68%, #a86600 100%);
   box-shadow: inset 0 -5px 8px rgba(90, 45, 0, .45), inset 0 4px 5px rgba(255, 255, 255, .45);
 }

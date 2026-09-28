@@ -401,7 +401,7 @@
     nom: 'Puissance 4',
     icone: '🔴',
     desc: 'Alignez 4 jetons. Série en 1, 3 ou 5 manches gagnantes.',
-    regles: '<p><strong>🎯 Le but :</strong> aligner 4 jetons de votre couleur — à l’horizontale, à la verticale ou en diagonale — avant l’adversaire.</p><p><strong>Comment jouer :</strong> touchez une colonne, votre jeton tombe tout en bas. Chacun son tour !</p><p><strong>La série :</strong> avant le premier jeton, choisissez 1, 3 ou 5 manches gagnantes. Le premier qui les atteint remporte la partie ; celui qui a perdu la manche commence la suivante… à tour de rôle.</p>',
+    regles: '<p><strong>🎯 Le but :</strong> aligner 4 jetons de votre couleur — à l’horizontale, à la verticale ou en diagonale — avant l’adversaire.</p><p><strong>Comment jouer :</strong> touchez une colonne, votre jeton tombe tout en bas. Chacun son tour !</p><p><strong>La série :</strong> avant le premier jeton, choisissez 1, 3 ou 5 manches gagnantes. Le premier qui les atteint remporte la partie ; on commence chacun son tour, manche après manche.</p><p><strong>Contre l’ordinateur :</strong> trois niveaux — facile, moyen (il voit 4 coups à l’avance), difficile (8 à 16 coups : il ne pardonne rien).</p>',
     min: 2, max: 2,
     hotseat: true, hidden: false, netOnly: false,
     niveaux: ['facile', 'moyen', 'difficile'],

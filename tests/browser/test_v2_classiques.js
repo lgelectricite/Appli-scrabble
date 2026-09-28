@@ -91,9 +91,11 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
       check('choix de la série 1 / 3 / 5 avant le 1er jeton', await p.locator('[data-serie]').count() === 3);
       await p.click('[data-serie="1"]');
       // BUG 4 : un appui sur la colonne VOISINE 100 ms après jouait le coup de l’adversaire
-      await p.locator('.p4-cell[data-col="3"]').first().click();
-      await attendre(100);
-      await p.locator('.p4-cell[data-col="4"]').first().click();
+      // deux appuis à 100 ms d’écart, minutés dans la page (précis même si la machine rame)
+      await p.evaluate(() => new Promise(r => {
+        document.querySelector('.p4-cell[data-col="3"]').click();
+        setTimeout(() => { document.querySelector('.p4-cell[data-col="4"]').click(); r(); }, 100);
+      }));
       const n1 = await p.locator('.p4-disc:not(.mini)').count();
       check('BUG 4 corrigé : appui sur la colonne voisine 100 ms après ignoré (1 seul jeton)', n1 === 1, n1);
       check('le jeton qui vient d’être joué tombe (animation « drop »)', await p.locator('.p4-disc.drop').count() === 1);
@@ -182,9 +184,12 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
         await p.waitForSelector('.ttt-board[data-pret="1"]');
         await p.locator('.ttt-cell[data-i="' + i + '"]').click();
       };
-      await tape(4);
-      await attendre(100);
-      await p.locator('.ttt-cell[data-i="0"]').click();
+      await p.waitForSelector('.ttt-board[data-pret="1"]');
+      // deux appuis à 100 ms d’écart, minutés dans la page (précis même si la machine rame)
+      await p.evaluate(() => new Promise(r => {
+        document.querySelector('.ttt-cell[data-i="4"]').click();
+        setTimeout(() => { document.querySelector('.ttt-cell[data-i="0"]').click(); r(); }, 100);
+      }));
       check('double appui : la case voisine 100 ms après est ignorée', await p.locator('.ttt-sym').count() === 1);
       check('le X se trace au feutre (animation)', await p.locator('.ttt-sym.x.nouveau path').count() === 2);
       await tape(0);
@@ -355,8 +360,9 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
           await attendre(520);
           const c2 = await p.locator('.bn-grid.cible .bn-navire.coule').count();
           if (c2 > coules) { coules = c2; if (await p.locator('.bn-navire.sombre').count()) sombreVu = true; }
-          await p.click('[data-a="suite"]');
-          await p.waitForSelector('#overlay-pass:not(.hidden)');
+          // on passe la main : bouton « Passer », sinon le minuteur s’en charge
+          await p.locator('[data-a="suite"]').click({ timeout: 1500 }).catch(() => {});
+          await p.waitForSelector('#overlay-pass:not(.hidden)', { timeout: 5000 });
           await p.click('#btn-pass-ready');
         }
         check('navire coulé : l’épave apparaît et sombre', sombreVu && coules >= 1, { coules, sombreVu });
@@ -825,6 +831,63 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
     check('en ligne : ' + fuite.etats + ' états reçus par l’invitée, AUCUNE position de la flotte de l’hôte', fuite.etats > 0 && fuite.fuites === 0, fuite);
     await ctxH.close();
     await ctxG.close();
+
+    // Yams et Cochon en ligne : chacun joue sur son téléphone
+    const partieEnLigne = async (jeu, scenario) => {
+      const cH = await browser.newContext({ viewport: { width: 412, height: 780 } });
+      const cG = await browser.newContext({ viewport: { width: 360, height: 640 } });
+      const h = await cH.newPage(), g = await cG.newPage();
+      for (const q of [h, g]) {
+        q.on('pageerror', e => { failures++; console.log('  FAIL JS : ' + e.message); });
+        await q.goto(URL);
+        await q.evaluate(u => localStorage.setItem('gg-relais', u), relais.url);
+        await q.reload();
+        await q.waitForSelector('#catalog .game-tile');
+      }
+      await h.click('.game-tile[data-g="' + jeu + '"]');
+      await h.click('#btn-mini-online');
+      await h.fill('#host-name', 'Hugo');
+      await h.click('#btn-host-create');
+      await h.waitForSelector('#host-step-lobby:not(.hidden)', { timeout: 15000 });
+      const c = (await h.textContent('#host-code-big')).trim();
+      await g.click('#btn-home-online');
+      await g.fill('#online-name', 'Nina');
+      await g.fill('#online-code', c);
+      await g.click('#btn-online-go');
+      await h.waitForFunction(() => document.querySelectorAll('.lobby-row').length === 2, null, { timeout: 15000 });
+      await h.click('#btn-host-start');
+      await h.waitForSelector('#screen-mini.active', { timeout: 15000 });
+      await g.waitForSelector('#screen-mini.active', { timeout: 15000 });
+      await scenario(h, g);
+      await cH.close();
+      await cG.close();
+    };
+    console.log('--- Yams en ligne ---');
+    await partieEnLigne('yams', async (h, g) => {
+      check('Yams en ligne : l’invitée attend son tour (bouton inactif)', await g.locator('[data-a="roll"][disabled]').count() === 1);
+      await h.click('[data-a="roll"]');
+      await g.waitForFunction(() => document.querySelectorAll('.ym-de.vide').length === 0, null, { timeout: 8000 });
+      check('Yams en ligne : les dés de l’hôte arrivent chez l’invitée', true);
+      await h.waitForSelector('.ym-ligne.possible');
+      await h.locator('.ym-ligne.possible[data-cat="chance"]').dblclick();
+      await g.waitForSelector('[data-a="roll"]:not([disabled])', { timeout: 8000 });
+      await g.click('[data-a="roll"]');
+      await h.waitForFunction(() => /Nina/.test(document.querySelector('.ym-msg').textContent), null, { timeout: 8000 });
+      check('Yams en ligne : l’invitée lance à son tour', await g.locator('.ym-ligne.possible').count() === 13);
+    });
+    console.log('--- Cochon en ligne ---');
+    await partieEnLigne('cochon', async (h, g) => {
+      check('Cochon en ligne : l’invitée attend son tour', await g.locator('[data-a="roll"][disabled]').count() === 1);
+      await h.evaluate(() => { window.__r = Math.random; Math.random = () => 0.55; });
+      await h.click('[data-a="roll"]');
+      await h.evaluate(() => { Math.random = window.__r; });
+      await g.waitForFunction(() => document.querySelector('.pig-de.roule') || /4/.test(document.querySelector('.pig-tp').textContent), null, { timeout: 8000 });
+      await h.waitForSelector('[data-a="bank"]:not([disabled])');
+      await h.click('[data-a="bank"]');
+      await g.waitForSelector('[data-a="roll"]:not([disabled])', { timeout: 8000 });
+      check('Cochon en ligne : les 4 points de l’hôte sont à l’abri chez l’invitée, et c’est à elle',
+        /4/.test(await g.textContent('.pig-couloir[data-p="0"] .pig-total')));
+    });
     await relais.arreter();
   }
 
